@@ -1358,6 +1358,11 @@
         <div class="hint" style="margin:0">base Parry + shield bonus</div>
       </div>
     </div>
+    <button id="opening-volley-btn" onclick="toggleOpeningVolley()" style="width:100%;margin-top:10px;background:var(--btn-secondary-bg);color:white;border:none;border-radius:6px;padding:8px 10px;font-size:13px;font-weight:600;cursor:pointer">🏹 Opening Volley (aware) — off</button>
+    <div id="opening-volley-info" style="display:none;margin-top:8px;padding:8px;background:var(--gold-soft);border:1px solid var(--gold);border-radius:6px;font-size:13px;text-align:center">
+      Parry <strong>vs ranged</strong> this exchange: <strong id="parry-ranged-v" style="color:var(--red-dark)">0</strong>
+      <div class="hint" style="margin:2px 0 0">shield Parry bonus doubled (aware of the volley) — Core Rules p.93</div>
+    </div>
   </div>
 </section>
 
@@ -4377,6 +4382,7 @@ const DEFAULT_CHARACTER = {
   armourProt: 0, armourLoad: 0, armourNotes: '',
   helmProt: 0, helmLoad: 0,
   shieldBase: 0, shieldTotal: 0, shieldLoad: 0, shieldNotes: '',
+  openingVolley: false,  // Opening Volleys (Core Rules p.93): aware target → shield Parry doubled vs ranged
   skills: {},  // {skillName: {rating: 0, favoured: false}}
   skillNotes: {}, // {skillName: 'free-text note'} — per-skill notes (UX)
   profs: {},   // {profName: 0}
@@ -8603,6 +8609,20 @@ function renderProtectionParry() {
   setText('prot-v', armour + helm);
   setText('parry-v', baseParry + shieldBonus);
 
+  // Opening Volleys (Core Rules p.93): when the hero is the aware target of a ranged volley,
+  // the shield's Parry bonus is doubled vs ranged for that exchange.
+  const ovBtn = document.getElementById('opening-volley-btn');
+  const ovInfo = document.getElementById('opening-volley-info');
+  if (ovBtn) {
+    const on = !!char.openingVolley;
+    ovBtn.textContent = on ? '🏹 Opening Volley (aware) — ON' : '🏹 Opening Volley (aware) — off';
+    ovBtn.style.background = on ? 'var(--gold)' : 'var(--btn-secondary-bg)';
+    if (ovInfo) {
+      ovInfo.style.display = on ? 'block' : 'none';
+      setText('parry-ranged-v', baseParry + shieldBonus * 2);
+    }
+  }
+
   // Helm toggle button label
   const helmBtn = document.getElementById('helm-toggle-btn');
   if (helmBtn) helmBtn.textContent = (helm > 0) ? 'Remove Helm' : 'Add Helm';
@@ -8610,6 +8630,29 @@ function renderProtectionParry() {
   // Dwarven hint
   const dwarfHint = document.getElementById('dwarf-load-hint');
   if (dwarfHint) dwarfHint.style.display = isDwarfCulture() ? 'block' : 'none';
+}
+
+function toggleOpeningVolley() {
+  char.openingVolley = !char.openingVolley;
+  saveCharacter();
+  renderProtectionParry();
+}
+
+// Shadow Test follow-through (Core Rules p.158): apply the net Shadow gain after a test.
+// net = max(0, incoming − reduction). Routes through adj() so caps, the Bout/Miserable
+// triggers, the solo-mode Eye-Awareness hook, and undo all apply consistently.
+function applyShadowTestResult(reduction) {
+  const inEl = document.getElementById('shadow-incoming');
+  const incoming = Math.max(0, parseInt(inEl && inEl.value) || 0);
+  const net = Math.max(0, incoming - (parseInt(reduction) || 0));
+  const before = parseInt(char.shadow) || 0;
+  if (net > 0) adj('shadow', net);     // adj snapshots (undo), clamps, fires EA hook, re-renders
+  const applied = (parseInt(char.shadow) || 0) - before;
+  const row = document.getElementById('shadow-apply-row');
+  if (row) {
+    row.innerHTML = `<span style="color:var(--success-text);font-weight:600">✓ Applied +${applied} Shadow</span>` +
+      ` <small style="color:var(--text-muted)">(${incoming} incoming − ${reduction} reduced${applied < net ? ', capped at Max' : ''})</small>`;
+  }
 }
 
 function halveForDwarf(load) {
@@ -11090,6 +11133,12 @@ function rollDice(skillLabel) {
       ? `Reduce incoming Shadow by <strong>${reduction}</strong> (1 + ${icons} icon${icons!==1?'s':''})`
       : `No reduction — full Shadow gain applies`;
     summary += `<br><span class="result-tag" style="background:var(--btn-alert-bg);color:white">🌑 ${diceState.shadowTest} test: ${verdict}</span>`;
+    // One-tap apply: enter the Loremaster's incoming Shadow, apply (incoming − reduction).
+    summary += `<div id="shadow-apply-row" style="margin-top:6px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:12px">
+      <span>Incoming Shadow:</span>
+      <input id="shadow-incoming" type="number" min="0" value="${diceState.shadowTest === 'Sorcery' ? 2 : 1}" style="width:48px;padding:3px 5px;border:1px solid var(--border);border-radius:4px;background:var(--bg-deep);color:var(--ink)">
+      <button onclick="applyShadowTestResult(${reduction})" style="background:var(--btn-alert-bg);color:white;border:none;border-radius:5px;padding:5px 10px;font-weight:600;cursor:pointer">Apply Shadow</button>
+    </div>`;
   }
   if (diceState.firstAid) {
     char.firstAidUsed = true;  // success or fail, the attempt is spent
