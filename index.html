@@ -7890,8 +7890,8 @@ function rollAutoFortune(type) {
     const colour = isIll ? 'var(--btn-alert-bg)' : 'var(--gold)';
     summaryEl.innerHTML += `<br><span class="result-tag" style="background:${colour};color:white">${isIll?'🎲 Ill-Fortune':'🎲 Fortune'} (Feat ${r.label}): ${entry.text}</span>`;
   }
-  // Special EA hooks: Fortune Eye → −1 EA; Ill-Fortune Eye → +2 EA.
-  if (char.striderMode) {
+  // Special EA hooks: Fortune Eye → −1 EA; Ill-Fortune Eye → +2 EA (solo modes — Moria reuses these tables).
+  if (isSolo()) {
     if (isIll && r.special === 'eye') {
       char.eyeAwareness = (parseInt(char.eyeAwareness) || 0) + 2;
       saveCharacter(); refreshEyeOfMordor();
@@ -8784,10 +8784,10 @@ function adj(field, delta) {
   const prevValue = parseInt(char[field]) || 0;
   char[field] = v;
 
-  // Strider Mode: Shadow gain outside combat raises Eye Awareness by the same amount (RAW supplement).
-  // This is best-effort — the player can manually decrement EA if the gain was from combat.
-  // Skipped if delta is negative (we don't decrement EA on Shadow recovery — those are different events).
-  if (field === 'shadow' && char.striderMode && delta > 0) {
+  // Solo modes (Strider / Moria): Shadow gain outside combat raises Eye Awareness by the same
+  // amount (RAW supplement). Best-effort — the player can manually decrement EA if the gain was
+  // from combat. Skipped on negative delta (Shadow recovery doesn't lower EA — different event).
+  if (field === 'shadow' && isSolo() && delta > 0) {
     const actualDelta = v - prevValue;  // capped at hopeMax−scars
     if (actualDelta > 0) {
       char.eyeAwareness = (parseInt(char.eyeAwareness) || 0) + actualDelta;
@@ -11005,14 +11005,15 @@ function rollDice(skillLabel) {
     }
   }
 
-  // Strider Mode: Eye-Awareness auto-increment hooks (per supplement).
+  // Solo modes (Strider / Moria): Eye-Awareness auto-increment hooks (per supplement).
   // Raise EA by 1 on any Eye or Rune outside combat. Magical Success also raises EA by 1.
-  if (char.striderMode && !diceState.isAttack) {
+  if (isSolo() && !diceState.isAttack) {
     let eaDelta = 0;
     if (chosenFeat.special === 'eye' || chosenFeat.special === 'rune') eaDelta += 1;
     if (diceState.magical) eaDelta += 1;
     if (eaDelta > 0) {
       char.eyeAwareness = (parseInt(char.eyeAwareness) || 0) + eaDelta;
+      saveCharacter();   // persist — rollDice's earlier saveCharacter() runs before this hook
       refreshEyeOfMordor();
       // Tag in summary so the player sees the bump
       const sEl = document.getElementById('result-summary');
@@ -11028,9 +11029,9 @@ function rollDice(skillLabel) {
     if (panel) panel.style.display = 'none';
   }
 
-  // Strider Mode: auto Fortune / Ill-Fortune prompt on Rune (success) / Eye (failure).
+  // Solo modes (Strider / Moria): auto Fortune / Ill-Fortune prompt on Rune (success) / Eye (failure).
   // Appends a one-tap button below the result summary that rolls the matching table inline.
-  if (char.striderMode) {
+  if (isSolo()) {
     const summaryEl = document.getElementById('result-summary');
     // Clear any prior auto-fortune action
     const existing = document.getElementById('strider-fortune-action');
