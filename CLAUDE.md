@@ -28,7 +28,7 @@ grep -o "tor2e-[a-z0-9-]*" character-tracker.html | sort -u   # all localStorage
 
 As of last verification:
 - **`character-tracker.html`**: ~11,173 lines / ~647 KB (includes a ~20 KB vendored QR library in its own `<script>` block)
-- **`sw.js` `CACHE_VERSION`**: `tor2e-v37` (bump on every deploy)
+- **`sw.js` `CACHE_VERSION`**: `tor2e-v38` (bump on every deploy)
 - **SW strategy (since v30)**: HTML/navigations are **network-first** (deploys appear on next online load — no stale-cache lag); static assets cache-first. Updates surface a tap-to-update banner (page posts `SKIP_WAITING`); still bump `CACHE_VERSION` each deploy so old caches are GC'd.
 - **Moria Solo Mode**: ✅ complete (one toggle `⛏️ Enable Moria Solo Mode` → Band + Battle tabs, Moria oracle generators, full solo campaign). Full subsystem reference in the **"Moria Solo Mode"** section below.
 - **localStorage keys**: now a **multi-character roster** (added 2026-05-31):
@@ -37,6 +37,7 @@ As of last verification:
   - `tor2e-rolls-<id>` — each hero's last-30 dice rolls (one key per hero)
   - `tor2e-oracle-history` — last 30 Strider/Moria oracle rolls (global, not per-hero)
   - `tor2e-theme` — `'light'` / `'dark'` / unset = auto
+  - `tor2e-compact` — `'1'` = compact spacing, unset = normal (UX setting, device-global)
   - **Legacy (read-once for migration, then left as backup):** `tor2e-character-v1`, `tor2e-rolls-v1`. On first load under the roster system these are migrated into the first hero's slot. `loadCharacter()`/`saveCharacter()` operate on the active slot; `migrateCharacter(raw)` is the pure forward-migration used for slots, imports, and shared-link payloads.
 
 ### Stack
@@ -512,16 +513,16 @@ Audit cross-referenced the full Core Rules table of contents against the app. Co
 **Recommended next features (in priority order):** 1. ~~Journey tracker~~ ✅ done · 2. ~~Combat Tasks~~ ✅ done · 3. ~~Council tracker~~ ✅ done · 4. ~~Fellowship Phase wizard~~ ✅ done · 5. ~~Shadow Test button~~ ✅ done · 6. ~~Harden Will~~ ✅ done · 7. ~~First Aid HEALING roll~~ ✅ done · 8. ~~Pierce special damage~~ ✅ done · 9. ~~SoL auto-promote~~ ✅ done · 10. ~~Fellowship Point support spend~~ ✅ done (as Receive Support + FP→Hope). · 11. ~~Skill Endeavours~~ ✅ done. · 12. ~~Give-side Support~~ ✅ done. · 13. ~~4-Flaws-Succumb~~ ✅ done. · 14. ~~Resting buttons~~ ✅ done · 15. ~~Brave at a Pinch RAW fix + Inspiration state~~ ✅ done · 16. ~~Combat polish (Foe Parry / 2h grip / Fly You Fools)~~ ✅ done · 17. ~~Treasure subsystem~~ ✅ done. · 18. ~~Famous Weapon dormant qualities flow~~ ✅ done.
 
 ### 🟢 Priority 3 — UX polish
-- [ ] **Dark mode** — auto-switch based on iOS appearance, or manual toggle
-- [ ] **Service worker + manifest.json** — true offline PWA with proper home-screen icon
+- [x] **Dark mode** — auto via `prefers-color-scheme` + manual menu toggle (persisted in `tor2e-theme`).
+- [x] **Service worker + manifest.json** — true offline PWA with home-screen icons.
 - [ ] **Roll multiple skills at once** — group rolls
-- [ ] **Per-skill notes field**
-- [ ] **History filter/search** — by skill, success/fail, time range
-- [ ] **Compact mode** — tighten spacing for iPhone portrait
-- [ ] **Print-friendly stylesheet** — `@media print`
-- [ ] **Undo button** — back out of accidental +/− taps and Apply Culture
+- [x] **Per-skill notes field** — slim `.skill-note` input under each skill row on the Skills tab; stored in `char.skillNotes[skillName]` (saved on change; empty notes pruned). Part of the character, so it exports/shares.
+- [x] **History filter/search** — Dice-tab History card gains a text filter (matches roll label) + an outcome dropdown (All / Successes / Failures); `renderHistory()` applies both before slicing to the last 20.
+- [x] **Compact mode** — menu toggle **📏 Compact Mode** (persisted in `tor2e-compact`); `body.compact` CSS overrides tighten panel/card/counter/field spacing & font for iPhone portrait. `applyCompact()` bootstraps on load.
+- [x] **Print-friendly stylesheet** — `@media print` hides chrome/buttons/interactive tabs (Dice/Build/Oracle/Band/Battle/Journey/Council), stacks the Character/Skills/Combat/Gear panels, forces black-on-white, and shows a `#print-title` (name — culture · calling). Menu **🖨️ Print / Save PDF** button calls `window.print()`.
+- [x] **Undo button** — header **↶** button (shown only when the stack is non-empty). `snapshot()` pushes a pre-mutation char JSON (bounded to 50) at the high-misfire entry points — `adj()` counters, condition toggles, and Apply Culture; `undoLast()` restores it. Stack is per-hero (cleared on switch/new).
 - [ ] **Drag-to-reorder** war gear rows
-- [ ] **Styled modal** to replace native `confirm()` / `alert()`
+- [x] **Styled modal** to replace native `confirm()` / `alert()` (done in an earlier pass — `showModal`/`confirmStyled`/`alertStyled`/`promptStyled`).
 
 ### 🔵 Priority 4 — Expanded rules tracking
 - [ ] **Skill Endeavour tracker** — set Resistance + Time Limit, tally successes

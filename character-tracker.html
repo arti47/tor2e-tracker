@@ -615,6 +615,7 @@
   <div class="header-row">
     <button class="menu-btn" onclick="toggleMenu()" aria-label="Menu">☰</button>
     <input class="char-name" id="char-name" placeholder="Character Name" data-field="name">
+    <button class="menu-btn" id="undo-btn" onclick="undoLast()" aria-label="Undo" title="Undo last change" style="display:none">↶</button>
     <span id="retired-pill" style="display:none;background:var(--btn-alert-bg);color:white;padding:3px 10px;border-radius:10px;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase" title=""></span>
   </div>
   <nav class="tabs">
@@ -631,6 +632,9 @@
     <button class="tab" data-tab="build">Build</button>
   </nav>
 </header>
+
+<!-- print-only character title (hidden on screen, shown by @media print) -->
+<div id="print-title" style="display:none"></div>
 
 <!-- ============ BUILD ============ -->
 <section class="panel" id="panel-build">
@@ -1874,6 +1878,14 @@
 
   <div class="card">
     <h4 style="color:var(--red);font-size:12px;text-transform:uppercase;letter-spacing:1px;margin:0 0 6px">History</h4>
+    <div style="display:flex;gap:6px;margin-bottom:8px">
+      <input id="history-search" placeholder="Filter by skill / label…" oninput="renderHistory()" style="flex:1;font-size:12px;padding:4px 8px;border:1px solid var(--border);border-radius:5px;background:var(--bg-deep);color:var(--ink)">
+      <select id="history-outcome" onchange="renderHistory()" style="font-size:12px;padding:4px 6px;border:1px solid var(--border);border-radius:5px;background:var(--bg-deep);color:var(--ink)">
+        <option value="all">All</option>
+        <option value="success">Successes</option>
+        <option value="fail">Failures</option>
+      </select>
+    </div>
     <div class="roll-history" id="roll-history"></div>
   </div>
 </section>
@@ -2311,6 +2323,8 @@
     <button onclick="openPartyView()">🛡️ Party View</button>
     <button onclick="openShare()">🔗 Share Character</button>
     <button onclick="toggleDarkMode()" id="dark-mode-btn">🌙 Toggle Dark Mode</button>
+    <button onclick="toggleCompactMode()" id="compact-mode-btn">📏 Compact Mode</button>
+    <button onclick="window.print();toggleMenu()">🖨️ Print / Save PDF</button>
     <button onclick="toggleStriderMode()" id="strider-mode-btn">🗡️ Enable Strider Mode (solo)</button>
     <button onclick="toggleMoriaMode()" id="moria-mode-btn">⛏️ Enable Moria Solo Mode</button>
     <button onclick="exportData()">📤 Export Character (JSON)</button>
@@ -2536,6 +2550,55 @@
   }
   .fp-step-pill.active { background: var(--red); color: white; border-color: var(--red-dark); }
   .fp-step-pill.done { background: var(--gold); color: white; border-color: var(--gold); }
+
+  /* ============ COMPACT MODE ============ */
+  /* Toggle via menu; tightens spacing for small screens / iPhone portrait. */
+  body.compact .panel { padding: 8px; }
+  body.compact .card { padding: 8px; margin-bottom: 8px; border-radius: 6px; }
+  body.compact .card-title { font-size: 12px; margin-bottom: 6px; padding-bottom: 4px; letter-spacing: 0.5px; }
+  body.compact .field { margin-bottom: 5px; gap: 6px; }
+  body.compact .field label { flex-basis: 92px; font-size: 12px; }
+  body.compact .counter { padding: 5px; }
+  body.compact .counter-label { font-size: 10px; margin-bottom: 2px; }
+  body.compact .counter-value { font-size: 18px; margin: 2px 0; }
+  body.compact .counters { gap: 6px !important; }
+  body.compact .pip-row { margin-bottom: 3px; }
+  body.compact .skill-note { margin-top: 1px; margin-bottom: 5px; }
+
+  /* ============ PRINT ============ */
+  @media print {
+    @page { margin: 12mm; }
+    body { background: #fff !important; color: #000 !important; }
+    /* hide all interactive chrome */
+    header, .tabs, .menu-btn, .menu-overlay, #sw-update-banner, #undo-btn,
+    button, .roll-btn, .add-row-btn, .counter-buttons, .seg-btns, .quick-skill,
+    #panel-dice, #panel-build, #panel-oracle, #panel-band, #panel-battle,
+    #panel-journey, #panel-council { display: none !important; }
+    /* a print-only title */
+    #print-title { display: block !important; font-size: 20px; font-weight: 700;
+      text-align: center; margin: 0 0 6px; color: #000; }
+    /* stack every sheet panel so the whole character prints */
+    .panel { display: block !important; padding: 0; max-width: none; }
+    .card { border: 1px solid #999 !important; background: #fff !important;
+      box-shadow: none !important; page-break-inside: avoid; break-inside: avoid;
+      margin-bottom: 8px; }
+    .card-title { color: #000 !important; border-bottom: 1px solid #999 !important; }
+    input, select, textarea { border: none !important; background: #fff !important;
+      color: #000 !important; -webkit-appearance: none; appearance: none; }
+    .counter-value, .counter-label, .pip-name, label { color: #000 !important; }
+    .pip.filled { background: #000 !important; }
+    .pip { border-color: #000 !important; }
+  }
+
+  /* per-skill note input */
+  .skill-note {
+    width: calc(100% - 30px);
+    margin: 1px 0 8px 30px;
+    font-size: 11px; padding: 3px 6px;
+    border: 1px solid var(--border); border-radius: 4px;
+    background: var(--bg-deep); color: var(--ink);
+  }
+  .skill-note::placeholder { color: var(--text-faint); }
 </style>
 
 <!-- Vendored QR generator: davidshimjs/qrcodejs (MIT, (c) 2012 davidshimjs), based on
@@ -3598,6 +3661,51 @@ function toggleDarkMode() {
   applyTheme();
 }
 
+/* ---------- COMPACT MODE ---------- */
+const COMPACT_KEY = 'tor2e-compact';   // '1' = compact, unset = normal spacing
+function applyCompact() {
+  if (!document.body) return;
+  const on = localStorage.getItem(COMPACT_KEY) === '1';
+  document.body.classList.toggle('compact', on);
+  const btn = document.getElementById('compact-mode-btn');
+  if (btn) btn.textContent = on ? '📏 Normal Spacing' : '📏 Compact Mode';
+}
+function toggleCompactMode() {
+  const on = localStorage.getItem(COMPACT_KEY) === '1';
+  if (on) localStorage.removeItem(COMPACT_KEY); else localStorage.setItem(COMPACT_KEY, '1');
+  applyCompact();
+}
+(function bootstrapCompact() {
+  if (document.body) applyCompact();
+  else document.addEventListener('DOMContentLoaded', applyCompact);
+})();
+
+/* ---------- UNDO ---------- */
+// A bounded stack of pre-mutation character snapshots. snapshot() is called by the
+// mutating entry points the user is most likely to fat-finger (counters via adj(),
+// condition toggles, Apply Culture). undoLast() restores the most recent snapshot.
+let undoStack = [];
+function snapshot() {
+  try { undoStack.push(JSON.stringify(char)); } catch(e) { return; }
+  if (undoStack.length > 50) undoStack.shift();
+  refreshUndoButton();
+}
+function clearUndo() { undoStack = []; refreshUndoButton(); }
+function refreshUndoButton() {
+  const b = document.getElementById('undo-btn');
+  if (b) b.style.display = undoStack.length ? 'inline-flex' : 'none';
+}
+function undoLast() {
+  if (!undoStack.length) return;
+  let prev;
+  try { prev = JSON.parse(undoStack.pop()); } catch(e) { refreshUndoButton(); return; }
+  char = migrateCharacter(prev);
+  saveCharacter();
+  render();
+  renderHistory();
+  refreshUndoButton();
+}
+
 // Run early — DOM might not be fully parsed yet, so guard against missing body.
 (function bootstrapTheme() {
   if (document.body) applyTheme();
@@ -4270,6 +4378,7 @@ const DEFAULT_CHARACTER = {
   helmProt: 0, helmLoad: 0,
   shieldBase: 0, shieldTotal: 0, shieldLoad: 0, shieldNotes: '',
   skills: {},  // {skillName: {rating: 0, favoured: false}}
+  skillNotes: {}, // {skillName: 'free-text note'} — per-skill notes (UX)
   profs: {},   // {profName: 0}
   weapons: []  // [{name, dmg, inj, load, notes}]
 };
@@ -4368,6 +4477,7 @@ function migrateCharacter(raw) {
         if (!merged.fpSpend.skills) merged.fpSpend.skills = {};
         if (!merged.fpSpend.profs) merged.fpSpend.profs = {};
       }
+      if (!merged.skillNotes || typeof merged.skillNotes !== 'object') merged.skillNotes = {};
       if (!Array.isArray(merged.magicalItems)) merged.magicalItems = [];
       // Backfill `qualities` on Famous items added before this feature.
       merged.magicalItems.forEach(mi => {
@@ -4443,6 +4553,7 @@ function readSlot(id) {
 function applyActiveCharacter() {
   char = loadCharacter();
   history = loadHistory();
+  if (typeof clearUndo === 'function') clearUndo();   // undo stack is per-hero
   render();
   renderHistory();
 }
@@ -4467,6 +4578,7 @@ function newCharacter() {
   history = [];
   saveCharacter();                       // creates the slot + roster entry, sets it active
   saveHistory();
+  if (typeof clearUndo === 'function') clearUndo();
   render();
   renderHistory();
   renderRoster();
@@ -4753,6 +4865,10 @@ function render() {
     if (el.type === 'checkbox') el.checked = !!char[k];
     else el.value = char[k] !== undefined ? char[k] : '';
   });
+
+  // Print-only title
+  const pt = document.getElementById('print-title');
+  if (pt) pt.textContent = (char.name || 'Character') + (char.culture ? ' — ' + char.culture : '') + (char.calling ? ' · ' + char.calling : '');
 
   // Auto-compute Load before rendering counters
   recomputeLoad();
@@ -8213,11 +8329,14 @@ function setText(id, v) {
 }
 
 function renderSkills() {
+  if (!char.skillNotes || typeof char.skillNotes !== 'object') char.skillNotes = {};
   ['str','hrt','wit'].forEach(attr => {
     const container = document.getElementById('skills-' + attr);
     container.innerHTML = '';
     SKILLS[attr].forEach(skillName => {
       const s = char.skills[skillName] || {rating: 0, favoured: false};
+      const wrap = document.createElement('div');
+      wrap.className = 'skill-wrap';
       const row = document.createElement('div');
       row.className = 'pip-row';
       row.innerHTML = `
@@ -8225,7 +8344,18 @@ function renderSkills() {
         <div class="pip-name">${skillName}</div>
         <div class="pips">${renderPips(s.rating, skillName, 'skill')}</div>
       `;
-      container.appendChild(row);
+      wrap.appendChild(row);
+      const note = document.createElement('input');
+      note.className = 'skill-note';
+      note.placeholder = 'notes…';
+      note.value = char.skillNotes[skillName] || '';
+      note.addEventListener('change', () => {
+        const val = note.value.trim();
+        if (val) char.skillNotes[skillName] = val; else delete char.skillNotes[skillName];
+        saveCharacter();
+      });
+      wrap.appendChild(note);
+      container.appendChild(wrap);
     });
   });
   bindPipEvents();
@@ -8772,6 +8902,7 @@ const SOL_THRESHOLDS = [
 const SOL_RANK = { 'Poor': 0, 'Frugal': 1, 'Common': 2, 'Prosperous': 3, 'Rich': 4, 'Very Rich': 5 };
 
 function adj(field, delta) {
+  snapshot();   // undo support
   let v = Math.max(0, (parseInt(char[field]) || 0) + delta);
 
   // Upper caps tied to max values
@@ -8896,6 +9027,7 @@ function bindInputs() {
   document.querySelectorAll('[data-cond]').forEach(btn => {
     btn.onclick = async () => {
       const c = btn.dataset.cond;
+      snapshot();   // undo support
       const wasOff = !char[c];
       char[c] = !char[c];
 
@@ -10152,6 +10284,7 @@ function bindBuilder() {
 async function applyCulture() {
   const name = document.getElementById('culture-pick').value;
   if (!name) return;
+  snapshot();   // undo support — Apply Culture is a big, easy-to-misfire change
   const c = CULTURES[name];
 
   // Pick attribute set
@@ -11094,12 +11227,24 @@ function rollDice(skillLabel) {
 
 function renderHistory() {
   const div = document.getElementById('roll-history');
+  if (!div) return;
   div.innerHTML = '';
   if (history.length === 0) {
     div.innerHTML = '<div style="text-align:center;color:var(--text-faint);padding:10px;font-size:12px">No rolls yet</div>';
     return;
   }
-  history.slice(0, 20).forEach(h => {
+  // Filters
+  const q = (document.getElementById('history-search')?.value || '').toLowerCase().trim();
+  const outFilter = document.getElementById('history-outcome')?.value || 'all';
+  let rows = history;
+  if (q) rows = rows.filter(h => (h.label || '').toLowerCase().includes(q));
+  if (outFilter === 'success') rows = rows.filter(h => h.outcome.startsWith('SUCCESS'));
+  else if (outFilter === 'fail') rows = rows.filter(h => !h.outcome.startsWith('SUCCESS'));
+  if (rows.length === 0) {
+    div.innerHTML = '<div style="text-align:center;color:var(--text-faint);padding:10px;font-size:12px">No matching rolls</div>';
+    return;
+  }
+  rows.slice(0, 20).forEach(h => {
     const item = document.createElement('div');
     item.className = 'history-item';
     const color = h.outcome.startsWith('SUCCESS') ? '#2e7d32' : 'var(--error-text)';
