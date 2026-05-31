@@ -1,0 +1,44 @@
+{
+  "name": "The One Ring 2E — Character Tracker",
+  "short_name": "TOR2E",
+  "description": "Companion character sheet for The One Ring 2nd Edition tabletop RPG. Full Adventuring/Fellowship Phase tracking, Journey + Council + Skill Endeavours, magical treasure, and rule-correct dice mechanics.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "theme_color": "#f5ecd9",
+  "background_color": "#f5ecd9",
+  "categories": ["games", "entertainment", "utilities"],
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any"
+    }
+  ]
+}
