@@ -18,7 +18,7 @@ A single-file HTML5 character sheet for **The One Ring 2nd Edition** RPG, design
 
 ### Current state (verify before quoting — figures drift)
 
-Last verified: **2026-05-29**. Re-run these three commands to refresh:
+Last verified: **2026-05-31**. Re-run these three commands to refresh:
 
 ```bash
 wc -lc character-tracker.html              # file size + line count
@@ -27,11 +27,17 @@ grep -o "tor2e-[a-z0-9-]*" character-tracker.html | sort -u   # all localStorage
 ```
 
 As of last verification:
-- **`character-tracker.html`**: 10,575 lines / ~582 KB
-- **`sw.js` `CACHE_VERSION`**: `tor2e-v34` (bump on every deploy)
+- **`character-tracker.html`**: ~11,173 lines / ~647 KB (includes a ~20 KB vendored QR library in its own `<script>` block)
+- **`sw.js` `CACHE_VERSION`**: `tor2e-v36` (bump on every deploy)
 - **SW strategy (since v30)**: HTML/navigations are **network-first** (deploys appear on next online load — no stale-cache lag); static assets cache-first. Updates surface a tap-to-update banner (page posts `SKIP_WAITING`); still bump `CACHE_VERSION` each deploy so old caches are GC'd.
 - **Moria Solo Mode**: ✅ complete (one toggle `⛏️ Enable Moria Solo Mode` → Band + Battle tabs, Moria oracle generators, full solo campaign). Full subsystem reference in the **"Moria Solo Mode"** section below.
-- **localStorage keys (4)**: `tor2e-character-v1` (character state), `tor2e-rolls-v1` (last 30 dice rolls), `tor2e-oracle-history` (last 30 Strider Mode oracle rolls), `tor2e-theme` (`'light'` / `'dark'` / unset = auto)
+- **localStorage keys**: now a **multi-character roster** (added 2026-05-31):
+  - `tor2e-roster-v1` — `{ activeId, list:[{id,name}] }` (the index of all heroes on the device)
+  - `tor2e-char-<id>` — each hero's character JSON (one key per hero)
+  - `tor2e-rolls-<id>` — each hero's last-30 dice rolls (one key per hero)
+  - `tor2e-oracle-history` — last 30 Strider/Moria oracle rolls (global, not per-hero)
+  - `tor2e-theme` — `'light'` / `'dark'` / unset = auto
+  - **Legacy (read-once for migration, then left as backup):** `tor2e-character-v1`, `tor2e-rolls-v1`. On first load under the roster system these are migrated into the first hero's slot. `loadCharacter()`/`saveCharacter()` operate on the active slot; `migrateCharacter(raw)` is the pure forward-migration used for slots, imports, and shared-link payloads.
 
 ### Stack
 - **Pure HTML5 + CSS + JavaScript** — no frameworks, no build step, no dependencies
@@ -526,10 +532,10 @@ Audit cross-referenced the full Core Rules table of contents against the app. Co
 - [x] **Conditional virtue toggles in dice roller** — Dragon-Slayer + Dark for Dark Business as opt-in toggles; Sure at the Mark, Stone-Hard, Skin-Coat, Strength of Will, Untameable Spirit, Against the Unseen all auto-apply when the virtue is owned and the roll context matches. Helper `hasVirtue(name)` available for future additions.
 
 ### 🟣 Priority 5 — Multi-character & sharing
-- [ ] **Multiple characters per device** — list/selector
-- [ ] **Share via URL** — encode state in URL hash
-- [ ] **QR code** generation
-- [ ] **Companion view** — read-only party stats
+- [x] **Multiple characters per device** — list/selector. Menu → **👥 Characters** opens a roster overlay: switch / rename / duplicate / delete, plus **➕ New Character**. Storage is keyed per hero (`tor2e-char-<id>` + `tor2e-rolls-<id>`) with a `tor2e-roster-v1` index; legacy single-character saves auto-migrate on first load. Each hero keeps its own sheet **and** roll history. `resetCharacter()` now resets the active hero in place (kept distinct from New Character).
+- [x] **Share via URL** — Menu → **🔗 Share Character**. `characterDelta(char)` trims the hero to non-default fields → URL-safe base64 (`encodeShare`/`decodeShare`, UTF-8 safe) in a `#import=…` hash. `importFromHash()` (run on load) decodes, confirms, and adds the shared hero as a **new** character (never overwrites); the hash is cleared via `window.history.replaceState` (note: `history` is the roll-history array in this app — must use `window.history`). Copy-link + copy-code-only buttons with a clipboard fallback.
+- [x] **QR code** generation — Menu → 🔗 Share renders a QR of the share-link via a **vendored** `QRCode` lib (davidshimjs/qrcodejs, MIT, inlined as a separate `<script>` block to stay single-file/offline). Gated at ≤1200 link chars (beyond that a QR is too dense to scan, so it falls back to "use the link/code"). EC level L for the smallest code.
+- [x] **Companion view** — Menu → **🛡️ Party View**: read-only table of every saved hero (Name/Culture·Calling, End, Hope, Shadow+Scars, Valour/Wisdom, conditions), active hero highlighted.
 
 ### ⚪ Priority 6 — Loremaster tools
 - [ ] **Adversary stat blocks** — combat tracking against NPCs
