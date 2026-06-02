@@ -629,7 +629,7 @@
     <button class="tab" data-tab="oracle" style="display:none">Oracle</button>
     <button class="tab" data-tab="band" style="display:none">Band</button>
     <button class="tab" data-tab="battle" style="display:none">Battle</button>
-    <button class="tab" data-tab="chronicle">📜 Chronicle</button>
+    <button class="tab" data-tab="chronicle">Chronicle</button>
     <button class="tab" data-tab="build">Build</button>
   </nav>
 </header>
@@ -656,8 +656,8 @@
     </div>
     <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
       <button class="add-row-btn" onclick="advanceChronicleDay(1)" style="flex:1;background:var(--btn-secondary-bg);font-size:12px">+1 Day</button>
-      <button class="add-row-btn" onclick="advanceChronicleSeason()" style="flex:1;background:var(--btn-secondary-bg);font-size:12px">Next Season ▸</button>
-      <button class="add-row-btn" onclick="markYule()" style="flex:1;background:var(--gold);font-size:12px">❄️ Mark Yule (Year +1)</button>
+      <button class="add-row-btn" onclick="advanceChronicleSeason()" style="flex:1;background:var(--btn-secondary-bg);font-size:12px">Next Season</button>
+      <button class="add-row-btn" onclick="markYule()" style="flex:1;background:var(--gold);font-size:12px">Mark Yule (Year +1)</button>
     </div>
     <p class="hint" style="margin-top:6px">The in-game clock stamps every entry. It auto-advances on a Prolonged Rest, journey arrival, and Yule — adjust any time.</p>
   </div>
@@ -665,19 +665,19 @@
   <div class="card">
     <h3 class="card-title">New Entry</h3>
     <div class="seg-btns" id="ch-type-pick" style="flex-wrap:wrap">
-      <button class="seg-btn active" data-val="action">🎬 Action</button>
-      <button class="seg-btn" data-val="question">❓ Question</button>
-      <button class="seg-btn" data-val="oracle">🔮 Oracle</button>
-      <button class="seg-btn" data-val="result">➡️ Result</button>
-      <button class="seg-btn" data-val="consequence">⚡ Consequence</button>
-      <button class="seg-btn" data-val="note">📝 Note</button>
+      <button class="seg-btn active" data-val="action">Action</button>
+      <button class="seg-btn" data-val="question">Question</button>
+      <button class="seg-btn" data-val="oracle">Oracle</button>
+      <button class="seg-btn" data-val="result">Result</button>
+      <button class="seg-btn" data-val="consequence">Consequence</button>
+      <button class="seg-btn" data-val="note">Note</button>
     </div>
     <div style="display:flex;gap:6px;margin-top:8px">
       <input id="ch-entry-text" placeholder="What happens…" style="flex:1;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--bg-deep);color:var(--ink)" onkeydown="if(event.key==='Enter')addChronicleEntryFromUI()">
       <button class="add-row-btn" onclick="addChronicleEntryFromUI()" style="background:var(--gold)">Add</button>
     </div>
     <details style="margin-top:8px">
-      <summary style="cursor:pointer;font-size:12px;color:var(--text-muted)">⚙️ Auto-capture settings</summary>
+      <summary style="cursor:pointer;font-size:12px;color:var(--text-muted)">Auto-capture settings</summary>
       <div style="display:flex;flex-direction:column;gap:4px;margin-top:6px;font-size:13px">
         <label><input type="checkbox" id="ch-set-ojc" onchange="setChronicleToggles()"> Oracle / Journey / Council results</label>
         <label><input type="checkbox" id="ch-set-dice" onchange="setChronicleToggles()"> Dice rolls (combat & skill checks)</label>
@@ -691,7 +691,7 @@
     <h3 class="card-title">Chronicle <span id="ch-count" style="font-size:11px;color:var(--text-muted);font-weight:400"></span></h3>
     <div style="display:flex;gap:6px;margin-bottom:8px">
       <input id="ch-search" placeholder="Filter entries…" oninput="renderChronicleTimeline()" style="flex:1;font-size:12px;padding:4px 8px;border:1px solid var(--border);border-radius:5px;background:var(--bg-deep);color:var(--ink)">
-      <button class="add-row-btn" onclick="exportChronicleMarkdown()" style="background:var(--btn-secondary-bg);font-size:12px">⬇️ Export .md</button>
+      <button class="add-row-btn" onclick="exportChronicleMarkdown()" style="background:var(--btn-secondary-bg);font-size:12px">Export .md</button>
     </div>
     <div id="ch-timeline" style="font-size:13px;line-height:1.5;max-height:460px;overflow-y:auto;-webkit-overflow-scrolling:touch"></div>
   </div>
@@ -4962,17 +4962,17 @@ function saveHistory() {
 /* ============================================
    CHRONICLE (journaling) — per-hero
    ============================================ */
-// Entry types. emoji = on-screen glyph; ascii = portable Lonelog symbol used in Markdown export.
+// Entry types. label = on-screen tag; ascii = portable Lonelog symbol used in Markdown export.
 const JOURNAL_TYPES = {
-  action:      { emoji: '🎬', ascii: '@',  label: 'Action' },
-  question:    { emoji: '❓', ascii: '?',  label: 'Question' },
-  oracle:      { emoji: '🔮', ascii: '~',  label: 'Oracle' },
-  roll:        { emoji: '🎲', ascii: 'd:', label: 'Roll' },
-  result:      { emoji: '➡️', ascii: '->', label: 'Result' },
-  consequence: { emoji: '⚡', ascii: '=>', label: 'Consequence' },
-  status:      { emoji: '🌓', ascii: '%',  label: 'Status' },
-  milestone:   { emoji: '🏆', ascii: '#',  label: 'Milestone' },
-  note:        { emoji: '📝', ascii: '*',  label: 'Note' }
+  action:      { ascii: '@',  label: 'Action' },
+  question:    { ascii: '?',  label: 'Question' },
+  oracle:      { ascii: '~',  label: 'Oracle' },
+  roll:        { ascii: 'd:', label: 'Roll' },
+  result:      { ascii: '->', label: 'Result' },
+  consequence: { ascii: '=>', label: 'Consequence' },
+  status:      { ascii: '%',  label: 'Status' },
+  milestone:   { ascii: '#',  label: 'Milestone' },
+  note:        { ascii: '*',  label: 'Note' }
 };
 function defaultJournal() {
   return {
@@ -5052,7 +5052,7 @@ function markYule() {
   journal.clock.year = (parseInt(journal.clock.year) || 0) + 1;
   journal.clock.season = 'Winter';
   saveJournal(); renderChronicleClock();
-  journalAuto('advancement', 'milestone', `❄️ Yule — the year turns. It is now Year ${journal.clock.year}.`);
+  journalAuto('advancement', 'milestone', `Yule — the year turns. It is now Year ${journal.clock.year}.`);
 }
 function setChronicleToggles() {
   journal.settings.ojc = document.getElementById('ch-set-ojc').checked;
@@ -5161,13 +5161,13 @@ function renderChronicleTimeline() {
     const d = e.date || {};
     const key = `${d.year}|${d.season}`;
     if (key !== lastKey) {
-      html += `<div style="position:sticky;top:0;background:var(--gold-soft);color:var(--ink);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;padding:4px 8px;border-radius:4px;margin:8px 0 4px">📜 Year ${d.year ?? '?'} · ${d.season ?? ''}${d.phase === 'Fellowship' ? ' · Fellowship Phase' : ''}</div>`;
+      html += `<div style="position:sticky;top:0;background:var(--gold-soft);color:var(--ink);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;padding:4px 8px;border-radius:4px;margin:8px 0 4px">Year ${d.year ?? '?'} · ${d.season ?? ''}${d.phase === 'Fellowship' ? ' · Fellowship Phase' : ''}</div>`;
       lastKey = key;
     }
     const t = JOURNAL_TYPES[e.type] || JOURNAL_TYPES.note;
     const auto = e.source && e.source.startsWith('auto:');
     html += `<div style="display:flex;gap:8px;padding:6px 8px;border-bottom:1px solid var(--border)">
-      <span title="${t.label}" style="flex:0 0 auto">${t.emoji}</span>
+      <span title="${t.label}" style="flex:0 0 58px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--red-dark);padding-top:2px">${t.label}</span>
       <div style="flex:1;min-width:0">
         <div>${escapeHtml(e.text)}</div>
         <div style="font-size:10px;color:var(--text-faint)">Day ${e.date?.day ?? '?'} · ${escapeHtml(e.ts || '')}${auto ? ' · auto' : ''}</div>
@@ -5959,7 +5959,7 @@ async function fpComplete() {
   }
   saveCharacter();
   render();
-  if (typeof journalAuto === 'function') journalAuto('advancement', 'milestone', `${fpState.phaseType === 'yule' ? '❄️ Yule ' : ''}Fellowship Phase completed (#${char.phasesCompleted}).`);
+  if (typeof journalAuto === 'function') journalAuto('advancement', 'milestone', `${fpState.phaseType === 'yule' ? 'Yule ' : ''}Fellowship Phase completed (#${char.phasesCompleted}).`);
   fpClose();
   if (log.length > 0) alert('Fellowship Phase complete!\n\n' + log.map(l => l.replace(/✅|⚠️|📝/g, '')).join('\n'));
 }
@@ -11166,6 +11166,13 @@ function bindDice() {
   document.querySelectorAll('#c-roleplay-pick .seg-btn').forEach(b => {
     b.onclick = () => {
       document.querySelectorAll('#c-roleplay-pick .seg-btn').forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+    };
+  });
+  // Chronicle entry-type picker
+  document.querySelectorAll('#ch-type-pick .seg-btn').forEach(b => {
+    b.onclick = () => {
+      document.querySelectorAll('#ch-type-pick .seg-btn').forEach(x => x.classList.remove('active'));
       b.classList.add('active');
     };
   });
