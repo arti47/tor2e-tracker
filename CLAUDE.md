@@ -27,8 +27,8 @@ grep -o "tor2e-[a-z0-9-]*" character-tracker.html | sort -u   # all localStorage
 ```
 
 As of last verification:
-- **`character-tracker.html`**: ~11,799 lines / ~682 KB (includes a ~20 KB vendored QR library in its own `<script>` block)
-- **`sw.js` `CACHE_VERSION`**: `tor2e-v40` (bump on every deploy)
+- **`character-tracker.html`**: ~11,882 lines / ~686 KB (includes a ~20 KB vendored QR library in its own `<script>` block)
+- **`sw.js` `CACHE_VERSION`**: `tor2e-v42` (bump on every deploy)
 - **SW strategy (since v30)**: HTML/navigations are **network-first** (deploys appear on next online load — no stale-cache lag); static assets cache-first. Updates surface a tap-to-update banner (page posts `SKIP_WAITING`); still bump `CACHE_VERSION` each deploy so old caches are GC'd.
 - **Moria Solo Mode**: ✅ complete (one toggle `⛏️ Enable Moria Solo Mode` → Band + Battle tabs, Moria oracle generators, full solo campaign). Full subsystem reference in the **"Moria Solo Mode"** section below.
 - **localStorage keys**: now a **multi-character roster** (added 2026-05-31):
@@ -56,7 +56,7 @@ As of last verification:
 1. `<head>` — viewport, PWA meta tags, theme color
 2. `<style>` — CSS with variables for theming + readonly state styling
 3. `<header>` — sticky nav with character name + tabs (scrollable)
-4. `<section.panel>` — **12 tabs**: Character / Skills / Combat / Journey / Council / Gear / Dice / **Oracle** / **Band** / **Battle** / **📜 Chronicle** / Build. Oracle is shown in any solo mode; **Band & Battle are Moria-only** (gated by `char.moriaMode` in `refreshStriderUI`). Journey, Council & Chronicle are always present.
+4. `<section.panel>` — **12 tabs**: Character / Skills / Combat / Journey / Council / Gear / Dice / **Oracle** / **Band** / **Battle** / **Chronicle** / Build. Oracle **and Chronicle** are shown in any solo mode (gated by `isSolo()` in `refreshStriderUI`); **Band & Battle are Moria-only** (`char.moriaMode`). Journey & Council are always present.
 5. **Overlay modals** — Menu, Weapon/Armour/Shield pickers, Spend XP, New Reward, New Virtue, Apply Reward To, Prowess TN, +1-Attribute (`kings-overlay`, Rangers/High Elves), Hoard roller, FP wizard, milestone/desperate-stand/kingly-gift pickers
 6. `<script>` — at the bottom
 
@@ -524,13 +524,13 @@ Audit cross-referenced the full Core Rules table of contents against the app. Co
 - [x] **Undo button** — header **↶** button (shown only when the stack is non-empty). `snapshot()` pushes a pre-mutation char JSON (bounded to 50) at the high-misfire entry points — `adj()` counters, condition toggles, and Apply Culture; `undoLast()` restores it. Stack is per-hero (cleared on switch/new).
 - [ ] **Drag-to-reorder** war gear rows
 - [x] **Styled modal** to replace native `confirm()` / `alert()` (done in an earlier pass — `showModal`/`confirmStyled`/`alertStyled`/`promptStyled`).
-- [x] **📜 Chronicle (journaling)** — a new tab combining solo-RPG journaling conventions (researched: Lonelog/Solo-RPG-Notation, Mythic GME, Ironsworn) with TOR2E's native **Tale of Years**. Per-hero, stored in `tor2e-journal-<id>` (separate key — excluded from the share-link to keep QR small; bundled in full JSON export via a `{_tor2e:'export-v2',character,journal}` wrapper that `importData` understands). Pieces:
-  - **Structured entries** — types Action/Question/Oracle/Roll/Result/Consequence/Status/Milestone/Note (`JOURNAL_TYPES`, emoji on screen + ASCII Lonelog glyphs `@ ? ~ d: -> => % # *` in export). Quick-add bar with type seg-buttons; filter box.
-  - **Tale-of-Years clock** — Year / Season / Day / Phase stamped on every entry; timeline groups by Year→Season. Auto-advances: Prolonged Rest (+1 day), journey arrival (+days elapsed), Yule (year+1). Manual editor + "Next Season"/"Mark Yule" buttons.
-  - **Auto-weave** — `journalAuto(bucket, type, text)` gated by `journal.settings` toggles (buckets: `ojc` oracle/journey/council, `dice`, `status`, `advancement`; **dice off by default** as noisy). Hooks: `logOracleRoll`, `resolveJourneyEvent`, `finalizeCouncil`, `rollDice`, `adj` (Shadow/Scar gains), condition toggles, `awardSessionXP`, retirement, `fpComplete` (Yule), arrival.
-  - **Threads** (open→closed quest tracker, Mythic-style) + **NPCs-met** tracker.
-  - **Markdown export** (`exportChronicleMarkdown`) — Tale-of-Years grouped entries + Threads + NPCs + glyph legend, downloaded as `<name>-chronicle.md`.
-  - Per-hero load/save wired into `applyActiveCharacter` / `newCharacter` / delete / import / reset; cleared with the hero.
+- [x] **Chronicle (journaling)** — a **solo-only** tab (gated by `isSolo()` in `refreshStriderUI`, like Oracle) that fuses solo-RPG journaling conventions (researched: Lonelog/Solo-RPG-Notation, Mythic GME, Ironsworn) with TOR2E's native **Tale of Years**. Reworked from a tagged-log into a **free-write, scene-based prose journal**. Per-hero, stored in `tor2e-journal-<id>` (separate key — excluded from the share-link to keep QR small; bundled in full JSON export via a `{_tor2e:'export-v2',character,journal}` wrapper `importData` understands). Pieces:
+  - **Scenes & blocks** — `journal.scenes[]` + `journal.entries[]` (blocks `{sceneId, kind:'prose'|'auto', type, text, …}`) + `activeSceneId`. **"+ New Scene"** prompts for a frame line → dated heading; you **free-write prose** into a textarea (`addProseToScene`); blocks are inline-**editable** (`editBlock`/`saveBlockEdit`) and deletable. `ensureActiveScene()` auto-starts a scene on the first write. No notation glyphs on screen (pure prose); Lonelog ASCII glyphs appear only in the Markdown export.
+  - **Auto-weave, inline & dimmed** — `journalAuto(bucket,type,text)` pushes a **dimmed `kind:'auto'` block into the open scene**, gated by `journal.settings` toggles (buckets `ojc` / `dice` [**off by default**] / `status` / `advancement`). Hooks: `logOracleRoll`, `resolveJourneyEvent`, `finalizeCouncil`, `rollDice`, `adj` (Shadow/Scar), condition toggles, `awardSessionXP`, retirement, `fpComplete` (Yule), journey arrival.
+  - **Tale-of-Years clock** — Year/Season/Day/Phase stamps each scene; timeline shows scenes newest-first with blocks in written order. Auto-advances on Prolonged Rest (+1 day), journey arrival (+days), Yule (year+1); manual editor + Next Season / Mark Yule.
+  - **Threads** (open→closed) + **NPCs-met** trackers.
+  - **Markdown export** — one section per scene (prose as paragraphs, auto-events as `` `glyph` `` bullets) + Threads + NPCs, as `<name>-chronicle.md`.
+  - **Migration**: legacy flat tagged entries auto-wrap into one "Earlier entries" scene, reordered chronological. Per-hero load/save wired into `applyActiveCharacter`/`newCharacter`/delete/import/reset.
 
 ### 🔵 Priority 4 — Expanded rules tracking
 - [ ] **Skill Endeavour tracker** — set Resistance + Time Limit, tally successes

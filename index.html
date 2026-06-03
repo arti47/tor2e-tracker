@@ -663,19 +663,13 @@
   </div>
 
   <div class="card">
-    <h3 class="card-title">New Entry</h3>
-    <div class="seg-btns" id="ch-type-pick" style="flex-wrap:wrap">
-      <button class="seg-btn active" data-val="action">Action</button>
-      <button class="seg-btn" data-val="question">Question</button>
-      <button class="seg-btn" data-val="oracle">Oracle</button>
-      <button class="seg-btn" data-val="result">Result</button>
-      <button class="seg-btn" data-val="consequence">Consequence</button>
-      <button class="seg-btn" data-val="note">Note</button>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+      <h3 style="margin:0;flex:1;color:var(--red);font-size:13px;text-transform:uppercase;letter-spacing:1px">Write</h3>
+      <button class="add-row-btn" onclick="newScene()" style="background:var(--gold);font-size:12px">+ New Scene</button>
     </div>
-    <div style="display:flex;gap:6px;margin-top:8px">
-      <input id="ch-entry-text" placeholder="What happens…" style="flex:1;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--bg-deep);color:var(--ink)" onkeydown="if(event.key==='Enter')addChronicleEntryFromUI()">
-      <button class="add-row-btn" onclick="addChronicleEntryFromUI()" style="background:var(--gold)">Add</button>
-    </div>
+    <div id="ch-active-scene" style="font-size:12px;color:var(--red-dark);font-weight:600;margin-bottom:6px"></div>
+    <textarea id="ch-compose" placeholder="Write what happens…" rows="3" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--bg-deep);color:var(--ink);resize:vertical;font-size:14px;line-height:1.5"></textarea>
+    <button class="add-row-btn" onclick="addProseToScene()" style="width:100%;margin-top:6px;background:var(--gold)">Add to scene</button>
     <details style="margin-top:8px">
       <summary style="cursor:pointer;font-size:12px;color:var(--text-muted)">Auto-capture settings</summary>
       <div style="display:flex;flex-direction:column;gap:4px;margin-top:6px;font-size:13px">
@@ -684,6 +678,7 @@
         <label><input type="checkbox" id="ch-set-status" onchange="setChronicleToggles()"> Status changes (Shadow/Hope, Scars, conditions)</label>
         <label><input type="checkbox" id="ch-set-advancement" onchange="setChronicleToggles()"> Advancement &amp; phases (XP, Rewards/Virtues, Yule)</label>
       </div>
+      <p class="hint" style="text-align:left;margin-top:4px">Checked event types are auto-woven into the open scene as dimmed lines.</p>
     </details>
   </div>
 
@@ -3702,6 +3697,9 @@ function refreshStriderUI() {
   // Shared solo surfaces — visible in EITHER Strider or Moria mode.
   const oracleTab = document.querySelector('.tab[data-tab="oracle"]');
   if (oracleTab) oracleTab.style.display = solo ? '' : 'none';
+  // Chronicle is a solo-play feature (journaling). Hide in group/normal play.
+  const chronicleTab = document.querySelector('.tab[data-tab="chronicle"]');
+  if (chronicleTab) chronicleTab.style.display = solo ? '' : 'none';
   const eomCard = document.getElementById('eye-of-mordor-card');
   if (eomCard) eomCard.style.display = solo ? 'block' : 'none';
   // Journey setup: hide role checkboxes in solo play, show explanatory hint instead.
@@ -4976,11 +4974,13 @@ const JOURNAL_TYPES = {
 };
 function defaultJournal() {
   return {
-    entries: [],   // { id, type, text, source, ts, date:{year,season,day,phase} }
-    threads: [],   // { id, title, status:'open'|'closed', notes, opened, closed }
-    npcs: [],      // { id, name, where, notes }
+    scenes: [],     // { id, title, date:{year,season,day,phase}, ts }
+    entries: [],    // blocks: { id, sceneId, kind:'prose'|'auto', type, text, source, ts, date }
+    threads: [],    // { id, title, status:'open'|'closed', notes, opened, closed }
+    npcs: [],       // { id, name, where, notes }
     clock: { year: 1, season: 'Spring', day: 1, phase: 'Adventuring' },
-    settings: { ojc: true, dice: false, status: true, advancement: true }  // dice off by default (noisy)
+    settings: { ojc: true, dice: false, status: true, advancement: true },  // dice off by default (noisy)
+    activeSceneId: null
   };
 }
 function journalKey() { return JOURNAL_PREFIX + (activeCharId || 'v1'); }
@@ -4989,11 +4989,25 @@ function loadJournal() {
     const raw = JSON.parse(localStorage.getItem(journalKey()));
     if (raw && typeof raw === 'object') {
       const j = { ...defaultJournal(), ...raw };
+      if (!Array.isArray(j.scenes)) j.scenes = [];
       if (!Array.isArray(j.entries)) j.entries = [];
       if (!Array.isArray(j.threads)) j.threads = [];
       if (!Array.isArray(j.npcs)) j.npcs = [];
       j.clock = { ...defaultJournal().clock, ...(j.clock || {}) };
       j.settings = { ...defaultJournal().settings, ...(j.settings || {}) };
+      // Migrate flat (pre-scene) entries into one starting scene, in chronological order.
+      const orphans = j.entries.filter(e => !e.sceneId);
+      if (orphans.length && j.scenes.length === 0) {
+        const oldest = orphans[orphans.length - 1];  // legacy entries were stored newest-first
+        const sc = { id: genCharId(), title: 'Earlier entries', date: oldest.date || { ...j.clock }, ts: '' };
+        j.scenes.push(sc);
+        j.entries = orphans.slice().reverse().map(e => ({
+          ...e, sceneId: sc.id, kind: (e.source && e.source.startsWith('auto:')) ? 'auto' : 'prose'
+        }));
+        j.activeSceneId = sc.id;
+      }
+      j.entries.forEach(e => { if (!e.kind) e.kind = (e.source && e.source.startsWith('auto:')) ? 'auto' : 'prose'; });
+      if (!j.activeSceneId && j.scenes.length) j.activeSceneId = j.scenes[j.scenes.length - 1].id;
       return j;
     }
   } catch(e) {}
@@ -5003,29 +5017,89 @@ function saveJournal() {
   try { localStorage.setItem(journalKey(), JSON.stringify(journal)); } catch(e) {}
 }
 
-// Append an entry. `source`: 'manual' or 'auto:<bucket>'.
-function addJournalEntry(type, text, source, silent) {
-  if (!text || !text.trim()) return;
-  if (!JOURNAL_TYPES[type]) type = 'note';
-  journal.entries.unshift({
-    id: genCharId(),
-    type, text: text.trim(),
-    source: source || 'manual',
-    ts: new Date().toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
-    date: { ...journal.clock }
-  });
-  if (journal.entries.length > 1000) journal.entries.length = 1000;  // sane bound
-  saveJournal();
-  if (!silent) renderChronicle();
+/* ----- scenes & blocks ----- */
+function nowStamp() { return new Date().toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }); }
+function journalActiveScene() { return journal.scenes.find(s => s.id === journal.activeSceneId) || null; }
+function ensureActiveScene() {
+  let sc = journalActiveScene();
+  if (!sc) {
+    sc = { id: genCharId(), title: `${journal.clock.season}, Day ${journal.clock.day}`, date: { ...journal.clock }, ts: nowStamp() };
+    journal.scenes.push(sc);
+    journal.activeSceneId = sc.id;
+  }
+  return sc;
 }
-
+async function newScene() {
+  const frame = await promptStyled('Frame the scene — where, when, what’s at stake:', '', 'New Scene', 'e.g. Dusk at the Forsaken Inn — the watcher rises to leave');
+  if (frame === null) return;  // cancelled
+  const sc = { id: genCharId(), title: (frame.trim() || `${journal.clock.season}, Day ${journal.clock.day}`), date: { ...journal.clock }, ts: nowStamp() };
+  journal.scenes.push(sc);
+  journal.activeSceneId = sc.id;
+  saveJournal();
+  renderChronicle();
+  const ta = document.getElementById('ch-compose'); if (ta) ta.focus();
+}
+function setActiveScene(id) {
+  journal.activeSceneId = id;
+  saveJournal(); renderChronicle();
+  const ta = document.getElementById('ch-compose'); if (ta) ta.focus();
+}
+async function renameScene(id) {
+  const sc = journal.scenes.find(s => s.id === id); if (!sc) return;
+  const t = await promptStyled('Scene title / frame:', sc.title || '', 'Rename Scene');
+  if (t === null) return;
+  sc.title = t.trim() || sc.title; saveJournal(); renderChronicle();
+}
+async function deleteScene(id) {
+  if (!await confirmStyled('Delete this whole scene and all its entries?', 'Delete Scene')) return;
+  journal.scenes = journal.scenes.filter(s => s.id !== id);
+  journal.entries = journal.entries.filter(e => e.sceneId !== id);
+  if (journal.activeSceneId === id) journal.activeSceneId = journal.scenes.length ? journal.scenes[journal.scenes.length - 1].id : null;
+  saveJournal(); renderChronicle();
+}
+// Push a block into the open scene (creating one if needed).
+function pushBlock(kind, type, text, source) {
+  if (!text || !text.trim()) return null;
+  const sc = ensureActiveScene();
+  journal.entries.push({
+    id: genCharId(), sceneId: sc.id, kind,
+    type: JOURNAL_TYPES[type] ? type : 'note',
+    text: text.trim(), source: source || 'manual',
+    ts: nowStamp(), date: { ...journal.clock }
+  });
+  if (journal.entries.length > 3000) journal.entries.shift();
+  saveJournal();
+  return true;
+}
+function addProseToScene() {
+  const ta = document.getElementById('ch-compose');
+  if (!ta || !ta.value.trim()) return;
+  pushBlock('prose', 'note', ta.value, 'manual');
+  ta.value = '';
+  renderChronicle();
+}
 // Auto-capture from the app's other systems. `bucket` ∈ ojc | dice | status | advancement.
 function journalAuto(bucket, type, text) {
   if (!journal || !journal.settings || journal.settings[bucket] === false) return;
-  addJournalEntry(type, text, 'auto:' + bucket, true);
-  // Keep the timeline fresh if the Chronicle tab is currently visible.
+  pushBlock('auto', type, text, 'auto:' + bucket);
   const panel = document.getElementById('panel-chronicle');
   if (panel && panel.classList.contains('active')) renderChronicle();
+}
+
+/* ----- block edit / delete ----- */
+let _editingBlockId = null;
+function editBlock(id) { _editingBlockId = id; renderChronicleTimeline(); const ta = document.getElementById('ch-edit-' + id); if (ta) { ta.focus(); } }
+function cancelBlockEdit() { _editingBlockId = null; renderChronicleTimeline(); }
+function saveBlockEdit(id) {
+  const ta = document.getElementById('ch-edit-' + id);
+  if (ta) { const b = journal.entries.find(e => e.id === id); if (b && ta.value.trim()) b.text = ta.value.trim(); }
+  _editingBlockId = null; saveJournal(); renderChronicleTimeline();
+}
+async function deleteChronicleEntry(id) {
+  if (!await confirmStyled('Delete this entry?', 'Delete Entry')) return;
+  journal.entries = journal.entries.filter(e => e.id !== id);
+  if (_editingBlockId === id) _editingBlockId = null;
+  saveJournal(); renderChronicleTimeline();
 }
 
 /* ----- clock ----- */
@@ -5036,6 +5110,7 @@ function setChronicleClock() {
   journal.clock.season = document.getElementById('ch-season').value || 'Spring';
   journal.clock.phase = document.getElementById('ch-phase').value || 'Adventuring';
   saveJournal();
+  const lbl = document.getElementById('ch-active-scene'); if (lbl) renderChronicle();
 }
 function advanceChronicleDay(n) {
   journal.clock.day = Math.max(1, (parseInt(journal.clock.day) || 1) + n);
@@ -5060,16 +5135,6 @@ function setChronicleToggles() {
   journal.settings.status = document.getElementById('ch-set-status').checked;
   journal.settings.advancement = document.getElementById('ch-set-advancement').checked;
   saveJournal();
-}
-
-/* ----- entry add from UI ----- */
-function addChronicleEntryFromUI() {
-  const type = document.querySelector('#ch-type-pick .seg-btn.active')?.dataset.val || 'note';
-  const inp = document.getElementById('ch-entry-text');
-  const text = inp.value;
-  if (!text.trim()) return;
-  addJournalEntry(type, text, 'manual');
-  inp.value = '';
 }
 
 /* ----- threads ----- */
@@ -5112,20 +5177,20 @@ async function deleteNpc(id) {
   saveJournal(); renderChronicleNpcs();
 }
 
-/* ----- delete an entry ----- */
-async function deleteChronicleEntry(id) {
-  if (!await confirmStyled('Delete this entry?', 'Delete Entry')) return;
-  journal.entries = journal.entries.filter(e => e.id !== id);
-  saveJournal(); renderChronicleTimeline();
-}
-
 /* ----- render ----- */
 function renderChronicle() {
   renderChronicleClock();
+  // "Writing in" label above the compose box
+  const lbl = document.getElementById('ch-active-scene');
+  if (lbl) {
+    const sc = journalActiveScene();
+    lbl.innerHTML = sc
+      ? `Writing in: <span style="color:var(--ink)">${escapeHtml(sc.title)}</span> <span style="color:var(--text-faint);font-weight:400">· ${dateLabel(sc.date)}</span>`
+      : 'No scene open — tap “+ New Scene”, or just write below and a scene begins automatically.';
+  }
   renderChronicleTimeline();
   renderChronicleThreads();
   renderChronicleNpcs();
-  // settings checkboxes
   const s = journal.settings || {};
   ['ojc','dice','status','advancement'].forEach(k => {
     const el = document.getElementById('ch-set-' + k);
@@ -5147,35 +5212,57 @@ function renderChronicleTimeline() {
   const wrap = document.getElementById('ch-timeline');
   if (!wrap) return;
   const q = (document.getElementById('ch-search')?.value || '').toLowerCase().trim();
-  const entries = journal.entries.filter(e => !q || (e.text || '').toLowerCase().includes(q) || (JOURNAL_TYPES[e.type]?.label || '').toLowerCase().includes(q));
   const countEl = document.getElementById('ch-count');
-  if (countEl) countEl.textContent = `(${journal.entries.length})`;
-  if (entries.length === 0) {
-    wrap.innerHTML = `<div style="text-align:center;color:var(--text-faint);padding:14px;font-size:12px">${journal.entries.length ? 'No matching entries.' : 'No entries yet — log an Action, ask the Oracle, or just take a Note.'}</div>`;
+  if (countEl) countEl.textContent = journal.scenes.length ? `(${journal.scenes.length} scene${journal.scenes.length === 1 ? '' : 's'})` : '';
+  if (journal.scenes.length === 0) {
+    wrap.innerHTML = `<div style="text-align:center;color:var(--text-faint);padding:14px;font-size:12px">No scenes yet — tap “+ New Scene”, or just start writing below.</div>`;
     return;
   }
-  // Group by Year → Season (entries are newest-first; group headers when the date block changes).
+  // Newest scene first; blocks within a scene stay in chronological (written) order.
   let html = '';
-  let lastKey = null;
-  entries.forEach(e => {
-    const d = e.date || {};
-    const key = `${d.year}|${d.season}`;
-    if (key !== lastKey) {
-      html += `<div style="position:sticky;top:0;background:var(--gold-soft);color:var(--ink);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;padding:4px 8px;border-radius:4px;margin:8px 0 4px">Year ${d.year ?? '?'} · ${d.season ?? ''}${d.phase === 'Fellowship' ? ' · Fellowship Phase' : ''}</div>`;
-      lastKey = key;
-    }
-    const t = JOURNAL_TYPES[e.type] || JOURNAL_TYPES.note;
-    const auto = e.source && e.source.startsWith('auto:');
-    html += `<div style="display:flex;gap:8px;padding:6px 8px;border-bottom:1px solid var(--border)">
-      <span title="${t.label}" style="flex:0 0 58px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--red-dark);padding-top:2px">${t.label}</span>
+  journal.scenes.slice().reverse().forEach(sc => {
+    const blocks = journal.entries.filter(e => e.sceneId === sc.id);
+    const shown = q ? blocks.filter(b => (b.text || '').toLowerCase().includes(q)) : blocks;
+    if (q && shown.length === 0 && !sc.title.toLowerCase().includes(q)) return;  // scene filtered out
+    const active = sc.id === journal.activeSceneId;
+    html += `<div style="margin:10px 0 4px;padding:6px 8px;background:var(--gold-soft);border-radius:6px;display:flex;align-items:center;gap:6px">
       <div style="flex:1;min-width:0">
-        <div>${escapeHtml(e.text)}</div>
-        <div style="font-size:10px;color:var(--text-faint)">Day ${e.date?.day ?? '?'} · ${escapeHtml(e.ts || '')}${auto ? ' · auto' : ''}</div>
+        <div style="font-weight:700;color:var(--ink);font-size:13px">${escapeHtml(sc.title)}${active ? ' <span style="font-size:9px;background:var(--gold);color:#fff;padding:1px 5px;border-radius:6px;vertical-align:middle">OPEN</span>' : ''}</div>
+        <div style="font-size:10px;color:var(--text-faint)">${dateLabel(sc.date)}</div>
       </div>
-      <button onclick="deleteChronicleEntry('${e.id}')" title="Delete" style="flex:0 0 auto;background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:14px">×</button>
+      ${active ? '' : `<button onclick="setActiveScene('${sc.id}')" title="Write here" style="background:none;border:1px solid var(--border);border-radius:4px;font-size:10px;padding:2px 6px;cursor:pointer;color:var(--ink)">Write here</button>`}
+      <button onclick="renameScene('${sc.id}')" title="Rename" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:13px">✎</button>
+      <button onclick="deleteScene('${sc.id}')" title="Delete scene" style="background:none;border:none;cursor:pointer;color:var(--text-faint);font-size:14px">×</button>
     </div>`;
+    if (shown.length === 0) {
+      html += `<div style="padding:6px 10px;font-size:12px;color:var(--text-faint)">${q ? '(no matching lines)' : 'Empty scene — write the first line below.'}</div>`;
+    }
+    shown.forEach(b => {
+      if (_editingBlockId === b.id) {
+        html += `<div style="padding:4px 8px">
+          <textarea id="ch-edit-${b.id}" rows="3" style="width:100%;padding:6px;border:1px solid var(--gold);border-radius:6px;background:var(--bg-deep);color:var(--ink);font-size:14px;line-height:1.5">${escapeHtml(b.text)}</textarea>
+          <div style="display:flex;gap:6px;margin-top:4px">
+            <button onclick="saveBlockEdit('${b.id}')" class="add-row-btn" style="background:var(--gold);font-size:12px;flex:1">Save</button>
+            <button onclick="cancelBlockEdit()" class="add-row-btn" style="background:var(--btn-secondary-bg);font-size:12px;flex:1">Cancel</button>
+          </div>
+        </div>`;
+      } else if (b.kind === 'auto') {
+        const t = JOURNAL_TYPES[b.type] || JOURNAL_TYPES.note;
+        html += `<div style="display:flex;gap:8px;padding:3px 10px;align-items:baseline;opacity:0.7">
+          <span style="flex:0 0 auto;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted)">${t.label}</span>
+          <span style="flex:1;min-width:0;font-size:12px;font-style:italic;color:var(--text-muted)">${escapeHtml(b.text)}</span>
+          <button onclick="deleteChronicleEntry('${b.id}')" title="Delete" style="flex:0 0 auto;background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:13px">×</button>
+        </div>`;
+      } else {
+        html += `<div style="display:flex;gap:6px;padding:4px 10px;align-items:flex-start">
+          <div style="flex:1;min-width:0;line-height:1.55;white-space:pre-wrap">${escapeHtml(b.text)}</div>
+          <button onclick="editBlock('${b.id}')" title="Edit" style="flex:0 0 auto;background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:12px">✎</button>
+          <button onclick="deleteChronicleEntry('${b.id}')" title="Delete" style="flex:0 0 auto;background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:13px">×</button>
+        </div>`;
+      }
+    });
   });
-  wrap.innerHTML = html;
+  wrap.innerHTML = html || `<div style="text-align:center;color:var(--text-faint);padding:14px;font-size:12px">No matching entries.</div>`;
 }
 function renderChronicleThreads() {
   const wrap = document.getElementById('ch-threads-list');
@@ -5210,20 +5297,16 @@ function exportChronicleMarkdown() {
   const lines = [];
   lines.push(`# ${char.name || 'Hero'} — Tale of Years`);
   if (char.culture || char.calling) lines.push(`*${[char.culture, char.calling].filter(Boolean).join(' · ')}*`);
-  lines.push('');
-  // Entries oldest→newest, grouped by Year/Season.
-  const chrono = journal.entries.slice().reverse();
-  let lastKey = null;
-  chrono.forEach(e => {
-    const d = e.date || {};
-    const key = `${d.year}|${d.season}|${d.phase}`;
-    if (key !== lastKey) {
-      lines.push('');
-      lines.push(`## Year ${d.year ?? '?'} · ${d.season ?? ''}${d.phase === 'Fellowship' ? ' · Fellowship Phase' : ''}`);
-      lastKey = key;
-    }
-    const t = JOURNAL_TYPES[e.type] || JOURNAL_TYPES.note;
-    lines.push(`- \`${t.ascii}\` ${e.text}${e.source && e.source.startsWith('auto:') ? '  _(auto)_' : ''}`);
+  // One section per scene, in chronological order; prose as paragraphs, auto-events as glyph bullets.
+  journal.scenes.forEach(sc => {
+    lines.push('');
+    lines.push(`## ${sc.title}`);
+    lines.push(`*${dateLabel(sc.date)}*`);
+    lines.push('');
+    journal.entries.filter(e => e.sceneId === sc.id).forEach(b => {
+      if (b.kind === 'prose') { lines.push(b.text); lines.push(''); }
+      else { const t = JOURNAL_TYPES[b.type] || JOURNAL_TYPES.note; lines.push(`- \`${t.ascii}\` ${b.text}`); }
+    });
   });
   if (journal.threads.length) {
     lines.push(''); lines.push('## Threads');
@@ -11166,13 +11249,6 @@ function bindDice() {
   document.querySelectorAll('#c-roleplay-pick .seg-btn').forEach(b => {
     b.onclick = () => {
       document.querySelectorAll('#c-roleplay-pick .seg-btn').forEach(x => x.classList.remove('active'));
-      b.classList.add('active');
-    };
-  });
-  // Chronicle entry-type picker
-  document.querySelectorAll('#ch-type-pick .seg-btn').forEach(b => {
-    b.onclick = () => {
-      document.querySelectorAll('#ch-type-pick .seg-btn').forEach(x => x.classList.remove('active'));
       b.classList.add('active');
     };
   });
