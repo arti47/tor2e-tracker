@@ -27,8 +27,8 @@ grep -o "tor2e-[a-z0-9-]*" character-tracker.html | sort -u   # all localStorage
 ```
 
 As of last verification:
-- **`character-tracker.html`**: ~12,127 lines / ~702 KB (includes a ~20 KB vendored QR library in its own `<script>` block)
-- **`sw.js` `CACHE_VERSION`**: `tor2e-v48` (bump on every deploy)
+- **`character-tracker.html`**: ~12,170 lines / ~705 KB (includes a ~20 KB vendored QR library in its own `<script>` block)
+- **`sw.js` `CACHE_VERSION`**: `tor2e-v49` (bump on every deploy)
 - **SW strategy (since v30)**: HTML/navigations are **network-first** (deploys appear on next online load — no stale-cache lag); static assets cache-first. Updates surface a tap-to-update banner (page posts `SKIP_WAITING`); still bump `CACHE_VERSION` each deploy so old caches are GC'd.
 - **Moria Solo Mode**: ✅ complete (one toggle `⛏️ Enable Moria Solo Mode` → Band + Battle tabs, Moria oracle generators, full solo campaign). Full subsystem reference in the **"Moria Solo Mode"** section below.
 - **localStorage keys**: now a **multi-character roster** (added 2026-05-31):
@@ -557,10 +557,10 @@ Audit cross-referenced the full Core Rules table of contents against the app. Co
 - [ ] **NPC manager** — quick stat blocks
 
 ### 🧹 Priority 7 — Code quality
-- [ ] **Section data with banner comments** — make CULTURES/CALLINGS easier to find/edit
-- [ ] **JSDoc type annotations**
-- [ ] **State migration on load** — version stamp the saved state
-- [ ] **Validation on import** — verify JSON shape before overwriting
+- [x] **Section data with banner comments** — the script already carries ~40 greppable `/* ---------- SECTION ---------- */` banners; a top-of-file **FILE MAP** comment (after the title banner) now groups them (data constants / state & storage / rendering / solo modes / subsystems / build pickers / Chronicle / wiring) and lists the localStorage keys, so the 12k-line file is navigable by grep.
+- [x] **JSDoc type annotations** — added to the core state/IO functions (`migrateCharacter`, `loadCharacter`, `saveCharacter`, `validCharacterShape`, `journalAuto`). Selective, not exhaustive.
+- [x] **State migration on load** — `CHARACTER_SCHEMA_VERSION = 1` constant + `schemaVersion` on `DEFAULT_CHARACTER`; `migrateCharacter()` stamps it on every load. The existing per-field defensive guards remain the de-facto (idempotent) migration; the stamp lets a future *breaking* change branch on `raw.schemaVersion`.
+- [x] **Validation on import** — `validCharacterShape(obj)` (object, not array/primitive, carries a recognizable character field; partial deltas OK). Gates `importData` (now also **confirms before overwriting the active hero** — closes a data-loss gap — and routes the imported journal through `loadJournal` for normalization) and `importFromHash` (rejects non-character shared links).
 
 ---
 

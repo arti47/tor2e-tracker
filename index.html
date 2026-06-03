@@ -2700,6 +2700,24 @@ var QRCode;!function(){function a(a){this.mode=c.MODE_8BIT_BYTE,this.data=a,this
 /* ============================================
    THE ONE RING 2E — CHARACTER TRACKER
    Pure HTML5 / LocalStorage
+   ============================================
+
+   FILE MAP — sections are marked with greppable banners; jump with e.g. grep "---------- COUNCIL".
+     • Data constants ...... SKILLS / COMBAT_PROFS / WEAPONS / CULTURES / CALLINGS / PATRONS /
+                             REWARDS / VIRTUES_* / FLAWS_BY_PATH / oracle & Moria tables / DEFAULT_CHARACTER
+     • State & storage ..... "STATE" (migrateCharacter, schema), "MULTI-CHARACTER ROSTER",
+                             "SHARE VIA LINK / QR", per-hero journal block (CHRONICLE)
+     • Rendering ........... "RENDERING" (render + the render* family)
+     • Solo modes .......... Strider/Moria via isSolo()/isMoria(); "EYE OF MORDOR", Oracle, Band, Battle
+     • Subsystems .......... "JOURNEY", "COUNCIL", "SKILL ENDEAVOUR", "FELLOWSHIP PHASE WIZARD",
+                             "MAGICAL TREASURE", "PROTECTION ROLL", "WOUND SEVERITY"
+     • Build pickers ....... "REWARD APPLY-TO FLOW", "FAVOURED SKILLS", "SPEND XP MODAL",
+                             "DISTINCTIVE FEATURES PICKER", "REWARDS/VIRTUES PICKER", "QUICK BUILD"
+     • Chronicle ........... journaling — JOURNAL_TYPES, scenes/blocks, clock, combats, export
+     • Wiring .............. "INPUT BINDING", "TABS", "MENU", "INIT"
+
+   localStorage keys: tor2e-roster-v1 · tor2e-char-<id> · tor2e-rolls-<id> · tor2e-journal-<id>
+                      tor2e-oracle-history · tor2e-theme · tor2e-compact  (legacy: tor2e-character-v1, tor2e-rolls-v1)
    ============================================ */
 
 const STORAGE_KEY = 'tor2e-character-v1';   // legacy single-character key (migrated into the roster)
@@ -4483,6 +4501,7 @@ const DEFAULT_CHARACTER = {
   // Each item: { type: 'Marvellous Artefact' | 'Wondrous Item' | 'Famous Weapon' | 'Famous Armour',
   //              name, blessings: [skillName, ...], craftsmanship, notes, qualities: [], dormantQualities: [] }
   magicalItems: [],
+  schemaVersion: 1,  // bumped by CHARACTER_SCHEMA_VERSION only on a breaking schema change
   weary: false, miserable: false, wounded: false,
   armourProt: 0, armourLoad: 0, armourNotes: '',
   helmProt: 0, helmLoad: 0,
@@ -4499,8 +4518,32 @@ let history = loadHistory();
 let journal = loadJournal();
 
 /* ---------- STATE ---------- */
-// Apply all forward-migrations to a raw (parsed) character object. Pure — no storage I/O —
-// so it can be reused for roster slots, imports, and shared-link payloads.
+// Bump when a *breaking* schema change needs a one-time transform on load. The defensive
+// per-field guards in migrateCharacter() already make old saves forward-compatible; this
+// stamp lets future migrations branch on `raw.schemaVersion` if a destructive change ever lands.
+const CHARACTER_SCHEMA_VERSION = 1;
+
+/**
+ * True if `obj` looks like a TOR2E character object (not an array, not a primitive,
+ * and carrying at least one recognizable character field). Used to gate imports so a
+ * malformed/foreign JSON can't overwrite a hero. Intentionally lenient — partial
+ * characters and shared deltas are valid (migrateCharacter backfills the rest).
+ * @param {*} obj
+ * @returns {boolean}
+ */
+function validCharacterShape(obj) {
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return false;
+  const markers = ['name', 'culture', 'calling', 'strRating', 'hrtRating', 'witRating', 'skills', 'profs', 'endMax', 'hopeMax'];
+  return markers.some(k => k in obj);
+}
+
+/**
+ * Apply all forward-migrations to a raw (parsed) character object. Pure — no storage I/O —
+ * so it can be reused for roster slots, imports, and shared-link payloads. Always returns a
+ * complete character (missing fields are backfilled from DEFAULT_CHARACTER).
+ * @param {Object} raw  a parsed (possibly partial / legacy) character object
+ * @returns {Object} a complete, current-schema character
+ */
 function migrateCharacter(raw) {
     {
       const merged = { ...DEFAULT_CHARACTER, ...raw };
@@ -4597,6 +4640,7 @@ function migrateCharacter(raw) {
           mi.qualities = [];
         }
       });
+      merged.schemaVersion = CHARACTER_SCHEMA_VERSION;  // stamp the current schema
       return merged;
     }
 }
@@ -4613,6 +4657,8 @@ function loadRoster() {
 }
 function saveRoster(r) { localStorage.setItem(ROSTER_KEY, JSON.stringify(r)); }
 
+/** Load the active hero: read the roster, migrate the legacy single-character key on first run,
+ *  set `activeCharId`, and return a complete (migrated) character. @returns {Object} */
 function loadCharacter() {
   let roster = loadRoster();
   if (!roster) {
@@ -4645,6 +4691,7 @@ function loadCharacter() {
   return migrateCharacter(raw);
 }
 
+/** Persist the active hero to its slot (`tor2e-char-<id>`) and keep the roster index + name in sync. */
 function saveCharacter() {
   if (!activeCharId) activeCharId = genCharId();
   localStorage.setItem(CHAR_PREFIX + activeCharId, JSON.stringify(char));
@@ -4952,6 +4999,7 @@ async function importFromHash() {
   try { window.history.replaceState(null, '', location.pathname + location.search); } catch(e) { location.hash = ''; }
   let payload;
   try { payload = decodeShare(m[1]); } catch(e) { alert('That shared link is invalid or corrupted.'); return; }
+  if (!validCharacterShape(payload)) { alert('That shared link does not contain a TOR2E character.'); return; }
   const obj = migrateCharacter(payload);
   if (!await confirmStyled(`Import shared character <strong>${escapeHtml(obj.name || 'New Hero')}</strong>?<br><br>It will be added as a new hero on this device — nothing is overwritten.`, '🔗 Import Shared Character')) return;
   saveCharacter();                       // persist current hero
@@ -5125,7 +5173,14 @@ function addProseToScene() {
   ta.value = '';
   renderChronicle();
 }
-// Auto-capture from the app's other systems. `bucket` ∈ ojc | dice | status | advancement.
+/**
+ * Auto-capture a mechanical event into the open Chronicle scene as a dimmed `kind:'auto'` block.
+ * Gated by the per-bucket toggle in `journal.settings`. Called from the oracle/journey/council,
+ * dice, status (Shadow/condition), and advancement paths.
+ * @param {('ojc'|'dice'|'status'|'advancement')} bucket  which auto-capture toggle gates this
+ * @param {string} type  a JOURNAL_TYPES key (oracle/roll/status/milestone/…)
+ * @param {string} text  the line to log
+ */
 function journalAuto(bucket, type, text) {
   if (!journal || !journal.settings || journal.settings[bucket] === false) return;
   pushBlock('auto', type, text, 'auto:' + bucket);
@@ -11239,28 +11294,32 @@ function importData(e) {
   const file = e.target.files[0];
   if (!file) return;
   const reader = new FileReader();
-  reader.onload = ev => {
-    try {
-      const data = JSON.parse(ev.target.result);
-      // v2 wrapper { _tor2e, character, journal } or a plain (legacy) character object.
-      const incomingChar = (data && data._tor2e && data.character) ? data.character : data;
-      const incomingJournal = (data && data._tor2e && data.journal) ? data.journal : null;
-      char = migrateCharacter(incomingChar);
-      saveCharacter();
-      if (incomingJournal) {
-        journal = { ...defaultJournal(), ...incomingJournal };
-        if (!Array.isArray(journal.entries)) journal.entries = [];
-        if (!Array.isArray(journal.threads)) journal.threads = [];
-        if (!Array.isArray(journal.npcs)) journal.npcs = [];
-        saveJournal();
-      }
-      render();
-      renderChronicle();
-      toggleMenu();
-      alert('Character imported!' + (incomingJournal ? ' (Chronicle included)' : ''));
-    } catch (err) {
-      alert('Invalid file: ' + err.message);
+  reader.onload = async ev => {
+    let data;
+    try { data = JSON.parse(ev.target.result); }
+    catch (err) { alert('That file is not valid JSON — import cancelled.'); return; }
+    // v2 wrapper { _tor2e, character, journal } or a plain (legacy) character object.
+    const incomingChar = (data && data._tor2e && data.character) ? data.character : data;
+    const incomingJournal = (data && data._tor2e && data.journal) ? data.journal : null;
+    if (!validCharacterShape(incomingChar)) {
+      alert('That file does not look like a TOR2E character — import cancelled.');
+      return;
     }
+    // Importing REPLACES the active hero, so confirm before destroying data.
+    if (!await confirmStyled(
+      `This replaces the <strong>active hero</strong> (“${escapeHtml(char.name || 'current')}”) with “${escapeHtml(incomingChar.name || 'Imported hero')}”.<br><br>Export a backup first if unsure, or use <strong>New Character</strong> to keep both. Proceed?`,
+      '📥 Import Character')) return;
+    char = migrateCharacter(incomingChar);
+    saveCharacter();
+    if (incomingJournal && typeof incomingJournal === 'object') {
+      // Normalize through the same path the loader uses (scene wrapping, clock migration, array guards).
+      localStorage.setItem(journalKey(), JSON.stringify(incomingJournal));
+      journal = loadJournal();
+    }
+    render();
+    renderChronicle();
+    toggleMenu();
+    alert('Character imported!' + (incomingJournal ? ' (Chronicle included)' : ''));
   };
   reader.readAsText(file);
 }
