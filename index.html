@@ -629,7 +629,7 @@
     <button class="tab" data-tab="oracle" style="display:none">Oracle</button>
     <button class="tab" data-tab="band" style="display:none">Band</button>
     <button class="tab" data-tab="battle" style="display:none">Battle</button>
-    <button class="tab" data-tab="chronicle">Chronicle</button>
+    <button class="tab" data-tab="chronicle" style="display:none">Chronicle</button>
     <button class="tab" data-tab="build">Build</button>
   </nav>
 </header>
@@ -3700,6 +3700,17 @@ function refreshStriderUI() {
   // Chronicle is a solo-play feature (journaling). Hide in group/normal play.
   const chronicleTab = document.querySelector('.tab[data-tab="chronicle"]');
   if (chronicleTab) chronicleTab.style.display = solo ? '' : 'none';
+  // If we just hid the Chronicle while its panel was open, fall back to the Character tab
+  // so the player isn't stranded on a now-hidden tab.
+  if (!solo) {
+    const cp = document.getElementById('panel-chronicle');
+    if (cp && cp.classList.contains('active')) {
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.getElementById('panel-character')?.classList.add('active');
+      document.querySelector('.tab[data-tab="character"]')?.classList.add('active');
+    }
+  }
   const eomCard = document.getElementById('eye-of-mordor-card');
   if (eomCard) eomCard.style.display = solo ? 'block' : 'none';
   // Journey setup: hide role checkboxes in solo play, show explanatory hint instead.
