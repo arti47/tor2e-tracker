@@ -643,23 +643,24 @@
   <div class="card" style="border-color:var(--gold)">
     <h3 class="card-title">Tale of Years</h3>
     <div class="row-2" style="gap:8px">
+      <div class="field" style="margin:0"><label style="flex:0 0 46px">Day</label><input type="number" id="ch-day" min="1" max="30" onchange="setChronicleClock()"></div>
       <div class="field" style="margin:0"><label style="flex:0 0 46px">Year</label><input type="number" id="ch-year" min="0" onchange="setChronicleClock()"></div>
-      <div class="field" style="margin:0"><label style="flex:0 0 46px">Day</label><input type="number" id="ch-day" min="1" onchange="setChronicleClock()"></div>
     </div>
     <div class="row-2" style="gap:8px;margin-top:6px">
-      <div class="field" style="margin:0"><label style="flex:0 0 46px">Season</label>
-        <select id="ch-season" onchange="setChronicleClock()"><option>Spring</option><option>Summer</option><option>Autumn</option><option>Winter</option></select>
+      <div class="field" style="margin:0"><label style="flex:0 0 46px">Month</label>
+        <select id="ch-month" onchange="setChronicleClock()"></select>
       </div>
       <div class="field" style="margin:0"><label style="flex:0 0 46px">Phase</label>
         <select id="ch-phase" onchange="setChronicleClock()"><option value="Adventuring">Adventuring</option><option value="Fellowship">Fellowship</option></select>
       </div>
     </div>
+    <p class="hint" id="ch-date-readout" style="margin:6px 0 0;text-align:center;font-weight:600;color:var(--red-dark)"></p>
     <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
       <button class="add-row-btn" onclick="advanceChronicleDay(1)" style="flex:1;background:var(--btn-secondary-bg);font-size:12px">+1 Day</button>
-      <button class="add-row-btn" onclick="advanceChronicleSeason()" style="flex:1;background:var(--btn-secondary-bg);font-size:12px">Next Season</button>
+      <button class="add-row-btn" onclick="advanceChronicleMonth()" style="flex:1;background:var(--btn-secondary-bg);font-size:12px">Next Month</button>
       <button class="add-row-btn" onclick="markYule()" style="flex:1;background:var(--gold);font-size:12px">Mark Yule (Year +1)</button>
     </div>
-    <p class="hint" style="margin-top:6px">The in-game clock stamps every entry. It auto-advances on a Prolonged Rest, journey arrival, and Yule — adjust any time.</p>
+    <p class="hint" style="margin-top:6px">Shire-Reckoning calendar (12 months × 30 days); season is derived from the month. Stamps every scene. Auto-advances on a Prolonged Rest, journey arrival, and Yule.</p>
   </div>
 
   <div class="card">
@@ -680,6 +681,12 @@
       </div>
       <p class="hint" style="text-align:left;margin-top:4px">Checked event types are auto-woven into the open scene as dimmed lines.</p>
     </details>
+  </div>
+
+  <div class="card">
+    <h3 class="card-title">Combat Log</h3>
+    <div id="ch-combat-card"></div>
+    <p class="hint" style="margin-top:6px">Track a fight round-by-round; the foe's Endurance/Hate count down here, and the rounds file into the open scene's Rules Bits when the fight ends.</p>
   </div>
 
   <div class="card">
@@ -3500,14 +3507,15 @@ function saveOracleHistory() {
   oracleHistory = oracleHistory.slice(0, 30);
   localStorage.setItem('tor2e-oracle-history', JSON.stringify(oracleHistory));
 }
-function logOracleRoll(label, result) {
+function logOracleRoll(label, result, journalText) {
   oracleHistory.unshift({
     label, result,
     time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})
   });
   saveOracleHistory();
   renderOracleHistory();
-  if (typeof journalAuto === 'function') journalAuto('ojc', 'oracle', `${label}: ${result}`);
+  // journalText (optional) lets callers supply Halbarad-style "Q → Tool(odds) → Answer" notation.
+  if (typeof journalAuto === 'function') journalAuto('ojc', 'oracle', journalText || `${label} → ${result}`);
 }
 function renderOracleHistory() {
   const el = document.getElementById('oracle-history');
@@ -3533,7 +3541,9 @@ function rollTellingTable() {
   resultEl.innerHTML = `<strong>Q:</strong> ${escapeHtml(q || '(no question entered)')}<br>` +
     `<strong>Feat die:</strong> ${r.label} · chance: ${chance} (yes if ≥ ${threshold})<br>` +
     `<strong style="color:${answer==='YES'?'var(--success-text)':'var(--error-text)'};font-size:18px">→ ${answer}${twist}</strong>`;
-  logOracleRoll(`Telling (${chance}): "${q.substring(0,30)}${q.length>30?'…':''}"`, `${answer}${twist}`);
+  const chanceLabel = chance.charAt(0).toUpperCase() + chance.slice(1);
+  const jtext = `Q: ${q || '(unstated)'} · Telling Table (${chanceLabel}) → ${answer}${twist}`;
+  logOracleRoll(`Telling (${chance}): "${q.substring(0,30)}${q.length>30?'…':''}"`, `${answer}${twist}`, jtext);
 }
 
 function rollLoreTable() {
@@ -4987,14 +4997,30 @@ const JOURNAL_TYPES = {
 };
 function defaultJournal() {
   return {
-    scenes: [],     // { id, title, date:{year,season,day,phase}, ts }
+    scenes: [],     // { id, title, date:{year,month,day,phase}, ts }
     entries: [],    // blocks: { id, sceneId, kind:'prose'|'auto', type, text, source, ts, date }
+    combats: [],    // { id, sceneId, foeName, endMax, endCur, hateMax, hateCur, eaStart, rounds:[{hero,foe}], active, outcome, date }
     threads: [],    // { id, title, status:'open'|'closed', notes, opened, closed }
     npcs: [],       // { id, name, where, notes }
-    clock: { year: 1, season: 'Spring', day: 1, phase: 'Adventuring' },
+    clock: { year: 2965, month: 'Astron', day: 1, phase: 'Adventuring' },
     settings: { ojc: true, dice: false, status: true, advancement: true },  // dice off by default (noisy)
     activeSceneId: null
   };
+}
+// Shire-Reckoning months (12 × 30 days). Season derived from month.
+const SHIRE_MONTHS = ['Afteryule','Solmath','Rethe','Astron','Thrimidge','Forelithe','Afterlithe','Wedmath','Halimath','Winterfilth','Blotmath','Foreyule'];
+function monthSeason(month) {
+  const i = SHIRE_MONTHS.indexOf(month);
+  if (i < 0) return 'Spring';
+  if (i === 0 || i === 1 || i === 11) return 'Winter';   // Afteryule, Solmath, Foreyule
+  if (i <= 4) return 'Spring';                            // Rethe, Astron, Thrimidge
+  if (i <= 7) return 'Summer';                            // Forelithe, Afterlithe, Wedmath
+  return 'Autumn';                                        // Halimath, Winterfilth, Blotmath
+}
+function ordinal(n) {
+  n = parseInt(n) || 0;
+  const s = ['th','st','nd','rd'], v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
 }
 function journalKey() { return JOURNAL_PREFIX + (activeCharId || 'v1'); }
 function loadJournal() {
@@ -5004,9 +5030,16 @@ function loadJournal() {
       const j = { ...defaultJournal(), ...raw };
       if (!Array.isArray(j.scenes)) j.scenes = [];
       if (!Array.isArray(j.entries)) j.entries = [];
+      if (!Array.isArray(j.combats)) j.combats = [];
       if (!Array.isArray(j.threads)) j.threads = [];
       if (!Array.isArray(j.npcs)) j.npcs = [];
       j.clock = { ...defaultJournal().clock, ...(j.clock || {}) };
+      // Migrate a legacy {year,season,day} clock to {year,month,day}.
+      if (!j.clock.month) {
+        const seasonMonth = { Winter: 'Afteryule', Spring: 'Astron', Summer: 'Forelithe', Autumn: 'Halimath' };
+        j.clock.month = seasonMonth[j.clock.season] || 'Astron';
+      }
+      delete j.clock.season;
       j.settings = { ...defaultJournal().settings, ...(j.settings || {}) };
       // Migrate flat (pre-scene) entries into one starting scene, in chronological order.
       const orphans = j.entries.filter(e => !e.sceneId);
@@ -5036,7 +5069,7 @@ function journalActiveScene() { return journal.scenes.find(s => s.id === journal
 function ensureActiveScene() {
   let sc = journalActiveScene();
   if (!sc) {
-    sc = { id: genCharId(), title: `${journal.clock.season}, Day ${journal.clock.day}`, date: { ...journal.clock }, ts: nowStamp() };
+    sc = { id: genCharId(), title: `${ordinal(journal.clock.day)} ${journal.clock.month}`, date: { ...journal.clock }, ts: nowStamp() };
     journal.scenes.push(sc);
     journal.activeSceneId = sc.id;
   }
@@ -5045,7 +5078,7 @@ function ensureActiveScene() {
 async function newScene() {
   const frame = await promptStyled('Frame the scene — where, when, what’s at stake:', '', 'New Scene', 'e.g. Dusk at the Forsaken Inn — the watcher rises to leave');
   if (frame === null) return;  // cancelled
-  const sc = { id: genCharId(), title: (frame.trim() || `${journal.clock.season}, Day ${journal.clock.day}`), date: { ...journal.clock }, ts: nowStamp() };
+  const sc = { id: genCharId(), title: (frame.trim() || `${ordinal(journal.clock.day)} ${journal.clock.month}`), date: { ...journal.clock }, ts: nowStamp() };
   journal.scenes.push(sc);
   journal.activeSceneId = sc.id;
   saveJournal();
@@ -5115,32 +5148,38 @@ async function deleteChronicleEntry(id) {
   saveJournal(); renderChronicleTimeline();
 }
 
-/* ----- clock ----- */
-const SEASONS = ['Spring', 'Summer', 'Autumn', 'Winter'];
+/* ----- clock (Shire-Reckoning calendar) ----- */
 function setChronicleClock() {
   journal.clock.year = Math.max(0, parseInt(document.getElementById('ch-year').value) || 0);
-  journal.clock.day = Math.max(1, parseInt(document.getElementById('ch-day').value) || 1);
-  journal.clock.season = document.getElementById('ch-season').value || 'Spring';
+  journal.clock.day = Math.min(30, Math.max(1, parseInt(document.getElementById('ch-day').value) || 1));
+  journal.clock.month = document.getElementById('ch-month').value || 'Astron';
   journal.clock.phase = document.getElementById('ch-phase').value || 'Adventuring';
   saveJournal();
-  const lbl = document.getElementById('ch-active-scene'); if (lbl) renderChronicle();
+  renderChronicle();
 }
+// Advance N days, rolling over months (30/mo) and the year (after Foreyule).
 function advanceChronicleDay(n) {
-  journal.clock.day = Math.max(1, (parseInt(journal.clock.day) || 1) + n);
+  let day = (parseInt(journal.clock.day) || 1) + n;
+  let mi = SHIRE_MONTHS.indexOf(journal.clock.month); if (mi < 0) mi = 3;
+  let year = parseInt(journal.clock.year) || 0;
+  while (day > 30) { day -= 30; mi++; if (mi > 11) { mi = 0; year++; } }
+  while (day < 1) { day += 30; mi--; if (mi < 0) { mi = 11; year--; } }
+  journal.clock.day = day; journal.clock.month = SHIRE_MONTHS[mi]; journal.clock.year = year;
   saveJournal(); renderChronicleClock();
 }
-function advanceChronicleSeason() {
-  let i = SEASONS.indexOf(journal.clock.season);
-  if (i < 0) i = 0;
-  if (i === SEASONS.length - 1) journal.clock.year = (parseInt(journal.clock.year) || 0) + 1;  // Winter→Spring rolls the year
-  journal.clock.season = SEASONS[(i + 1) % SEASONS.length];
+function advanceChronicleMonth() {
+  let mi = SHIRE_MONTHS.indexOf(journal.clock.month); if (mi < 0) mi = 3;
+  mi++; if (mi > 11) { mi = 0; journal.clock.year = (parseInt(journal.clock.year) || 0) + 1; }
+  journal.clock.month = SHIRE_MONTHS[mi];
   saveJournal(); renderChronicleClock();
 }
 function markYule() {
+  // Yule turns the year: roll to 1 Afteryule of the next year.
   journal.clock.year = (parseInt(journal.clock.year) || 0) + 1;
-  journal.clock.season = 'Winter';
+  journal.clock.month = 'Afteryule';
+  journal.clock.day = 1;
   saveJournal(); renderChronicleClock();
-  journalAuto('advancement', 'milestone', `Yule — the year turns. It is now Year ${journal.clock.year}.`);
+  journalAuto('advancement', 'milestone', `Yule — the year turns. It is now ${journal.clock.year}.`);
 }
 function setChronicleToggles() {
   journal.settings.ojc = document.getElementById('ch-set-ojc').checked;
@@ -5201,6 +5240,7 @@ function renderChronicle() {
       ? `Writing in: <span style="color:var(--ink)">${escapeHtml(sc.title)}</span> <span style="color:var(--text-faint);font-weight:400">· ${dateLabel(sc.date)}</span>`
       : 'No scene open — tap “+ New Scene”, or just write below and a scene begins automatically.';
   }
+  renderChronicleCombat();
   renderChronicleTimeline();
   renderChronicleThreads();
   renderChronicleNpcs();
@@ -5214,12 +5254,22 @@ function renderChronicleClock() {
   const y = document.getElementById('ch-year'); if (!y) return;
   y.value = journal.clock.year;
   document.getElementById('ch-day').value = journal.clock.day;
-  document.getElementById('ch-season').value = journal.clock.season;
+  const monthSel = document.getElementById('ch-month');
+  if (monthSel) {
+    if (monthSel.options.length === 0) monthSel.innerHTML = SHIRE_MONTHS.map(m => `<option>${m}</option>`).join('');
+    monthSel.value = journal.clock.month;
+  }
   document.getElementById('ch-phase').value = journal.clock.phase;
+  const readout = document.getElementById('ch-date-readout');
+  if (readout) readout.textContent = dateLabel(journal.clock);
 }
 function dateLabel(d) {
   if (!d) return '';
-  return `Year ${d.year} · ${d.season} · Day ${d.day}${d.phase === 'Fellowship' ? ' · Fellowship' : ''}`;
+  // New Shire-calendar form {year,month,day}; falls back to legacy {year,season,day}.
+  if (d.month) {
+    return `${monthSeason(d.month)}, ${ordinal(d.day)} ${d.month} ${d.year}${d.phase === 'Fellowship' ? ' · Fellowship' : ''}`;
+  }
+  return `${d.season || ''}, Day ${d.day}, Year ${d.year}${d.phase === 'Fellowship' ? ' · Fellowship' : ''}`;
 }
 function renderChronicleTimeline() {
   const wrap = document.getElementById('ch-timeline');
@@ -5247,10 +5297,14 @@ function renderChronicleTimeline() {
       <button onclick="renameScene('${sc.id}')" title="Rename" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:13px">✎</button>
       <button onclick="deleteScene('${sc.id}')" title="Delete scene" style="background:none;border:none;cursor:pointer;color:var(--text-faint);font-size:14px">×</button>
     </div>`;
-    if (shown.length === 0) {
+    // PROSE first (the narrative), then a collapsible "Rules Bits" block (the mechanics).
+    const proseBlocks = shown.filter(b => b.kind === 'prose');
+    const autoBlocks = shown.filter(b => b.kind === 'auto');
+    const sceneCombats = (journal.combats || []).filter(c => c.sceneId === sc.id && !c.active);
+    if (proseBlocks.length === 0 && autoBlocks.length === 0 && sceneCombats.length === 0) {
       html += `<div style="padding:6px 10px;font-size:12px;color:var(--text-faint)">${q ? '(no matching lines)' : 'Empty scene — write the first line below.'}</div>`;
     }
-    shown.forEach(b => {
+    proseBlocks.forEach(b => {
       if (_editingBlockId === b.id) {
         html += `<div style="padding:4px 8px">
           <textarea id="ch-edit-${b.id}" rows="3" style="width:100%;padding:6px;border:1px solid var(--gold);border-radius:6px;background:var(--bg-deep);color:var(--ink);font-size:14px;line-height:1.5">${escapeHtml(b.text)}</textarea>
@@ -5258,13 +5312,6 @@ function renderChronicleTimeline() {
             <button onclick="saveBlockEdit('${b.id}')" class="add-row-btn" style="background:var(--gold);font-size:12px;flex:1">Save</button>
             <button onclick="cancelBlockEdit()" class="add-row-btn" style="background:var(--btn-secondary-bg);font-size:12px;flex:1">Cancel</button>
           </div>
-        </div>`;
-      } else if (b.kind === 'auto') {
-        const t = JOURNAL_TYPES[b.type] || JOURNAL_TYPES.note;
-        html += `<div style="display:flex;gap:8px;padding:3px 10px;align-items:baseline;opacity:0.7">
-          <span style="flex:0 0 auto;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted)">${t.label}</span>
-          <span style="flex:1;min-width:0;font-size:12px;font-style:italic;color:var(--text-muted)">${escapeHtml(b.text)}</span>
-          <button onclick="deleteChronicleEntry('${b.id}')" title="Delete" style="flex:0 0 auto;background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:13px">×</button>
         </div>`;
       } else {
         html += `<div style="display:flex;gap:6px;padding:4px 10px;align-items:flex-start">
@@ -5274,6 +5321,21 @@ function renderChronicleTimeline() {
         </div>`;
       }
     });
+    // Rules Bits — collapsible mechanical log (oracle / dice / status + combats).
+    if (autoBlocks.length || sceneCombats.length) {
+      html += `<details${active ? ' open' : ''} style="margin:4px 0 6px 10px">
+        <summary style="cursor:pointer;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--red-dark)">Rules Bits (${autoBlocks.length + sceneCombats.length})</summary>`;
+      autoBlocks.forEach(b => {
+        const t = JOURNAL_TYPES[b.type] || JOURNAL_TYPES.note;
+        html += `<div style="display:flex;gap:8px;padding:3px 6px;align-items:baseline;opacity:0.75">
+          <span style="flex:0 0 auto;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted)">${t.label}</span>
+          <span style="flex:1;min-width:0;font-size:12px;font-style:italic;color:var(--text-muted)">${escapeHtml(b.text)}</span>
+          <button onclick="deleteChronicleEntry('${b.id}')" title="Delete" style="flex:0 0 auto;background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:13px">×</button>
+        </div>`;
+      });
+      sceneCombats.forEach(c => { html += renderCombatBlock(c); });
+      html += `</details>`;
+    }
   });
   wrap.innerHTML = html || `<div style="text-align:center;color:var(--text-faint);padding:14px;font-size:12px">No matching entries.</div>`;
 }
@@ -5305,21 +5367,121 @@ function renderChronicleNpcs() {
     </div>`).join('');
 }
 
+/* ----- combat log ----- */
+function activeCombat() { return (journal.combats || []).find(c => c.active) || null; }
+async function newCombat() {
+  const name = await promptStyled('Foe name:', '', '⚔️ New Combat', 'e.g. The Watcher in the Dark');
+  if (name === null) return;
+  const endStr = await promptStyled(`Endurance of ${name.trim() || 'the foe'}:`, '20', '⚔️ New Combat');
+  if (endStr === null) return;
+  const hateStr = await promptStyled('Hate / Resolve:', '5', '⚔️ New Combat');
+  if (hateStr === null) return;
+  ensureActiveScene();
+  (journal.combats || []).forEach(c => { if (c.active) c.active = false; });  // only one active at a time
+  const end = Math.max(0, parseInt(endStr) || 0), hate = Math.max(0, parseInt(hateStr) || 0);
+  journal.combats.push({
+    id: genCharId(), sceneId: journal.activeSceneId, foeName: (name.trim() || 'Foe'),
+    endMax: end, endCur: end, hateMax: hate, hateCur: hate, rounds: [], active: true, outcome: '', date: { ...journal.clock }
+  });
+  saveJournal(); renderChronicle();
+}
+function adjCombat(id, field, delta) {
+  const c = (journal.combats || []).find(x => x.id === id); if (!c) return;
+  const max = field === 'endCur' ? c.endMax : c.hateMax;
+  c[field] = Math.max(0, Math.min(max, (parseInt(c[field]) || 0) + delta));
+  saveJournal(); renderChronicleCombat();
+}
+function addCombatRound(id) {
+  const c = (journal.combats || []).find(x => x.id === id); if (!c) return;
+  const heroEl = document.getElementById('ch-rd-hero'), foeEl = document.getElementById('ch-rd-foe');
+  const hero = (heroEl?.value || '').trim(), foe = (foeEl?.value || '').trim();
+  if (!hero && !foe) return;
+  c.rounds.push({ hero, foe });
+  if (heroEl) heroEl.value = ''; if (foeEl) foeEl.value = '';
+  saveJournal(); renderChronicleCombat();
+}
+function delCombatRound(id, idx) {
+  const c = (journal.combats || []).find(x => x.id === id); if (!c) return;
+  c.rounds.splice(idx, 1); saveJournal(); renderChronicleCombat();
+}
+async function endCombat(id) {
+  const c = (journal.combats || []).find(x => x.id === id); if (!c) return;
+  const outcome = await promptStyled('How did it end?', c.endCur <= 0 ? 'Foe slain' : '', 'End Combat', 'e.g. Foe slain · Escaped · Driven off');
+  if (outcome === null) return;
+  c.active = false; c.outcome = outcome.trim();
+  saveJournal(); renderChronicle();
+}
+async function deleteCombat(id) {
+  if (!await confirmStyled('Delete this combat log?', 'Delete Combat')) return;
+  journal.combats = journal.combats.filter(x => x.id !== id);
+  saveJournal(); renderChronicle();
+}
+// Read-only combat summary shown inside a scene's Rules Bits (for ended/other-scene combats).
+function renderCombatBlock(c) {
+  let h = `<div style="padding:3px 6px;font-size:12px">
+    <div style="font-weight:700;color:var(--text-muted)">⚔️ ${escapeHtml(c.foeName)} — End ${c.endCur}/${c.endMax}, Hate ${c.hateCur}/${c.hateMax}${c.outcome ? ' · ' + escapeHtml(c.outcome) : ''}${c.active ? ' · <em>ongoing</em>' : ''}
+      <button onclick="deleteCombat('${c.id}')" title="Delete" style="background:none;border:none;color:var(--text-faint);cursor:pointer;float:right;font-size:13px">×</button></div>`;
+  (c.rounds || []).forEach((r, i) => {
+    h += `<div style="font-style:italic;color:var(--text-muted);padding-left:8px;font-size:11px">R${i + 1}: ${escapeHtml(r.hero || '—')}${r.foe ? ' | ' + escapeHtml(r.foe) : ''}</div>`;
+  });
+  return h + `</div>`;
+}
+// Active-combat editor card at the top of the Chronicle tab.
+function renderChronicleCombat() {
+  const card = document.getElementById('ch-combat-card');
+  if (!card) return;
+  const c = activeCombat();
+  if (!c) {
+    card.innerHTML = `<button class="add-row-btn" onclick="newCombat()" style="width:100%;background:var(--btn-alert-bg)">⚔️ New Combat</button>`;
+    return;
+  }
+  const step = (id, f, d, lbl) => `<button onclick="adjCombat('${id}','${f}',${d})" style="width:26px;height:26px;border:1px solid var(--border);background:var(--card-bg);color:var(--ink);border-radius:4px;cursor:pointer">${lbl}</button>`;
+  let rounds = (c.rounds || []).map((r, i) => `<div style="display:flex;gap:6px;padding:3px 0;border-top:1px solid var(--border);font-size:12px">
+      <span style="flex:0 0 26px;color:var(--text-faint)">R${i + 1}</span>
+      <span style="flex:1;min-width:0"><span style="color:var(--ink)">${escapeHtml(r.hero || '—')}</span>${r.foe ? `<br><span style="color:var(--red-dark)">${escapeHtml(r.foe)}</span>` : ''}</span>
+      <button onclick="delCombatRound('${c.id}',${i})" style="background:none;border:none;color:var(--text-faint);cursor:pointer">×</button>
+    </div>`).join('');
+  card.innerHTML = `
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+      <strong style="flex:1;font-size:14px">⚔️ ${escapeHtml(c.foeName)}</strong>
+      <button onclick="endCombat('${c.id}')" class="add-row-btn" style="font-size:11px;background:var(--btn-secondary-bg);padding:3px 8px">End combat</button>
+    </div>
+    <div class="row-2" style="gap:10px;font-size:13px">
+      <div style="display:flex;align-items:center;gap:4px">End <strong style="min-width:42px;text-align:center">${c.endCur}/${c.endMax}</strong>${step(c.id,'endCur',-1,'−')}${step(c.id,'endCur',1,'+')}</div>
+      <div style="display:flex;align-items:center;gap:4px">Hate <strong style="min-width:36px;text-align:center">${c.hateCur}/${c.hateMax}</strong>${step(c.id,'hateCur',-1,'−')}${step(c.id,'hateCur',1,'+')}</div>
+    </div>
+    <input id="ch-rd-hero" placeholder="Your round — stance · weapon · roll · result" style="width:100%;margin-top:8px;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg-deep);color:var(--ink);font-size:13px">
+    <input id="ch-rd-foe" placeholder="Foe — attacks · result (Piercing Blow, etc.)" style="width:100%;margin-top:4px;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg-deep);color:var(--ink);font-size:13px">
+    <button onclick="addCombatRound('${c.id}')" class="add-row-btn" style="width:100%;margin-top:6px;background:var(--gold)">Log Round ${(c.rounds || []).length + 1}</button>
+    <div style="margin-top:6px">${rounds}</div>`;
+}
+
 /* ----- markdown export ----- */
 function exportChronicleMarkdown() {
   const lines = [];
   lines.push(`# ${char.name || 'Hero'} — Tale of Years`);
   if (char.culture || char.calling) lines.push(`*${[char.culture, char.calling].filter(Boolean).join(' · ')}*`);
-  // One section per scene, in chronological order; prose as paragraphs, auto-events as glyph bullets.
+  // One section per scene: prose paragraphs first, then a "Rules Bits" subsection (Halbarad-style).
   journal.scenes.forEach(sc => {
     lines.push('');
     lines.push(`## ${sc.title}`);
     lines.push(`*${dateLabel(sc.date)}*`);
     lines.push('');
-    journal.entries.filter(e => e.sceneId === sc.id).forEach(b => {
-      if (b.kind === 'prose') { lines.push(b.text); lines.push(''); }
-      else { const t = JOURNAL_TYPES[b.type] || JOURNAL_TYPES.note; lines.push(`- \`${t.ascii}\` ${b.text}`); }
-    });
+    const blocks = journal.entries.filter(e => e.sceneId === sc.id);
+    blocks.filter(b => b.kind === 'prose').forEach(b => { lines.push(b.text); lines.push(''); });
+    const autos = blocks.filter(b => b.kind === 'auto');
+    const combats = (journal.combats || []).filter(c => c.sceneId === sc.id);
+    if (autos.length || combats.length) {
+      lines.push('**Rules Bits**'); lines.push('');
+      autos.forEach(b => { const t = JOURNAL_TYPES[b.type] || JOURNAL_TYPES.note; lines.push(`- \`${t.ascii}\` ${b.text}`); });
+      combats.forEach(c => {
+        lines.push(`- **Combat: ${c.foeName}** (End ${c.endCur}/${c.endMax}, Hate ${c.hateCur}/${c.hateMax})${c.outcome ? ' — ' + c.outcome : ''}`);
+        (c.rounds || []).forEach((r, i) => {
+          lines.push(`  - R${i + 1}: ${r.hero || '—'}${r.foe ? ' | ' + r.foe : ''}`);
+        });
+      });
+      lines.push('');
+    }
   });
   if (journal.threads.length) {
     lines.push(''); lines.push('## Threads');
@@ -6050,7 +6212,7 @@ async function fpComplete() {
   char.phasesCompleted = (parseInt(char.phasesCompleted) || 0) + 1;
   // Chronicle: a Yule Fellowship Phase turns the year; either way, mark the phase passing.
   if (journal && journal.clock) {
-    if (fpState.phaseType === 'yule') { journal.clock.year = (parseInt(journal.clock.year) || 0) + 1; journal.clock.season = 'Winter'; }
+    if (fpState.phaseType === 'yule') { journal.clock.year = (parseInt(journal.clock.year) || 0) + 1; journal.clock.month = 'Afteryule'; journal.clock.day = 1; }
     saveJournal();
   }
   saveCharacter();

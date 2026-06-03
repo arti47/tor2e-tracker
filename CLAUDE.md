@@ -27,8 +27,8 @@ grep -o "tor2e-[a-z0-9-]*" character-tracker.html | sort -u   # all localStorage
 ```
 
 As of last verification:
-- **`character-tracker.html`**: ~11,882 lines / ~686 KB (includes a ~20 KB vendored QR library in its own `<script>` block)
-- **`sw.js` `CACHE_VERSION`**: `tor2e-v42` (bump on every deploy)
+- **`character-tracker.html`**: ~12,057 lines / ~700 KB (includes a ~20 KB vendored QR library in its own `<script>` block)
+- **`sw.js` `CACHE_VERSION`**: `tor2e-v45` (bump on every deploy)
 - **SW strategy (since v30)**: HTML/navigations are **network-first** (deploys appear on next online load — no stale-cache lag); static assets cache-first. Updates surface a tap-to-update banner (page posts `SKIP_WAITING`); still bump `CACHE_VERSION` each deploy so old caches are GC'd.
 - **Moria Solo Mode**: ✅ complete (one toggle `⛏️ Enable Moria Solo Mode` → Band + Battle tabs, Moria oracle generators, full solo campaign). Full subsystem reference in the **"Moria Solo Mode"** section below.
 - **localStorage keys**: now a **multi-character roster** (added 2026-05-31):
@@ -531,6 +531,7 @@ Audit cross-referenced the full Core Rules table of contents against the app. Co
   - **Threads** (open→closed) + **NPCs-met** trackers.
   - **Markdown export** — one section per scene (prose as paragraphs, auto-events as `` `glyph` `` bullets) + Threads + NPCs, as `<name>-chronicle.md`.
   - **Migration**: legacy flat tagged entries auto-wrap into one "Earlier entries" scene, reordered chronological. Per-hero load/save wired into `applyActiveCharacter`/`newCharacter`/delete/import/reset.
+  - **Halbarad-style upgrades** (modelled on a real TOR2E solo journal, 2026-06-03): (1) **Shire-Reckoning calendar** — `clock {year,month,day,phase}` over 12 × 30-day months (`SHIRE_MONTHS`), season derived via `monthSeason()`; dates read "Spring, 13th Astron 2965" (`dateLabel`/`ordinal`). `advanceChronicleDay` rolls months/years; `markYule` → 1 Afteryule of next year. Legacy `{year,season,day}` clocks migrate (season→representative month). (2) **Rules Bits split** — each scene renders prose first, then a collapsible **Rules Bits** `<details>` holding the dimmed auto-events + combat summaries (Markdown export mirrors this: prose paragraphs then a `**Rules Bits**` subsection). (3) **Structured oracle notation** — `logOracleRoll(label,result,journalText)`; the Telling Table logs `Q: … · Telling Table (Middling) → YES`. (4) **Combat log subsystem** — `journal.combats[]` ({foeName,endMax/Cur,hateMax/Cur,rounds:[{hero,foe}],active,outcome}); a "Combat Log" card (`renderChronicleCombat`) tracks one active fight with End/Hate steppers + round entries; ended fights fold into their scene's Rules Bits (`renderCombatBlock`) and the export.
 
 ### 🔵 Priority 4 — Expanded rules tracking
 - [ ] **Skill Endeavour tracker** — set Resistance + Time Limit, tally successes
