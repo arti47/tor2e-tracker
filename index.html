@@ -691,9 +691,10 @@
 
   <div class="card">
     <h3 class="card-title">Chronicle <span id="ch-count" style="font-size:11px;color:var(--text-muted);font-weight:400"></span></h3>
-    <div style="display:flex;gap:6px;margin-bottom:8px">
-      <input id="ch-search" placeholder="Filter entries…" oninput="renderChronicleTimeline()" style="flex:1;font-size:12px;padding:4px 8px;border:1px solid var(--border);border-radius:5px;background:var(--bg-deep);color:var(--ink)">
-      <button class="add-row-btn" onclick="exportChronicleMarkdown()" style="background:var(--btn-secondary-bg);font-size:12px">Export .md</button>
+    <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
+      <input id="ch-search" placeholder="Filter entries…" oninput="renderChronicleTimeline()" style="flex:1;min-width:120px;font-size:12px;padding:4px 8px;border:1px solid var(--border);border-radius:5px;background:var(--bg-deep);color:var(--ink)">
+      <button class="add-row-btn" onclick="exportChronicleMarkdown('split')" style="background:var(--btn-secondary-bg);font-size:12px" title="Prose, then a Rules Bits appendix per scene (polished document)">⬇ Story</button>
+      <button class="add-row-btn" onclick="exportChronicleMarkdown('log')" style="background:var(--btn-secondary-bg);font-size:12px" title="Results and descriptions interleaved, as on screen (play-log)">⬇ Play-log</button>
     </div>
     <div id="ch-timeline" style="font-size:13px;line-height:1.5;max-height:460px;overflow-y:auto;-webkit-overflow-scrolling:touch"></div>
   </div>
@@ -5157,6 +5158,21 @@ function saveDescribe(id) {
   }
   _describingId = null; saveJournal(); renderChronicleTimeline();
 }
+// Opt-in demo so the play-log layout is obvious on first open. The example is normal data — edit or delete freely.
+function loadSampleChronicle() {
+  const sc = { id: genCharId(), title: 'The Forsaken Inn (example)', date: { ...journal.clock }, ts: nowStamp() };
+  journal.scenes.push(sc); journal.activeSceneId = sc.id;
+  const mk = (kind, type, text, source) => ({ id: genCharId(), sceneId: sc.id, kind, type, text, source: source || (kind === 'auto' ? 'auto:ojc' : 'manual'), ts: nowStamp(), date: { ...journal.clock } });
+  journal.entries.push(mk('prose', 'note', 'Dusk. The common room empties; a hooded watcher rises to leave.'));
+  journal.entries.push(mk('auto', 'oracle', 'Q: Is the yard empty? · Telling Table (Middling) → No, but… a drowsing stablehand', 'auto:ojc'));
+  journal.entries.push(mk('prose', 'note', 'I slip out after him, keeping to the shadows along the stable wall.'));
+  journal.entries.push(mk('auto', 'roll', 'Stealth 2d WIT — 17 vs 16 → SUCCESS (1✦)', 'auto:dice'));
+  journal.entries.push(mk('prose', 'note', 'He never marks me. Under his saddle: a folded note in a cipher I half-know.'));
+  journal.combats.push({ id: genCharId(), sceneId: sc.id, foeName: 'Footpad', endMax: 8, endCur: 0, hateMax: 2, hateCur: 1,
+    rounds: [{ hero: 'Forward · Long sword · 18 → 6 dmg', foe: 'Cudgel · Miss' }, { hero: 'Long sword · 14 → 4 dmg (slain)', foe: '—' }],
+    active: false, outcome: 'Foe slain', date: { ...journal.clock } });
+  saveJournal(); renderChronicle();
+}
 async function deleteChronicleEntry(id) {
   if (!await confirmStyled('Delete this entry?', 'Delete Entry')) return;
   journal.entries = journal.entries.filter(e => e.id !== id);
@@ -5294,7 +5310,8 @@ function renderChronicleTimeline() {
   const countEl = document.getElementById('ch-count');
   if (countEl) countEl.textContent = journal.scenes.length ? `(${journal.scenes.length} scene${journal.scenes.length === 1 ? '' : 's'})` : '';
   if (journal.scenes.length === 0) {
-    wrap.innerHTML = `<div style="text-align:center;color:var(--text-faint);padding:14px;font-size:12px">No scenes yet — tap “+ New Scene”, or just start writing below.</div>`;
+    wrap.innerHTML = `<div style="text-align:center;color:var(--text-faint);padding:14px;font-size:12px">No scenes yet — tap “+ New Scene”, or just start writing below.<br><br>
+      <button class="add-row-btn" onclick="loadSampleChronicle()" style="background:var(--btn-secondary-bg);font-size:12px">Load an example scene</button></div>`;
     return;
   }
   // Newest scene first; blocks within a scene stay in chronological (written) order.
@@ -5412,6 +5429,13 @@ function adjCombat(id, field, delta) {
   c[field] = Math.max(0, Math.min(max, (parseInt(c[field]) || 0) + delta));
   saveJournal(); renderChronicleCombat();
 }
+// Step the hero's Eye Awareness from within the combat card (it lives on char, shared with the Eye of Mordor card).
+function adjCombatEye(delta) {
+  char.eyeAwareness = Math.max(0, (parseInt(char.eyeAwareness) || 0) + delta);
+  saveCharacter();
+  if (typeof refreshEyeOfMordor === 'function') refreshEyeOfMordor();
+  renderChronicleCombat();
+}
 function addCombatRound(id) {
   const c = (journal.combats || []).find(x => x.id === id); if (!c) return;
   const heroEl = document.getElementById('ch-rd-hero'), foeEl = document.getElementById('ch-rd-foe');
@@ -5457,6 +5481,9 @@ function renderChronicleCombat() {
     return;
   }
   const step = (id, f, d, lbl) => `<button onclick="adjCombat('${id}','${f}',${d})" style="width:26px;height:26px;border:1px solid var(--border);background:var(--card-bg);color:var(--ink);border-radius:4px;cursor:pointer">${lbl}</button>`;
+  const eaStep = (d, lbl) => `<button onclick="adjCombatEye(${d})" style="width:26px;height:26px;border:1px solid var(--border);background:var(--card-bg);color:var(--ink);border-radius:4px;cursor:pointer">${lbl}</button>`;
+  const ea = parseInt(char.eyeAwareness) || 0;
+  const hunt = (HUNT_THRESHOLDS[char.huntRegion] || 16) + (parseInt(char.huntMod) || 0);
   let rounds = (c.rounds || []).map((r, i) => `<div style="display:flex;gap:6px;padding:3px 0;border-top:1px solid var(--border);font-size:12px">
       <span style="flex:0 0 26px;color:var(--text-faint)">R${i + 1}</span>
       <span style="flex:1;min-width:0"><span style="color:var(--ink)">${escapeHtml(r.hero || '—')}</span>${r.foe ? `<br><span style="color:var(--red-dark)">${escapeHtml(r.foe)}</span>` : ''}</span>
@@ -5471,6 +5498,7 @@ function renderChronicleCombat() {
       <div style="display:flex;align-items:center;gap:4px">End <strong style="min-width:42px;text-align:center">${c.endCur}/${c.endMax}</strong>${step(c.id,'endCur',-1,'−')}${step(c.id,'endCur',1,'+')}</div>
       <div style="display:flex;align-items:center;gap:4px">Hate <strong style="min-width:36px;text-align:center">${c.hateCur}/${c.hateMax}</strong>${step(c.id,'hateCur',-1,'−')}${step(c.id,'hateCur',1,'+')}</div>
     </div>
+    <div style="display:flex;align-items:center;gap:4px;font-size:13px;margin-top:6px">👁️ Eye <strong style="min-width:42px;text-align:center;color:${ea >= hunt ? 'var(--red-dark)' : 'var(--ink)'}">${ea} / ${hunt}</strong>${eaStep(-1,'−')}${eaStep(1,'+')}<span style="font-size:10px;color:var(--text-faint)">vs Hunt</span></div>
     <input id="ch-rd-hero" placeholder="Your round — stance · weapon · roll · result" style="width:100%;margin-top:8px;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg-deep);color:var(--ink);font-size:13px">
     <input id="ch-rd-foe" placeholder="Foe — attacks · result (Piercing Blow, etc.)" style="width:100%;margin-top:4px;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg-deep);color:var(--ink);font-size:13px">
     <button onclick="addCombatRound('${c.id}')" class="add-row-btn" style="width:100%;margin-top:6px;background:var(--gold)">Log Round ${(c.rounds || []).length + 1}</button>
@@ -5478,31 +5506,39 @@ function renderChronicleCombat() {
 }
 
 /* ----- markdown export ----- */
-function exportChronicleMarkdown() {
+function exportChronicleMarkdown(mode) {
+  mode = mode || 'split';  // 'split' = Halbarad (prose then Rules Bits); 'log' = interleaved play-log
   const lines = [];
   lines.push(`# ${char.name || 'Hero'} — Tale of Years`);
   if (char.culture || char.calling) lines.push(`*${[char.culture, char.calling].filter(Boolean).join(' · ')}*`);
-  // One section per scene: prose paragraphs first, then a "Rules Bits" subsection (Halbarad-style).
   journal.scenes.forEach(sc => {
     lines.push('');
     lines.push(`## ${sc.title}`);
     lines.push(`*${dateLabel(sc.date)}*`);
     lines.push('');
     const blocks = journal.entries.filter(e => e.sceneId === sc.id);
-    blocks.filter(b => b.kind === 'prose').forEach(b => { lines.push(b.text); lines.push(''); });
-    const autos = blocks.filter(b => b.kind === 'auto');
     const combats = (journal.combats || []).filter(c => c.sceneId === sc.id);
-    if (autos.length || combats.length) {
-      lines.push('**Rules Bits**'); lines.push('');
-      autos.forEach(b => { const t = JOURNAL_TYPES[b.type] || JOURNAL_TYPES.note; lines.push(`- \`${t.ascii}\` ${b.text}`); });
-      combats.forEach(c => {
-        lines.push(`- **Combat: ${c.foeName}** (End ${c.endCur}/${c.endMax}, Hate ${c.hateCur}/${c.hateMax})${c.outcome ? ' — ' + c.outcome : ''}`);
-        (c.rounds || []).forEach((r, i) => {
-          lines.push(`  - R${i + 1}: ${r.hero || '—'}${r.foe ? ' | ' + r.foe : ''}`);
-        });
+    if (mode === 'log') {
+      // Interleaved: results and descriptions in written order (the on-screen play-log).
+      blocks.forEach(b => {
+        if (b.kind === 'prose') { lines.push(b.text); lines.push(''); }
+        else { const t = JOURNAL_TYPES[b.type] || JOURNAL_TYPES.note; lines.push(`\`${t.ascii}\` ${b.text}`); lines.push(''); }
       });
-      lines.push('');
+    } else {
+      // Split: prose paragraphs first, then a Rules Bits subsection (the polished document).
+      blocks.filter(b => b.kind === 'prose').forEach(b => { lines.push(b.text); lines.push(''); });
+      const autos = blocks.filter(b => b.kind === 'auto');
+      if (autos.length || combats.length) {
+        lines.push('**Rules Bits**'); lines.push('');
+        autos.forEach(b => { const t = JOURNAL_TYPES[b.type] || JOURNAL_TYPES.note; lines.push(`- \`${t.ascii}\` ${b.text}`); });
+      }
     }
+    // Combats render the same in both modes.
+    combats.forEach(c => {
+      lines.push(`- **Combat: ${c.foeName}** (End ${c.endCur}/${c.endMax}, Hate ${c.hateCur}/${c.hateMax})${c.outcome ? ' — ' + c.outcome : ''}`);
+      (c.rounds || []).forEach((r, i) => { lines.push(`  - R${i + 1}: ${r.hero || '—'}${r.foe ? ' | ' + r.foe : ''}`); });
+    });
+    lines.push('');
   });
   if (journal.threads.length) {
     lines.push(''); lines.push('## Threads');
@@ -5518,7 +5554,7 @@ function exportChronicleMarkdown() {
   const blob = new Blob([md], { type: 'text/markdown' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = (char.name || 'character') + '-chronicle.md';
+  a.download = (char.name || 'character') + (mode === 'log' ? '-playlog' : '-chronicle') + '.md';
   a.click();
 }
 
@@ -8060,7 +8096,20 @@ async function arriveAtDestination() {
   renderConditionWarnings();
   setText('fat-v', char.fatigue);
   if (typeof journalAuto === 'function') journalAuto('ojc', 'milestone', `Arrived at ${j.destination || 'the destination'} after ${j.daysElapsed || '?'} days (from ${j.origin || '?'}).`);
-  alert('Journey complete!\n\n' + lines.map(l => l.replace(/<[^>]+>/g, '')).join('\n'));
+  const recap = 'Journey complete!\n\n' + lines.map(l => l.replace(/<[^>]+>/g, '')).join('\n');
+  // In solo play, offer to open a fresh "at the landmark" scene in the Chronicle (montage → play hand-off).
+  const dest = j.destination || 'the destination';
+  if (isSolo() && await confirmStyled(escapeHtml(recap).replace(/\n/g, '<br>') + `<br><br>Start a Chronicle scene at <strong>${escapeHtml(dest)}</strong>?`, '🏁 Arrived')) {
+    const sc = { id: genCharId(), title: `At ${dest}`, date: { ...journal.clock }, ts: nowStamp() };
+    journal.scenes.push(sc);
+    journal.activeSceneId = sc.id;
+    saveJournal();
+    document.querySelector('.tab[data-tab="chronicle"]')?.click();
+    renderChronicle();
+    const ta = document.getElementById('ch-compose'); if (ta) ta.focus();
+  } else {
+    alert(recap);
+  }
 }
 
 function refreshRetiredPill() {
