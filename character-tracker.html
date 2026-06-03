@@ -3707,9 +3707,9 @@ function refreshStriderUI() {
   // Shared solo surfaces — visible in EITHER Strider or Moria mode.
   const oracleTab = document.querySelector('.tab[data-tab="oracle"]');
   if (oracleTab) oracleTab.style.display = solo ? '' : 'none';
-  // Chronicle (journaling) is a STRIDER-MODE feature — visible only when char.striderMode is on
-  // (including a Moria campaign run with Strider Mode also enabled). NOT shown in plain Moria Solo.
-  const showChronicle = !!char.striderMode;
+  // Chronicle (journaling) is a SOLO-PLAY feature — visible in either Strider OR Moria solo mode,
+  // hidden in normal/group play.
+  const showChronicle = isSolo();
   const chronicleTab = document.querySelector('.tab[data-tab="chronicle"]');
   if (chronicleTab) chronicleTab.style.display = showChronicle ? '' : 'none';
   // If we just hid the Chronicle while its panel was open, fall back to the Character tab
