@@ -557,6 +557,9 @@
     padding: 20px;
     max-width: 320px;
     width: 90%;
+    max-height: 90vh;            /* keep the menu inside the viewport… */
+    overflow-y: auto;            /* …and scroll when it has many buttons */
+    -webkit-overflow-scrolling: touch;
   }
   .menu h3 { margin: 0 0 14px 0; color: var(--red-dark); text-align: center; }
   .menu button {
