@@ -672,8 +672,9 @@
     <textarea id="ch-compose" placeholder="Write what happens…" rows="3" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--bg-deep);color:var(--ink);resize:vertical;font-size:14px;line-height:1.5"></textarea>
     <div style="display:flex;gap:6px;margin-top:6px">
       <button class="add-row-btn" onclick="addProseToScene()" style="flex:1;background:var(--gold)">Add to scene</button>
-      <button class="add-row-btn" onclick="rollWritingPrompt()" title="A writing prompt tuned to your Shadow/Hope — drop it in and answer it below" style="background:var(--btn-secondary-bg);font-size:12px">💭 Prompt</button>
+      <button class="add-row-btn" onclick="rollWritingPrompt()" title="Writing prompt tuned to your Shadow/Hope — a journaling aid, not a Strider Mode rule" style="background:var(--btn-secondary-bg);font-size:12px">💭 Prompt</button>
     </div>
+    <p class="hint" style="text-align:left;margin-top:2px;color:var(--text-faint)">💭 Prompt is a journaling aid, not a Strider Mode rule.</p>
     <details style="margin-top:8px">
       <summary style="cursor:pointer;font-size:12px;color:var(--text-muted)">Auto-capture settings</summary>
       <div style="display:flex;flex-direction:column;gap:4px;margin-top:6px;font-size:13px">
@@ -687,7 +688,7 @@
   </div>
 
   <div class="card">
-    <h3 class="card-title">Oracle &amp; Events</h3>
+    <h3 class="card-title">Oracle</h3>
     <div style="display:flex;gap:6px">
       <input id="ch-oracle-q" placeholder="Yes/no question…" style="flex:1;padding:7px;border:1px solid var(--border);border-radius:6px;background:var(--bg-deep);color:var(--ink)" onkeydown="if(event.key==='Enter')chronicleAsk()">
       <select id="ch-oracle-chance" style="font-size:12px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;background:var(--bg-deep);color:var(--ink)">
@@ -701,9 +702,8 @@
     <div style="display:flex;gap:6px;margin-top:6px">
       <button class="add-row-btn" onclick="chronicleAsk()" style="flex:1;background:var(--gold)">🔮 Ask</button>
       <button class="add-row-btn" onclick="chronicleLore()" style="flex:1;background:var(--btn-secondary-bg);font-size:12px" title="Action / Aspect / Focus inspiration">Lore words</button>
-      <button class="add-row-btn" onclick="rollRandomEvent()" style="flex:1;background:var(--btn-secondary-bg);font-size:12px" title="Mythic-style random event (focus + meaning)">🎲 Event</button>
     </div>
-    <p class="hint" style="text-align:left;margin-top:6px">Asks/rolls log a result line into the open scene — tap “✎ describe” to narrate it. (Same Telling/Lore tables as the Oracle tab.)</p>
+    <p class="hint" style="text-align:left;margin-top:6px">The Strider-Mode Telling &amp; Lore tables — same as the Oracle tab. Each ask logs a result line into the open scene; tap “✎ describe” to narrate it.</p>
   </div>
 
   <div class="card">
@@ -722,24 +722,6 @@
     <div id="ch-timeline" style="font-size:13px;line-height:1.5;max-height:460px;overflow-y:auto;-webkit-overflow-scrolling:touch"></div>
   </div>
 
-  <div class="card">
-    <h3 class="card-title">Threads <span id="ch-threads-count" style="font-size:11px;color:var(--text-muted);font-weight:400"></span></h3>
-    <div style="display:flex;gap:6px;margin-bottom:8px">
-      <input id="ch-thread-text" placeholder="Open a quest / plot thread…" style="flex:1;padding:7px;border:1px solid var(--border);border-radius:6px;background:var(--bg-deep);color:var(--ink)" onkeydown="if(event.key==='Enter')addThread()">
-      <button class="add-row-btn" onclick="addThread()" style="background:var(--gold)">Open</button>
-    </div>
-    <div id="ch-threads-list"></div>
-  </div>
-
-  <div class="card">
-    <h3 class="card-title">NPCs Met <span id="ch-npcs-count" style="font-size:11px;color:var(--text-muted);font-weight:400"></span></h3>
-    <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
-      <input id="ch-npc-name" placeholder="Name" style="flex:1;min-width:100px;padding:7px;border:1px solid var(--border);border-radius:6px;background:var(--bg-deep);color:var(--ink)">
-      <input id="ch-npc-where" placeholder="Where / notes" style="flex:1;min-width:100px;padding:7px;border:1px solid var(--border);border-radius:6px;background:var(--bg-deep);color:var(--ink)">
-      <button class="add-row-btn" onclick="addNpc()" style="background:var(--gold)">Add</button>
-    </div>
-    <div id="ch-npcs-list"></div>
-  </div>
 
 </section>
 
@@ -5228,28 +5210,7 @@ function rollWritingPrompt() {
   pushBlock('auto', 'prompt', text, 'manual');  // a describable prompt line (not gated by toggles)
   renderChronicle();
 }
-// Mythic-style random event: focus (tied to your threads/NPCs where relevant) + meaning (Lore words).
-const EVENT_FOCUS = [
-  { max: 7, label: 'Remote event' }, { max: 28, label: 'NPC action' }, { max: 35, label: 'New NPC' },
-  { max: 45, label: 'Move toward a thread' }, { max: 52, label: 'Move away from a thread' }, { max: 55, label: 'Close a thread' },
-  { max: 67, label: 'You — a setback' }, { max: 75, label: 'You — a boon' }, { max: 83, label: 'Ambiguous event' },
-  { max: 92, label: 'NPC — a setback' }, { max: 100, label: 'NPC — a boon' }
-];
-function rollRandomEvent() {
-  const n = Math.floor(Math.random() * 100) + 1;
-  const focus = (EVENT_FOCUS.find(f => n <= f.max) || EVENT_FOCUS[0]).label;
-  const row = _randomLoreRow();
-  let extra = '';
-  if (focus.includes('thread')) {
-    const open = journal.threads.filter(t => t.status === 'open');
-    if (open.length) extra = ' → ' + open[Math.floor(Math.random() * open.length)].title;
-  } else if (focus.includes('NPC') && !focus.includes('New')) {
-    if (journal.npcs.length) extra = ' → ' + journal.npcs[Math.floor(Math.random() * journal.npcs.length)].name;
-  }
-  pushBlock('auto', 'event', `${focus}${extra} · meaning: ${row.action} / ${row.aspect}`, 'manual');
-  renderChronicle();
-}
-// Inline Chronicle oracle — ask the Telling Table / Lore Table without leaving the tab.
+// Inline Chronicle oracle — ask the Strider-Mode Telling Table / Lore Table without leaving the tab.
 function chronicleAsk() {
   const qEl = document.getElementById('ch-oracle-q');
   const q = (qEl?.value || '').trim();
@@ -5400,46 +5361,6 @@ function setChronicleToggles() {
   saveJournal();
 }
 
-/* ----- threads ----- */
-function addThread() {
-  const inp = document.getElementById('ch-thread-text');
-  const title = (inp.value || '').trim();
-  if (!title) return;
-  journal.threads.unshift({ id: genCharId(), title, status: 'open', notes: '', opened: { ...journal.clock }, closed: null });
-  inp.value = '';
-  saveJournal(); renderChronicleThreads();
-  journalAuto('advancement', 'milestone', `Thread opened: ${title}`);
-}
-function toggleThread(id) {
-  const t = journal.threads.find(x => x.id === id);
-  if (!t) return;
-  t.status = t.status === 'open' ? 'closed' : 'open';
-  t.closed = t.status === 'closed' ? { ...journal.clock } : null;
-  saveJournal(); renderChronicleThreads();
-  if (t.status === 'closed') journalAuto('advancement', 'milestone', `Thread resolved: ${t.title}`);
-}
-async function deleteThread(id) {
-  if (!await confirmStyled('Delete this thread?', 'Delete Thread')) return;
-  journal.threads = journal.threads.filter(x => x.id !== id);
-  saveJournal(); renderChronicleThreads();
-}
-
-/* ----- npcs ----- */
-function addNpc() {
-  const nameEl = document.getElementById('ch-npc-name');
-  const whereEl = document.getElementById('ch-npc-where');
-  const name = (nameEl.value || '').trim();
-  if (!name) return;
-  journal.npcs.unshift({ id: genCharId(), name, where: (whereEl.value || '').trim(), notes: '' });
-  nameEl.value = ''; whereEl.value = '';
-  saveJournal(); renderChronicleNpcs();
-}
-async function deleteNpc(id) {
-  if (!await confirmStyled('Remove this NPC?', 'Remove NPC')) return;
-  journal.npcs = journal.npcs.filter(x => x.id !== id);
-  saveJournal(); renderChronicleNpcs();
-}
-
 /* ----- render ----- */
 function renderChronicle() {
   renderChronicleClock();
@@ -5453,8 +5374,6 @@ function renderChronicle() {
   }
   renderChronicleCombat();
   renderChronicleTimeline();
-  renderChronicleThreads();
-  renderChronicleNpcs();
   const s = journal.settings || {};
   ['ojc','dice','status','advancement'].forEach(k => {
     const el = document.getElementById('ch-set-' + k);
@@ -5566,34 +5485,6 @@ function renderChronicleTimeline() {
   });
   wrap.innerHTML = html || `<div style="text-align:center;color:var(--text-faint);padding:14px;font-size:12px">No matching entries.</div>`;
 }
-function renderChronicleThreads() {
-  const wrap = document.getElementById('ch-threads-list');
-  if (!wrap) return;
-  const open = journal.threads.filter(t => t.status === 'open').length;
-  const cnt = document.getElementById('ch-threads-count');
-  if (cnt) cnt.textContent = journal.threads.length ? `(${open} open / ${journal.threads.length})` : '';
-  if (journal.threads.length === 0) { wrap.innerHTML = `<div style="text-align:center;color:var(--text-faint);padding:8px;font-size:12px">No threads yet.</div>`; return; }
-  wrap.innerHTML = journal.threads.map(t => {
-    const closed = t.status === 'closed';
-    return `<div style="display:flex;gap:8px;align-items:center;padding:6px 8px;border-bottom:1px solid var(--border);${closed ? 'opacity:0.55' : ''}">
-      <button onclick="toggleThread('${t.id}')" title="${closed ? 'Reopen' : 'Resolve'}" style="flex:0 0 auto;background:none;border:1px solid var(--border);border-radius:4px;width:24px;height:24px;cursor:pointer">${closed ? '✓' : '○'}</button>
-      <div style="flex:1;min-width:0;${closed ? 'text-decoration:line-through' : ''}">${escapeHtml(t.title)}<div style="font-size:10px;color:var(--text-faint)">opened ${dateLabel(t.opened)}${closed && t.closed ? ' · closed ' + dateLabel(t.closed) : ''}</div></div>
-      <button onclick="deleteThread('${t.id}')" style="flex:0 0 auto;background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:14px">×</button>
-    </div>`;
-  }).join('');
-}
-function renderChronicleNpcs() {
-  const wrap = document.getElementById('ch-npcs-list');
-  if (!wrap) return;
-  const cnt = document.getElementById('ch-npcs-count');
-  if (cnt) cnt.textContent = journal.npcs.length ? `(${journal.npcs.length})` : '';
-  if (journal.npcs.length === 0) { wrap.innerHTML = `<div style="text-align:center;color:var(--text-faint);padding:8px;font-size:12px">No NPCs recorded.</div>`; return; }
-  wrap.innerHTML = journal.npcs.map(n => `<div style="display:flex;gap:8px;align-items:center;padding:6px 8px;border-bottom:1px solid var(--border)">
-      <div style="flex:1;min-width:0"><strong>${escapeHtml(n.name)}</strong>${n.where ? `<div style="font-size:11px;color:var(--text-muted)">${escapeHtml(n.where)}</div>` : ''}</div>
-      <button onclick="deleteNpc('${n.id}')" style="flex:0 0 auto;background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:14px">×</button>
-    </div>`).join('');
-}
-
 /* ----- combat log ----- */
 function activeCombat() { return (journal.combats || []).find(c => c.active) || null; }
 async function newCombat() {
@@ -5711,7 +5602,7 @@ function exportChronicleMarkdown(mode) {
       // Interleaved: results and descriptions in written order (the on-screen play-log).
       blocks.forEach(b => {
         if (b.kind === 'prose') { lines.push(b.text); lines.push(''); }
-        else { const t = JOURNAL_TYPES[b.type] || JOURNAL_TYPES.note; lines.push(`\`${t.ascii}\` ${b.text}`); lines.push(''); }
+        else { const t = JOURNAL_TYPES[b.type] || JOURNAL_TYPES.note; lines.push(`**${t.label}:** ${b.text}`); lines.push(''); }
       });
     } else {
       // Split: prose paragraphs first, then a Rules Bits subsection (the polished document).
@@ -5719,7 +5610,7 @@ function exportChronicleMarkdown(mode) {
       const autos = blocks.filter(b => b.kind === 'auto');
       if (autos.length || combats.length) {
         lines.push('**Rules Bits**'); lines.push('');
-        autos.forEach(b => { const t = JOURNAL_TYPES[b.type] || JOURNAL_TYPES.note; lines.push(`- \`${t.ascii}\` ${b.text}`); });
+        autos.forEach(b => { const t = JOURNAL_TYPES[b.type] || JOURNAL_TYPES.note; lines.push(`- **${t.label}:** ${b.text}`); });
       }
     }
     // Combats render the same in both modes.
@@ -5729,16 +5620,6 @@ function exportChronicleMarkdown(mode) {
     });
     lines.push('');
   });
-  if (journal.threads.length) {
-    lines.push(''); lines.push('## Threads');
-    journal.threads.forEach(t => lines.push(`- [${t.status === 'closed' ? 'x' : ' '}] ${t.title}`));
-  }
-  if (journal.npcs.length) {
-    lines.push(''); lines.push('## NPCs Met');
-    journal.npcs.forEach(n => lines.push(`- **${n.name}**${n.where ? ` — ${n.where}` : ''}`));
-  }
-  lines.push(''); lines.push('---'); lines.push('');
-  lines.push('Legend: `@` action · `?` question · `~` oracle · `d:` roll · `->` result · `=>` consequence · `%` status · `#` milestone · `*` note');
   const md = lines.join('\n');
   const blob = new Blob([md], { type: 'text/markdown' });
   const a = document.createElement('a');

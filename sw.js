@@ -8,7 +8,7 @@
 //     and only then posts SKIP_WAITING. Avoids reloading the user mid-edit.
 // Bump CACHE_VERSION on any deploy so old caches are garbage-collected on activate.
 
-const CACHE_VERSION = 'tor2e-v51';
+const CACHE_VERSION = 'tor2e-v52';
 const PRECACHE = [
   './',
   './index.html',
