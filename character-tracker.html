@@ -687,6 +687,26 @@
   </div>
 
   <div class="card">
+    <h3 class="card-title">Oracle &amp; Events</h3>
+    <div style="display:flex;gap:6px">
+      <input id="ch-oracle-q" placeholder="Yes/no question…" style="flex:1;padding:7px;border:1px solid var(--border);border-radius:6px;background:var(--bg-deep);color:var(--ink)" onkeydown="if(event.key==='Enter')chronicleAsk()">
+      <select id="ch-oracle-chance" style="font-size:12px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;background:var(--bg-deep);color:var(--ink)">
+        <option value="certain">Certain</option>
+        <option value="likely">Likely</option>
+        <option value="middling" selected>Middling</option>
+        <option value="doubtful">Doubtful</option>
+        <option value="unthinkable">Unthinkable</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:6px;margin-top:6px">
+      <button class="add-row-btn" onclick="chronicleAsk()" style="flex:1;background:var(--gold)">🔮 Ask</button>
+      <button class="add-row-btn" onclick="chronicleLore()" style="flex:1;background:var(--btn-secondary-bg);font-size:12px" title="Action / Aspect / Focus inspiration">Lore words</button>
+      <button class="add-row-btn" onclick="rollRandomEvent()" style="flex:1;background:var(--btn-secondary-bg);font-size:12px" title="Mythic-style random event (focus + meaning)">🎲 Event</button>
+    </div>
+    <p class="hint" style="text-align:left;margin-top:6px">Asks/rolls log a result line into the open scene — tap “✎ describe” to narrate it. (Same Telling/Lore tables as the Oracle tab.)</p>
+  </div>
+
+  <div class="card">
     <h3 class="card-title">Combat Log</h3>
     <div id="ch-combat-card"></div>
     <p class="hint" style="margin-top:6px">Track a fight round-by-round; the foe's Endurance/Hate count down here, and the rounds fold into the open scene when the fight ends (and into the export's Rules Bits).</p>
@@ -3549,23 +3569,38 @@ function renderOracleHistory() {
   el.innerHTML = oracleHistory.map(h => `<div style="padding:5px 8px;border-bottom:1px solid var(--border)"><strong>${h.label}</strong> · ${h.result} <span style="float:right;color:var(--text-muted);font-size:11px">${h.time}</span></div>`).join('');
 }
 
-function rollTellingTable() {
-  const q = (document.getElementById('oracle-telling-q').value || '').trim();
-  const chance = document.getElementById('oracle-telling-chance').value;
-  const threshold = TELLING_THRESHOLDS[chance];
+// Core Telling-Table resolution — shared by the Oracle tab and the inline Chronicle ask.
+// Rolls, logs (structured Q→Tool→Answer into the Chronicle), and returns the result.
+function _tellingResult(q, chance) {
+  const threshold = TELLING_THRESHOLDS[chance] || 6;
   const r = rollFeatOnce();
   let answer, twist = '';
   if (r.special === 'rune') { answer = 'YES'; twist = ' (extreme result or twist — Gandalf Rune)'; }
   else if (r.special === 'eye') { answer = 'NO'; twist = ' (extreme result or twist — Eye of Sauron)'; }
   else { answer = r.value >= threshold ? 'YES' : 'NO'; }
+  const chanceLabel = chance.charAt(0).toUpperCase() + chance.slice(1);
+  const jtext = `Q: ${q || '(unstated)'} · Telling Table (${chanceLabel}) → ${answer}${twist}`;
+  logOracleRoll(`Telling (${chance}): "${(q || '').substring(0,30)}${(q || '').length>30?'…':''}"`, `${answer}${twist}`, jtext);
+  return { answer, twist, r, threshold };
+}
+function rollTellingTable() {
+  const q = (document.getElementById('oracle-telling-q').value || '').trim();
+  const chance = document.getElementById('oracle-telling-chance').value;
+  const res = _tellingResult(q, chance);
   const resultEl = document.getElementById('oracle-telling-result');
   resultEl.style.display = 'block';
   resultEl.innerHTML = `<strong>Q:</strong> ${escapeHtml(q || '(no question entered)')}<br>` +
-    `<strong>Feat die:</strong> ${r.label} · chance: ${chance} (yes if ≥ ${threshold})<br>` +
-    `<strong style="color:${answer==='YES'?'var(--success-text)':'var(--error-text)'};font-size:18px">→ ${answer}${twist}</strong>`;
-  const chanceLabel = chance.charAt(0).toUpperCase() + chance.slice(1);
-  const jtext = `Q: ${q || '(unstated)'} · Telling Table (${chanceLabel}) → ${answer}${twist}`;
-  logOracleRoll(`Telling (${chance}): "${q.substring(0,30)}${q.length>30?'…':''}"`, `${answer}${twist}`, jtext);
+    `<strong>Feat die:</strong> ${res.r.label} · chance: ${chance} (yes if ≥ ${res.threshold})<br>` +
+    `<strong style="color:${res.answer==='YES'?'var(--success-text)':'var(--error-text)'};font-size:18px">→ ${res.answer}${res.twist}</strong>`;
+}
+// A random Lore row (Action/Aspect/Focus) from the active table — used by Chronicle Lore + random events.
+function _randomLoreRow() {
+  const moria = isMoria();
+  const r = rollFeatOnce();
+  const sectionKey = r.special === 'eye' ? 'eye' : (r.special === 'rune' ? 'rune' : r.value);
+  const rowIdx = Math.floor(Math.random() * 6);
+  if (moria) { const a = (MORIA_LORE[sectionKey] || MORIA_LORE[1])[rowIdx]; return { action: a[0], aspect: a[1], focus: a[2] }; }
+  return (LORE_TABLE[sectionKey] || LORE_TABLE[1])[rowIdx];
 }
 
 function rollLoreTable() {
@@ -5191,6 +5226,41 @@ function rollWritingPrompt() {
   else if (hopeMax > 0 && hopeCur >= hopeMax * 0.7) pool = WRITING_PROMPTS.hopeful;
   const text = pool[Math.floor(Math.random() * pool.length)];
   pushBlock('auto', 'prompt', text, 'manual');  // a describable prompt line (not gated by toggles)
+  renderChronicle();
+}
+// Mythic-style random event: focus (tied to your threads/NPCs where relevant) + meaning (Lore words).
+const EVENT_FOCUS = [
+  { max: 7, label: 'Remote event' }, { max: 28, label: 'NPC action' }, { max: 35, label: 'New NPC' },
+  { max: 45, label: 'Move toward a thread' }, { max: 52, label: 'Move away from a thread' }, { max: 55, label: 'Close a thread' },
+  { max: 67, label: 'You — a setback' }, { max: 75, label: 'You — a boon' }, { max: 83, label: 'Ambiguous event' },
+  { max: 92, label: 'NPC — a setback' }, { max: 100, label: 'NPC — a boon' }
+];
+function rollRandomEvent() {
+  const n = Math.floor(Math.random() * 100) + 1;
+  const focus = (EVENT_FOCUS.find(f => n <= f.max) || EVENT_FOCUS[0]).label;
+  const row = _randomLoreRow();
+  let extra = '';
+  if (focus.includes('thread')) {
+    const open = journal.threads.filter(t => t.status === 'open');
+    if (open.length) extra = ' → ' + open[Math.floor(Math.random() * open.length)].title;
+  } else if (focus.includes('NPC') && !focus.includes('New')) {
+    if (journal.npcs.length) extra = ' → ' + journal.npcs[Math.floor(Math.random() * journal.npcs.length)].name;
+  }
+  pushBlock('auto', 'event', `${focus}${extra} · meaning: ${row.action} / ${row.aspect}`, 'manual');
+  renderChronicle();
+}
+// Inline Chronicle oracle — ask the Telling Table / Lore Table without leaving the tab.
+function chronicleAsk() {
+  const qEl = document.getElementById('ch-oracle-q');
+  const q = (qEl?.value || '').trim();
+  const chance = document.getElementById('ch-oracle-chance')?.value || 'middling';
+  _tellingResult(q, chance);   // logs the structured line into the open scene
+  if (qEl) qEl.value = '';
+  renderChronicle();
+}
+function chronicleLore() {
+  const row = _randomLoreRow();
+  pushBlock('auto', 'oracle', `Lore → ${row.action} / ${row.aspect} / ${row.focus}`, 'manual');
   renderChronicle();
 }
 async function renameScene(id) {
