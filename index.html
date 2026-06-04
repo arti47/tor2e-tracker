@@ -5110,6 +5110,7 @@ function loadJournal() {
       if (!Array.isArray(j.scenes)) j.scenes = [];
       if (!Array.isArray(j.entries)) j.entries = [];
       if (!Array.isArray(j.combats)) j.combats = [];
+      j.combats.forEach(c => { if (!c.foe || typeof c.foe !== 'object') c.foe = { atkDice: 2, atkDmg: 4, atkInj: 14, atkTN: 14 }; });  // adversary attack profile
       if (!Array.isArray(j.threads)) j.threads = [];
       if (!Array.isArray(j.npcs)) j.npcs = [];
       j.clock = { ...defaultJournal().clock, ...(j.clock || {}) };
@@ -5510,7 +5511,10 @@ async function newCombat() {
   const end = Math.max(0, parseInt(endStr) || 0), hate = Math.max(0, parseInt(hateStr) || 0);
   journal.combats.push({
     id: genCharId(), sceneId: journal.activeSceneId, foeName: (name.trim() || 'Foe'),
-    endMax: end, endCur: end, hateMax: hate, hateCur: hate, rounds: [], active: true, outcome: '', date: { ...journal.clock }
+    endMax: end, endCur: end, hateMax: hate, hateCur: hate, rounds: [], active: true, outcome: '', date: { ...journal.clock },
+    // Adversary attack profile for the "Foe Attacks" helper (editable in the card). TOR2E stat-block
+    // shape: N success dice (atkDice) · Damage (atkDmg) · Injury TN (atkInj) · the foe's attack TN (atkTN).
+    foe: { atkDice: 2, atkDmg: 4, atkInj: 14, atkTN: 14 }
   });
   saveJournal(); renderChronicle();
 }
@@ -5535,6 +5539,43 @@ function addCombatRound(id) {
   c.rounds.push({ hero, foe });
   if (heroEl) heroEl.value = ''; if (foeEl) foeEl.value = '';
   saveJournal(); renderChronicleCombat();
+}
+// Edit the foe's stored attack profile (dice / Damage / Injury TN / attack TN).
+function setFoeProfile(id, field, val) {
+  const c = (journal.combats || []).find(x => x.id === id); if (!c) return;
+  if (!c.foe || typeof c.foe !== 'object') c.foe = { atkDice: 2, atkDmg: 4, atkInj: 14, atkTN: 14 };
+  c.foe[field] = Math.max(0, parseInt(val) || 0);
+  saveJournal();
+  renderChronicleCombat();  // refresh the button's TN label
+}
+// Roll the foe's attack: Feat + atkDice success dice vs (foe attack TN + your Parry total). On a hit,
+// subtract the foe's Damage from YOUR Endurance and log the foe side of the round (auto-fills it).
+function foeAttacks(id) {
+  const c = (journal.combats || []).find(x => x.id === id); if (!c) return;
+  const f = c.foe || { atkDice: 2, atkDmg: 4, atkInj: 14, atkTN: 14 };
+  const heroParry = (parseInt(char.parry) || 0) + (parseInt(char.shieldTotal) || 0);
+  const tn = (parseInt(f.atkTN) || 0) + heroParry;
+  const roll = _doInlineRoll(parseInt(f.atkDice) || 0, 'normal', tn);
+  const hit = roll.outcome.startsWith('SUCCESS');
+  const score = roll.featSpecial === 'rune' ? '★(Rune)' : (roll.featSpecial === 'eye' ? '✗(Eye)' : roll.total);
+  let line = `${c.foeName} attacks · ${score} vs TN ${tn} (${f.atkTN} + Parry ${heroParry}) → `;
+  if (hit) {
+    const dmg = parseInt(f.atkDmg) || 0;
+    char.endCur = Math.max(0, (parseInt(char.endCur) || 0) - dmg);
+    line += `HIT · −${dmg} End → ${char.endCur}/${char.endMax}`;
+    if (roll.icons > 0 && f.atkInj) line += ` · Piercing Blow possible (your Protection vs ${f.atkInj})`;
+    if (char.endCur === 0) line += ' · ⚠ you are Dying';
+    saveCharacter();
+  } else {
+    line += `miss${roll.icons ? ` (${roll.icons}✦)` : ''}`;
+  }
+  // Auto-fill the foe slot of the latest round if it's empty; otherwise start a new round.
+  const rounds = c.rounds || (c.rounds = []);
+  const last = rounds[rounds.length - 1];
+  if (last && !last.foe) last.foe = line; else rounds.push({ hero: '', foe: line });
+  saveJournal();
+  render();                 // reflect the hero's new Endurance + any Dying/condition state
+  renderChronicleCombat();  // refresh the combat card (rounds + Endurance)
 }
 async function editCombatRound(id, idx) {
   const c = (journal.combats || []).find(x => x.id === id); if (!c || !c.rounds[idx]) return;
@@ -5585,6 +5626,9 @@ function renderChronicleCombat() {
   const eaStep = (d, lbl) => `<button onclick="adjCombatEye(${d})" style="width:26px;height:26px;border:1px solid var(--border);background:var(--card-bg);color:var(--ink);border-radius:4px;cursor:pointer">${lbl}</button>`;
   const ea = parseInt(char.eyeAwareness) || 0;
   const hunt = (HUNT_THRESHOLDS[char.huntRegion] || 16) + (parseInt(char.huntMod) || 0);
+  const f = c.foe || (c.foe = { atkDice: 2, atkDmg: 4, atkInj: 14, atkTN: 14 });
+  const heroParry = (parseInt(char.parry) || 0) + (parseInt(char.shieldTotal) || 0);
+  const fIn = (field, val) => `<input type="number" min="0" value="${val}" onchange="setFoeProfile('${c.id}','${field}',this.value)" style="width:38px;padding:3px 4px;border:1px solid var(--border);border-radius:4px;background:var(--bg-deep);color:var(--ink);font-size:12px">`;
   let rounds = (c.rounds || []).map((r, i) => `<div style="display:flex;gap:6px;padding:3px 0;border-top:1px solid var(--border);font-size:12px">
       <span style="flex:0 0 26px;color:var(--text-faint)">R${i + 1}</span>
       <span style="flex:1;min-width:0"><span style="color:var(--ink)">${escapeHtml(r.hero || '—')}</span>${r.foe ? `<br><span style="color:var(--red-dark)">${escapeHtml(r.foe)}</span>` : ''}</span>
@@ -5601,7 +5645,17 @@ function renderChronicleCombat() {
       <div style="display:flex;align-items:center;gap:4px">Hate <strong style="min-width:36px;text-align:center">${c.hateCur}/${c.hateMax}</strong>${step(c.id,'hateCur',-1,'−')}${step(c.id,'hateCur',1,'+')}</div>
     </div>
     <div style="display:flex;align-items:center;gap:4px;font-size:13px;margin-top:6px">👁️ Eye <strong style="min-width:42px;text-align:center;color:${ea >= hunt ? 'var(--red-dark)' : 'var(--ink)'}">${ea} / ${hunt}</strong>${eaStep(-1,'−')}${eaStep(1,'+')}<span style="font-size:10px;color:var(--text-faint)">vs Hunt</span></div>
-    <p class="hint" style="text-align:left;margin:8px 0 2px;color:var(--text-faint)">⚔️ Attack rolls on the Dice/Combat tab auto-add a round here and subtract weapon Damage. Use the fields below only for a manual/narrative round; tap ✎ to edit any round.</p>
+    <div style="margin-top:8px;padding-top:7px;border-top:1px solid var(--border)">
+      <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;font-size:12px;color:var(--ink)">
+        <span style="font-weight:600;color:var(--red-dark)">🗡️ Foe attack:</span>
+        ${fIn('atkDice', f.atkDice)}<span>dice</span>
+        <span>Dmg</span>${fIn('atkDmg', f.atkDmg)}
+        <span>Inj</span>${fIn('atkInj', f.atkInj)}
+        <span>TN</span>${fIn('atkTN', f.atkTN)}
+      </div>
+      <button onclick="foeAttacks('${c.id}')" class="add-row-btn" style="width:100%;margin-top:6px;background:var(--btn-alert-bg)">🗡️ ${escapeHtml(c.foeName)} Attacks — roll vs TN ${(parseInt(f.atkTN)||0) + heroParry} (foe ${f.atkTN} + your Parry ${heroParry})</button>
+    </div>
+    <p class="hint" style="text-align:left;margin:8px 0 2px;color:var(--text-faint)">⚔️ Your attack rolls on the Dice/Combat tab auto-add a round and subtract weapon Damage. 🗡️ Foe Attacks rolls the foe's hit (Feat + dice) and subtracts its Damage from <em>your</em> Endurance. Use the fields below for a manual/narrative round; tap ✎ to edit any round.</p>
     <input id="ch-rd-hero" placeholder="Your round — stance · weapon · roll · result" style="width:100%;margin-top:4px;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg-deep);color:var(--ink);font-size:13px">
     <input id="ch-rd-foe" placeholder="Foe — attacks · result (Piercing Blow, etc.)" style="width:100%;margin-top:4px;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg-deep);color:var(--ink);font-size:13px">
     <button onclick="addCombatRound('${c.id}')" class="add-row-btn" style="width:100%;margin-top:6px;background:var(--gold)">Log Round ${(c.rounds || []).length + 1} manually</button>
