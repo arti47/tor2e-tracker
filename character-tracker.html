@@ -670,7 +670,10 @@
     </div>
     <div id="ch-active-scene" style="font-size:12px;color:var(--red-dark);font-weight:600;margin-bottom:6px"></div>
     <textarea id="ch-compose" placeholder="Write what happens…" rows="3" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--bg-deep);color:var(--ink);resize:vertical;font-size:14px;line-height:1.5"></textarea>
-    <button class="add-row-btn" onclick="addProseToScene()" style="width:100%;margin-top:6px;background:var(--gold)">Add to scene</button>
+    <div style="display:flex;gap:6px;margin-top:6px">
+      <button class="add-row-btn" onclick="addProseToScene()" style="flex:1;background:var(--gold)">Add to scene</button>
+      <button class="add-row-btn" onclick="rollWritingPrompt()" title="A writing prompt tuned to your Shadow/Hope — drop it in and answer it below" style="background:var(--btn-secondary-bg);font-size:12px">💭 Prompt</button>
+    </div>
     <details style="margin-top:8px">
       <summary style="cursor:pointer;font-size:12px;color:var(--text-muted)">Auto-capture settings</summary>
       <div style="display:flex;flex-direction:column;gap:4px;margin-top:6px;font-size:13px">
@@ -5042,6 +5045,8 @@ const JOURNAL_TYPES = {
   consequence: { ascii: '=>', label: 'Consequence' },
   status:      { ascii: '%',  label: 'Status' },
   milestone:   { ascii: '#',  label: 'Milestone' },
+  event:       { ascii: '!',  label: 'Event' },
+  prompt:      { ascii: '>',  label: 'Prompt' },
   note:        { ascii: '*',  label: 'Note' }
 };
 function defaultJournal() {
@@ -5114,11 +5119,24 @@ function saveJournal() {
 
 /* ----- scenes & blocks ----- */
 function nowStamp() { return new Date().toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }); }
+// Snapshot of the hero's vitals at scene start (the paper "state line"). Shadow includes Scars.
+function captureState() {
+  return {
+    endCur: parseInt(char.endCur) || 0, endMax: parseInt(char.endMax) || 0,
+    hopeCur: parseInt(char.hopeCur) || 0, hopeMax: parseInt(char.hopeMax) || 0,
+    shadow: (parseInt(char.shadow) || 0) + (parseInt(char.scars) || 0),
+    eye: parseInt(char.eyeAwareness) || 0
+  };
+}
+function stateLabel(s) {
+  if (!s) return '';
+  return `End ${s.endCur}/${s.endMax} · Hope ${s.hopeCur}/${s.hopeMax} · Shadow ${s.shadow} · Eye ${s.eye}`;
+}
 function journalActiveScene() { return journal.scenes.find(s => s.id === journal.activeSceneId) || null; }
 function ensureActiveScene() {
   let sc = journalActiveScene();
   if (!sc) {
-    sc = { id: genCharId(), title: `${ordinal(journal.clock.day)} ${journal.clock.month}`, date: { ...journal.clock }, ts: nowStamp() };
+    sc = { id: genCharId(), title: `${ordinal(journal.clock.day)} ${journal.clock.month}`, date: { ...journal.clock }, ts: nowStamp(), state: captureState() };
     journal.scenes.push(sc);
     journal.activeSceneId = sc.id;
   }
@@ -5127,7 +5145,7 @@ function ensureActiveScene() {
 async function newScene() {
   const frame = await promptStyled('Frame the scene — where, when, what’s at stake:', '', 'New Scene', 'e.g. Dusk at the Forsaken Inn — the watcher rises to leave');
   if (frame === null) return;  // cancelled
-  const sc = { id: genCharId(), title: (frame.trim() || `${ordinal(journal.clock.day)} ${journal.clock.month}`), date: { ...journal.clock }, ts: nowStamp() };
+  const sc = { id: genCharId(), title: (frame.trim() || `${ordinal(journal.clock.day)} ${journal.clock.month}`), date: { ...journal.clock }, ts: nowStamp(), state: captureState() };
   journal.scenes.push(sc);
   journal.activeSceneId = sc.id;
   saveJournal();
@@ -5138,6 +5156,42 @@ function setActiveScene(id) {
   journal.activeSceneId = id;
   saveJournal(); renderChronicle();
   const ta = document.getElementById('ch-compose'); if (ta) ta.focus();
+}
+function toggleSceneCollapse(id) {
+  const sc = journal.scenes.find(s => s.id === id); if (!sc) return;
+  sc.collapsed = !sc.collapsed; saveJournal(); renderChronicleTimeline();
+}
+// Move a block up/down among its scene-siblings in the global entries array.
+function moveBlock(id, dir) {
+  const e = journal.entries; const i = e.findIndex(b => b.id === id); if (i < 0) return;
+  const sid = e[i].sceneId; let j = i + dir;
+  while (j >= 0 && j < e.length && e[j].sceneId !== sid) j += dir;
+  if (j < 0 || j >= e.length || e[j].sceneId !== sid) return;  // no sibling that way
+  const tmp = e[i]; e[i] = e[j]; e[j] = tmp;
+  saveJournal(); renderChronicleTimeline();
+}
+function jumpToScene(id) {
+  if (!id) return;
+  const sc = journal.scenes.find(s => s.id === id);
+  if (sc && sc.collapsed) { sc.collapsed = false; saveJournal(); renderChronicleTimeline(); }
+  const el = document.getElementById('ch-scene-' + id);
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+// Writing prompts — picked by current Shadow/Hope state.
+const WRITING_PROMPTS = {
+  shadowed: ['What dark thought gnaws at you tonight?', 'Whose face from the past haunts your rest?', 'What small cruelty did the road tempt you toward?', 'What do you fear you are becoming?'],
+  hopeful:  ['What small beauty reminded you why you walk this road?', 'Whose memory steadies your hand?', 'What kindness did you receive, unlooked-for?', 'What do you still believe is worth saving?'],
+  neutral:  ['What does the land tell you, if you stop to listen?', 'What does your hero notice that a lesser traveller would miss?', 'What do you carry that you have not yet had cause to use?', 'Who might be watching the road behind you?']
+};
+function rollWritingPrompt() {
+  const shadow = (parseInt(char.shadow) || 0) + (parseInt(char.scars) || 0);
+  const hopeMax = parseInt(char.hopeMax) || 1, hopeCur = parseInt(char.hopeCur) || 0;
+  let pool = WRITING_PROMPTS.neutral;
+  if (hopeMax > 0 && shadow >= hopeCur) pool = WRITING_PROMPTS.shadowed;       // Miserable-ish
+  else if (hopeMax > 0 && hopeCur >= hopeMax * 0.7) pool = WRITING_PROMPTS.hopeful;
+  const text = pool[Math.floor(Math.random() * pool.length)];
+  pushBlock('auto', 'prompt', text, 'manual');  // a describable prompt line (not gated by toggles)
+  renderChronicle();
 }
 async function renameScene(id) {
   const sc = journal.scenes.find(s => s.id === id); if (!sc) return;
@@ -5215,7 +5269,7 @@ function saveDescribe(id) {
 }
 // Opt-in demo so the play-log layout is obvious on first open. The example is normal data — edit or delete freely.
 function loadSampleChronicle() {
-  const sc = { id: genCharId(), title: 'The Forsaken Inn (example)', date: { ...journal.clock }, ts: nowStamp() };
+  const sc = { id: genCharId(), title: 'The Forsaken Inn (example)', date: { ...journal.clock }, ts: nowStamp(), state: captureState() };
   journal.scenes.push(sc); journal.activeSceneId = sc.id;
   const mk = (kind, type, text, source) => ({ id: genCharId(), sceneId: sc.id, kind, type, text, source: source || (kind === 'auto' ? 'auto:ojc' : 'manual'), ts: nowStamp(), date: { ...journal.clock } });
   journal.entries.push(mk('prose', 'note', 'Dusk. The common room empties; a hooded watcher rises to leave.'));
@@ -5369,52 +5423,62 @@ function renderChronicleTimeline() {
       <button class="add-row-btn" onclick="loadSampleChronicle()" style="background:var(--btn-secondary-bg);font-size:12px">Load an example scene</button></div>`;
     return;
   }
-  // Newest scene first; blocks within a scene stay in chronological (written) order.
+  // Jump-to-scene selector (only worth showing past a couple of scenes).
   let html = '';
+  if (journal.scenes.length > 2) {
+    html += `<select onchange="jumpToScene(this.value);this.selectedIndex=0" style="width:100%;margin-bottom:8px;font-size:12px;padding:4px 6px;border:1px solid var(--border);border-radius:5px;background:var(--bg-deep);color:var(--ink)">
+      <option value="">↪ Jump to scene…</option>
+      ${journal.scenes.slice().reverse().map(s => `<option value="${s.id}">${escapeHtml(s.title)}</option>`).join('')}
+    </select>`;
+  }
+  const editTextarea = (b) => `<div style="padding:4px 8px">
+      <textarea id="ch-edit-${b.id}" rows="3" style="width:100%;padding:6px;border:1px solid var(--gold);border-radius:6px;background:var(--bg-deep);color:var(--ink);font-size:14px;line-height:1.5">${escapeHtml(b.text)}</textarea>
+      <div style="display:flex;gap:6px;margin-top:4px">
+        <button onclick="saveBlockEdit('${b.id}')" class="add-row-btn" style="background:var(--gold);font-size:12px;flex:1">Save</button>
+        <button onclick="cancelBlockEdit()" class="add-row-btn" style="background:var(--btn-secondary-bg);font-size:12px;flex:1">Cancel</button>
+      </div>
+    </div>`;
+  const moveBtns = (id) => `<button onclick="moveBlock('${id}',-1)" title="Move up" style="flex:0 0 auto;background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:11px">▲</button><button onclick="moveBlock('${id}',1)" title="Move down" style="flex:0 0 auto;background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:11px">▼</button>`;
+  // Newest scene first; blocks within a scene stay in chronological (written) order.
   journal.scenes.slice().reverse().forEach(sc => {
     const blocks = journal.entries.filter(e => e.sceneId === sc.id);
     const shown = q ? blocks.filter(b => (b.text || '').toLowerCase().includes(q)) : blocks;
     if (q && shown.length === 0 && !sc.title.toLowerCase().includes(q)) return;  // scene filtered out
     const active = sc.id === journal.activeSceneId;
-    html += `<div style="margin:10px 0 4px;padding:6px 8px;background:var(--gold-soft);border-radius:6px;display:flex;align-items:center;gap:6px">
+    const collapsed = !!sc.collapsed;
+    const sceneCombats = (journal.combats || []).filter(c => c.sceneId === sc.id && !c.active);
+    html += `<div id="ch-scene-${sc.id}" style="margin:10px 0 4px;padding:6px 8px;background:var(--gold-soft);border-radius:6px;display:flex;align-items:center;gap:6px">
+      <button onclick="toggleSceneCollapse('${sc.id}')" title="${collapsed ? 'Expand' : 'Collapse'}" style="flex:0 0 auto;background:none;border:none;cursor:pointer;color:var(--ink);font-size:12px">${collapsed ? '▸' : '▾'}</button>
       <div style="flex:1;min-width:0">
-        <div style="font-weight:700;color:var(--ink);font-size:13px">${escapeHtml(sc.title)}${active ? ' <span style="font-size:9px;background:var(--gold);color:#fff;padding:1px 5px;border-radius:6px;vertical-align:middle">OPEN</span>' : ''}</div>
-        <div style="font-size:10px;color:var(--text-faint)">${dateLabel(sc.date)}</div>
+        <div style="font-weight:700;color:var(--ink);font-size:13px">${escapeHtml(sc.title)}${active ? ' <span style="font-size:9px;background:var(--gold);color:#fff;padding:1px 5px;border-radius:6px;vertical-align:middle">OPEN</span>' : ''}${collapsed ? ` <span style="font-size:10px;color:var(--text-faint);font-weight:400">(${blocks.length})</span>` : ''}</div>
+        <div style="font-size:10px;color:var(--text-faint)">${dateLabel(sc.date)}${sc.state ? ' · ' + stateLabel(sc.state) : ''}</div>
       </div>
       ${active ? '' : `<button onclick="setActiveScene('${sc.id}')" title="Write here" style="background:none;border:1px solid var(--border);border-radius:4px;font-size:10px;padding:2px 6px;cursor:pointer;color:var(--ink)">Write here</button>`}
       <button onclick="renameScene('${sc.id}')" title="Rename" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:13px">✎</button>
       <button onclick="deleteScene('${sc.id}')" title="Delete scene" style="background:none;border:none;cursor:pointer;color:var(--text-faint);font-size:14px">×</button>
     </div>`;
-    // Interleaved play-log: blocks render in chronological (written) order — a dimmed roll
-    // result, then the description you wrote for it, then the next roll, and so on.
-    const sceneCombats = (journal.combats || []).filter(c => c.sceneId === sc.id && !c.active);
+    if (collapsed) return;
+    // Interleaved play-log: blocks in written order — a dimmed roll result, then its description.
     if (shown.length === 0 && sceneCombats.length === 0) {
       html += `<div style="padding:6px 10px;font-size:12px;color:var(--text-faint)">${q ? '(no matching lines)' : 'Empty scene — write the first line below, or make a roll on the Oracle/Dice tabs.'}</div>`;
     }
     shown.forEach(b => {
+      if (_editingBlockId === b.id) { html += editTextarea(b); return; }
       if (b.kind === 'prose') {
-        if (_editingBlockId === b.id) {
-          html += `<div style="padding:4px 8px">
-            <textarea id="ch-edit-${b.id}" rows="3" style="width:100%;padding:6px;border:1px solid var(--gold);border-radius:6px;background:var(--bg-deep);color:var(--ink);font-size:14px;line-height:1.5">${escapeHtml(b.text)}</textarea>
-            <div style="display:flex;gap:6px;margin-top:4px">
-              <button onclick="saveBlockEdit('${b.id}')" class="add-row-btn" style="background:var(--gold);font-size:12px;flex:1">Save</button>
-              <button onclick="cancelBlockEdit()" class="add-row-btn" style="background:var(--btn-secondary-bg);font-size:12px;flex:1">Cancel</button>
-            </div>
-          </div>`;
-        } else {
-          html += `<div style="display:flex;gap:6px;padding:2px 10px 6px;align-items:flex-start">
-            <div style="flex:1;min-width:0;line-height:1.55;white-space:pre-wrap">${escapeHtml(b.text)}</div>
-            <button onclick="editBlock('${b.id}')" title="Edit" style="flex:0 0 auto;background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:12px">✎</button>
-            <button onclick="deleteChronicleEntry('${b.id}')" title="Delete" style="flex:0 0 auto;background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:13px">×</button>
-          </div>`;
-        }
+        html += `<div style="display:flex;gap:4px;padding:2px 10px 6px;align-items:flex-start">
+          <div style="flex:1;min-width:0;line-height:1.55;white-space:pre-wrap">${escapeHtml(b.text)}</div>
+          ${moveBtns(b.id)}
+          <button onclick="editBlock('${b.id}')" title="Edit" style="flex:0 0 auto;background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:12px">✎</button>
+          <button onclick="deleteChronicleEntry('${b.id}')" title="Delete" style="flex:0 0 auto;background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:13px">×</button>
+        </div>`;
       } else {
-        // Roll result — dimmed line, with a "describe" affordance that attaches prose right after it.
         const t = JOURNAL_TYPES[b.type] || JOURNAL_TYPES.note;
-        html += `<div style="display:flex;gap:8px;padding:5px 10px 1px;align-items:baseline;opacity:0.7">
+        html += `<div style="display:flex;gap:6px;padding:5px 10px 1px;align-items:baseline;opacity:0.72">
           <span style="flex:0 0 auto;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted)">${t.label}</span>
           <span style="flex:1;min-width:0;font-size:12px;font-style:italic;color:var(--text-muted)">${escapeHtml(b.text)}</span>
-          <button onclick="describeBlock('${b.id}')" title="Describe" style="flex:0 0 auto;background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:11px">✎ describe</button>
+          ${moveBtns(b.id)}
+          <button onclick="describeBlock('${b.id}')" title="Describe below" style="flex:0 0 auto;background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:11px">✎ describe</button>
+          <button onclick="editBlock('${b.id}')" title="Edit line" style="flex:0 0 auto;background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:11px">edit</button>
           <button onclick="deleteChronicleEntry('${b.id}')" title="Delete" style="flex:0 0 auto;background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:13px">×</button>
         </div>`;
         if (_describingId === b.id) {
@@ -8155,7 +8219,7 @@ async function arriveAtDestination() {
   // In solo play, offer to open a fresh "at the landmark" scene in the Chronicle (montage → play hand-off).
   const dest = j.destination || 'the destination';
   if (isSolo() && await confirmStyled(escapeHtml(recap).replace(/\n/g, '<br>') + `<br><br>Start a Chronicle scene at <strong>${escapeHtml(dest)}</strong>?`, '🏁 Arrived')) {
-    const sc = { id: genCharId(), title: `At ${dest}`, date: { ...journal.clock }, ts: nowStamp() };
+    const sc = { id: genCharId(), title: `At ${dest}`, date: { ...journal.clock }, ts: nowStamp(), state: captureState() };
     journal.scenes.push(sc);
     journal.activeSceneId = sc.id;
     saveJournal();
