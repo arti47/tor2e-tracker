@@ -9549,6 +9549,7 @@ async function pickWeapon(i) {
     grip: grip,
     load: String(w.load),
     notes: w.notes,
+    prof: w.prof,
     picked: true
   });
   saveCharacter();
@@ -9832,7 +9833,10 @@ function encEngagedFoes() { return enc().foes.filter(f => f.engaged && !f.slain)
 function ensureEncounterActive() { const e = enc(); if (!e.active) { e.active = true; e.round = 1; } }
 function encDeriveEngaged() { const e = enc(); if (e.active) char.engagedFoes = encEngagedFoes().length; }
 function _newFoeId() { return 'f' + Date.now() + Math.floor(Math.random() * 1000); }
-function _equippedWeapons() { return (char.weapons || []).map((w, i) => ({ ...w, idx: i })).filter(w => w.prof && (parseInt(w.dmg) || 0) > 0); }
+function _equippedWeapons() { return (char.weapons || []).map((w, i) => ({ ...w, idx: i, prof: _weaponProf(w) })).filter(w => (parseInt(w.dmg) || 0) > 0); }
+// Equipped weapons don't always store `prof` (picked weapons historically didn't). Derive it from
+// the WEAPONS catalog by name, falling back to any stored prof, then '' (custom → treated as Brawling).
+function _weaponProf(w) { if (w && w.prof) return w.prof; const wp = WEAPONS.find(x => x.name === (w && w.name)); return wp ? wp.prof : ''; }
 
 function nextRound() { const e = enc(); e.round = (parseInt(e.round) || 1) + 1; saveCharacter(); renderEncounter(); }
 async function endEncounter() {
@@ -9942,10 +9946,12 @@ async function heroAttackFoe(foeId) {
   if (!wpns.length) { alert('Equip a weapon in War Gear first.'); return; }
   const e = enc();
   const w = wpns[Math.min(e.weaponIdx || 0, wpns.length - 1)];
-  const profRating = w.prof === 'Brawling' ? getBrawlingRating() : (parseInt((char.profs || {})[w.prof]) || 0);
+  const prof = w.prof;
+  // Brawling (derived) and custom weapons with no known proficiency both use the Brawling rating.
+  const profRating = (!prof || prof === 'Brawling') ? getBrawlingRating() : (parseInt((char.profs || {})[prof]) || 0);
   const a = e.adv;
   let dice = profRating, note = [];
-  const isRanged = w.prof === 'Bows' || /bow/i.test(w.name);
+  const isRanged = prof === 'Bows' || /bow/i.test(w.name);
   if (char.stance === 'forward') { dice += 1; note.push('Fwd +1d'); }
   else if (char.stance === 'defensive') { const foes = encEngagedFoes().length; dice = Math.max(0, dice - foes); if (foes) note.push(`Def −${foes}d`); }
   else if (char.stance === 'rearward' && !isRanged) { note.push('⚠ Rearward: melee cannot attack'); }
@@ -10042,7 +10048,7 @@ function renderEncounter() {
     <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:12px;margin-bottom:6px">
       <span>Attack with:</span>
       <select onchange="setEncWeapon(this.value)" style="flex:1;min-width:130px;padding:4px;border:1px solid var(--border);border-radius:5px;background:var(--bg-deep);color:var(--ink)">
-        ${wpns.length ? wpns.map((w, i) => `<option value="${i}" ${i === wIdx ? 'selected' : ''}>${escapeHtml(w.name)} (${w.dmg}/${w.inj}, ${w.prof})</option>`).join('') : '<option>— no weapon equipped —</option>'}
+        ${wpns.length ? wpns.map((w, i) => `<option value="${i}" ${i === wIdx ? 'selected' : ''}>${escapeHtml(w.name)} (${w.dmg}/${w.inj}, ${w.prof || 'Brawling'})</option>`).join('') : '<option>— no weapon equipped —</option>'}
       </select>
       <button onclick="toggleEncAdv()" class="add-row-btn" style="font-size:11px;padding:3px 8px;background:${a.open ? 'var(--gold)' : 'var(--btn-secondary-bg)'};color:${a.open ? 'var(--ink)' : 'white'}">⚙ Advanced</button>
     </div>`;
