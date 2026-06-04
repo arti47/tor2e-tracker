@@ -5550,7 +5550,7 @@ function setFoeProfile(id, field, val) {
 }
 // Roll the foe's attack: Feat + atkDice success dice vs (foe attack TN + your Parry total). On a hit,
 // subtract the foe's Damage from YOUR Endurance and log the foe side of the round (auto-fills it).
-function foeAttacks(id) {
+async function foeAttacks(id) {
   const c = (journal.combats || []).find(x => x.id === id); if (!c) return;
   const f = c.foe || { atkDice: 2, atkDmg: 4, atkInj: 14, atkTN: 14 };
   const heroParry = (parseInt(char.parry) || 0) + (parseInt(char.shieldTotal) || 0);
@@ -5558,23 +5558,45 @@ function foeAttacks(id) {
   const roll = _doInlineRoll(parseInt(f.atkDice) || 0, 'normal', tn);
   const hit = roll.outcome.startsWith('SUCCESS');
   const score = roll.featSpecial === 'rune' ? '★(Rune)' : (roll.featSpecial === 'eye' ? '✗(Eye)' : roll.total);
+  // Piercing Blow: a Gandalf rune or a 10 on the foe's Feat die (matches the hero-attack model).
+  const piercing = hit && (roll.featSpecial === 'rune' || roll.featValue === 10);
   let line = `${c.foeName} attacks · ${score} vs TN ${tn} (${f.atkTN} + Parry ${heroParry}) → `;
   if (hit) {
     const dmg = parseInt(f.atkDmg) || 0;
     char.endCur = Math.max(0, (parseInt(char.endCur) || 0) - dmg);
     line += `HIT · −${dmg} End → ${char.endCur}/${char.endMax}`;
-    if (roll.icons > 0 && f.atkInj) line += ` · Piercing Blow possible (your Protection vs ${f.atkInj})`;
     if (char.endCur === 0) line += ' · ⚠ you are Dying';
     saveCharacter();
   } else {
     line += `miss${roll.icons ? ` (${roll.icons}✦)` : ''}`;
   }
+
+  // Piercing Blow → auto-prompt the hero's Protection roll vs the foe's Injury TN; a failure
+  // marks Wounded and rolls Wound Severity (shared with the Dice-tab Protection card).
+  if (piercing) {
+    const injTN = parseInt(f.atkInj) || 14;
+    if (await confirmStyled(`🗡️ <strong>Piercing Blow!</strong> ${escapeHtml(c.foeName)}'s blow finds a gap.<br><br>Roll your Protection vs Injury <strong>${injTN}</strong>?`, 'Piercing Blow')) {
+      const protDice = (parseInt(char.armourProt) || 0) + (parseInt(char.helmProt) || 0);
+      const P = _protectionRoll(injTN, protDice);
+      const pScore = P.isAutoSuccess ? '★' : (P.isAutoFail ? '✗' : P.total);
+      if (P.outcome.startsWith('SUCCESS')) {
+        line += ` · Piercing Blow — Protection ${pScore} vs ${injTN} → resisted`;
+      } else {
+        line += ` · Piercing Blow — Protection ${pScore} vs ${injTN} → WOUNDED`;
+        const wr = await _applyWoundFromFail();
+        line += ` (${wr.label})`;
+      }
+    } else {
+      line += ` · Piercing Blow (resolve Protection manually)`;
+    }
+  }
+
   // Auto-fill the foe slot of the latest round if it's empty; otherwise start a new round.
   const rounds = c.rounds || (c.rounds = []);
   const last = rounds[rounds.length - 1];
   if (last && !last.foe) last.foe = line; else rounds.push({ hero: '', foe: line });
   saveJournal();
-  render();                 // reflect the hero's new Endurance + any Dying/condition state
+  render();                 // reflect the hero's new Endurance + any Dying/Wounded state
   renderChronicleCombat();  // refresh the combat card (rounds + Endurance)
 }
 async function editCombatRound(id, idx) {
@@ -9627,13 +9649,11 @@ async function clearShield() {
 }
 
 /* ---------- PROTECTION ROLL ---------- */
-async function rollProtection() {
-  const tn = parseInt(document.getElementById('prot-injury-tn').value);
-  let protDice = parseInt(document.getElementById('prot-dice').value);
-  if (isNaN(protDice)) protDice = parseInt(char.armourProt) || 0;
-
-  if (!tn) { alert('Enter the weapon Injury TN first'); return; }
-
+// Pure Protection roll: Feat + protDice success dice (+ Close-fitting / Furious / Stone-Hard /
+// Skin-Coat bonuses, Weary, Miserable) vs the weapon Injury TN. No DOM, no save — the caller
+// (Dice tab or Chronicle foe-attack flow) renders and applies the result. Shared so both match.
+function _protectionRoll(tn, protDice) {
+  if (protDice == null || isNaN(protDice)) protDice = parseInt(char.armourProt) || 0;
   // Beornings Furious: Wounded → Protection rolls Favoured (roll 2 Feat dice, keep better)
   const furiousFav = (char.culture === 'Beornings' && char.wounded);
   // Stone-Hard (Dwarves of Durin's Folk) — Protection rolls Favoured unless Miserable
@@ -9661,12 +9681,33 @@ async function rollProtection() {
     ((char.armourRewards || []).includes('Close-fitting') ? 2 : 0) +
     ((char.helmRewards || []).includes('Close-fitting') ? 2 : 0)
   );
-  let total = isAutoSuccess ? null : feat.value + dice.reduce((s, d) => s + (d.wearied ? 0 : d.value), 0) + closeFittingBonus;
-
+  const total = isAutoSuccess ? null : feat.value + dice.reduce((s, d) => s + (d.wearied ? 0 : d.value), 0) + closeFittingBonus;
   let outcome;
   if (isAutoFail) outcome = 'FAIL';
   else if (isAutoSuccess) outcome = 'SUCCESS (Rune!)';
   else outcome = (total >= tn) ? 'SUCCESS' : 'FAIL';
+  return { feat, dice, total, outcome, isAutoSuccess, isAutoFail, closeFittingBonus, furiousFav, stoneHardFav, skinCoatBonus };
+}
+// Mark Wounded + roll & record Wound Severity (shared by the Dice tab and the foe-attack flow).
+// Returns the severity result.
+async function _applyWoundFromFail() {
+  char.wounded = true;
+  const r = rollWoundSeverity();
+  char.injury = `${r.label} — ${r.detail}`;
+  char.injuryDays = r.days;
+  char.firstAidUsed = false;  // new injury → First Aid available again
+  saveCharacter();
+  render();
+  alert(`Wound Severity:\n\n${r.label}\n${r.detail}`);
+  return r;
+}
+async function rollProtection() {
+  const tn = parseInt(document.getElementById('prot-injury-tn').value);
+  let protDice = parseInt(document.getElementById('prot-dice').value);
+  if (!tn) { alert('Enter the weapon Injury TN first'); return; }
+
+  const R = _protectionRoll(tn, isNaN(protDice) ? null : protDice);
+  const { feat, dice, total, outcome, isAutoSuccess, isAutoFail, closeFittingBonus, furiousFav, stoneHardFav, skinCoatBonus } = R;
 
   // Render
   const resultEl = document.getElementById('prot-result');
@@ -9697,14 +9738,7 @@ async function rollProtection() {
 
   if (outcome === 'FAIL') {
     if (await confirmStyled('Failed Protection Roll!\n\nMark Wounded and roll Wound Severity?')) {
-      char.wounded = true;
-      const r = rollWoundSeverity();
-      char.injury = `${r.label} — ${r.detail}`;
-      char.injuryDays = r.days;
-      char.firstAidUsed = false;  // new injury → First Aid available again
-      saveCharacter();
-      render();
-      alert(`Wound Severity:\n\n${r.label}\n${r.detail}`);
+      await _applyWoundFromFail();
     }
   }
 }
