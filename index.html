@@ -5082,7 +5082,7 @@ function defaultJournal() {
     threads: [],    // { id, title, status:'open'|'closed', notes, opened, closed }
     npcs: [],       // { id, name, where, notes }
     clock: { year: 2965, month: 'Astron', day: 1, phase: 'Adventuring' },
-    settings: { ojc: true, dice: false, status: true, advancement: true },  // dice off by default (noisy)
+    settings: { ojc: true, dice: true, status: true, advancement: true },  // dice on (every roll logs to the open scene)
     activeSceneId: null
   };
 }
@@ -5120,6 +5120,9 @@ function loadJournal() {
       }
       delete j.clock.season;
       j.settings = { ...defaultJournal().settings, ...(j.settings || {}) };
+      // One-time flip: existing journals had dice-capture off by default; turn it on once so
+      // combat & skill rolls log to the scene. Respected afterward (the toggle still saves).
+      if (!j._diceOnMigrated) { j.settings.dice = true; j._diceOnMigrated = true; }
       // Migrate flat (pre-scene) entries into one starting scene, in chronological order.
       const orphans = j.entries.filter(e => !e.sceneId);
       if (orphans.length && j.scenes.length === 0) {
@@ -5533,6 +5536,16 @@ function addCombatRound(id) {
   if (heroEl) heroEl.value = ''; if (foeEl) foeEl.value = '';
   saveJournal(); renderChronicleCombat();
 }
+async function editCombatRound(id, idx) {
+  const c = (journal.combats || []).find(x => x.id === id); if (!c || !c.rounds[idx]) return;
+  const hero = await promptStyled('Your round (stance · weapon · roll · result):', c.rounds[idx].hero || '', `Edit Round ${idx + 1}`);
+  if (hero === null) return;
+  const foe = await promptStyled('Foe — attacks · result (optional):', c.rounds[idx].foe || '', `Edit Round ${idx + 1}`);
+  if (foe === null) return;
+  c.rounds[idx].hero = hero.trim();
+  c.rounds[idx].foe = foe.trim();
+  saveJournal(); renderChronicleCombat();
+}
 function delCombatRound(id, idx) {
   const c = (journal.combats || []).find(x => x.id === id); if (!c) return;
   c.rounds.splice(idx, 1); saveJournal(); renderChronicleCombat();
@@ -5575,6 +5588,7 @@ function renderChronicleCombat() {
   let rounds = (c.rounds || []).map((r, i) => `<div style="display:flex;gap:6px;padding:3px 0;border-top:1px solid var(--border);font-size:12px">
       <span style="flex:0 0 26px;color:var(--text-faint)">R${i + 1}</span>
       <span style="flex:1;min-width:0"><span style="color:var(--ink)">${escapeHtml(r.hero || '—')}</span>${r.foe ? `<br><span style="color:var(--red-dark)">${escapeHtml(r.foe)}</span>` : ''}</span>
+      <button onclick="editCombatRound('${c.id}',${i})" title="Edit this round" style="background:none;border:none;color:var(--text-faint);cursor:pointer">✎</button>
       <button onclick="delCombatRound('${c.id}',${i})" style="background:none;border:none;color:var(--text-faint);cursor:pointer">×</button>
     </div>`).join('');
   card.innerHTML = `
@@ -5587,9 +5601,10 @@ function renderChronicleCombat() {
       <div style="display:flex;align-items:center;gap:4px">Hate <strong style="min-width:36px;text-align:center">${c.hateCur}/${c.hateMax}</strong>${step(c.id,'hateCur',-1,'−')}${step(c.id,'hateCur',1,'+')}</div>
     </div>
     <div style="display:flex;align-items:center;gap:4px;font-size:13px;margin-top:6px">👁️ Eye <strong style="min-width:42px;text-align:center;color:${ea >= hunt ? 'var(--red-dark)' : 'var(--ink)'}">${ea} / ${hunt}</strong>${eaStep(-1,'−')}${eaStep(1,'+')}<span style="font-size:10px;color:var(--text-faint)">vs Hunt</span></div>
-    <input id="ch-rd-hero" placeholder="Your round — stance · weapon · roll · result" style="width:100%;margin-top:8px;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg-deep);color:var(--ink);font-size:13px">
+    <p class="hint" style="text-align:left;margin:8px 0 2px;color:var(--text-faint)">⚔️ Attack rolls on the Dice/Combat tab auto-add a round here and subtract weapon Damage. Use the fields below only for a manual/narrative round; tap ✎ to edit any round.</p>
+    <input id="ch-rd-hero" placeholder="Your round — stance · weapon · roll · result" style="width:100%;margin-top:4px;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg-deep);color:var(--ink);font-size:13px">
     <input id="ch-rd-foe" placeholder="Foe — attacks · result (Piercing Blow, etc.)" style="width:100%;margin-top:4px;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg-deep);color:var(--ink);font-size:13px">
-    <button onclick="addCombatRound('${c.id}')" class="add-row-btn" style="width:100%;margin-top:6px;background:var(--gold)">Log Round ${(c.rounds || []).length + 1}</button>
+    <button onclick="addCombatRound('${c.id}')" class="add-row-btn" style="width:100%;margin-top:6px;background:var(--gold)">Log Round ${(c.rounds || []).length + 1} manually</button>
     <div style="margin-top:6px">${rounds}</div>`;
 }
 
@@ -12085,6 +12100,34 @@ function rollDice(skillLabel) {
   saveHistory();
   renderHistory();
   if (typeof journalAuto === 'function') journalAuto('dice', 'roll', `${label} — ${isAutoSuccess ? '★' : (isAutoFail ? '✗' : total)} vs ${tn} → ${outcome}${icons ? ' (' + icons + '✦)' : ''}`);
+
+  // Mirror an attack roll into the active Chronicle Combat Log: auto-append an editable round
+  // built from the roll, and apply the equipped weapon's Damage to the foe's Endurance on a hit.
+  if (diceState.isAttack && typeof activeCombat === 'function' && journal) {
+    const combat = activeCombat();
+    if (combat) {
+      const prof = diceState.lastAttackProf || label;
+      // Pick the equipped weapon for this proficiency (highest Damage if several) to size the hit.
+      const wpns = (char.weapons || []).filter(w => w.prof === prof && (parseInt(w.dmg) || 0) > 0);
+      const wpn = wpns.sort((a, b) => (parseInt(b.dmg) || 0) - (parseInt(a.dmg) || 0))[0] || null;
+      const hit = outcome.startsWith('SUCCESS') && !isAutoFail;
+      const stance = char.stance ? char.stance + ' · ' : '';
+      const score = isAutoSuccess ? '★' : (isAutoFail ? '✗' : total);
+      let line = `${stance}${wpn ? wpn.name : prof} · ${score} vs ${tn} → ${outcome}${icons ? ` (${icons}✦)` : ''}`;
+      if (hit && wpn) {
+        const dmg = parseInt(wpn.dmg) || 0;
+        combat.endCur = Math.max(0, (parseInt(combat.endCur) || 0) - dmg);
+        line += ` · −${dmg} End → ${combat.endCur}/${combat.endMax}`;
+        if (piercing && icons > 0 && wpn.inj && wpn.inj !== '—') line += ` · Piercing Blow possible (foe Protection vs ${wpn.inj})`;
+      } else if (hit && !wpn) {
+        line += ` · (no weapon for ${prof} — adjust End manually)`;
+      }
+      combat.rounds.push({ hero: line, foe: '' });
+      saveJournal();
+      const panel = document.getElementById('panel-chronicle');
+      if (panel && panel.classList.contains('active')) renderChronicle();
+    }
+  }
 
   // Reset Hope spend / Magical / stance / Keen / Brave / isAttack / combatTask state and refresh UI
   diceState.hopeSpend = false;
