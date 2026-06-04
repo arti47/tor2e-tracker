@@ -4538,15 +4538,18 @@ const DEFAULT_CHARACTER = {
   weapons: []  // [{name, dmg, inj, load, notes}]
 };
 
-let char = loadCharacter();
-let history = loadHistory();
-let journal = loadJournal();
-
 /* ---------- STATE ---------- */
 // Bump when a *breaking* schema change needs a one-time transform on load. The defensive
 // per-field guards in migrateCharacter() already make old saves forward-compatible; this
 // stamp lets future migrations branch on `raw.schemaVersion` if a destructive change ever lands.
+// NB: must be declared BEFORE the top-level loadCharacter() call below — migrateCharacter()
+// reads it during that call, so a later `const` here would hit the temporal dead zone and throw
+// (which silently bricked the whole page for anyone with saved character data).
 const CHARACTER_SCHEMA_VERSION = 1;
+
+let char = loadCharacter();
+let history = loadHistory();
+let journal = loadJournal();
 
 /**
  * True if `obj` looks like a TOR2E character object (not an array, not a primitive,
