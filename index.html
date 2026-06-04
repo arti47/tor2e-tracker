@@ -12176,7 +12176,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'http:' || location.p
     const b = document.createElement('div');
     b.id = 'sw-update-banner';
     b.textContent = '🔄 New version available — tap to update';
-    b.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom));z-index:99999;background:var(--gold,#b8860b);color:#fff;padding:11px 20px;border-radius:22px;font-size:13px;font-weight:600;box-shadow:0 3px 14px rgba(0,0,0,.4);cursor:pointer;max-width:90%;text-align:center;animation:pulse 1.6s infinite';
+    b.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom));z-index:190;background:var(--gold,#b8860b);color:#fff;padding:11px 20px;border-radius:22px;font-size:13px;font-weight:600;box-shadow:0 3px 14px rgba(0,0,0,.4);cursor:pointer;max-width:90%;text-align:center;animation:pulse 1.6s infinite';
     b.onclick = () => {
       b.textContent = 'Updating…';
       userTriggeredUpdate = true;
