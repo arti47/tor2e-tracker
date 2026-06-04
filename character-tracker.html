@@ -12165,39 +12165,32 @@ document.addEventListener('DOMContentLoaded', () => {
 // PWA service worker — enables offline & Android Add-to-Home-Screen install.
 // Only runs when the page is served over http(s) (skipped for file:// previews).
 if ('serviceWorker' in navigator && (location.protocol === 'http:' || location.protocol === 'https:')) {
-  let userTriggeredUpdate = false, reloading = false;
-  // Reload ONLY when the user tapped "update" (avoids a jarring reload on first install).
+  // AUTO-UPDATE strategy: the SW skipWaiting()s on install and claims clients on activate,
+  // so a new deploy takes over on the next online load with no manual "tap to update" step.
+  // When the new worker takes control, we reload ONCE to pick up the fresh HTML. This prevents
+  // clients from getting marooned on a stale build. (localStorage persists across the reload,
+  // and the app saves on every change, so the reload is safe.)
+  let reloading = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (userTriggeredUpdate && !reloading) { reloading = true; window.location.reload(); }
+    if (!reloading) { reloading = true; window.location.reload(); }
   });
-
-  function showUpdateBanner(reg) {
-    if (document.getElementById('sw-update-banner')) return;
-    const b = document.createElement('div');
-    b.id = 'sw-update-banner';
-    b.textContent = '🔄 New version available — tap to update';
-    b.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom));z-index:190;background:var(--gold,#b8860b);color:#fff;padding:11px 20px;border-radius:22px;font-size:13px;font-weight:600;box-shadow:0 3px 14px rgba(0,0,0,.4);cursor:pointer;max-width:90%;text-align:center;animation:pulse 1.6s infinite';
-    b.onclick = () => {
-      b.textContent = 'Updating…';
-      userTriggeredUpdate = true;
-      if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
-      else { reloading = true; window.location.reload(); }
-    };
-    document.body.appendChild(b);
-  }
 
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('sw.js').then(reg => {
-      // A new worker already waiting (e.g. updated in a background tab)?
-      if (reg.waiting && navigator.serviceWorker.controller) showUpdateBanner(reg);
+      // If a newer worker is already waiting, activate it immediately.
+      if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
       reg.addEventListener('updatefound', () => {
         const nw = reg.installing;
         if (!nw) return;
         nw.addEventListener('statechange', () => {
-          // 'installed' + an existing controller ⇒ this is an UPDATE, not first install.
-          if (nw.state === 'installed' && navigator.serviceWorker.controller) showUpdateBanner(reg);
+          // New worker installed alongside an existing controller ⇒ activate it now.
+          if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+            nw.postMessage({ type: 'SKIP_WAITING' });
+          }
         });
       });
+      // Proactively check for an update on every load.
+      reg.update().catch(() => {});
     }).catch(err => console.warn('TOR2E SW registration failed:', err));
   });
 }

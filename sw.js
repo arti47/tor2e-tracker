@@ -4,11 +4,12 @@
 //     fall back to cache only when offline. This means a deploy shows up on the next
 //     online load with no stale-cache lag.
 //   • Static assets (icons, manifest) → CACHE-FIRST for speed/offline.
-//   • Updates do NOT auto-activate; the page shows a "New version — tap to update" banner
-//     and only then posts SKIP_WAITING. Avoids reloading the user mid-edit.
+//   • Updates AUTO-ACTIVATE: install skipWaiting()s and activate claims clients, so a new
+//     deploy takes over on the next online load (the page reloads once to pick up fresh HTML).
+//     This keeps clients from getting stuck on a stale build.
 // Bump CACHE_VERSION on any deploy so old caches are garbage-collected on activate.
 
-const CACHE_VERSION = 'tor2e-v55';
+const CACHE_VERSION = 'tor2e-v56';
 const PRECACHE = [
   './',
   './index.html',
@@ -26,7 +27,7 @@ self.addEventListener('install', (event) => {
       Promise.all(PRECACHE.map(u => cache.add(u).catch(() => null)))
     )
   );
-  // No skipWaiting() here — the page prompts the user, then sends SKIP_WAITING.
+  self.skipWaiting();  // auto-activate so stuck clients can't be marooned on an old build
 });
 
 self.addEventListener('activate', (event) => {
