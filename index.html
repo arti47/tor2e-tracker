@@ -2856,6 +2856,7 @@ async function promptStyled(message, defaultValue, title, placeholder) {
 })();
 
 async function toggleStriderMode() {
+  document.getElementById('menu-overlay').classList.remove('show');  // close menu so the dialog + result are visible
   const turningOn = !char.striderMode;
   const msg = turningOn
     ? `<strong>Enable Strider Mode?</strong><br><br>Solo / no-Loremaster play variant. Changes:<ul style="text-align:left;font-size:12px;padding-left:18px;margin:6px 0"><li>PE budget: 10 → <strong>15</strong></li><li>Attribute TN: <strong>18 − Rating</strong> (was 20 − Rating)</li><li>Fellowship Rating starts at <strong>3</strong></li><li>Adds free <strong>Strider</strong> Distinctive Feature (Inspired while journeying)</li><li>Unlocks <strong>Oracle tab</strong> (Telling / Lore / Fortune / Ill-Fortune tables)</li><li>Unlocks <strong>Skirmish stance</strong> + <strong>Gain Ground</strong> combat task</li><li>Unlocks <strong>Eye of Mordor</strong> tracking</li></ul>You can switch back any time. Attribute TNs will recalculate.`
@@ -2885,6 +2886,7 @@ async function toggleStriderMode() {
 // mode that takes precedence over Strider on shared surfaces. Independent boolean — can be
 // on alongside Strider (for overland travel outside Moria).
 async function toggleMoriaMode() {
+  document.getElementById('menu-overlay').classList.remove('show');  // close menu so the dialog + result are visible
   const turningOn = !char.moriaMode;
   const msg = turningOn
     ? `<strong>Enable Moria Solo Mode?</strong><br><br>Solo campaign leading a Band of Allies under Balin's expedition. Changes (Phase 1):<ul style="text-align:left;font-size:12px;padding-left:18px;margin:6px 0"><li>PE budget: → <strong>15</strong> (solo)</li><li><strong>+5 max Hope</strong> (support of your Band)</li><li>Patron is <strong>Balin</strong> — <em>Balin's Counsel</em>: spend Fellowship to make a combat/battle roll Favoured</li><li>Fellowship Rating starts at <strong>3</strong> (+1 from Balin)</li><li>Safe Haven → <strong>Moria — First Hall</strong></li><li>Journeys use the <strong>Moria</strong> event table (Dark Land, Ill-Favoured)</li><li>Unlocks <strong>Oracle tab</strong> + <strong>Eye of Mordor</strong> (Moria: Dark Land, Hunt 14)</li></ul>Band roster, Battles, and Moria oracle tables arrive in later phases. You can switch back any time.`
