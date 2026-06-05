@@ -675,9 +675,9 @@
     <textarea id="ch-compose" placeholder="Write what happens…" rows="3" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--bg-deep);color:var(--ink);resize:vertical;font-size:14px;line-height:1.5"></textarea>
     <div style="display:flex;gap:6px;margin-top:6px">
       <button class="add-row-btn" onclick="addProseToScene()" style="flex:1;background:var(--gold)">Add to scene</button>
-      <button class="add-row-btn" onclick="rollWritingPrompt()" title="Writing prompt tuned to your Shadow/Hope — a journaling aid, not a Strider Mode rule" style="background:var(--btn-secondary-bg);font-size:12px">💭 Prompt</button>
+      <button class="add-row-btn" onclick="rollWritingPrompt()" title="Scene seed — Where · Who/What · Happening · Mood, tuned to your situation. A journaling aid, not a Strider Mode rule" style="background:var(--btn-secondary-bg);font-size:12px">🎬 Scene</button>
     </div>
-    <p class="hint" style="text-align:left;margin-top:2px;color:var(--text-faint)">💭 Prompt is a journaling aid, not a Strider Mode rule.</p>
+    <p class="hint" style="text-align:left;margin-top:2px;color:var(--text-faint)">🎬 Scene seeds a frame (Where · Who · What · Mood) — a journaling aid, not a Strider Mode rule.</p>
     <details style="margin-top:8px">
       <summary style="cursor:pointer;font-size:12px;color:var(--text-muted)">Auto-capture settings</summary>
       <div style="display:flex;flex-direction:column;gap:4px;margin-top:6px;font-size:13px">
@@ -5283,20 +5283,41 @@ function jumpToScene(id) {
   const el = document.getElementById('ch-scene-' + id);
   if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
-// Writing prompts — picked by current Shadow/Hope state.
-const WRITING_PROMPTS = {
-  shadowed: ['What dark thought gnaws at you tonight?', 'Whose face from the past haunts your rest?', 'What small cruelty did the road tempt you toward?', 'What do you fear you are becoming?'],
-  hopeful:  ['What small beauty reminded you why you walk this road?', 'Whose memory steadies your hand?', 'What kindness did you receive, unlooked-for?', 'What do you still believe is worth saving?'],
-  neutral:  ['What does the land tell you, if you stop to listen?', 'What does your hero notice that a lesser traveller would miss?', 'What do you carry that you have not yet had cause to use?', 'Who might be watching the road behind you?']
+// Scene generator (a journaling aid, not a Strider Mode rule). Produces a structured Middle-earth
+// scene frame — Where · Who/What · Happening · Mood — chosen from a context that reads your state:
+// journeying → wilderness/road scenes; otherwise a settled/respite context; and when the Shadow
+// runs high or the Eye is near its Hunt threshold, a peril overlay lets dread creep in.
+const SCENE_GEN = {
+  travel: {
+    where: ['a leaning standing-stone where the path forks', 'the dark eaves of an ancient wood', 'a fog-bound fen where the ground is never sure', 'a tumbled bridge above a swift, cold stream', 'an old road half-swallowed by grass and years', 'a windswept ridge with the land laid bare below', 'a hollow beneath the roots of a great fallen tree', 'a deserted wayside shelter, its hearth long cold', 'a ford where the water runs grey and quick', 'a cairn-topped hill that the birds avoid'],
+    who: ['a wary stranger who keeps one hand near a blade', 'no one — but fresh tracks crossing your own', 'a frightened beast fleeing something behind it', 'a lone figure watching from a far hilltop', 'travellers who draw together at your approach', 'a hooded wanderer who will not meet your eye', 'birds that scatter all at once, startled by the unseen', 'an old soul who knows this country and its dangers', 'the marks of a camp, abandoned in haste', 'a voice on the wind, too faint to name'],
+    what: ['you must find shelter before the light fails', 'the way ahead is blocked, and another must be found', 'you cross sign of those you seek — or those who seek you', 'the weather turns hard against you', 'two paths offer themselves, and neither is kind', 'you stumble on something half-buried and old', 'a small mercy presents itself — will you spare the time?', 'weariness or hunger forces a hard choice', 'you glimpse a light where no light should be', 'the silence itself seems to be waiting'],
+    mood: ['weary but watchful', 'a fragile, listening quiet', 'the land feels emptied of its old songs', 'mist and failing half-light', 'cold, and the promise of worse', 'a brief, undeserved beauty']
+  },
+  rest: {
+    where: ['a smoky common-room loud with other folk', 'a quiet chamber lent to you for the night', 'the worn steps before a hall of stone', 'a market lane winding down to dusk', 'a walled garden gone half to seed', 'the gate of the settlement, watched by tired guards', 'a small fire in a sheltered camp, the dark close around', 'a bench beneath an old tree where elders gather', 'a stable or storeroom where you have made your bed', 'a high window that looks back over the land you crossed'],
+    who: ['your host, generous but full of questions', 'an old acquaintance you did not expect to find', 'a guarded official who measures every word', 'a teller of rumours eager for a fresh ear', 'a child who has watched you since you came', 'a messenger who has been seeking you by name', 'a weary companion who needs your counsel', 'a stranger whose courtesy hides a colder purpose', 'an old one who remembers the days before the Shadow', 'someone in need, who has no one else to ask'],
+    what: ['you are asked for news of the road behind you', 'a rumour reaches you that you cannot ignore', 'an old debt — or an old kindness — is recalled', 'you must win the trust of one who doubts you', 'a quiet hour to mend gear, body, and heart', 'an unwelcome question you would rather not answer', 'a chance to learn what the wise here know', 'a parting, or a promise, before you go on', 'you overhear what was not meant for your ears', 'the comfort here makes the leaving harder'],
+    mood: ['warm, but watchful', 'open-handed and kind', 'tense beneath the courtesy', 'a hard-won, fragile peace', 'busy and indifferent to your troubles', 'heavy with things unsaid']
+  },
+  peril: {
+    who: ['a servant of the Enemy, hunting with purpose', 'watching eyes you can feel but cannot place', 'a thing that should be long dead, and is not', 'a fell voice that seems to know your name', 'orc-sign, fresh and far too many', 'a shadow that moves against the wind', 'a creature of the old dark, woken and hungry', 'one who was a friend, now changed and cold'],
+    what: ['you are hunted, and the net is drawing tight', 'dread settles on you without visible cause', 'something bars the way that means you only harm', 'a trap closes — flight or a stand, choose now', 'the Shadow reaches for your heart; hold fast', 'you must abandon something, or someone, to live', 'the Enemy’s eye turns this way for a moment', 'a betrayal, small or great, comes to light'],
+    mood: ['dread, cold and patient', 'a waiting malice in the air', 'the dark pressing close at the firelight’s edge', 'menace, and no clear way out', 'the weight of the Eye, far off but felt']
+  }
 };
 function rollWritingPrompt() {
+  const pick = arr => arr[Math.floor(Math.random() * arr.length)];
   const shadow = (parseInt(char.shadow) || 0) + (parseInt(char.scars) || 0);
-  const hopeMax = parseInt(char.hopeMax) || 1, hopeCur = parseInt(char.hopeCur) || 0;
-  let pool = WRITING_PROMPTS.neutral;
-  if (hopeMax > 0 && shadow >= hopeCur) pool = WRITING_PROMPTS.shadowed;       // Miserable-ish
-  else if (hopeMax > 0 && hopeCur >= hopeMax * 0.7) pool = WRITING_PROMPTS.hopeful;
-  const text = pool[Math.floor(Math.random() * pool.length)];
-  pushBlock('auto', 'prompt', text, 'manual');  // a describable prompt line (not gated by toggles)
+  const hopeMax = parseInt(char.hopeMax) || 0;
+  const hunt = (typeof HUNT_THRESHOLDS !== 'undefined' ? (HUNT_THRESHOLDS[char.huntRegion] || 16) : 16) + (parseInt(char.huntMod) || 0);
+  const eye = parseInt(char.eyeAwareness) || 0;
+  const solo = (typeof isSolo === 'function') && isSolo();
+  const perilous = (hopeMax > 0 && shadow >= Math.ceil(hopeMax * 0.5)) || (solo && eye >= hunt);
+  const ctx = (char.journey && char.journey.active) ? SCENE_GEN.travel : SCENE_GEN.rest;
+  const src = perilous ? SCENE_GEN.peril : ctx;
+  const line = `🎬 Scene — Where: ${pick(ctx.where)}. Who/What: ${pick(src.who)}. Happening: ${pick(src.what)}. Mood: ${pick(src.mood)}.`;
+  pushBlock('auto', 'prompt', line, 'manual');  // a describable scene seed (not gated by toggles)
   renderChronicle();
 }
 // Inline Chronicle oracle — ask the Strider-Mode Telling Table / Lore Table without leaving the tab.
