@@ -28,7 +28,7 @@ grep -o "tor2e-[a-z0-9-]*" character-tracker.html | sort -u   # all localStorage
 
 As of last verification:
 - **`character-tracker.html`**: ~12,690 lines / ~735 KB (includes a ~20 KB vendored QR library in its own `<script>` block)
-- **`sw.js` `CACHE_VERSION`**: `tor2e-v62` (bump on every deploy)
+- **`sw.js` `CACHE_VERSION`**: `tor2e-v63` (bump on every deploy)
 - **SW strategy (since v30)**: HTML/navigations are **network-first** (deploys appear on next online load — no stale-cache lag); static assets cache-first. Updates surface a tap-to-update banner (page posts `SKIP_WAITING`); still bump `CACHE_VERSION` each deploy so old caches are GC'd.
 - **Moria Solo Mode**: ✅ complete (one toggle `⛏️ Enable Moria Solo Mode` → Band + Battle tabs, Moria oracle generators, full solo campaign). Full subsystem reference in the **"Moria Solo Mode"** section below.
 - **localStorage keys**: now a **multi-character roster** (added 2026-05-31):
@@ -551,6 +551,15 @@ A full in-tab combat encounter system on the **Combat tab** (works in all modes 
 - **Foe attacks** (`foeAttackHero`): per-foe per-attack buttons + an **"All engaged foes attack"** button (`allFoesAttack`, sequential, pausing for Piercing-Blow prompts). Reuses the `_protectionRoll`/`_applyWoundFromFail` chain → your Endurance, Dying, Wounded + Severity.
 - **Integration**: `encDeriveEngaged()` keeps `char.engagedFoes` = live engaged foes (feeds the Stance card's Defensive modifier). Every action logs to roll history (`encLogRoll`) **and** the Chronicle scene (`journalAuto('dice',…)`). Round counter (`nextRound`, free-form), slain foes stay listed (greyed), **`endEncounter`** clears.
 - **Verified in jsdom**: bestiary add + engaged-derive; hero attack drains Endurance and slays at 0; hero Piercing → foe Protection → Wounded → slain-on-2nd; foe Piercing → your Protection → Wounded + severity; `allFoesAttack`; render + endEncounter — no errors.
+- **`_equippedWeapons()` derives proficiency** via `_weaponProf(w)` (catalog lookup by name; picked weapons historically stored no `prof`), so the "Attack with" dropdown lists picked **and** custom weapons (custom → Brawling). `pickWeapon` now also stores `prof`.
+
+### Chronicle: combat groups (collapsible) (2026-06-05)
+Encounter combat folds under one collapsible heading in the Chronicle timeline. Per the user's spec: grouping is **encounter-scoped** (first foe → End Encounter), heading is **auto from foe names but renamable**, **collapsed by default with a one-line summary**, exported as a **heading + nested lines**.
+- **Data**: `journal.combatGroups[] = { id, sceneId, title, renamed, collapsed, ongoing, startSnap:{end,hope,shadow}, summary }` + `journal.activeCombatId` (defaults + `loadJournal` guards). Blocks created while a group is open carry `block.combatId` (set in `pushBlock`; inherited in `saveDescribe`).
+- **Lifecycle** (solo only, `isSolo()`-gated): `_encEnsureGroup()` opens/refreshes the group (from `encLogRoll` before the `journalAuto` line, and from `addFoeFromBestiary`); title = `⚔️ Combat vs <foe names>` unless renamed. `_encFinishGroup()` (from `endEncounter`, **before** the encounter is cleared) computes the summary (`N foes · K slain · R rounds · −End · Wounded · ±Hope · +Shadow` vs a start snapshot) and releases `activeCombatId`. Everything logged during the fight — combat lines, other rolls, mid-fight prose — folds in.
+- **Render**: `renderChronicleTimeline` folds each run of same-`combatId` blocks under a gold header (`toggleCombatGroup`, `renameCombatGroup`, `LIVE` badge while ongoing, summary when ended; auto-expands if a child block is being edited/described). Per-block markup extracted to a local `renderOne(b)`.
+- **Export**: `exportChronicleMarkdown` emits each group as `### <title> — <summary>` with its lines nested (Story and Play-log modes).
+- **Verified in jsdom**: group create + auto title; combat lines + mid-fight prose tagged, pre-combat prose untagged; summary on End; new encounter = new group; collapse/expand render; export heading + nested lines — no errors.
 
 ### 🔵 Priority 4 — Expanded rules tracking
 - [ ] **Skill Endeavour tracker** — set Resistance + Time Limit, tally successes

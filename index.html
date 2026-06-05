@@ -5151,7 +5151,9 @@ function defaultJournal() {
   return {
     scenes: [],     // { id, title, date:{year,month,day,phase}, ts }
     entries: [],    // blocks: { id, sceneId, kind:'prose'|'auto', type, text, source, ts, date }
-    combats: [],    // { id, sceneId, foeName, endMax, endCur, hateMax, hateCur, eaStart, rounds:[{hero,foe}], active, outcome, date }
+    combats: [],    // { id, sceneId, foeName, endMax, endCur, hateMax, hateCur, eaStart, rounds:[{hero,foe}], active, outcome, date } — legacy
+    combatGroups: [], // { id, sceneId, title, renamed, collapsed, ongoing, startSnap:{end,hope,shadow}, summary } — folds an encounter's log lines under one heading
+    activeCombatId: null, // the open combat group (blocks logged while set get block.combatId = this)
     threads: [],    // { id, title, status:'open'|'closed', notes, opened, closed }
     npcs: [],       // { id, name, where, notes }
     clock: { year: 2965, month: 'Astron', day: 1, phase: 'Adventuring' },
@@ -5184,6 +5186,8 @@ function loadJournal() {
       if (!Array.isArray(j.entries)) j.entries = [];
       if (!Array.isArray(j.combats)) j.combats = [];
       j.combats.forEach(c => { if (!c.foe || typeof c.foe !== 'object') c.foe = { atkDice: 2, atkDmg: 4, atkInj: 14, atkTN: 14 }; });  // adversary attack profile
+      if (!Array.isArray(j.combatGroups)) j.combatGroups = [];
+      if (j.activeCombatId === undefined) j.activeCombatId = null;
       if (!Array.isArray(j.threads)) j.threads = [];
       if (!Array.isArray(j.npcs)) j.npcs = [];
       j.clock = { ...defaultJournal().clock, ...(j.clock || {}) };
@@ -5330,6 +5334,7 @@ function pushBlock(kind, type, text, source) {
     id: genCharId(), sceneId: sc.id, kind,
     type: JOURNAL_TYPES[type] ? type : 'note',
     text: text.trim(), source: source || 'manual',
+    combatId: journal.activeCombatId || null,  // folds into the open combat group, if any
     ts: nowStamp(), date: { ...journal.clock }
   });
   if (journal.entries.length > 3000) journal.entries.shift();
@@ -5378,7 +5383,7 @@ function saveDescribe(id) {
     const anchor = journal.entries[idx];
     journal.entries.splice(idx + 1, 0, {
       id: genCharId(), sceneId: anchor.sceneId, kind: 'prose', type: 'note',
-      text: ta.value.trim(), source: 'manual', ts: nowStamp(), date: anchor.date || { ...journal.clock }
+      text: ta.value.trim(), source: 'manual', combatId: anchor.combatId || null, ts: nowStamp(), date: anchor.date || { ...journal.clock }
     });
   }
   _describingId = null; saveJournal(); renderChronicleTimeline();
@@ -5535,18 +5540,19 @@ function renderChronicleTimeline() {
     if (shown.length === 0 && sceneCombats.length === 0) {
       html += `<div style="padding:6px 10px;font-size:12px;color:var(--text-faint)">${q ? '(no matching lines)' : 'Empty scene — write the first line below, or make a roll on the Oracle/Dice tabs.'}</div>`;
     }
-    shown.forEach(b => {
-      if (_editingBlockId === b.id) { html += editTextarea(b); return; }
+    // Render a single block (prose or dimmed auto line), incl. its inline edit/describe boxes.
+    const renderOne = (b) => {
+      if (_editingBlockId === b.id) return editTextarea(b);
       if (b.kind === 'prose') {
-        html += `<div style="display:flex;gap:4px;padding:2px 10px 6px;align-items:flex-start">
+        return `<div style="display:flex;gap:4px;padding:2px 10px 6px;align-items:flex-start">
           <div style="flex:1;min-width:0;line-height:1.55;white-space:pre-wrap">${escapeHtml(b.text)}</div>
           ${moveBtns(b.id)}
           <button onclick="editBlock('${b.id}')" title="Edit" style="flex:0 0 auto;background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:12px">✎</button>
           <button onclick="deleteChronicleEntry('${b.id}')" title="Delete" style="flex:0 0 auto;background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:13px">×</button>
         </div>`;
-      } else {
-        const t = JOURNAL_TYPES[b.type] || JOURNAL_TYPES.note;
-        html += `<div style="display:flex;gap:6px;padding:5px 10px 1px;align-items:baseline;opacity:0.72">
+      }
+      const t = JOURNAL_TYPES[b.type] || JOURNAL_TYPES.note;
+      let h = `<div style="display:flex;gap:6px;padding:5px 10px 1px;align-items:baseline;opacity:0.72">
           <span style="flex:0 0 auto;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted)">${t.label}</span>
           <span style="flex:1;min-width:0;font-size:12px;font-style:italic;color:var(--text-muted)">${escapeHtml(b.text)}</span>
           ${moveBtns(b.id)}
@@ -5554,17 +5560,46 @@ function renderChronicleTimeline() {
           <button onclick="editBlock('${b.id}')" title="Edit line" style="flex:0 0 auto;background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:11px">edit</button>
           <button onclick="deleteChronicleEntry('${b.id}')" title="Delete" style="flex:0 0 auto;background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:13px">×</button>
         </div>`;
-        if (_describingId === b.id) {
-          html += `<div style="padding:2px 10px 6px 22px">
+      if (_describingId === b.id) {
+        h += `<div style="padding:2px 10px 6px 22px">
             <textarea id="ch-desc-${b.id}" rows="2" placeholder="Describe what happens…" style="width:100%;padding:6px;border:1px solid var(--gold);border-radius:6px;background:var(--bg-deep);color:var(--ink);font-size:14px;line-height:1.5"></textarea>
             <div style="display:flex;gap:6px;margin-top:4px">
               <button onclick="saveDescribe('${b.id}')" class="add-row-btn" style="background:var(--gold);font-size:12px;flex:1">Add description</button>
               <button onclick="cancelDescribe()" class="add-row-btn" style="background:var(--btn-secondary-bg);font-size:12px;flex:1">Cancel</button>
             </div>
           </div>`;
-        }
       }
-    });
+      return h;
+    };
+    // Walk blocks in written order, folding each run of same-combatId blocks under one heading.
+    let bi = 0;
+    while (bi < shown.length) {
+      const b = shown[bi];
+      const cid = b.combatId;
+      if (cid) {
+        let bj = bi; const run = [];
+        while (bj < shown.length && shown[bj].combatId === cid) { run.push(shown[bj]); bj++; }
+        const g = (journal.combatGroups || []).find(x => x.id === cid);
+        const title = g ? g.title : '⚔️ Combat';
+        const hasOpen = run.some(rb => rb.id === _editingBlockId || rb.id === _describingId);
+        const showCollapsed = (g ? g.collapsed !== false : true) && !hasOpen;
+        const summary = g && !g.ongoing && g.summary ? g.summary : '';
+        html += `<div style="margin:5px 0;border:1px solid var(--gold-soft);border-radius:7px;overflow:hidden">
+            <div style="display:flex;align-items:center;gap:6px;padding:5px 8px;background:var(--gold-soft);cursor:pointer" onclick="toggleCombatGroup('${cid}')">
+              <span style="font-size:11px;color:var(--ink)">${showCollapsed ? '▸' : '▾'}</span>
+              <span style="flex:1;min-width:0;font-weight:700;font-size:12px;color:var(--ink)">${escapeHtml(title)}${g && g.ongoing ? ' <span style="font-size:9px;background:var(--red);color:#fff;padding:1px 5px;border-radius:6px;vertical-align:middle">LIVE</span>' : ''}</span>
+              ${summary ? `<span style="font-size:10px;color:var(--text-muted);text-align:right">${escapeHtml(summary)}</span>` : ''}
+              <button onclick="event.stopPropagation();renameCombatGroup('${cid}')" title="Rename" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:12px">✎</button>
+            </div>`;
+        if (showCollapsed) html += `<div style="padding:3px 10px;font-size:11px;color:var(--text-faint)">${run.length} line${run.length !== 1 ? 's' : ''} — tap to expand</div>`;
+        else { html += `<div style="padding:2px 0">`; run.forEach(rb => { html += renderOne(rb); }); html += `</div>`; }
+        html += `</div>`;
+        bi = bj;
+      } else {
+        html += renderOne(b);
+        bi++;
+      }
+    }
     sceneCombats.forEach(c => { html += renderCombatBlock(c); });
   });
   wrap.innerHTML = html || `<div style="text-align:center;color:var(--text-faint);padding:14px;font-size:12px">No matching entries.</div>`;
@@ -5769,22 +5804,40 @@ function exportChronicleMarkdown(mode) {
     lines.push('');
     const blocks = journal.entries.filter(e => e.sceneId === sc.id);
     const combats = (journal.combats || []).filter(c => c.sceneId === sc.id);
+    // A combat group → a "### heading" with its lines nested beneath (both export modes).
+    const combatHeading = (cid) => { const g = (journal.combatGroups || []).find(x => x.id === cid); lines.push(`### ${g ? g.title : '⚔️ Combat'}${g && g.summary ? ` — ${g.summary}` : ''}`); lines.push(''); };
+    const combatLine = (b) => { if (b.kind === 'prose') { lines.push(b.text); lines.push(''); } else { const t = JOURNAL_TYPES[b.type] || JOURNAL_TYPES.note; lines.push(`- **${t.label}:** ${b.text}`); } };
     if (mode === 'log') {
-      // Interleaved: results and descriptions in written order (the on-screen play-log).
-      blocks.forEach(b => {
-        if (b.kind === 'prose') { lines.push(b.text); lines.push(''); }
-        else { const t = JOURNAL_TYPES[b.type] || JOURNAL_TYPES.note; lines.push(`**${t.label}:** ${b.text}`); lines.push(''); }
-      });
+      // Interleaved play-log; combat runs fold under their heading.
+      let i = 0;
+      while (i < blocks.length) {
+        const b = blocks[i];
+        if (b.combatId) {
+          let j = i; const run = [];
+          while (j < blocks.length && blocks[j].combatId === b.combatId) { run.push(blocks[j]); j++; }
+          combatHeading(b.combatId); run.forEach(combatLine); lines.push('');
+          i = j;
+        } else {
+          if (b.kind === 'prose') { lines.push(b.text); lines.push(''); }
+          else { const t = JOURNAL_TYPES[b.type] || JOURNAL_TYPES.note; lines.push(`**${t.label}:** ${b.text}`); lines.push(''); }
+          i++;
+        }
+      }
     } else {
-      // Split: prose paragraphs first, then a Rules Bits subsection (the polished document).
-      blocks.filter(b => b.kind === 'prose').forEach(b => { lines.push(b.text); lines.push(''); });
-      const autos = blocks.filter(b => b.kind === 'auto');
-      if (autos.length || combats.length) {
+      // Split: loose prose first, then a Rules Bits subsection, then combat headings.
+      const loose = blocks.filter(b => !b.combatId);
+      loose.filter(b => b.kind === 'prose').forEach(b => { lines.push(b.text); lines.push(''); });
+      const autos = loose.filter(b => b.kind === 'auto');
+      if (autos.length) {
         lines.push('**Rules Bits**'); lines.push('');
         autos.forEach(b => { const t = JOURNAL_TYPES[b.type] || JOURNAL_TYPES.note; lines.push(`- **${t.label}:** ${b.text}`); });
+        lines.push('');
       }
+      [...new Set(blocks.filter(b => b.combatId).map(b => b.combatId))].forEach(cid => {
+        combatHeading(cid); blocks.filter(b => b.combatId === cid).forEach(combatLine); lines.push('');
+      });
     }
-    // Combats render the same in both modes.
+    // Legacy journal.combats (pre-encounter data) render the same in both modes.
     combats.forEach(c => {
       lines.push(`- **Combat: ${c.foeName}** (End ${c.endCur}/${c.endMax}, Hate ${c.hateCur}/${c.hateMax})${c.outcome ? ' — ' + c.outcome : ''}`);
       (c.rounds || []).forEach((r, i) => { lines.push(`  - R${i + 1}: ${r.hero || '—'}${r.foe ? ' | ' + r.foe : ''}`); });
@@ -9842,10 +9895,12 @@ function nextRound() { const e = enc(); e.round = (parseInt(e.round) || 1) + 1; 
 async function endEncounter() {
   const e = enc();
   if (e.foes.length && !await confirmStyled('End the encounter and clear all adversaries?', 'End Encounter')) return;
+  _encFinishGroup();  // finalise the Chronicle combat group (summary) BEFORE clearing the encounter
   char.encounter = JSON.parse(JSON.stringify(DEFAULT_CHARACTER.encounter));
   char.engagedFoes = 0;
   _encResults = {};
   saveCharacter(); render(); renderEncounter();
+  if (typeof renderChronicle === 'function') renderChronicle();
 }
 
 // ----- bestiary / adding foes -----
@@ -9873,7 +9928,7 @@ function addFoeFromBestiary(idx) {
     attacks: JSON.parse(JSON.stringify(b.attacks)), fell: b.fell,
     engaged: true, wounded: false, slain: false
   });
-  encDeriveEngaged(); saveCharacter(); renderEncounter();
+  encDeriveEngaged(); _encEnsureGroup(); saveCharacter(); renderEncounter();
   document.getElementById('bestiary-overlay').classList.remove('show');
 }
 function addCustomFoe() {
@@ -9913,12 +9968,64 @@ function setEncAdv(field, val) {
   saveCharacter(); renderEncounter();
 }
 
+// ----- Chronicle combat group (folds an encounter's log lines under one collapsible heading) -----
+function _encGroupTitle() {
+  const names = [...new Set((enc().foes || []).map(f => f.name))];
+  return names.length ? '⚔️ Combat vs ' + names.join(', ') : '⚔️ Combat';
+}
+function _activeCombatGroup() { return (journal.combatGroups || []).find(g => g.id === journal.activeCombatId) || null; }
+// Open (or refresh) the combat group so subsequent journal blocks carry its combatId. Solo only.
+function _encEnsureGroup() {
+  if (typeof isSolo === 'function' && !isSolo()) return;
+  if (!journal) return;
+  if (journal.activeCombatId && _activeCombatGroup()) { const g = _activeCombatGroup(); if (g && !g.renamed) g.title = _encGroupTitle(); saveJournal(); return; }
+  const sc = ensureActiveScene();
+  const id = 'cg' + Date.now() + Math.floor(Math.random() * 1000);
+  journal.combatGroups = journal.combatGroups || [];
+  journal.combatGroups.push({
+    id, sceneId: sc.id, title: _encGroupTitle(), renamed: false, collapsed: true, ongoing: true,
+    startSnap: { end: parseInt(char.endCur) || 0, hope: parseInt(char.hopeCur) || 0, shadow: (parseInt(char.shadow) || 0) + (parseInt(char.scars) || 0) },
+    summary: ''
+  });
+  journal.activeCombatId = id;
+  saveJournal();
+}
+// Finalise the open group: compute the one-line summary, mark not-ongoing, release the id.
+function _encFinishGroup() {
+  if (!journal || !journal.activeCombatId) return;
+  const g = _activeCombatGroup();
+  if (g) {
+    const e = enc(); const foes = e.foes || [];
+    const slain = foes.filter(f => f.slain).length;
+    const endLost = (g.startSnap.end || 0) - (parseInt(char.endCur) || 0);
+    const hopeD = (parseInt(char.hopeCur) || 0) - (g.startSnap.hope || 0);
+    const shadowD = ((parseInt(char.shadow) || 0) + (parseInt(char.scars) || 0)) - (g.startSnap.shadow || 0);
+    const parts = [`${foes.length} foe${foes.length !== 1 ? 's' : ''}${slain ? ` · ${slain} slain` : ''}`, `${e.round} round${e.round !== 1 ? 's' : ''}`];
+    if (endLost > 0) parts.push(`−${endLost} End`);
+    if (char.wounded) parts.push('Wounded');
+    if (hopeD) parts.push(`${hopeD > 0 ? '+' : ''}${hopeD} Hope`);
+    if (shadowD > 0) parts.push(`+${shadowD} Shadow`);
+    g.summary = parts.join(' · ');
+    g.ongoing = false;
+  }
+  journal.activeCombatId = null;
+  saveJournal();
+}
+function toggleCombatGroup(id) { const g = (journal.combatGroups || []).find(x => x.id === id); if (!g) return; g.collapsed = !g.collapsed; saveJournal(); renderChronicleTimeline(); }
+async function renameCombatGroup(id) {
+  const g = (journal.combatGroups || []).find(x => x.id === id); if (!g) return;
+  const t = await promptStyled('Name this combat:', g.title || '', 'Rename Combat');
+  if (t === null) return;
+  g.title = t.trim() || g.title; g.renamed = true; saveJournal(); renderChronicleTimeline();
+}
+
 // ----- logging -----
 function encLogRoll(plain) {
   const clean = String(plain).replace(/<[^>]+>/g, '');
   history.unshift({ label: '⚔️ Combat', total: '', outcome: clean, tn: '', icons: 0, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) });
   if (history.length > 30) history.length = 30;
   saveHistory(); renderHistory();
+  _encEnsureGroup();  // open/refresh the group BEFORE logging so the block carries its combatId
   if (typeof journalAuto === 'function') journalAuto('dice', 'roll', clean);
 }
 function _encStash(foeId, lineHtml, note) {
