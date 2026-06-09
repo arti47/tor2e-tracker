@@ -12868,6 +12868,7 @@ function renderTutMenu() {
   ov.classList.add('show');
 }
 async function tutDone() {
+  _tutClearPoll();
   _tutCloseMenu(); _tutHideSpotlight(); _tutState = null;
   await _tutExitSandbox();
 }
@@ -12890,12 +12891,14 @@ function tutNext() { const s = _tutState; if (!s) return; if (s.step >= s.steps.
 function tutPrev() { const s = _tutState; if (!s || s.step <= 0) return; s.step--; _tutSaveResume(); _tutRender(); }
 function tutComplete() {
   const s = _tutState; if (!s) return;
+  _tutClearPoll();
   const p = loadTutProgress(); p.completed = p.completed || {}; p.completed[s.lessonId] = true;
   if (p.resume && p.resume.lessonId === s.lessonId) delete p.resume;
   saveTutProgress(p);
   _tutHideSpotlight(); _tutState = null; renderTutMenu();
 }
 function tutExit() {
+  _tutClearPoll();
   if (_tutState) { const p = loadTutProgress(); p.resume = { lessonId: _tutState.lessonId, step: _tutState.step }; saveTutProgress(p); }
   _tutHideSpotlight(); _tutState = null; renderTutMenu();
 }
@@ -12904,20 +12907,29 @@ function tutExit() {
 function _tutEnsureDom() {
   if (document.getElementById('tut-overlay')) return;
   const ov = document.createElement('div'); ov.id = 'tut-overlay';
-  ov.style.cssText = 'position:fixed;inset:0;z-index:1000;display:none';
+  // pointer-events:none so the player can tap the highlighted control through the cutout; only the card catches taps.
+  ov.style.cssText = 'position:fixed;inset:0;z-index:1000;display:none;pointer-events:none';
   const hole = document.createElement('div'); hole.id = 'tut-hole';
-  hole.style.cssText = 'position:fixed;left:50%;top:50%;width:0;height:0;border-radius:10px;box-shadow:0 0 0 9999px rgba(0,0,0,0.66);pointer-events:none;transition:all .18s ease';
+  hole.style.cssText = 'position:fixed;left:50%;top:50%;width:0;height:0;border-radius:10px;box-shadow:0 0 0 9999px rgba(0,0,0,0.66);pointer-events:none;transition:all .18s ease;outline:2px solid var(--gold);outline-offset:0';
   const card = document.createElement('div'); card.id = 'tut-card';
-  card.style.cssText = 'position:fixed;max-width:340px;width:88%;background:var(--bg);border:2px solid var(--gold);border-radius:12px;padding:14px 16px;box-shadow:0 8px 34px rgba(0,0,0,.55);font-size:14px;color:var(--ink);box-sizing:border-box';
+  card.style.cssText = 'position:fixed;max-width:340px;width:88%;background:var(--bg);border:2px solid var(--gold);border-radius:12px;padding:14px 16px;box-shadow:0 8px 34px rgba(0,0,0,.55);font-size:14px;color:var(--ink);box-sizing:border-box;pointer-events:auto';
   ov.appendChild(hole); ov.appendChild(card);
   document.body.appendChild(ov);
 }
 function _tutHideSpotlight() { const o = document.getElementById('tut-overlay'); if (o) o.style.display = 'none'; }
-function _tutCardHtml(step, s) {
+function _tutCardHtml(step, s, wasDone) {
   const n = s.step + 1, total = s.steps.length;
   const intro = step.intro ? `<div style="font-style:italic;color:var(--gold);margin-bottom:8px;font-size:13px;line-height:1.5">${step.intro}</div>` : '';
   const title = step.title ? `<div style="font-weight:700;margin-bottom:4px">${step.title}</div>` : '';
   const more = step.more ? `<details style="margin-top:8px"><summary style="cursor:pointer;color:var(--gold);font-size:12px">Tell me more</summary><div style="margin-top:6px;font-size:12.5px;color:var(--text-muted);line-height:1.55">${step.more}</div></details>` : '';
+  // Interactive cue: when a step has a `done` predicate, you can do the real action through the
+  // spotlight cutout and it advances on its own. If it's already satisfied, just tap Next.
+  const cue = step.done
+    ? (wasDone
+      ? `<div style="margin-top:9px;font-size:12px;color:var(--text-muted);background:var(--bg-deep);border-radius:6px;padding:6px 8px">✓ Already done — tap <strong>Next</strong> to go on.</div>`
+      : `<div style="margin-top:9px;font-size:12px;color:var(--gold);background:var(--bg-deep);border:1px dashed var(--gold);border-radius:6px;padding:6px 8px">👉 <strong>Try it</strong> on the highlighted control — the tutorial moves on by itself when you do. (Or tap <strong>Skip</strong>.)</div>`)
+    : '';
+  const nextLabel = s.step === total - 1 ? 'Finish ✓' : (step.done && !wasDone ? 'Skip ›' : 'Next ›');
   return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
       <span style="font-size:11px;font-weight:700;color:var(--gold);flex:1;min-width:0">${escapeHtml(s.lessonTitle)}</span>
       <span style="font-size:11px;color:var(--text-faint)">${n}/${total}</span>
@@ -12925,21 +12937,40 @@ function _tutCardHtml(step, s) {
     </div>
     ${intro}${title}
     <div style="line-height:1.55">${step.body}</div>
+    ${cue}
     ${more}
     <div style="display:flex;gap:6px;margin-top:12px">
       <button onclick="tutPrev()" class="add-row-btn" style="background:var(--btn-secondary-bg);color:white;font-size:13px;${s.step === 0 ? 'opacity:0.4;pointer-events:none' : ''}">‹ Back</button>
-      <button onclick="tutNext()" class="add-row-btn" style="flex:1;background:var(--gold);font-size:14px">${s.step === total - 1 ? 'Finish ✓' : 'Next ›'}</button>
+      <button id="tut-next-btn" onclick="tutNext()" class="add-row-btn" style="flex:1;background:var(--gold);font-size:14px">${nextLabel}</button>
     </div>
     <div style="text-align:center;margin-top:7px"><button onclick="tutExit()" style="background:none;border:none;color:var(--text-faint);font-size:11px;cursor:pointer;text-decoration:underline">Skip / back to lessons</button></div>`;
 }
+function _tutClearPoll() { if (_tutState && _tutState._poll) { clearInterval(_tutState._poll); _tutState._poll = null; } }
 function _tutRender() {
   const s = _tutState; if (!s) return;
+  _tutClearPoll();
   const step = s.steps[s.step];
   if (step.tab) { const tb = document.querySelector(`.tab[data-tab="${step.tab}"]`); if (tb && tb.style.display !== 'none') tb.click(); }
   _tutEnsureDom();
   const ov = document.getElementById('tut-overlay'); ov.style.display = 'block';
   const hole = document.getElementById('tut-hole'), card = document.getElementById('tut-card');
-  card.innerHTML = _tutCardHtml(step, s);
+  // Interactive steps: a `done(char, baseline)` predicate. Capture a baseline now, and only
+  // auto-advance on a false→true transition (so a condition already met just lets you tap Next).
+  s.baseline = { rolls: (typeof history !== 'undefined' && history) ? history.length : 0 };
+  let wasDone = false;
+  try { wasDone = step.done ? !!step.done(char, s.baseline) : false; } catch (e) {}
+  card.innerHTML = _tutCardHtml(step, s, wasDone);
+  if (step.done && !wasDone) {
+    s._poll = setInterval(() => {
+      let ok = false; try { ok = !!step.done(char, s.baseline); } catch (e) {}
+      if (ok) {
+        _tutClearPoll();
+        const btn = document.getElementById('tut-next-btn');
+        if (btn) { btn.textContent = '✓ Done! Continuing…'; btn.style.background = 'var(--success-bg, var(--gold))'; }
+        setTimeout(() => { if (_tutState === s) tutNext(); }, 750);
+      }
+    }, 450);
+  }
   const place = () => {
     let tgt = step.sel ? document.querySelector(step.sel) : null;
     let r = tgt ? tgt.getBoundingClientRect() : null;
@@ -12981,7 +13012,7 @@ const TUTORIAL_LESSONS = [
     prep: c => { Object.assign(c, JSON.parse(JSON.stringify(DEFAULT_CHARACTER))); c.name = 'Practice Hero'; },
     steps: [
       { tab: 'build', sel: '#apply-culture-btn', intro: 'Every tale begins with a name and a homeland.', title: 'The Build tab', body: `Character creation lives here, and we'll walk down it top to bottom. Remember: this is a practice hero — your real characters are untouched.`, more: `A hero is defined by their <em>Culture</em>, <em>Calling</em>, three attributes, skills, and starting gear. The Build tab turns those picks into a finished sheet automatically.` },
-      { tab: 'build', sel: '#apply-culture-btn', title: '1 · Pick a Culture', body: `Choose your people from the Culture picker, then tap “Apply Culture Defaults”. Culture sets your attribute options, starting skills, a Cultural Blessing, and your favoured weapons.`, more: `Bardings and the Rangers make sturdy warriors; Hobbits are stealthy and lucky; Elves are keen and wise. Each has a unique Blessing.` },
+      { tab: 'build', sel: '#apply-culture-btn', title: '1 · Pick a Culture', done: c => !!c.culture, body: `Choose your people from the Culture picker, then tap “Apply Culture Defaults”. Culture sets your attribute options, starting skills, a Cultural Blessing, and your favoured weapons.`, more: `Bardings and the Rangers make sturdy warriors; Hobbits are stealthy and lucky; Elves are keen and wise. Each has a unique Blessing.` },
       { tab: 'build', title: '2 · Choose a Calling', body: `Your Calling is your role in the Fellowship — Warden, Champion, Scholar, Treasure-hunter, Captain, or Messenger. It grants favoured skills, a distinctive feature, and your Shadow path.`, more: `The Shadow path matters later: it's the kind of madness that threatens you as Shadow rises toward your Hope.` },
       { tab: 'build', title: '3 · Attributes & Previous Experience', body: `Pick an attribute set (Strength · Heart · Wits), then spend your Previous Experience points to raise skills and combat proficiencies before play begins.`, more: `Strength feeds Endurance and most combat; Heart feeds Hope; Wits feeds Parry and your wits-based skills.` },
       { tab: 'build', title: '4 · Favoured skills, Reward & Virtue', body: `Mark your favoured skills, then choose a starting Reward (a special quality for a piece of gear) and a starting Virtue (a special ability). The sheet applies their effects for you.`, more: `A favoured skill rolls a second Feat die and keeps the better — a real advantage you'll feel on every roll.` },
@@ -12990,7 +13021,7 @@ const TUTORIAL_LESSONS = [
   { id: 'dice', icon: '🎲', title: 'Dice Basics', sub: 'The heart of every action',
     prep: c => _tutBuildIfBlank(c),
     steps: [
-      { tab: 'dice', sel: '.roll-btn', intro: 'All deeds, great and small, are weighed by the dice.', title: 'The Dice tab', body: `A roll is one Feat die (1–12) plus a few Success dice (d6). Choose how many Success dice, then tap “🎲 Roll Dice”.`, more: `You succeed if the total meets a Target Number. The TN comes from the attribute you're using: 20 − its rating (or 18 − in Strider solo mode).` },
+      { tab: 'dice', sel: '.roll-btn', intro: 'All deeds, great and small, are weighed by the dice.', title: 'The Dice tab', done: (c, b) => (typeof history !== 'undefined' && history.length > b.rolls), body: `A roll is one Feat die (1–12) plus a few Success dice (d6). Choose how many Success dice, then tap “🎲 Roll Dice”.`, more: `You succeed if the total meets a Target Number. The TN comes from the attribute you're using: 20 − its rating (or 18 − in Strider solo mode).` },
       { tab: 'dice', sel: '.roll-btn', title: 'The Feat die: ☉ and 👁', body: `The Feat die has two special faces: the Gandalf rune (☉, an automatic success) and the Eye of Sauron (👁, a zero). Both change the outcome — watch for them.`, more: `When you are Miserable, an Eye result becomes an automatic failure — the Shadow betrays you at the worst moment.` },
       { tab: 'dice', title: 'Favoured rolls & Hope', body: `A Favoured roll adds a second Feat die and keeps the better; Ill-Favoured keeps the worse. Spending one point of Hope adds +1 Success die to a roll.`, more: `Inspiration (such as invoking a Distinctive Feature) doubles a Hope spend to +2 dice. Hope is precious — spend it when it matters.` },
       { tab: 'dice', title: 'Quick-roll your skills', body: `Scroll down: every skill and combat proficiency has a one-tap button that rolls it at the correct TN. This is how you'll make most rolls in actual play.`, more: `Your conditions (Weary, Miserable) and combat stance automatically adjust these rolls, so you don't have to do the maths.` }
@@ -12998,16 +13029,16 @@ const TUTORIAL_LESSONS = [
   { id: 'combat', icon: '⚔️', title: 'Combat', sub: 'Fight a foe, round by round',
     prep: c => _tutBuildIfBlank(c),
     steps: [
-      { tab: 'combat', sel: '#encounter-card-wrap', intro: 'Steel is answered with steel in the dark places of the world.', title: 'The Encounter tracker', body: `Run a whole fight here. Tap “+ Add Adversary” to drop in a foe from the bestiary — orcs, wargs, trolls and more — or build a custom one.`, more: `Each foe carries a full stat block: Endurance, Parry, Armour, and its attacks. Every value is editable.` },
+      { tab: 'combat', sel: '#encounter-card-wrap', intro: 'Steel is answered with steel in the dark places of the world.', title: 'The Encounter tracker', done: c => ((c.encounter && c.encounter.foes) || []).length > 0, body: `Run a whole fight here. Tap “+ Add Adversary” to drop in a foe from the bestiary — orcs, wargs, trolls and more — or build a custom one.`, more: `Each foe carries a full stat block: Endurance, Parry, Armour, and its attacks. Every value is editable.` },
       { tab: 'combat', title: 'Choose a stance', body: `At the top of the tab, pick a stance. Forward adds +1 attack die but you're easier to hit; Defensive is cautious; Rearward is for archers. Stance shapes every attack you make.`, more: `Defensive loses one die per engaged foe but makes you harder to strike — useful when outnumbered.` },
-      { tab: 'combat', sel: '#encounter-card-wrap', title: 'Strike a foe', body: `Pick your weapon in “Attack with”, then tap a foe's ⚔️ Attack. The app rolls your proficiency against the foe's Parry and subtracts your weapon's Damage on a hit.`, more: `Roll the Gandalf rune or a 10 (or 9+ with a Keen weapon) for a Piercing Blow: the foe rolls Protection or is Wounded — and a second wound fells it.` },
+      { tab: 'combat', sel: '#encounter-card-wrap', title: 'Strike a foe', done: c => ((c.encounter && c.encounter.foes) || []).some(f => f.slain || f.endCur < f.endMax), body: `Pick your weapon in “Attack with”, then tap a foe's ⚔️ Attack. The app rolls your proficiency against the foe's Parry and subtracts your weapon's Damage on a hit.`, more: `Roll the Gandalf rune or a 10 (or 9+ with a Keen weapon) for a Piercing Blow: the foe rolls Protection or is Wounded — and a second wound fells it.` },
       { tab: 'combat', sel: '#encounter-card-wrap', title: 'The foe strikes back', body: `Tap “🗡️ … Attacks”, or “All engaged foes attack”. On a hit your Endurance drops; a Piercing Blow prompts your own Protection roll, and a failure leaves you Wounded.`, more: `At 0 Endurance you are Dying; a Wound on top of that is grave. Watch your Endurance and Hope through the fight.` },
       { tab: 'combat', title: 'End the encounter', body: `When the foes are down, tap “End encounter”. In solo play the entire fight folds neatly into your Chronicle as a single entry.`, more: `Brawling, two-handed grips, a Foe-Parry counter, and “Fly, You Fools!” to flee are all here too.` }
     ] },
   { id: 'journey', icon: '🥾', title: 'Journey', sub: 'Cross the wild from here to there',
     prep: c => { _tutBuildIfBlank(c); if (c.journey) c.journey.active = false; },
     steps: [
-      { tab: 'journey', intro: 'It is a dangerous business, going out your door.', title: 'The Journey tab', body: `Plan a trek: set where you're bound, the distance in hexes, the season and region, then tap Start.`, more: `Longer, harsher journeys mean more Fatigue and more chances for a Journey Event to befall the company.` },
+      { tab: 'journey', intro: 'It is a dangerous business, going out your door.', title: 'The Journey tab', done: c => !!(c.journey && c.journey.active), body: `Plan a trek: set where you're bound, the distance in hexes, the season and region, then tap Start.`, more: `Longer, harsher journeys mean more Fatigue and more chances for a Journey Event to befall the company.` },
       { tab: 'journey', title: 'Marching Tests', body: `As you travel, tap the Marching Test to roll TRAVEL and advance along the route, day by day. Fatigue builds as the miles pass.`, more: `In Strider solo mode the lone hero is treated as the Guide, and TRAVEL is rolled for you automatically.` },
       { tab: 'journey', title: 'Journey Events', body: `At set points an Event fires — a mishap, an ill choice, a short cut, or a joyful sight. Resolve the roll it calls for; some cost Fatigue or Shadow.`, more: `A ⭐ Noteworthy Encounter is a full scene in its own right — expect a fight, a council, or a discovery.` },
       { tab: 'journey', title: 'Arrival', body: `At your destination, tap Arrive. A final TRAVEL roll sets your lingering Fatigue, which carries onto your Character sheet.`, more: `Later, a Prolonged Rest in a Safe Haven clears that lingering travel Fatigue.` }
@@ -13015,7 +13046,7 @@ const TUTORIAL_LESSONS = [
   { id: 'council', icon: '🗣️', title: 'Council & Endeavours', sub: 'Words, and long labours',
     prep: c => _tutBuildIfBlank(c),
     steps: [
-      { tab: 'council', intro: 'Not every battle is fought with the sword.', title: 'The Council tab', body: `A Council is a social contest. Set the topic, the audience's Resistance, and their attitude, then Begin.`, more: `Resistance is how many successes you need to win them over; the audience's attitude grants ±1 die to your rolls.` },
+      { tab: 'council', intro: 'Not every battle is fought with the sword.', title: 'The Council tab', done: c => !!(c.council && c.council.active), body: `A Council is a social contest. Set the topic, the audience's Resistance, and their attitude, then Begin.`, more: `Resistance is how many successes you need to win them over; the audience's attitude grants ±1 die to your rolls.` },
       { tab: 'council', title: 'Introduction & Interaction', body: `Make an Introduction roll to set your time limit, then use skills like PERSUADE, AWE, or COURTESY to wear down the Resistance.`, more: `Each successful interaction contributes 1 + the number of ✦ icons toward the Resistance total.` },
       { tab: 'council', title: 'Skill Endeavours', body: `Scroll to the Skill Endeavour section for long tasks — research, crafting, healing. Set a Resistance, a time limit, and a risk level, then roll until it's done.`, more: `Higher risk brings worse consequences on a failed roll — but some deeds simply demand the gamble.` }
     ] },
@@ -13024,13 +13055,13 @@ const TUTORIAL_LESSONS = [
     steps: [
       { tab: 'character', sel: '#end-cur-v', intro: 'The Shadow falls on all who walk far from home.', title: 'Endurance & Hope', body: `Endurance is your body's stamina; Hope is your spirit. Tap the +/− to adjust them, or use the Rest buttons to recover.`, more: `At 0 Endurance you are Dying. Hope is spent to add dice and to fuel virtues — guard it well.` },
       { tab: 'character', sel: '#hope-cur-v', title: 'Shadow & Scars', body: `Facing dread and doing dark deeds raises your Shadow. When Shadow + Scars reaches your current Hope, you become Miserable.`, more: `“Harden the Will” clears your Shadow at the price of a permanent Scar — a hard but sometimes necessary bargain.` },
-      { tab: 'character', title: 'Conditions', body: `Toggle Weary, Miserable, and Wounded as they strike. Weary turns low Success dice to 0; Miserable makes an Eye an auto-fail; Wounded means you're hurt and mending.`, more: `If Shadow ever fills your Hope completely, you risk a Bout of Madness — gaining a flaw from your Calling's Shadow path.` }
+      { tab: 'character', title: 'Conditions', done: c => !!(c.weary || c.miserable || c.wounded), body: `Toggle Weary, Miserable, and Wounded as they strike. Weary turns low Success dice to 0; Miserable makes an Eye an auto-fail; Wounded means you're hurt and mending.`, more: `If Shadow ever fills your Hope completely, you risk a Bout of Madness — gaining a flaw from your Calling's Shadow path.` }
     ] },
   { id: 'treasure', icon: '💎', title: 'Treasure & Magical Items', sub: 'The glitter of old hoards',
     prep: c => { _tutBuildIfBlank(c); c.treasure = (parseInt(c.treasure) || 0) + 20; },
     steps: [
       { tab: 'gear', intro: 'The hoards of the elder world still glimmer in the dark.', title: 'The Gear tab', body: `Your gear, treasure, and magical items live here. After a victory, tap “🎲 Roll Hoard” to generate your share of treasure.`, more: `Treasure raises your Standard of Living; cross a threshold and the app offers to promote it for you.` },
-      { tab: 'gear', title: 'Magical items', body: `Add a Magical Item — a Marvellous Artefact, a Wondrous Item, or a Famous Weapon. A Blessing adds +2 dice to matching skill rolls, automatically.`, more: `Famous Weapons hold dormant qualities you unlock by gaining a Valour rank or by Visiting the Treasury in a Fellowship Phase.` },
+      { tab: 'gear', title: 'Magical items', done: c => ((c.magicalItems) || []).length > 0, body: `Add a Magical Item — a Marvellous Artefact, a Wondrous Item, or a Famous Weapon. A Blessing adds +2 dice to matching skill rolls, automatically.`, more: `Famous Weapons hold dormant qualities you unlock by gaining a Valour rank or by Visiting the Treasury in a Fellowship Phase.` },
       { tab: 'gear', title: 'Rewards & Virtues', body: `Rewards attach special qualities to gear — Keen, Grievous, Close-fitting, and more — while Virtues are personal abilities. Both arrive as you advance and are applied for you.`, more: `Cursed items are tracked too, with their Shadow risks made plain.` }
     ] },
   { id: 'fellowship', icon: '🌿', title: 'Fellowship Phase', sub: 'Rest, mend, and grow',
