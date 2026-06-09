@@ -27,8 +27,8 @@ grep -o "tor2e-[a-z0-9-]*" character-tracker.html | sort -u   # all localStorage
 ```
 
 As of last verification:
-- **`character-tracker.html`**: ~12,690 lines / ~735 KB (includes a ~20 KB vendored QR library in its own `<script>` block)
-- **`sw.js` `CACHE_VERSION`**: `tor2e-v64` (bump on every deploy)
+- **`character-tracker.html`**: ~13,110 lines / ~760 KB (includes a ~20 KB vendored QR library in its own `<script>` block)
+- **`sw.js` `CACHE_VERSION`**: `tor2e-v65` (bump on every deploy)
 - **SW strategy (since v30)**: HTML/navigations are **network-first** (deploys appear on next online load — no stale-cache lag); static assets cache-first. Updates surface a tap-to-update banner (page posts `SKIP_WAITING`); still bump `CACHE_VERSION` each deploy so old caches are GC'd.
 - **Moria Solo Mode**: ✅ complete (one toggle `⛏️ Enable Moria Solo Mode` → Band + Battle tabs, Moria oracle generators, full solo campaign). Full subsystem reference in the **"Moria Solo Mode"** section below.
 - **localStorage keys**: now a **multi-character roster** (added 2026-05-31):
@@ -590,6 +590,16 @@ Encounter combat folds under one collapsible heading in the Chronicle timeline. 
 - [x] **Validation on import** — `validCharacterShape(obj)` (object, not array/primitive, carries a recognizable character field; partial deltas OK). Gates `importData` (now also **confirms before overwriting the active hero** — closes a data-loss gap — and routes the imported journal through `loadJournal` for normalization) and `importFromHash` (rejects non-character shared links).
 
 ---
+
+## Interactive Tutorial (2026-06-05)
+A guided **Lessons menu** that teaches the whole game on a safe **sandbox practice hero**. Built per the user's spec (asked one question at a time). Launch: ☰ menu **📖 Tutorial** + a one-time first-run offer (`maybeOfferTutorial`, gated by `tor2e-tutorial.offered`).
+
+- **Lessons** (`TUTORIAL_LESSONS`, 9): Character Creation · Dice Basics · Combat · Journey · Council & Endeavours · Conditions & Shadow · Treasure & Magical Items · Fellowship Phase · Solo Play. Each = `{ id, icon, title, sub, prep(char), steps:[{tab, sel, intro, title, body, more}] }`. **Free pick** — `prep()` auto-prepares the hero (`_tutBuildIfBlank` fills a ready Barding warden unless one was already built; Creation resets to blank; Solo flips `striderMode`).
+- **One shared sandbox hero across all lessons.** `_tutEnterSandbox()` saves the real hero, creates a practice roster entry, swaps it in. `_tutExitSandbox()` (on **Done**) offers **Keep** (rename, leave it active) or **Discard** (delete its slots, restore the previous `activeId` via `applyActiveCharacter`). Reuses the roster API so saves never touch real heroes.
+- **Spotlight engine**: `_tutRender()` switches to `step.tab`, then dims with a cutout (`#tut-hole` box-shadow) over `step.sel` and floats `#tut-card` (flavoured intro + plain step + a "Tell me more" `<details>` + Back/Next/Skip/Exit + step counter). **Graceful degradation**: a missing or hidden (`0×0`) target just centers the card — the tour can't get stuck. Tap-Next/Back; `tutNext`/`tutPrev`/`tutComplete`/`tutExit`/`tutDone`.
+- **Progress** (`tor2e-tutorial`): `{ completed:{id:true}, resume:{lessonId,step}, offered }` → ✓ on the menu + resume mid-lesson.
+- Selectors used (stable): `.tab[data-tab=…]`, `#apply-culture-btn`, `.roll-btn`, `#encounter-card-wrap`, `#end-cur-v`, `#hope-cur-v`; everything else centers.
+- **Verified in jsdom**: sandbox create → restore (discard brings the real hero back) / keep (strips "(Practice)"); every lesson runs; bad selector centers without crashing; completion + resume persist — no errors. Honest scope: steps are **tap-Next read-alongs** (the modal spotlight shows *where* things are; you don't act on the live control mid-step), and only a handful of controls are spotlighted by selector — the rest are centered cards. Easy to add more `sel` anchors later.
 
 ## Moria Solo Mode (full subsystem reference)
 
