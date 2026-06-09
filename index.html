@@ -12864,8 +12864,16 @@ function renderTutMenu() {
       <p class="hint" style="text-align:left;margin:0 0 10px">Lessons run on a safe <strong>practice hero</strong> — your real characters aren't touched. Pick any topic.</p>
       ${items}
       <button onclick="tutDone()" class="add-row-btn" style="width:100%;margin-top:8px;background:var(--btn-secondary-bg);color:white">Done — exit tutorial</button>
+      <button onclick="resetTutorial()" class="add-row-btn" style="width:100%;margin-top:6px;background:none;border:1px solid var(--border);color:var(--text-muted);font-size:12px">↺ Reset tutorial progress</button>
     </div>`;
   ov.classList.add('show');
+}
+// Clear all tutorial progress (✓ completed marks + resume points) and re-arm the first-run welcome.
+async function resetTutorial() {
+  if (!await confirmStyled(`Reset the whole tutorial?<br><br>This clears every ✓ completed mark and resume point, and the one-time welcome offer will appear again. Your characters are not affected.`, '↺ Reset Tutorial')) return;
+  try { localStorage.removeItem(TUTORIAL_KEY); } catch (e) {}
+  renderTutMenu();
+  alert('Tutorial reset — all lessons are marked unread again.');
 }
 async function tutDone() {
   _tutClearPoll(); _tutHidePill();
