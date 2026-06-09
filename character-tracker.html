@@ -12915,12 +12915,14 @@ function tutExit() {
 function _tutEnsureDom() {
   if (document.getElementById('tut-overlay')) return;
   const ov = document.createElement('div'); ov.id = 'tut-overlay';
-  // pointer-events:none so the player can tap the highlighted control through the cutout; only the card catches taps.
+  // No dimming: the page stays fully visible & usable. The container is pointer-transparent;
+  // only the floating card catches taps. #tut-hole is a glowing border FRAME around the
+  // section the step talks about (not a cutout).
   ov.style.cssText = 'position:fixed;inset:0;z-index:1000;display:none;pointer-events:none';
   const hole = document.createElement('div'); hole.id = 'tut-hole';
-  hole.style.cssText = 'position:fixed;left:50%;top:50%;width:0;height:0;border-radius:10px;box-shadow:0 0 0 9999px rgba(0,0,0,0.66);pointer-events:none;transition:all .18s ease;outline:2px solid var(--gold);outline-offset:0';
+  hole.style.cssText = 'position:fixed;left:50%;top:50%;width:0;height:0;border-radius:12px;border:3px solid var(--gold);box-shadow:0 0 0 3px rgba(212,166,53,.30), 0 0 16px rgba(212,166,53,.55);pointer-events:none;transition:all .18s ease;display:none';
   const card = document.createElement('div'); card.id = 'tut-card';
-  card.style.cssText = 'position:fixed;max-width:340px;width:88%;background:var(--bg);border:2px solid var(--gold);border-radius:12px;padding:14px 16px;box-shadow:0 8px 34px rgba(0,0,0,.55);font-size:14px;color:var(--ink);box-sizing:border-box;pointer-events:auto';
+  card.style.cssText = 'position:fixed;max-width:340px;width:88%;background:var(--bg);border:2px solid var(--gold);border-radius:12px;padding:0 16px 14px;box-shadow:0 10px 38px rgba(0,0,0,.5);font-size:14px;color:var(--ink);box-sizing:border-box;pointer-events:auto';
   ov.appendChild(hole); ov.appendChild(card);
   document.body.appendChild(ov);
   // Floating "Return to tutorial" pill, shown while the tour has stepped aside (hands-on mode).
@@ -12930,6 +12932,28 @@ function _tutEnsureDom() {
     pill.style.cssText = 'position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:1001;display:none;background:var(--gold);color:var(--ink);border:2px solid var(--gold);border-radius:24px;padding:11px 20px;font-size:14px;font-weight:700;box-shadow:0 4px 18px rgba(0,0,0,.45);cursor:pointer;max-width:90%';
     document.body.appendChild(pill);
   }
+}
+// Make the floating card draggable by its header bar (pointer events cover mouse + touch).
+function _tutBindDrag() {
+  const card = document.getElementById('tut-card');
+  const handle = document.getElementById('tut-drag');
+  if (!card || !handle) return;
+  handle.style.touchAction = 'none';
+  handle.onpointerdown = (e) => {
+    if (e.target.closest('button')) return;   // the × button still works
+    e.preventDefault();
+    const r = card.getBoundingClientRect();
+    const offX = e.clientX - r.left, offY = e.clientY - r.top;
+    const move = (ev) => {
+      card.style.transform = 'none';
+      card.style.left = Math.max(0, Math.min(window.innerWidth - r.width, ev.clientX - offX)) + 'px';
+      card.style.top = Math.max(0, Math.min(window.innerHeight - 40, ev.clientY - offY)) + 'px';
+      if (_tutState) _tutState.dragged = true;   // keep the user's position until the next step
+    };
+    const up = () => { document.removeEventListener('pointermove', move); document.removeEventListener('pointerup', up); };
+    document.addEventListener('pointermove', move);
+    document.addEventListener('pointerup', up);
+  };
 }
 function _tutHideSpotlight() { const o = document.getElementById('tut-overlay'); if (o) o.style.display = 'none'; }
 function _tutShowPill(text) { _tutEnsureDom(); const p = document.getElementById('tut-pill'); if (p) { p.textContent = text || '↩ Return to tutorial'; p.style.display = 'block'; } }
@@ -12966,7 +12990,8 @@ function _tutCardHtml(step, s, wasDone) {
          <div style="margin-top:5px;font-size:11px;color:var(--text-muted);text-align:center">The tutorial steps aside so you can do it. It pops back automatically when you finish — or tap the ↩ Return pill.</div>`)
     : '';
   const nextLabel = s.step === total - 1 ? 'Finish ✓' : (step.done && !wasDone ? 'Skip ›' : 'Next ›');
-  return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+  return `<div id="tut-drag" style="display:flex;align-items:center;gap:6px;margin:0 -16px 6px;padding:10px 16px 6px;cursor:grab;border-bottom:1px dashed var(--border)" title="Drag to move this window">
+      <span style="color:var(--text-faint);font-size:13px;letter-spacing:1px">⠿</span>
       <span style="font-size:11px;font-weight:700;color:var(--gold);flex:1;min-width:0">${escapeHtml(s.lessonTitle)}</span>
       <span style="font-size:11px;color:var(--text-faint)">${n}/${total}</span>
       <button onclick="tutExit()" title="Exit" style="background:none;border:none;color:var(--text-faint);font-size:17px;cursor:pointer;line-height:1">×</button>
@@ -13005,9 +13030,14 @@ function _tutRender() {
   };
   let wasDone = false;
   try { wasDone = step.done ? !!step.done(char, s.baseline) : false; } catch (e) {}
+  s.dragged = false;   // each step starts auto-positioned; dragging pins it for this step only
   card.innerHTML = _tutCardHtml(step, s, wasDone);
+  _tutBindDrag();
   if (step.done && !wasDone) {
     s._poll = setInterval(() => {
+      // Don't evaluate/advance while a picker or dialog is open — switching steps (and tabs)
+      // underneath an open overlay was the main cause of misfired auto-advances.
+      if (document.querySelector('.menu-overlay.show')) return;
       let ok = false; try { ok = !!step.done(char, s.baseline); } catch (e) {}
       if (ok) {
         _tutClearPoll();
@@ -13019,23 +13049,31 @@ function _tutRender() {
     }, 450);
   }
   const place = () => {
+    if (!_tutState || _tutState !== s) return;
+    // Resolve the step's target, then highlight the whole SECTION it sits in (its enclosing
+    // .card), not the tiny control — unless the step opts out with `exact: true`.
     let tgt = step.sel ? document.querySelector(step.sel) : null;
+    if (tgt && !step.exact) tgt = tgt.closest('.card') || tgt;
     let r = tgt ? tgt.getBoundingClientRect() : null;
-    if (tgt && r && (r.width === 0 && r.height === 0)) { tgt = null; r = null; }  // hidden → center
+    if (tgt && r && (r.width === 0 && r.height === 0)) { tgt = null; r = null; }  // hidden → no frame
     if (tgt) {
       try { tgt.scrollIntoView({ block: 'center', behavior: 'auto' }); } catch (e) {}
       r = tgt.getBoundingClientRect();
-      hole.style.left = (r.left - 6) + 'px'; hole.style.top = (r.top - 6) + 'px';
-      hole.style.width = (r.width + 12) + 'px'; hole.style.height = (r.height + 12) + 'px';
-      const cardH = card.offsetHeight || 220;
-      const below = r.bottom + 12, above = r.top - cardH - 12;
-      card.style.left = '50%';
-      if (below + cardH <= window.innerHeight - 8) { card.style.top = below + 'px'; card.style.transform = 'translateX(-50%)'; }
-      else if (above >= 8) { card.style.top = above + 'px'; card.style.transform = 'translateX(-50%)'; }
-      else { card.style.top = '50%'; card.style.transform = 'translate(-50%,-50%)'; }
+      hole.style.display = 'block';
+      hole.style.left = (r.left - 5) + 'px'; hole.style.top = (r.top - 5) + 'px';
+      hole.style.width = (r.width + 4) + 'px'; hole.style.height = (r.height + 4) + 'px';
+      if (!s.dragged) {
+        const cardH = card.offsetHeight || 220;
+        const below = r.bottom + 14, above = r.top - cardH - 14;
+        card.style.left = '50%';
+        if (below + cardH <= window.innerHeight - 8) { card.style.top = below + 'px'; card.style.transform = 'translateX(-50%)'; }
+        else if (above >= 8) { card.style.top = above + 'px'; card.style.transform = 'translateX(-50%)'; }
+        else { card.style.top = ''; card.style.bottom = 'calc(10px + env(safe-area-inset-bottom))'; card.style.transform = 'translateX(-50%)'; return; }
+        card.style.bottom = '';
+      }
     } else {
-      hole.style.left = '50%'; hole.style.top = '50%'; hole.style.width = '0'; hole.style.height = '0';
-      card.style.left = '50%'; card.style.top = '50%'; card.style.transform = 'translate(-50%,-50%)';
+      hole.style.display = 'none';
+      if (!s.dragged) { card.style.left = '50%'; card.style.top = '50%'; card.style.bottom = ''; card.style.transform = 'translate(-50%,-50%)'; }
     }
   };
   requestAnimationFrame(() => { place(); setTimeout(place, 90); });
@@ -13106,21 +13144,21 @@ const TUTORIAL_LESSONS = [
       { tab: 'character', sel: '#hope-cur-v', title: `Hope`, body: `Hope fuels your dice and your virtues. At 0 Hope you can spend none — a perilous place to be.`, more: `Recover Hope mainly in the Fellowship phase, or by spending a Fellowship point during a rest.` },
       { tab: 'character', sel: `[onclick="adj('shadow',1)"]`, title: `Gaining Shadow`, done: (c, b) => ((parseInt(c.shadow) || 0) + (parseInt(c.scars) || 0)) > b.shadow, body: `Shadow gathers from dread, anguish, and dark deeds. Raise it to see what happens. When Shadow + Scars reaches your current Hope, you become Miserable.`, more: `A Shadow Test (Dread / Greed / Sorcery, on the Dice tab) can reduce incoming Shadow — roll Valour or Wisdom against it.` },
       { tab: 'character', sel: '[data-cond="weary"]', title: `Conditions`, done: c => !!(c.weary || c.miserable || c.wounded), body: `Toggle Weary, Miserable, or Wounded as they strike. Weary zeroes low Success dice; Miserable makes an Eye auto-fail; Wounded means you're injured and mending. Toggle one.`, more: `Becoming Wounded opens a First Aid (HEALING) roll and a day-count below; a Severe injury can be fatal without treatment.` },
-      { tab: 'character', sel: '#harden-will-btn', title: `Bouts of Madness & Scars`, body: `If Shadow ever fills your Hope completely, you suffer a Bout of Madness — gaining a Flaw from your Shadow path. “Harden the Will” clears your Shadow now, but leaves a permanent Scar.`, more: `Scars count as permanent Shadow for triggers. Gather all four Flaws of your path and the hero is lost — retired to the tale.` }
+      { tab: 'character', sel: '#harden-will-btn', title: `Bouts of Madness & Scars`, body: `If Shadow ever fills your Hope completely, you suffer a Bout of Madness — gaining a Flaw from your Shadow path. The 🔥 Harden Will button (“Clear Shadow → +1 Scar”, in the Hope card) clears your Shadow now, at the price of a permanent Scar.`, more: `Scars count as permanent Shadow for triggers. Gather all four Flaws of your path and the hero is lost — retired to the tale.` }
     ] },
   { id: 'journey', icon: '🥾', title: 'Journey', sub: 'Cross the wild from here to there',
     prep: c => { _tutBuildIfBlank(c); if (c.journey) c.journey.active = false; },
     steps: [
-      { tab: 'journey', intro: `It is a dangerous business, going out your door.`, title: `Plan the route`, done: c => !!(c.journey && c.journey.active), body: `Set your origin, destination, distance in hexes, season and region, then tap Start. Try starting a journey.`, more: `Distance and terrain decide how long you travel and how many Events you face. Harsh seasons and dark regions make it worse.` },
+      { tab: 'journey', sel: '#j-start-btn', intro: `It is a dangerous business, going out your door.`, title: `Plan the route`, done: c => !!(c.journey && c.journey.active), body: `In the Journey Setup card, set your origin, destination, distance in hexes, season and region, then tap “▶ Start Journey”. Try starting one.`, more: `Distance and terrain decide how long you travel and how many Events you face. Harsh seasons and dark regions make it worse.` },
       { tab: 'journey', title: `Roles`, body: `In a full company each hero takes a role — Guide, Hunter, Look-out, Scout. Travelling solo, you are all of them. Roles decide who rolls for each Event.`, more: `The Guide rolls the Marching Tests; others cover Hunting (food), Awareness (ambush) and Scouting (the way ahead).` },
-      { tab: 'journey', title: `Marching Tests & Fatigue`, body: `Tap the Marching Test to roll TRAVEL and advance day by day. Fatigue builds with distance and hard terrain; too much makes you Weary.`, more: `Forced March covers ground faster but piles on Fatigue. Mounts ease it, but have their own Vigour to spend.` },
-      { tab: 'journey', title: `Journey Events`, body: `At set points an Event fires — Terrible Misfortune, Despair, Ill Choices, a Mishap, a Short Cut, or a Joyful Sight. Resolve the roll it calls for.`, more: `A ⭐ Noteworthy Encounter is a full scene — a fight, a council, or a discovery. Events can cost Fatigue, Hope, or Shadow.` },
-      { tab: 'journey', title: `Arrival`, body: `At your destination, tap Arrive. A final TRAVEL roll sets your lingering Fatigue, carried onto your Character sheet until you rest.`, more: `Then the adventure continues — a council, a ruin, a foe — wherever the road has led you.` }
+      { tab: 'journey', sel: '[onclick="rollMarchingTest()"]', title: `Marching Tests & Fatigue`, body: `Tap “🚶 Marching Test” to roll TRAVEL and advance day by day. Fatigue builds with distance and hard terrain; too much makes you Weary.`, more: `Forced March covers ground faster but piles on Fatigue. Mounts ease it, but have their own Vigour to spend.` },
+      { tab: 'journey', sel: '#j-resolve-event-btn', title: `Journey Events`, body: `At set points an Event fires — “🎲 Resolve Event Now” lights up when you reach one — Terrible Misfortune, Despair, Ill Choices, a Mishap, a Short Cut, or a Joyful Sight. Resolve the roll it calls for.`, more: `A ⭐ Noteworthy Encounter is a full scene — a fight, a council, or a discovery. Events can cost Fatigue, Hope, or Shadow.` },
+      { tab: 'journey', sel: '[onclick="arriveAtDestination()"]', title: `Arrival`, body: `At your destination, tap “🏁 Arrive at Destination”. A final TRAVEL roll sets your lingering Fatigue, carried onto your Character sheet until you rest.`, more: `Then the adventure continues — a council, a ruin, a foe — wherever the road has led you.` }
     ] },
   { id: 'council', icon: '🗣️', title: 'Councils & Endeavours', sub: 'Words, and long labours',
     prep: c => _tutBuildIfBlank(c),
     steps: [
-      { tab: 'council', intro: `Not every battle is fought with the sword.`, title: `Begin a Council`, done: c => !!(c.council && c.council.active), body: `A Council is a social contest. Set the topic, the audience's Resistance, and their attitude, then Begin. Try it.`, more: `Resistance is how many successes you need to win them over; attitude (Reluctant / Open / Friendly) gives ±1 die to your rolls.` },
+      { tab: 'council', sel: '[onclick="startCouncil()"]', intro: `Not every battle is fought with the sword.`, title: `Begin a Council`, done: c => !!(c.council && c.council.active), body: `A Council is a social contest. Set the topic, the audience's Resistance and attitude, then tap “▶ Begin Council”. Try it.`, more: `Resistance is how many successes you need to win them over; attitude (Reluctant / Open / Friendly) gives ±1 die to your rolls.` },
       { tab: 'council', title: `Introduction`, body: `First make an Introduction roll (AWE, COURTESY, or RIDDLE) to set your time limit — how many attempts you get before patience runs out.`, more: `A strong introduction buys you more attempts; a poor one leaves you little room to manoeuvre.` },
       { tab: 'council', title: `Interaction`, body: `Then use skills like PERSUADE, INSIGHT, ENHEARTEN, RIDDLE or SONG to wear down the Resistance. Each success contributes 1 + its ✦ icons.`, more: `A Roleplay Bonus for a relevant or brilliant point adds dice. Run out of time and you may accept failure, or a costly Success-with-Woe.` },
       { tab: 'council', title: `Skill Endeavours`, body: `Scroll to the Skill Endeavour section for long tasks — research, crafting, healing. Set a Resistance, a time limit, and a risk level, then roll until it's done.`, more: `Risk levels: Standard, Hazardous (failures bring Woe), and Foolish (a single failure is a Disaster). Choose your gamble.` }
@@ -13136,10 +13174,10 @@ const TUTORIAL_LESSONS = [
   { id: 'fellowship', icon: '🌿', title: 'Advancement & Fellowship', sub: 'Earn XP, rest, and grow',
     prep: c => { _tutBuildIfBlank(c); c.skillPts = (parseInt(c.skillPts) || 0) + 4; c.advPts = (parseInt(c.advPts) || 0) + 4; },
     steps: [
-      { tab: 'character', sel: '[onclick="awardSessionXP()"]', intro: `Between perils, heroes rest, mend, and grow in renown.`, title: `Earn experience`, done: (c, b) => ((parseInt(c.skillPts) || 0) > b.sp || (parseInt(c.advPts) || 0) > b.ap), body: `After a session, tap “📜 End Session” for +3 Skill points and +3 Adventure points. Try it.`, more: `Skill points raise skills; Adventure points raise combat proficiencies and buy Valour & Wisdom.` },
+      { tab: 'character', sel: '[onclick="awardSessionXP()"]', intro: `Between perils, heroes rest, mend, and grow in renown.`, title: `Earn experience`, done: (c, b) => ((parseInt(c.skillPts) || 0) > b.sp || (parseInt(c.advPts) || 0) > b.ap), body: `After a session, tap “Award Session XP (+3 SP / +3 AP)” in the 📜 End Session card. Try it.`, more: `Skill points raise skills; Adventure points raise combat proficiencies and buy Valour & Wisdom.` },
       { tab: 'character', sel: `[onclick="openSpendXP('skill')"]`, title: `Spend points`, done: (c, b) => ((parseInt(c.skillPts) || 0) < b.sp), body: `Tap a Spend button to raise a skill or proficiency. Higher ranks cost more — 4 / 8 / 12 / 20 / 26 / 30 points to reach each rank. Spend some.`, more: `In a strict Fellowship phase you may raise each skill or proficiency only once, and choose Valour OR Wisdom — the wizard enforces this.` },
       { tab: 'character', sel: `[onclick="adj('valour',1)"]`, title: `Valour & Wisdom`, body: `Valour is renown; Wisdom is insight. Raising Valour grants a new Reward; raising Wisdom grants a new Virtue.`, more: `They also power Valour rolls (vs Heart, against dread) and Wisdom rolls (vs Wits, against greed and sorcery).` },
-      { tab: 'character', sel: '[onclick="openFPWizard()"]', title: `The Fellowship Phase`, body: `When an adventure ends, tap “🌿 End Adventuring Phase” to open the wizard: recover Hope, remove Shadow, update skills, and choose an Undertaking.`, more: `Undertakings: heal a Scar, write a song, strengthen the Fellowship, raise an heir, meet your Patron, study items — some free to your Calling.` },
+      { tab: 'character', sel: '[onclick="openFPWizard()"]', title: `The Fellowship Phase`, body: `When an adventure ends, tap “Open Fellowship Phase Wizard” in the 🌿 End Adventuring Phase card: recover Hope, remove Shadow, update skills, and choose an Undertaking.`, more: `Undertakings: heal a Scar, write a song, strengthen the Fellowship, raise an heir, meet your Patron, study items — some free to your Calling.` },
       { tab: 'character', title: `Yule`, body: `A Yule Fellowship phase is special: your hero ages a year, gains bonus Skill points, and recovers fully. The year turns in your tale.`, more: `Across a campaign your hero grows mighty — while the years and the Scars accumulate. That long arc is the soul of the game.` }
     ] },
   { id: 'solo', icon: '🗡️', title: 'Solo Play', sub: 'Strider, Moria, Oracle & Chronicle',
