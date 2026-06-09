@@ -28,7 +28,7 @@ grep -o "tor2e-[a-z0-9-]*" character-tracker.html | sort -u   # all localStorage
 
 As of last verification:
 - **`character-tracker.html`**: ~13,110 lines / ~760 KB (includes a ~20 KB vendored QR library in its own `<script>` block)
-- **`sw.js` `CACHE_VERSION`**: `tor2e-v67` (bump on every deploy)
+- **`sw.js` `CACHE_VERSION`**: `tor2e-v68` (bump on every deploy)
 - **SW strategy (since v30)**: HTML/navigations are **network-first** (deploys appear on next online load — no stale-cache lag); static assets cache-first. Updates surface a tap-to-update banner (page posts `SKIP_WAITING`); still bump `CACHE_VERSION` each deploy so old caches are GC'd.
 - **Moria Solo Mode**: ✅ complete (one toggle `⛏️ Enable Moria Solo Mode` → Band + Battle tabs, Moria oracle generators, full solo campaign). Full subsystem reference in the **"Moria Solo Mode"** section below.
 - **localStorage keys**: now a **multi-character roster** (added 2026-05-31):
@@ -600,7 +600,8 @@ A guided **Lessons menu** that teaches the whole game on a safe **sandbox practi
 - **Progress** (`tor2e-tutorial`): `{ completed:{id:true}, resume:{lessonId,step}, offered }` → ✓ on the menu + resume mid-lesson.
 - Selectors used (stable): `.tab[data-tab=…]`, `#apply-culture-btn`, `.roll-btn`, `#encounter-card-wrap`, `#end-cur-v`, `#hope-cur-v`; everything else centers.
 - **Interactive steps (2026-06-05)**: the spotlight is **non-blocking** (`#tut-overlay` `pointer-events:none`, cutout outlined in gold; `#tut-card` stays `pointer-events:auto`), so you tap the real highlighted control. Steps with a `done(char, baseline)` predicate **auto-advance** on a false→true transition (450ms poll → ✓ flash → `tutNext`); a "👉 Try it" cue shows, Next reads "Skip ›", and an already-satisfied condition shows "✓ Already done — tap Next" (no surprise advance). `_tutRender` captures `s.baseline={rolls:history.length}`; `_tutClearPoll` on every render/exit/complete/done. `done` wired on the key actions: pick a Culture, make a roll, add a foe, strike a foe, start a journey, begin a council, toggle a condition, add a magical item.
-- **Verified in jsdom**: sandbox create → restore (discard brings the real hero back) / keep (strips "(Practice)"); every lesson runs; bad selector centers without crashing; completion + resume persist; **auto-advance fires when the real action is performed** (added a foe → advanced; rolled dice → advanced) — no errors. Honest scope: only a handful of controls are spotlighted by `sel` (the rest center); read-along steps remain tap-Next.
+- **Hands-on "step aside" mode (2026-06-05)**: a step can step the tutorial fully aside so you act on the real page. **👉 Try it on the page** (on `done` steps) and **🔍 Look around the app** (on *every* step) call `tutStepAside()` → `_tutHideSpotlight()` + a floating **↩ Return pill** (`#tut-pill`, `tutReturn`); sets `_tutState.aside=true`. The done-poll keeps running, so finishing the action **auto-returns and advances** (pill flashes "✓ Done! Returning…"); otherwise the Return pill brings you back to the **same** step (advance-if-done-else-same). `_tutRender` resets `aside` + hides the pill; exit/complete/done hide it too.
+- **Verified in jsdom**: sandbox create → restore (discard brings the real hero back) / keep (strips "(Practice)"); every lesson runs; bad selector centers without crashing; completion + resume persist; **auto-advance fires when the real action is performed**; **Try-it hides the overlay + shows the pill, doing the action auto-advances, manual Return on an unfinished step stays put, Look-around works on read-only steps, exit clears the pill** — no errors. Honest scope: only a handful of controls are spotlighted by `sel` (the rest center).
 
 ## Moria Solo Mode (full subsystem reference)
 

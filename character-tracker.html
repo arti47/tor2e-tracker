@@ -12868,7 +12868,7 @@ function renderTutMenu() {
   ov.classList.add('show');
 }
 async function tutDone() {
-  _tutClearPoll();
+  _tutClearPoll(); _tutHidePill();
   _tutCloseMenu(); _tutHideSpotlight(); _tutState = null;
   await _tutExitSandbox();
 }
@@ -12891,14 +12891,14 @@ function tutNext() { const s = _tutState; if (!s) return; if (s.step >= s.steps.
 function tutPrev() { const s = _tutState; if (!s || s.step <= 0) return; s.step--; _tutSaveResume(); _tutRender(); }
 function tutComplete() {
   const s = _tutState; if (!s) return;
-  _tutClearPoll();
+  _tutClearPoll(); _tutHidePill();
   const p = loadTutProgress(); p.completed = p.completed || {}; p.completed[s.lessonId] = true;
   if (p.resume && p.resume.lessonId === s.lessonId) delete p.resume;
   saveTutProgress(p);
   _tutHideSpotlight(); _tutState = null; renderTutMenu();
 }
 function tutExit() {
-  _tutClearPoll();
+  _tutClearPoll(); _tutHidePill();
   if (_tutState) { const p = loadTutProgress(); p.resume = { lessonId: _tutState.lessonId, step: _tutState.step }; saveTutProgress(p); }
   _tutHideSpotlight(); _tutState = null; renderTutMenu();
 }
@@ -12915,19 +12915,47 @@ function _tutEnsureDom() {
   card.style.cssText = 'position:fixed;max-width:340px;width:88%;background:var(--bg);border:2px solid var(--gold);border-radius:12px;padding:14px 16px;box-shadow:0 8px 34px rgba(0,0,0,.55);font-size:14px;color:var(--ink);box-sizing:border-box;pointer-events:auto';
   ov.appendChild(hole); ov.appendChild(card);
   document.body.appendChild(ov);
+  // Floating "Return to tutorial" pill, shown while the tour has stepped aside (hands-on mode).
+  if (!document.getElementById('tut-pill')) {
+    const pill = document.createElement('button'); pill.id = 'tut-pill';
+    pill.onclick = tutReturn;
+    pill.style.cssText = 'position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:1001;display:none;background:var(--gold);color:var(--ink);border:2px solid var(--gold);border-radius:24px;padding:11px 20px;font-size:14px;font-weight:700;box-shadow:0 4px 18px rgba(0,0,0,.45);cursor:pointer;max-width:90%';
+    document.body.appendChild(pill);
+  }
 }
 function _tutHideSpotlight() { const o = document.getElementById('tut-overlay'); if (o) o.style.display = 'none'; }
+function _tutShowPill(text) { _tutEnsureDom(); const p = document.getElementById('tut-pill'); if (p) { p.textContent = text || '↩ Return to tutorial'; p.style.display = 'block'; } }
+function _tutHidePill() { const p = document.getElementById('tut-pill'); if (p) p.style.display = 'none'; }
+// Step the tutorial fully aside: clear the dim + card so the whole page is usable; leave a Return pill.
+function tutStepAside() {
+  if (!_tutState) return;
+  _tutState.aside = true;
+  _tutHideSpotlight();
+  _tutShowPill('↩ Return to tutorial');
+  // The done-poll started in _tutRender keeps running; on completion it auto-advances (auto-return).
+}
+// Come back from hands-on mode: if the step's action is done, advance; otherwise re-show the same step.
+function tutReturn() {
+  const s = _tutState; if (!s) { _tutHidePill(); return; }
+  _tutHidePill();
+  s.aside = false;
+  const step = s.steps[s.step];
+  let done = false; try { done = step.done ? !!step.done(char, s.baseline) : false; } catch (e) {}
+  if (done) tutNext(); else _tutRender();
+}
 function _tutCardHtml(step, s, wasDone) {
   const n = s.step + 1, total = s.steps.length;
   const intro = step.intro ? `<div style="font-style:italic;color:var(--gold);margin-bottom:8px;font-size:13px;line-height:1.5">${step.intro}</div>` : '';
   const title = step.title ? `<div style="font-weight:700;margin-bottom:4px">${step.title}</div>` : '';
   const more = step.more ? `<details style="margin-top:8px"><summary style="cursor:pointer;color:var(--gold);font-size:12px">Tell me more</summary><div style="margin-top:6px;font-size:12.5px;color:var(--text-muted);line-height:1.55">${step.more}</div></details>` : '';
-  // Interactive cue: when a step has a `done` predicate, you can do the real action through the
-  // spotlight cutout and it advances on its own. If it's already satisfied, just tap Next.
+  // Interactive steps have a `done` predicate. The "Try it" button steps the tutorial fully aside
+  // (clears the dim + card) so you can act on the real page; a Return pill brings it back, and it
+  // also auto-returns the moment the action is done. Already-satisfied steps just say so.
   const cue = step.done
     ? (wasDone
       ? `<div style="margin-top:9px;font-size:12px;color:var(--text-muted);background:var(--bg-deep);border-radius:6px;padding:6px 8px">✓ Already done — tap <strong>Next</strong> to go on.</div>`
-      : `<div style="margin-top:9px;font-size:12px;color:var(--gold);background:var(--bg-deep);border:1px dashed var(--gold);border-radius:6px;padding:6px 8px">👉 <strong>Try it</strong> on the highlighted control — the tutorial moves on by itself when you do. (Or tap <strong>Skip</strong>.)</div>`)
+      : `<button onclick="tutStepAside()" class="add-row-btn" style="width:100%;margin-top:10px;background:var(--gold);font-size:14px;font-weight:700">👉 Try it on the page →</button>
+         <div style="margin-top:5px;font-size:11px;color:var(--text-muted);text-align:center">The tutorial steps aside so you can do it. It pops back automatically when you finish — or tap the ↩ Return pill.</div>`)
     : '';
   const nextLabel = s.step === total - 1 ? 'Finish ✓' : (step.done && !wasDone ? 'Skip ›' : 'Next ›');
   return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
@@ -12943,12 +12971,16 @@ function _tutCardHtml(step, s, wasDone) {
       <button onclick="tutPrev()" class="add-row-btn" style="background:var(--btn-secondary-bg);color:white;font-size:13px;${s.step === 0 ? 'opacity:0.4;pointer-events:none' : ''}">‹ Back</button>
       <button id="tut-next-btn" onclick="tutNext()" class="add-row-btn" style="flex:1;background:var(--gold);font-size:14px">${nextLabel}</button>
     </div>
-    <div style="text-align:center;margin-top:7px"><button onclick="tutExit()" style="background:none;border:none;color:var(--text-faint);font-size:11px;cursor:pointer;text-decoration:underline">Skip / back to lessons</button></div>`;
+    <div style="display:flex;gap:10px;justify-content:center;margin-top:7px">
+      <button onclick="tutStepAside()" style="background:none;border:none;color:var(--text-faint);font-size:11px;cursor:pointer;text-decoration:underline">🔍 Look around the app</button>
+      <button onclick="tutExit()" style="background:none;border:none;color:var(--text-faint);font-size:11px;cursor:pointer;text-decoration:underline">Skip / back to lessons</button>
+    </div>`;
 }
 function _tutClearPoll() { if (_tutState && _tutState._poll) { clearInterval(_tutState._poll); _tutState._poll = null; } }
 function _tutRender() {
   const s = _tutState; if (!s) return;
   _tutClearPoll();
+  s.aside = false; _tutHidePill();   // rendering a step = back in card mode
   const step = s.steps[s.step];
   if (step.tab) { const tb = document.querySelector(`.tab[data-tab="${step.tab}"]`); if (tb && tb.style.display !== 'none') tb.click(); }
   _tutEnsureDom();
@@ -12973,6 +13005,7 @@ function _tutRender() {
         _tutClearPoll();
         const btn = document.getElementById('tut-next-btn');
         if (btn) { btn.textContent = '✓ Done! Continuing…'; btn.style.background = 'var(--success-bg, var(--gold))'; }
+        if (s.aside) _tutShowPill('✓ Done! Returning…');   // hands-on mode: flash the pill, then return+advance
         setTimeout(() => { if (_tutState === s) tutNext(); }, 750);
       }
     }, 450);
