@@ -4273,7 +4273,8 @@ const PREGENS = [
   "shieldRewards": [
    "Reinforced"
   ],
-  "helmRewards": []
+  "helmRewards": [],
+  "prowessAttr": "hrt"
  },
  {
   "id": "fimbrethil",
@@ -4906,7 +4907,7 @@ const PREGENS = [
   "standard": "Common",
   "age": "24",
   "features": "Eager, Merry",
-  "strRating": 3,
+  "strRating": 2,
   "strTN": 15,
   "hrtRating": 7,
   "hrtTN": 11,
@@ -5023,7 +5024,8 @@ const PREGENS = [
   ],
   "armourRewards": [],
   "shieldRewards": [],
-  "helmRewards": []
+  "helmRewards": [],
+  "prowessAttr": "str"
  },
  {
   "id": "lobelia",
@@ -5303,7 +5305,7 @@ const PREGENS = [
   "strTN": 14,
   "hrtRating": 6,
   "hrtTN": 12,
-  "witRating": 5,
+  "witRating": 4,
   "witTN": 13,
   "endMax": 24,
   "hopeMax": 16,
@@ -5416,7 +5418,8 @@ const PREGENS = [
   ],
   "armourRewards": [],
   "shieldRewards": [],
-  "helmRewards": []
+  "helmRewards": [],
+  "prowessAttr": "wit"
  },
  {
   "id": "rorimac",
@@ -6909,6 +6912,7 @@ function _pregenToChar(p) {
   c.armourRewards = (p.armourRewards || []).slice();
   c.helmRewards = (p.helmRewards || []).slice();
   c.shieldRewards = (p.shieldRewards || []).slice();
+  c.prowessAttr = p.prowessAttr || '';
   c.fellowshipRating = p.patron ? 1 : 0;
   return c;
 }
