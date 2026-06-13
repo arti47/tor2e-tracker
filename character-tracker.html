@@ -2431,6 +2431,7 @@
     <h3>Menu</h3>
     <button onclick="openTutorial()" style="background:var(--gold);color:var(--ink);border-color:var(--gold)">📖 Tutorial — Learn the Game</button>
     <button onclick="openRoster()">👥 Characters…</button>
+    <button onclick="openPregens()">✨ Pre-generated Heroes</button>
     <button onclick="openPartyView()">🛡️ Party View</button>
     <button onclick="openShare()">🔗 Share Character</button>
     <button onclick="toggleDarkMode()" id="dark-mode-btn">🌙 Toggle Dark Mode</button>
@@ -3941,6 +3942,1813 @@ const BESTIARY = [
     attacks: [{ name: 'Clammy grasp', dice: 2, dmg: 4, inj: 16, special: 'Drags under' }], fell: 'Lures with pale lights. Lurks in bog-water.' }
 ];
 
+const PREGENS = [
+ {
+  "id": "geira",
+  "name": "Geira, daughter of Gautarr",
+  "src": "Player Heroes",
+  "culture": "Bardings",
+  "blessing": "Stout-Hearted — All Valour rolls are Favoured",
+  "calling": "Captain",
+  "shadowPath": "Lure of Power",
+  "patron": "Gilraen, daughter of Dírhael",
+  "standard": "Prosperous",
+  "age": "25",
+  "features": "Bold, Proud, Leadership",
+  "strRating": 5,
+  "strTN": 15,
+  "hrtRating": 5,
+  "hrtTN": 15,
+  "witRating": 4,
+  "witTN": 16,
+  "endMax": 27,
+  "hopeMax": 13,
+  "parry": 16,
+  "valour": 1,
+  "wisdom": 1,
+  "skills": {
+   "Awe": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Athletics": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Awareness": {
+    "rating": 0,
+    "favoured": false
+   },
+   "Hunting": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Song": {
+    "rating": 1,
+    "favoured": false
+   },
+   "Craft": {
+    "rating": 1,
+    "favoured": false
+   },
+   "Enhearten": {
+    "rating": 2,
+    "favoured": true
+   },
+   "Travel": {
+    "rating": 1,
+    "favoured": false
+   },
+   "Insight": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Healing": {
+    "rating": 0,
+    "favoured": false
+   },
+   "Courtesy": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Battle": {
+    "rating": 2,
+    "favoured": true
+   },
+   "Persuade": {
+    "rating": 3,
+    "favoured": true
+   },
+   "Stealth": {
+    "rating": 0,
+    "favoured": false
+   },
+   "Scan": {
+    "rating": 1,
+    "favoured": false
+   },
+   "Explore": {
+    "rating": 1,
+    "favoured": false
+   },
+   "Riddle": {
+    "rating": 0,
+    "favoured": false
+   },
+   "Lore": {
+    "rating": 1,
+    "favoured": false
+   }
+  },
+  "profs": {
+   "Axes": 0,
+   "Bows": 0,
+   "Spears": 1,
+   "Swords": 3
+  },
+  "weapons": [
+   {
+    "name": "Sword",
+    "dmg": "4",
+    "inj": "16",
+    "load": "2",
+    "prof": "Swords",
+    "notes": "",
+    "picked": true
+   },
+   {
+    "name": "Short Spear",
+    "dmg": "3",
+    "inj": "14",
+    "load": "2",
+    "prof": "Spears",
+    "notes": "Can be thrown",
+    "picked": true
+   }
+  ],
+  "armourProt": 4,
+  "armourLoad": 10,
+  "armourNotes": "Coat of Mail",
+  "helmProt": 0,
+  "helmLoad": 0,
+  "shieldBase": 1,
+  "shieldTotal": 1,
+  "shieldLoad": 2,
+  "shieldNotes": "Buckler",
+  "rewardsList": [
+   {
+    "name": "Cunning-make",
+    "type": "",
+    "desc": "Coat of Mail — Cunning Make (−2 Load)",
+    "appliedTo": ""
+   }
+  ],
+  "virtuesList": [
+   {
+    "name": "Hardiness",
+    "desc": "+1 max Endurance"
+   }
+  ],
+  "usefulItems": [
+   "Dwarven Knife (HUNTING)",
+   "Fur Cloak (TRAVEL)",
+   "Golden Brooch (COURTESY)"
+  ]
+ },
+ {
+  "id": "regin",
+  "name": "Regin Stonefist",
+  "src": "Player Heroes",
+  "culture": "Dwarves of Durin's Folk",
+  "blessing": "Redoubtable — Halve Load of armour & helms",
+  "calling": "Champion",
+  "shadowPath": "Curse of Vengeance",
+  "patron": "Gilraen, daughter of Dírhael",
+  "standard": "Prosperous",
+  "age": "76",
+  "features": "Fierce, Wilful, Enemy-Lore (Orcs)",
+  "strRating": 7,
+  "strTN": 13,
+  "hrtRating": 2,
+  "hrtTN": 17,
+  "witRating": 5,
+  "witTN": 15,
+  "endMax": 29,
+  "hopeMax": 10,
+  "parry": 15,
+  "valour": 1,
+  "wisdom": 1,
+  "skills": {
+   "Awe": {
+    "rating": 2,
+    "favoured": true
+   },
+   "Athletics": {
+    "rating": 2,
+    "favoured": true
+   },
+   "Awareness": {
+    "rating": 0,
+    "favoured": false
+   },
+   "Hunting": {
+    "rating": 0,
+    "favoured": true
+   },
+   "Song": {
+    "rating": 1,
+    "favoured": false
+   },
+   "Craft": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Enhearten": {
+    "rating": 0,
+    "favoured": false
+   },
+   "Travel": {
+    "rating": 3,
+    "favoured": false
+   },
+   "Insight": {
+    "rating": 0,
+    "favoured": false
+   },
+   "Healing": {
+    "rating": 0,
+    "favoured": false
+   },
+   "Courtesy": {
+    "rating": 1,
+    "favoured": false
+   },
+   "Battle": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Persuade": {
+    "rating": 0,
+    "favoured": false
+   },
+   "Stealth": {
+    "rating": 0,
+    "favoured": false
+   },
+   "Scan": {
+    "rating": 3,
+    "favoured": false
+   },
+   "Explore": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Riddle": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Lore": {
+    "rating": 1,
+    "favoured": false
+   }
+  },
+  "profs": {
+   "Axes": 3,
+   "Bows": 0,
+   "Spears": 1,
+   "Swords": 0
+  },
+  "weapons": [
+   {
+    "name": "Long-hafted Axe",
+    "dmg": "6",
+    "inj": "18",
+    "load": "3",
+    "prof": "Axes",
+    "notes": "Injury 20 when used 2-handed",
+    "picked": true
+   }
+  ],
+  "armourProt": 4,
+  "armourLoad": 6,
+  "armourNotes": "Coat of Mail",
+  "helmProt": 1,
+  "helmLoad": 2,
+  "shieldBase": 3,
+  "shieldTotal": 3,
+  "shieldLoad": 4,
+  "shieldNotes": "Shield",
+  "rewardsList": [
+   {
+    "name": "Reinforced",
+    "type": "",
+    "desc": "Shield — Reinforced (+1 Parry)",
+    "appliedTo": ""
+   }
+  ],
+  "virtuesList": [
+   {
+    "name": "Prowess",
+    "desc": "−1 to a chosen Attribute TN (Heart)"
+   }
+  ],
+  "usefulItems": [
+   "Carved Pauldrons (BATTLE)",
+   "Padded Boots (STEALTH)",
+   "Wanderer's Haversack (EXPLORE)"
+  ]
+ },
+ {
+  "id": "fimbrethil",
+  "name": "Fimbrethil of the Havens",
+  "src": "Player Heroes",
+  "culture": "Elves of Lindon",
+  "blessing": "Elven-Skill",
+  "calling": "Scholar",
+  "shadowPath": "Lure of Secrets",
+  "patron": "Gilraen, daughter of Dírhael",
+  "standard": "Frugal",
+  "age": "135",
+  "features": "Fair, Lordly, Rhymes of Lore",
+  "strRating": 4,
+  "strTN": 16,
+  "hrtRating": 3,
+  "hrtTN": 17,
+  "witRating": 7,
+  "witTN": 13,
+  "endMax": 24,
+  "hopeMax": 13,
+  "parry": 19,
+  "valour": 1,
+  "wisdom": 1,
+  "skills": {
+   "Awe": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Athletics": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Awareness": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Hunting": {
+    "rating": 0,
+    "favoured": false
+   },
+   "Song": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Craft": {
+    "rating": 2,
+    "favoured": true
+   },
+   "Enhearten": {
+    "rating": 1,
+    "favoured": false
+   },
+   "Travel": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Insight": {
+    "rating": 0,
+    "favoured": false
+   },
+   "Healing": {
+    "rating": 3,
+    "favoured": false
+   },
+   "Courtesy": {
+    "rating": 1,
+    "favoured": false
+   },
+   "Battle": {
+    "rating": 0,
+    "favoured": false
+   },
+   "Persuade": {
+    "rating": 0,
+    "favoured": false
+   },
+   "Stealth": {
+    "rating": 3,
+    "favoured": false
+   },
+   "Scan": {
+    "rating": 1,
+    "favoured": false
+   },
+   "Explore": {
+    "rating": 0,
+    "favoured": false
+   },
+   "Riddle": {
+    "rating": 1,
+    "favoured": true
+   },
+   "Lore": {
+    "rating": 3,
+    "favoured": true
+   }
+  },
+  "profs": {
+   "Axes": 0,
+   "Bows": 2,
+   "Spears": 1,
+   "Swords": 0
+  },
+  "weapons": [
+   {
+    "name": "Great Bow",
+    "dmg": "4",
+    "inj": "18",
+    "load": "4",
+    "prof": "Bows",
+    "notes": "Ranged, 2-handed",
+    "picked": true
+   },
+   {
+    "name": "Cudgel",
+    "dmg": "3",
+    "inj": "12",
+    "load": "0",
+    "prof": "Brawling",
+    "notes": "Brawling",
+    "picked": true
+   }
+  ],
+  "armourProt": 2,
+  "armourLoad": 6,
+  "armourNotes": "Leather Corslet",
+  "helmProt": 0,
+  "helmLoad": 0,
+  "shieldBase": 0,
+  "shieldTotal": 0,
+  "shieldLoad": 0,
+  "shieldNotes": "",
+  "rewardsList": [
+   {
+    "name": "Fell",
+    "type": "",
+    "desc": "Great Bow — Fell (+2 Injury)",
+    "appliedTo": ""
+   }
+  ],
+  "virtuesList": [
+   {
+    "name": "Confidence",
+    "desc": "+? max Hope"
+   }
+  ],
+  "usefulItems": [
+   "Harp (SONG)"
+  ]
+ },
+ {
+  "id": "mentha",
+  "name": "Mentha North-Tooks",
+  "src": "Player Heroes",
+  "culture": "Hobbits of the Shire",
+  "blessing": "Hobbit-Sense — All Wisdom rolls are Favoured",
+  "calling": "Treasure Hunter",
+  "shadowPath": "Dragon-Sickness",
+  "patron": "Gilraen, daughter of Dírhael",
+  "standard": "Common",
+  "age": "29",
+  "features": "Eager, Inquisitive, Burglar",
+  "strRating": 2,
+  "strTN": 18,
+  "hrtRating": 6,
+  "hrtTN": 14,
+  "witRating": 6,
+  "witTN": 14,
+  "endMax": 20,
+  "hopeMax": 16,
+  "parry": 18,
+  "valour": 1,
+  "wisdom": 1,
+  "skills": {
+   "Awe": {
+    "rating": 0,
+    "favoured": false
+   },
+   "Athletics": {
+    "rating": 1,
+    "favoured": false
+   },
+   "Awareness": {
+    "rating": 3,
+    "favoured": false
+   },
+   "Hunting": {
+    "rating": 0,
+    "favoured": false
+   },
+   "Song": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Craft": {
+    "rating": 1,
+    "favoured": false
+   },
+   "Enhearten": {
+    "rating": 0,
+    "favoured": false
+   },
+   "Travel": {
+    "rating": 1,
+    "favoured": false
+   },
+   "Insight": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Healing": {
+    "rating": 1,
+    "favoured": false
+   },
+   "Courtesy": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Battle": {
+    "rating": 0,
+    "favoured": false
+   },
+   "Persuade": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Stealth": {
+    "rating": 3,
+    "favoured": true
+   },
+   "Scan": {
+    "rating": 1,
+    "favoured": true
+   },
+   "Explore": {
+    "rating": 2,
+    "favoured": true
+   },
+   "Riddle": {
+    "rating": 3,
+    "favoured": false
+   },
+   "Lore": {
+    "rating": 1,
+    "favoured": false
+   }
+  },
+  "profs": {
+   "Axes": 0,
+   "Bows": 1,
+   "Spears": 0,
+   "Swords": 2
+  },
+  "weapons": [
+   {
+    "name": "Short Sword",
+    "dmg": "3",
+    "inj": "16",
+    "load": "1",
+    "prof": "Swords",
+    "notes": "Keen",
+    "picked": true
+   },
+   {
+    "name": "Bow",
+    "dmg": "3",
+    "inj": "14",
+    "load": "2",
+    "prof": "Bows",
+    "notes": "Ranged, 2-handed",
+    "picked": true
+   }
+  ],
+  "armourProt": 1,
+  "armourLoad": 3,
+  "armourNotes": "Leather Shirt",
+  "helmProt": 0,
+  "helmLoad": 0,
+  "shieldBase": 0,
+  "shieldTotal": 0,
+  "shieldLoad": 0,
+  "shieldNotes": "",
+  "rewardsList": [
+   {
+    "name": "Keen",
+    "type": "",
+    "desc": "Short Sword — Keen (Piercing Blow on 9+)",
+    "appliedTo": ""
+   }
+  ],
+  "virtuesList": [
+   {
+    "name": "Mastery",
+    "desc": "+2 favoured skills"
+   }
+  ],
+  "usefulItems": [
+   "Reusable Torch (SCAN)",
+   "Rope (ATHLETICS)"
+  ]
+ },
+ {
+  "id": "duinhir",
+  "name": "Duinhir 'Eaglenose'",
+  "src": "Player Heroes",
+  "culture": "Rangers of the North",
+  "blessing": "Kings of Men",
+  "calling": "Warden",
+  "shadowPath": "Path of Despair",
+  "patron": "Gilraen, daughter of Dírhael",
+  "standard": "Frugal",
+  "age": "30",
+  "features": "Honourable, Stern, Shadow-Lore",
+  "strRating": 6,
+  "strTN": 14,
+  "hrtRating": 5,
+  "hrtTN": 15,
+  "witRating": 4,
+  "witTN": 16,
+  "endMax": 26,
+  "hopeMax": 11,
+  "parry": 18,
+  "valour": 1,
+  "wisdom": 1,
+  "skills": {
+   "Awe": {
+    "rating": 1,
+    "favoured": false
+   },
+   "Athletics": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Awareness": {
+    "rating": 2,
+    "favoured": true
+   },
+   "Hunting": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Song": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Craft": {
+    "rating": 1,
+    "favoured": false
+   },
+   "Enhearten": {
+    "rating": 0,
+    "favoured": false
+   },
+   "Travel": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Insight": {
+    "rating": 0,
+    "favoured": true
+   },
+   "Healing": {
+    "rating": 2,
+    "favoured": true
+   },
+   "Courtesy": {
+    "rating": 0,
+    "favoured": false
+   },
+   "Battle": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Persuade": {
+    "rating": 0,
+    "favoured": false
+   },
+   "Stealth": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Scan": {
+    "rating": 1,
+    "favoured": false
+   },
+   "Explore": {
+    "rating": 3,
+    "favoured": false
+   },
+   "Riddle": {
+    "rating": 0,
+    "favoured": false
+   },
+   "Lore": {
+    "rating": 2,
+    "favoured": false
+   }
+  },
+  "profs": {
+   "Axes": 0,
+   "Bows": 0,
+   "Spears": 1,
+   "Swords": 3
+  },
+  "weapons": [
+   {
+    "name": "Long Sword",
+    "dmg": "6",
+    "inj": "16",
+    "load": "3",
+    "prof": "Swords",
+    "notes": "Injury 18 when used 2-handed",
+    "picked": true
+   },
+   {
+    "name": "Spear",
+    "dmg": "4",
+    "inj": "14",
+    "load": "3",
+    "prof": "Spears",
+    "notes": "Injury 16 2-h, can be thrown",
+    "picked": true
+   }
+  ],
+  "armourProt": 1,
+  "armourLoad": 3,
+  "armourNotes": "Leather Shirt",
+  "helmProt": 1,
+  "helmLoad": 4,
+  "shieldBase": 0,
+  "shieldTotal": 0,
+  "shieldLoad": 0,
+  "shieldNotes": "",
+  "rewardsList": [
+   {
+    "name": "Grievous",
+    "type": "",
+    "desc": "Long Sword — Grievous (+1 Damage)",
+    "appliedTo": ""
+   }
+  ],
+  "virtuesList": [
+   {
+    "name": "Dour-handed",
+    "desc": "+1 Damage on a Heavy Blow"
+   }
+  ],
+  "usefulItems": [
+   "Hatchet (CRAFT)"
+  ]
+ },
+ {
+  "id": "drogo",
+  "name": "Drogo Baggins",
+  "src": "Shire Starter Set",
+  "culture": "Hobbits of the Shire",
+  "blessing": "Hobbit-Sense — All Wisdom rolls are Favoured",
+  "calling": "",
+  "shadowPath": "",
+  "patron": "",
+  "standard": "Common",
+  "age": "52",
+  "features": "Faithful, Honourable",
+  "strRating": 3,
+  "strTN": 15,
+  "hrtRating": 6,
+  "hrtTN": 12,
+  "witRating": 5,
+  "witTN": 13,
+  "endMax": 23,
+  "hopeMax": 18,
+  "parry": 17,
+  "valour": 1,
+  "wisdom": 1,
+  "skills": {
+   "Awe": {
+    "rating": 0,
+    "favoured": false
+   },
+   "Athletics": {
+    "rating": 0,
+    "favoured": false
+   },
+   "Awareness": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Hunting": {
+    "rating": 0,
+    "favoured": false
+   },
+   "Song": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Craft": {
+    "rating": 1,
+    "favoured": false
+   },
+   "Enhearten": {
+    "rating": 0,
+    "favoured": false
+   },
+   "Travel": {
+    "rating": 1,
+    "favoured": false
+   },
+   "Insight": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Healing": {
+    "rating": 1,
+    "favoured": false
+   },
+   "Courtesy": {
+    "rating": 3,
+    "favoured": false
+   },
+   "Battle": {
+    "rating": 0,
+    "favoured": false
+   },
+   "Persuade": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Stealth": {
+    "rating": 3,
+    "favoured": false
+   },
+   "Scan": {
+    "rating": 0,
+    "favoured": false
+   },
+   "Explore": {
+    "rating": 0,
+    "favoured": false
+   },
+   "Riddle": {
+    "rating": 3,
+    "favoured": false
+   },
+   "Lore": {
+    "rating": 1,
+    "favoured": false
+   }
+  },
+  "profs": {
+   "Axes": 0,
+   "Bows": 2,
+   "Spears": 0,
+   "Swords": 1
+  },
+  "weapons": [],
+  "armourProt": 0,
+  "armourLoad": 0,
+  "armourNotes": "",
+  "helmProt": 0,
+  "helmLoad": 0,
+  "shieldBase": 0,
+  "shieldTotal": 0,
+  "shieldLoad": 0,
+  "shieldNotes": "",
+  "rewardsList": [],
+  "virtuesList": [
+   {
+    "name": "Confidence",
+    "desc": "+2 maximum Hope (counted in the total)"
+   }
+  ],
+  "usefulItems": [
+   "Fine Cloak and Hat (AWE)"
+  ]
+ },
+ {
+  "id": "esmeralda",
+  "name": "Esmeralda Took",
+  "src": "Shire Starter Set",
+  "culture": "Hobbits of the Shire",
+  "blessing": "Hobbit-Sense — All Wisdom rolls are Favoured",
+  "calling": "",
+  "shadowPath": "",
+  "patron": "",
+  "standard": "Common",
+  "age": "24",
+  "features": "Eager, Merry",
+  "strRating": 3,
+  "strTN": 15,
+  "hrtRating": 7,
+  "hrtTN": 11,
+  "witRating": 5,
+  "witTN": 13,
+  "endMax": 22,
+  "hopeMax": 17,
+  "parry": 17,
+  "valour": 1,
+  "wisdom": 1,
+  "skills": {
+   "Awe": {
+    "rating": 1,
+    "favoured": false
+   },
+   "Athletics": {
+    "rating": 1,
+    "favoured": false
+   },
+   "Awareness": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Hunting": {
+    "rating": 0,
+    "favoured": false
+   },
+   "Song": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Craft": {
+    "rating": 1,
+    "favoured": false
+   },
+   "Enhearten": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Travel": {
+    "rating": 0,
+    "favoured": false
+   },
+   "Insight": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Healing": {
+    "rating": 1,
+    "favoured": false
+   },
+   "Courtesy": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Battle": {
+    "rating": 0,
+    "favoured": false
+   },
+   "Persuade": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Stealth": {
+    "rating": 3,
+    "favoured": false
+   },
+   "Scan": {
+    "rating": 0,
+    "favoured": false
+   },
+   "Explore": {
+    "rating": 0,
+    "favoured": false
+   },
+   "Riddle": {
+    "rating": 3,
+    "favoured": false
+   },
+   "Lore": {
+    "rating": 0,
+    "favoured": false
+   }
+  },
+  "profs": {
+   "Axes": 1,
+   "Bows": 2,
+   "Spears": 0,
+   "Swords": 0
+  },
+  "weapons": [],
+  "armourProt": 0,
+  "armourLoad": 0,
+  "armourNotes": "",
+  "helmProt": 0,
+  "helmLoad": 0,
+  "shieldBase": 0,
+  "shieldTotal": 0,
+  "shieldLoad": 0,
+  "shieldNotes": "",
+  "rewardsList": [],
+  "virtuesList": [
+   {
+    "name": "Prowess",
+    "desc": "−1 Strength TN"
+   }
+  ],
+  "usefulItems": [
+   "Tookish Walking Stick (TRAVEL)"
+  ]
+ },
+ {
+  "id": "lobelia",
+  "name": "Lobelia Bracegirdle",
+  "src": "Shire Starter Set",
+  "culture": "Hobbits of the Shire",
+  "blessing": "Hobbit-Sense — All Wisdom rolls are Favoured",
+  "calling": "",
+  "shadowPath": "",
+  "patron": "",
+  "standard": "Common",
+  "age": "42",
+  "features": "Inquisitive, Keen-eyed",
+  "strRating": 2,
+  "strTN": 16,
+  "hrtRating": 6,
+  "hrtTN": 12,
+  "witRating": 6,
+  "witTN": 12,
+  "endMax": 22,
+  "hopeMax": 16,
+  "parry": 18,
+  "valour": 1,
+  "wisdom": 1,
+  "skills": {
+   "Awe": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Athletics": {
+    "rating": 0,
+    "favoured": false
+   },
+   "Awareness": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Hunting": {
+    "rating": 0,
+    "favoured": false
+   },
+   "Song": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Craft": {
+    "rating": 1,
+    "favoured": false
+   },
+   "Enhearten": {
+    "rating": 0,
+    "favoured": false
+   },
+   "Travel": {
+    "rating": 0,
+    "favoured": false
+   },
+   "Insight": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Healing": {
+    "rating": 1,
+    "favoured": false
+   },
+   "Courtesy": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Battle": {
+    "rating": 0,
+    "favoured": false
+   },
+   "Persuade": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Stealth": {
+    "rating": 3,
+    "favoured": false
+   },
+   "Scan": {
+    "rating": 1,
+    "favoured": false
+   },
+   "Explore": {
+    "rating": 0,
+    "favoured": false
+   },
+   "Riddle": {
+    "rating": 3,
+    "favoured": false
+   },
+   "Lore": {
+    "rating": 1,
+    "favoured": false
+   }
+  },
+  "profs": {
+   "Axes": 0,
+   "Bows": 1,
+   "Spears": 0,
+   "Swords": 2
+  },
+  "weapons": [],
+  "armourProt": 0,
+  "armourLoad": 0,
+  "armourNotes": "",
+  "helmProt": 0,
+  "helmLoad": 0,
+  "shieldBase": 0,
+  "shieldTotal": 0,
+  "shieldLoad": 0,
+  "shieldNotes": "",
+  "rewardsList": [],
+  "virtuesList": [
+   {
+    "name": "Mastery",
+    "desc": "+2 bonus favoured skills"
+   }
+  ],
+  "usefulItems": [
+   "Exquisite Umbrella (PERSUADE)"
+  ]
+ },
+ {
+  "id": "paladin",
+  "name": "Paladin Took II",
+  "src": "Shire Starter Set",
+  "culture": "Hobbits of the Shire",
+  "blessing": "Hobbit-Sense — All Wisdom rolls are Favoured",
+  "calling": "",
+  "shadowPath": "",
+  "patron": "",
+  "standard": "Common",
+  "age": "27",
+  "features": "Eager, Rustic",
+  "strRating": 3,
+  "strTN": 15,
+  "hrtRating": 7,
+  "hrtTN": 11,
+  "witRating": 4,
+  "witTN": 14,
+  "endMax": 23,
+  "hopeMax": 17,
+  "parry": 17,
+  "valour": 1,
+  "wisdom": 1,
+  "skills": {
+   "Awe": {
+    "rating": 0,
+    "favoured": false
+   },
+   "Athletics": {
+    "rating": 1,
+    "favoured": false
+   },
+   "Awareness": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Hunting": {
+    "rating": 1,
+    "favoured": false
+   },
+   "Song": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Craft": {
+    "rating": 1,
+    "favoured": false
+   },
+   "Enhearten": {
+    "rating": 0,
+    "favoured": false
+   },
+   "Travel": {
+    "rating": 0,
+    "favoured": false
+   },
+   "Insight": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Healing": {
+    "rating": 1,
+    "favoured": false
+   },
+   "Courtesy": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Battle": {
+    "rating": 0,
+    "favoured": false
+   },
+   "Persuade": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Stealth": {
+    "rating": 3,
+    "favoured": false
+   },
+   "Scan": {
+    "rating": 0,
+    "favoured": false
+   },
+   "Explore": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Riddle": {
+    "rating": 3,
+    "favoured": false
+   },
+   "Lore": {
+    "rating": 0,
+    "favoured": false
+   }
+  },
+  "profs": {
+   "Axes": 1,
+   "Bows": 0,
+   "Spears": 0,
+   "Swords": 2
+  },
+  "weapons": [],
+  "armourProt": 0,
+  "armourLoad": 0,
+  "armourNotes": "",
+  "helmProt": 0,
+  "helmLoad": 0,
+  "shieldBase": 0,
+  "shieldTotal": 0,
+  "shieldLoad": 0,
+  "shieldNotes": "",
+  "rewardsList": [],
+  "virtuesList": [
+   {
+    "name": "Nimbleness",
+    "desc": "+1 Parry"
+   }
+  ],
+  "usefulItems": [
+   "Tookish Wayfarer Bundle (EXPLORE)"
+  ]
+ },
+ {
+  "id": "primula",
+  "name": "Primula Brandybuck",
+  "src": "Shire Starter Set",
+  "culture": "Hobbits of the Shire",
+  "blessing": "Hobbit-Sense — All Wisdom rolls are Favoured",
+  "calling": "",
+  "shadowPath": "",
+  "patron": "",
+  "standard": "Common",
+  "age": "40",
+  "features": "Fair-spoken, Faithful",
+  "strRating": 4,
+  "strTN": 14,
+  "hrtRating": 6,
+  "hrtTN": 12,
+  "witRating": 5,
+  "witTN": 13,
+  "endMax": 24,
+  "hopeMax": 16,
+  "parry": 16,
+  "valour": 1,
+  "wisdom": 1,
+  "skills": {
+   "Awe": {
+    "rating": 0,
+    "favoured": false
+   },
+   "Athletics": {
+    "rating": 0,
+    "favoured": false
+   },
+   "Awareness": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Hunting": {
+    "rating": 0,
+    "favoured": false
+   },
+   "Song": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Craft": {
+    "rating": 1,
+    "favoured": false
+   },
+   "Enhearten": {
+    "rating": 0,
+    "favoured": false
+   },
+   "Travel": {
+    "rating": 0,
+    "favoured": false
+   },
+   "Insight": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Healing": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Courtesy": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Battle": {
+    "rating": 0,
+    "favoured": false
+   },
+   "Persuade": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Stealth": {
+    "rating": 3,
+    "favoured": false
+   },
+   "Scan": {
+    "rating": 0,
+    "favoured": false
+   },
+   "Explore": {
+    "rating": 0,
+    "favoured": false
+   },
+   "Riddle": {
+    "rating": 3,
+    "favoured": false
+   },
+   "Lore": {
+    "rating": 2,
+    "favoured": false
+   }
+  },
+  "profs": {
+   "Axes": 0,
+   "Bows": 2,
+   "Spears": 1,
+   "Swords": 0
+  },
+  "weapons": [],
+  "armourProt": 0,
+  "armourLoad": 0,
+  "armourNotes": "",
+  "helmProt": 0,
+  "helmLoad": 0,
+  "shieldBase": 0,
+  "shieldTotal": 0,
+  "shieldLoad": 0,
+  "shieldNotes": "",
+  "rewardsList": [],
+  "virtuesList": [
+   {
+    "name": "Prowess",
+    "desc": "−1 Wits TN"
+   }
+  ],
+  "usefulItems": [
+   "Fancy Garments (COURTESY)"
+  ]
+ },
+ {
+  "id": "rorimac",
+  "name": "Rorimac Brandybuck",
+  "src": "Shire Starter Set",
+  "culture": "Hobbits of the Shire",
+  "blessing": "Hobbit-Sense — All Wisdom rolls are Favoured",
+  "calling": "",
+  "shadowPath": "",
+  "patron": "",
+  "standard": "Common",
+  "age": "58",
+  "features": "Keen-eyed, Rustic",
+  "strRating": 4,
+  "strTN": 14,
+  "hrtRating": 5,
+  "hrtTN": 13,
+  "witRating": 5,
+  "witTN": 13,
+  "endMax": 26,
+  "hopeMax": 15,
+  "parry": 17,
+  "valour": 1,
+  "wisdom": 1,
+  "skills": {
+   "Awe": {
+    "rating": 0,
+    "favoured": false
+   },
+   "Athletics": {
+    "rating": 1,
+    "favoured": false
+   },
+   "Awareness": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Hunting": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Song": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Craft": {
+    "rating": 1,
+    "favoured": false
+   },
+   "Enhearten": {
+    "rating": 0,
+    "favoured": false
+   },
+   "Travel": {
+    "rating": 0,
+    "favoured": false
+   },
+   "Insight": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Healing": {
+    "rating": 1,
+    "favoured": false
+   },
+   "Courtesy": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Battle": {
+    "rating": 0,
+    "favoured": false
+   },
+   "Persuade": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Stealth": {
+    "rating": 3,
+    "favoured": false
+   },
+   "Scan": {
+    "rating": 1,
+    "favoured": false
+   },
+   "Explore": {
+    "rating": 0,
+    "favoured": false
+   },
+   "Riddle": {
+    "rating": 3,
+    "favoured": false
+   },
+   "Lore": {
+    "rating": 0,
+    "favoured": false
+   }
+  },
+  "profs": {
+   "Axes": 0,
+   "Bows": 0,
+   "Spears": 1,
+   "Swords": 2
+  },
+  "weapons": [],
+  "armourProt": 0,
+  "armourLoad": 0,
+  "armourNotes": "",
+  "helmProt": 0,
+  "helmLoad": 0,
+  "shieldBase": 0,
+  "shieldTotal": 0,
+  "shieldLoad": 0,
+  "shieldNotes": "",
+  "rewardsList": [],
+  "virtuesList": [
+   {
+    "name": "Hardiness",
+    "desc": "+2 maximum Endurance"
+   }
+  ],
+  "usefulItems": [
+   "Rabbit-skinning Knife (HUNTING)"
+  ]
+ },
+ {
+  "id": "balin",
+  "name": "Balin, Son of Fundin",
+  "src": "Shire Starter Set",
+  "culture": "Dwarves of Durin's Folk",
+  "blessing": "Redoubtable — Halve Load of armour & helms",
+  "calling": "",
+  "shadowPath": "",
+  "patron": "",
+  "standard": "Prosperous",
+  "age": "197",
+  "features": "Eager, Inquisitive",
+  "strRating": 5,
+  "strTN": 13,
+  "hrtRating": 4,
+  "hrtTN": 14,
+  "witRating": 5,
+  "witTN": 13,
+  "endMax": 27,
+  "hopeMax": 12,
+  "parry": 15,
+  "valour": 4,
+  "wisdom": 3,
+  "skills": {
+   "Awe": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Athletics": {
+    "rating": 1,
+    "favoured": false
+   },
+   "Awareness": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Hunting": {
+    "rating": 0,
+    "favoured": false
+   },
+   "Song": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Craft": {
+    "rating": 3,
+    "favoured": false
+   },
+   "Enhearten": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Travel": {
+    "rating": 3,
+    "favoured": false
+   },
+   "Insight": {
+    "rating": 0,
+    "favoured": false
+   },
+   "Healing": {
+    "rating": 0,
+    "favoured": false
+   },
+   "Courtesy": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Battle": {
+    "rating": 3,
+    "favoured": false
+   },
+   "Persuade": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Stealth": {
+    "rating": 0,
+    "favoured": false
+   },
+   "Scan": {
+    "rating": 3,
+    "favoured": false
+   },
+   "Explore": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Riddle": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Lore": {
+    "rating": 3,
+    "favoured": false
+   }
+  },
+  "profs": {
+   "Axes": 3,
+   "Bows": 0,
+   "Spears": 0,
+   "Swords": 1
+  },
+  "weapons": [
+   {
+    "name": "Balin's Axe",
+    "dmg": "6",
+    "inj": "18",
+    "load": "2",
+    "prof": "Axes",
+    "notes": "Grievous, Keen",
+    "picked": true
+   }
+  ],
+  "armourProt": 4,
+  "armourLoad": 10,
+  "armourNotes": "Coat of Silver Mail (close-fitting, cunning make)",
+  "helmProt": 0,
+  "helmLoad": 0,
+  "shieldBase": 2,
+  "shieldTotal": 2,
+  "shieldLoad": 4,
+  "shieldNotes": "Shield",
+  "rewardsList": [
+   {
+    "name": "Grievous, Keen",
+    "type": "",
+    "desc": "Balin's Axe",
+    "appliedTo": ""
+   },
+   {
+    "name": "Close-fitting, Cunning Make",
+    "type": "",
+    "desc": "Coat of Silver Mail",
+    "appliedTo": ""
+   }
+  ],
+  "virtuesList": [
+   {
+    "name": "Dark for Dark Business",
+    "desc": "Inspired in the dark/underground"
+   },
+   {
+    "name": "Dour-handed",
+    "desc": "+1 Damage on a Heavy Blow"
+   },
+   {
+    "name": "Durin's Way",
+    "desc": "+2 Parry underground"
+   }
+  ],
+  "usefulItems": [
+   "Dwarf-make Viol (SONG)"
+  ]
+ },
+ {
+  "id": "bilbo",
+  "name": "Bilbo Baggins",
+  "src": "Shire Starter Set",
+  "culture": "Hobbits of the Shire",
+  "blessing": "Hobbit-Sense — All Wisdom rolls are Favoured",
+  "calling": "",
+  "shadowPath": "",
+  "patron": "",
+  "standard": "Common",
+  "age": "70",
+  "features": "Fair-spoken, Honourable",
+  "strRating": 3,
+  "strTN": 15,
+  "hrtRating": 6,
+  "hrtTN": 12,
+  "witRating": 5,
+  "witTN": 13,
+  "endMax": 23,
+  "hopeMax": 16,
+  "parry": 17,
+  "valour": 2,
+  "wisdom": 3,
+  "skills": {
+   "Awe": {
+    "rating": 0,
+    "favoured": false
+   },
+   "Athletics": {
+    "rating": 1,
+    "favoured": false
+   },
+   "Awareness": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Hunting": {
+    "rating": 0,
+    "favoured": false
+   },
+   "Song": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Craft": {
+    "rating": 1,
+    "favoured": false
+   },
+   "Enhearten": {
+    "rating": 0,
+    "favoured": false
+   },
+   "Travel": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Insight": {
+    "rating": 3,
+    "favoured": false
+   },
+   "Healing": {
+    "rating": 1,
+    "favoured": false
+   },
+   "Courtesy": {
+    "rating": 3,
+    "favoured": false
+   },
+   "Battle": {
+    "rating": 0,
+    "favoured": false
+   },
+   "Persuade": {
+    "rating": 3,
+    "favoured": false
+   },
+   "Stealth": {
+    "rating": 3,
+    "favoured": false
+   },
+   "Scan": {
+    "rating": 2,
+    "favoured": false
+   },
+   "Explore": {
+    "rating": 1,
+    "favoured": false
+   },
+   "Riddle": {
+    "rating": 3,
+    "favoured": false
+   },
+   "Lore": {
+    "rating": 2,
+    "favoured": false
+   }
+  },
+  "profs": {
+   "Axes": 0,
+   "Bows": 2,
+   "Spears": 0,
+   "Swords": 2
+  },
+  "weapons": [
+   {
+    "name": "Sting",
+    "dmg": "3",
+    "inj": "20",
+    "load": "1",
+    "prof": "Swords",
+    "notes": "Elven blade — glows when Orcs are near",
+    "picked": true
+   },
+   {
+    "name": "Thrown rocks",
+    "dmg": "1",
+    "inj": "12",
+    "load": "0",
+    "prof": "Brawling",
+    "notes": "Brawling",
+    "picked": true
+   }
+  ],
+  "armourProt": 0,
+  "armourLoad": 0,
+  "armourNotes": "",
+  "helmProt": 0,
+  "helmLoad": 0,
+  "shieldBase": 0,
+  "shieldTotal": 0,
+  "shieldLoad": 0,
+  "shieldNotes": "",
+  "rewardsList": [
+   {
+    "name": "Elven blade",
+    "type": "",
+    "desc": "Sting",
+    "appliedTo": ""
+   }
+  ],
+  "virtuesList": [
+   {
+    "name": "Brave at a Pinch",
+    "desc": "Inspired while Weary/Wounded"
+   },
+   {
+    "name": "Mastery",
+    "desc": "+2 bonus favoured skills"
+   },
+   {
+    "name": "Sure at the Mark",
+    "desc": "Ranged attacks Favoured"
+   }
+  ],
+  "usefulItems": [
+   "Bilbo's Magic Ring (spend 1 Hope to turn invisible)",
+   "Finely-wrought Pipe (INSIGHT)"
+  ]
+ }
+];
+
 // Brawling is a derived proficiency: highest other prof rank − 1 (Core Rules p.45).
 // Used for Unarmed / Dagger / Cudgel / Club. Not stored on char.profs.
 function getBrawlingRating() {
@@ -4921,6 +6729,59 @@ async function deleteCharacter(id) {
     }
   }
   renderRoster();
+}
+
+/* ---------- PRE-GENERATED HEROES ---------- */
+// Build a full character object from a PREGENS record (skills are stored as {rating,favoured}).
+function _pregenToChar(p) {
+  const c = JSON.parse(JSON.stringify(DEFAULT_CHARACTER));
+  ['name','culture','blessing','calling','shadowPath','patron','standard','age','features'].forEach(k => { c[k] = p[k] || ''; });
+  ['strRating','strTN','hrtRating','hrtTN','witRating','witTN','parry','valour','wisdom','armourProt','armourLoad','helmProt','helmLoad','shieldBase','shieldTotal','shieldLoad'].forEach(k => { c[k] = p[k] || 0; });
+  c.endMax = p.endMax; c.endCur = p.endMax; c.hopeMax = p.hopeMax; c.hopeCur = p.hopeMax;
+  c.armourNotes = p.armourNotes || ''; c.shieldNotes = p.shieldNotes || '';
+  c.skills = JSON.parse(JSON.stringify(p.skills || {}));
+  c.profs = Object.assign({ Axes: 0, Bows: 0, Spears: 0, Swords: 0 }, p.profs || {});
+  c.weapons = JSON.parse(JSON.stringify(p.weapons || []));
+  c.rewardsList = JSON.parse(JSON.stringify(p.rewardsList || []));
+  c.virtuesList = JSON.parse(JSON.stringify(p.virtuesList || []));
+  c.usefulItems = (p.usefulItems || []).slice();
+  c.fellowshipRating = p.patron ? 1 : 0;
+  return c;
+}
+function loadPregen(idx) {
+  const p = PREGENS[idx]; if (!p) return;
+  saveCharacter();                         // persist the hero we're leaving
+  const id = genCharId();
+  activeCharId = id;
+  char = _pregenToChar(p);
+  history = []; journal = defaultJournal();
+  const r = loadRoster() || { activeId: id, list: [] };
+  r.list.push({ id, name: char.name }); r.activeId = id; saveRoster(r);
+  localStorage.setItem(CHAR_PREFIX + id, JSON.stringify(char));
+  saveHistory(); saveJournal();
+  if (typeof clearUndo === 'function') clearUndo();
+  render(); renderHistory(); renderChronicle();
+  const ov = document.getElementById('pregen-overlay'); if (ov) ov.classList.remove('show');
+  alert('Loaded ' + char.name + ' into your roster.');
+}
+function openPregens() {
+  const m = document.getElementById('menu-overlay'); if (m) m.classList.remove('show');
+  let ov = document.getElementById('pregen-overlay');
+  if (!ov) { ov = document.createElement('div'); ov.id = 'pregen-overlay'; ov.className = 'menu-overlay'; document.body.appendChild(ov); }
+  let src = '', items = '';
+  PREGENS.forEach((p, i) => {
+    if (p.src !== src) { src = p.src; items += `<div style="font-size:12px;font-weight:700;color:var(--gold);margin:10px 0 4px">${escapeHtml(src)}</div>`; }
+    const sub = [p.culture, p.calling].filter(Boolean).join(' · ');
+    items += `<button onclick="loadPregen(${i})" class="add-row-btn" style="width:100%;text-align:left;margin-bottom:5px;background:var(--bg-deep);color:var(--ink);font-size:13px">
+        <strong>${escapeHtml(p.name)}</strong><br><span style="font-size:11px;color:var(--text-muted)">${escapeHtml(sub)} · Str ${p.strRating} Hrt ${p.hrtRating} Wit ${p.witRating} · End ${p.endMax} Hope ${p.hopeMax}</span></button>`;
+  });
+  ov.innerHTML = `<div class="menu" style="max-width:420px;width:93%;max-height:90vh;overflow-y:auto">
+      <h3 style="margin-top:0">✨ Pre-generated Heroes</h3>
+      <p class="hint" style="text-align:left;margin:0 0 8px">Official ready-made heroes. Tap one to add it to your roster as a new character — your existing heroes aren't affected.</p>
+      ${items}
+      <button onclick="document.getElementById('pregen-overlay').classList.remove('show')" class="add-row-btn" style="width:100%;margin-top:8px;background:var(--btn-secondary-bg);color:white">Close</button>
+    </div>`;
+  ov.classList.add('show');
 }
 
 function openRoster() {
