@@ -6901,6 +6901,10 @@ function _pregenToChar(p) {
   c.weapons = JSON.parse(JSON.stringify(p.weapons || []));
   c.rewardsList = JSON.parse(JSON.stringify(p.rewardsList || []));
   c.virtuesList = JSON.parse(JSON.stringify(p.virtuesList || []));
+  // Also build the display strings shown in the read-only Rewards/Virtues textareas (render()
+  // fills those fields from char.rewards/char.virtues, which the pickers only derive later).
+  c.rewards = c.rewardsList.map(r => `${r.name} (${r.type})${r.appliedTo ? ' → ' + r.appliedTo : ''} — ${r.desc}`).join('\n');
+  c.virtues = c.virtuesList.map(v => `${v.name} — ${v.desc}`).join('\n');
   c.usefulItems = JSON.parse(JSON.stringify(p.usefulItems || []));
   c.armourRewards = (p.armourRewards || []).slice();
   c.helmRewards = (p.helmRewards || []).slice();
