@@ -4054,7 +4054,8 @@ const PREGENS = [
     "load": "2",
     "prof": "Swords",
     "notes": "",
-    "picked": true
+    "picked": true,
+    "rewards": []
    },
    {
     "name": "Short Spear",
@@ -4063,7 +4064,8 @@ const PREGENS = [
     "load": "2",
     "prof": "Spears",
     "notes": "Can be thrown",
-    "picked": true
+    "picked": true,
+    "rewards": []
    }
   ],
   "armourProt": 4,
@@ -4077,23 +4079,40 @@ const PREGENS = [
   "shieldNotes": "Buckler",
   "rewardsList": [
    {
-    "name": "Cunning-make",
-    "type": "",
-    "desc": "Coat of Mail — Cunning Make (−2 Load)",
-    "appliedTo": ""
+    "name": "Cunning Make",
+    "type": "Armour/Helm/Shield",
+    "desc": "Reduce Load rating by 2 (min 0)",
+    "appliedTo": "Coat of Mail"
    }
   ],
   "virtuesList": [
    {
     "name": "Hardiness",
-    "desc": "+1 max Endurance"
+    "desc": "Raise max Endurance by 2 (or by Wisdom rating, whichever higher)"
    }
   ],
   "usefulItems": [
-   "Dwarven Knife (HUNTING)",
-   "Fur Cloak (TRAVEL)",
-   "Golden Brooch (COURTESY)"
-  ]
+   {
+    "name": "Dwarven Knife",
+    "skill": "Hunting",
+    "desc": ""
+   },
+   {
+    "name": "Fur Cloak",
+    "skill": "Travel",
+    "desc": ""
+   },
+   {
+    "name": "Golden Brooch",
+    "skill": "Courtesy",
+    "desc": ""
+   }
+  ],
+  "armourRewards": [
+   "Cunning Make"
+  ],
+  "shieldRewards": [],
+  "helmRewards": []
  },
  {
   "id": "regin",
@@ -4206,7 +4225,8 @@ const PREGENS = [
     "load": "3",
     "prof": "Axes",
     "notes": "Injury 20 when used 2-handed",
-    "picked": true
+    "picked": true,
+    "rewards": []
    }
   ],
   "armourProt": 4,
@@ -4221,22 +4241,39 @@ const PREGENS = [
   "rewardsList": [
    {
     "name": "Reinforced",
-    "type": "",
-    "desc": "Shield — Reinforced (+1 Parry)",
-    "appliedTo": ""
+    "type": "Shield",
+    "desc": "Add 1 to shield Parry bonus",
+    "appliedTo": "Shield"
    }
   ],
   "virtuesList": [
    {
     "name": "Prowess",
-    "desc": "−1 to a chosen Attribute TN (Heart)"
+    "desc": "Lower one Attribute TN by 1"
    }
   ],
   "usefulItems": [
-   "Carved Pauldrons (BATTLE)",
-   "Padded Boots (STEALTH)",
-   "Wanderer's Haversack (EXPLORE)"
-  ]
+   {
+    "name": "Carved Pauldrons",
+    "skill": "Battle",
+    "desc": ""
+   },
+   {
+    "name": "Padded Boots",
+    "skill": "Stealth",
+    "desc": ""
+   },
+   {
+    "name": "Wanderer's Haversack",
+    "skill": "Explore",
+    "desc": ""
+   }
+  ],
+  "armourRewards": [],
+  "shieldRewards": [
+   "Reinforced"
+  ],
+  "helmRewards": []
  },
  {
   "id": "fimbrethil",
@@ -4349,7 +4386,10 @@ const PREGENS = [
     "load": "4",
     "prof": "Bows",
     "notes": "Ranged, 2-handed",
-    "picked": true
+    "picked": true,
+    "rewards": [
+     "Fell"
+    ]
    },
    {
     "name": "Cudgel",
@@ -4358,7 +4398,8 @@ const PREGENS = [
     "load": "0",
     "prof": "Brawling",
     "notes": "Brawling",
-    "picked": true
+    "picked": true,
+    "rewards": []
    }
   ],
   "armourProt": 2,
@@ -4373,20 +4414,27 @@ const PREGENS = [
   "rewardsList": [
    {
     "name": "Fell",
-    "type": "",
-    "desc": "Great Bow — Fell (+2 Injury)",
-    "appliedTo": ""
+    "type": "Weapon",
+    "desc": "Add 2 to Injury rating",
+    "appliedTo": "Great Bow"
    }
   ],
   "virtuesList": [
    {
     "name": "Confidence",
-    "desc": "+? max Hope"
+    "desc": "Raise max Hope by 2"
    }
   ],
   "usefulItems": [
-   "Harp (SONG)"
-  ]
+   {
+    "name": "Harp",
+    "skill": "Song",
+    "desc": ""
+   }
+  ],
+  "armourRewards": [],
+  "shieldRewards": [],
+  "helmRewards": []
  },
  {
   "id": "mentha",
@@ -4499,7 +4547,10 @@ const PREGENS = [
     "load": "1",
     "prof": "Swords",
     "notes": "Keen",
-    "picked": true
+    "picked": true,
+    "rewards": [
+     "Keen"
+    ]
    },
    {
     "name": "Bow",
@@ -4508,7 +4559,8 @@ const PREGENS = [
     "load": "2",
     "prof": "Bows",
     "notes": "Ranged, 2-handed",
-    "picked": true
+    "picked": true,
+    "rewards": []
    }
   ],
   "armourProt": 1,
@@ -4523,21 +4575,32 @@ const PREGENS = [
   "rewardsList": [
    {
     "name": "Keen",
-    "type": "",
-    "desc": "Short Sword — Keen (Piercing Blow on 9+)",
-    "appliedTo": ""
+    "type": "Weapon",
+    "desc": "Attack rolls score a Piercing Blow also on a Feat die result of 9+",
+    "appliedTo": "Short Sword"
    }
   ],
   "virtuesList": [
    {
     "name": "Mastery",
-    "desc": "+2 favoured skills"
+    "desc": "Choose two Skills and make them Favoured"
    }
   ],
   "usefulItems": [
-   "Reusable Torch (SCAN)",
-   "Rope (ATHLETICS)"
-  ]
+   {
+    "name": "Reusable Torch",
+    "skill": "Scan",
+    "desc": ""
+   },
+   {
+    "name": "Rope",
+    "skill": "Athletics",
+    "desc": ""
+   }
+  ],
+  "armourRewards": [],
+  "shieldRewards": [],
+  "helmRewards": []
  },
  {
   "id": "duinhir",
@@ -4650,7 +4713,10 @@ const PREGENS = [
     "load": "3",
     "prof": "Swords",
     "notes": "Injury 18 when used 2-handed",
-    "picked": true
+    "picked": true,
+    "rewards": [
+     "Grievous"
+    ]
    },
    {
     "name": "Spear",
@@ -4659,7 +4725,8 @@ const PREGENS = [
     "load": "3",
     "prof": "Spears",
     "notes": "Injury 16 2-h, can be thrown",
-    "picked": true
+    "picked": true,
+    "rewards": []
    }
   ],
   "armourProt": 1,
@@ -4674,20 +4741,27 @@ const PREGENS = [
   "rewardsList": [
    {
     "name": "Grievous",
-    "type": "",
-    "desc": "Long Sword — Grievous (+1 Damage)",
-    "appliedTo": ""
+    "type": "Weapon",
+    "desc": "Add 1 to Damage rating",
+    "appliedTo": "Long Sword"
    }
   ],
   "virtuesList": [
    {
     "name": "Dour-handed",
-    "desc": "+1 Damage on a Heavy Blow"
+    "desc": "Heavy Blow: +1 Strength damage; Pierce: +1 Feat Die"
    }
   ],
   "usefulItems": [
-   "Hatchet (CRAFT)"
-  ]
+   {
+    "name": "Hatchet",
+    "skill": "Craft",
+    "desc": ""
+   }
+  ],
+  "armourRewards": [],
+  "shieldRewards": [],
+  "helmRewards": []
  },
  {
   "id": "drogo",
@@ -4806,12 +4880,19 @@ const PREGENS = [
   "virtuesList": [
    {
     "name": "Confidence",
-    "desc": "+2 maximum Hope (counted in the total)"
+    "desc": "Raise max Hope by 2"
    }
   ],
   "usefulItems": [
-   "Fine Cloak and Hat (AWE)"
-  ]
+   {
+    "name": "Fine Cloak and Hat",
+    "skill": "Awe",
+    "desc": ""
+   }
+  ],
+  "armourRewards": [],
+  "shieldRewards": [],
+  "helmRewards": []
  },
  {
   "id": "esmeralda",
@@ -4930,12 +5011,19 @@ const PREGENS = [
   "virtuesList": [
    {
     "name": "Prowess",
-    "desc": "−1 Strength TN"
+    "desc": "Lower one Attribute TN by 1"
    }
   ],
   "usefulItems": [
-   "Tookish Walking Stick (TRAVEL)"
-  ]
+   {
+    "name": "Tookish Walking Stick",
+    "skill": "Travel",
+    "desc": ""
+   }
+  ],
+  "armourRewards": [],
+  "shieldRewards": [],
+  "helmRewards": []
  },
  {
   "id": "lobelia",
@@ -5054,12 +5142,19 @@ const PREGENS = [
   "virtuesList": [
    {
     "name": "Mastery",
-    "desc": "+2 bonus favoured skills"
+    "desc": "Choose two Skills and make them Favoured"
    }
   ],
   "usefulItems": [
-   "Exquisite Umbrella (PERSUADE)"
-  ]
+   {
+    "name": "Exquisite Umbrella",
+    "skill": "Persuade",
+    "desc": ""
+   }
+  ],
+  "armourRewards": [],
+  "shieldRewards": [],
+  "helmRewards": []
  },
  {
   "id": "paladin",
@@ -5178,12 +5273,19 @@ const PREGENS = [
   "virtuesList": [
    {
     "name": "Nimbleness",
-    "desc": "+1 Parry"
+    "desc": "Raise Parry by 1"
    }
   ],
   "usefulItems": [
-   "Tookish Wayfarer Bundle (EXPLORE)"
-  ]
+   {
+    "name": "Tookish Wayfarer Bundle",
+    "skill": "Explore",
+    "desc": ""
+   }
+  ],
+  "armourRewards": [],
+  "shieldRewards": [],
+  "helmRewards": []
  },
  {
   "id": "primula",
@@ -5302,12 +5404,19 @@ const PREGENS = [
   "virtuesList": [
    {
     "name": "Prowess",
-    "desc": "−1 Wits TN"
+    "desc": "Lower one Attribute TN by 1"
    }
   ],
   "usefulItems": [
-   "Fancy Garments (COURTESY)"
-  ]
+   {
+    "name": "Fancy Garments",
+    "skill": "Courtesy",
+    "desc": ""
+   }
+  ],
+  "armourRewards": [],
+  "shieldRewards": [],
+  "helmRewards": []
  },
  {
   "id": "rorimac",
@@ -5426,12 +5535,19 @@ const PREGENS = [
   "virtuesList": [
    {
     "name": "Hardiness",
-    "desc": "+2 maximum Endurance"
+    "desc": "Raise max Endurance by 2 (or by Wisdom rating, whichever higher)"
    }
   ],
   "usefulItems": [
-   "Rabbit-skinning Knife (HUNTING)"
-  ]
+   {
+    "name": "Rabbit-skinning Knife",
+    "skill": "Hunting",
+    "desc": ""
+   }
+  ],
+  "armourRewards": [],
+  "shieldRewards": [],
+  "helmRewards": []
  },
  {
   "id": "balin",
@@ -5544,7 +5660,11 @@ const PREGENS = [
     "load": "2",
     "prof": "Axes",
     "notes": "Grievous, Keen",
-    "picked": true
+    "picked": true,
+    "rewards": [
+     "Grievous",
+     "Keen"
+    ]
    }
   ],
   "armourProt": 4,
@@ -5558,35 +5678,57 @@ const PREGENS = [
   "shieldNotes": "Shield",
   "rewardsList": [
    {
-    "name": "Grievous, Keen",
-    "type": "",
-    "desc": "Balin's Axe",
-    "appliedTo": ""
+    "name": "Grievous",
+    "type": "Weapon",
+    "desc": "Add 1 to Damage rating",
+    "appliedTo": "Balin's Axe"
    },
    {
-    "name": "Close-fitting, Cunning Make",
-    "type": "",
-    "desc": "Coat of Silver Mail",
-    "appliedTo": ""
+    "name": "Keen",
+    "type": "Weapon",
+    "desc": "Attack rolls score a Piercing Blow also on a Feat die result of 9+",
+    "appliedTo": "Balin's Axe"
+   },
+   {
+    "name": "Close-fitting",
+    "type": "Armour/Helm",
+    "desc": "Add +2 to your Protection roll result while wearing it",
+    "appliedTo": "Coat of Silver Mail"
+   },
+   {
+    "name": "Cunning Make",
+    "type": "Armour/Helm/Shield",
+    "desc": "Reduce Load rating by 2 (min 0)",
+    "appliedTo": "Coat of Silver Mail"
    }
   ],
   "virtuesList": [
    {
     "name": "Dark for Dark Business",
-    "desc": "Inspired in the dark/underground"
+    "desc": "When in the dark (night/underground), Inspired on all rolls"
    },
    {
     "name": "Dour-handed",
-    "desc": "+1 Damage on a Heavy Blow"
+    "desc": "Heavy Blow: +1 Strength damage; Pierce: +1 Feat Die"
    },
    {
     "name": "Durin's Way",
-    "desc": "+2 Parry underground"
+    "desc": "+2 Parry when fighting underground or in cramped quarters"
    }
   ],
   "usefulItems": [
-   "Dwarf-make Viol (SONG)"
-  ]
+   {
+    "name": "Dwarf-make Viol",
+    "skill": "Song",
+    "desc": ""
+   }
+  ],
+  "armourRewards": [
+   "Close-fitting",
+   "Cunning Make"
+  ],
+  "shieldRewards": [],
+  "helmRewards": []
  },
  {
   "id": "bilbo",
@@ -5699,7 +5841,10 @@ const PREGENS = [
     "load": "1",
     "prof": "Swords",
     "notes": "Elven blade — glows when Orcs are near",
-    "picked": true
+    "picked": true,
+    "rewards": [
+     "Keen"
+    ]
    },
    {
     "name": "Thrown rocks",
@@ -5708,7 +5853,8 @@ const PREGENS = [
     "load": "0",
     "prof": "Brawling",
     "notes": "Brawling",
-    "picked": true
+    "picked": true,
+    "rewards": []
    }
   ],
   "armourProt": 0,
@@ -5722,30 +5868,41 @@ const PREGENS = [
   "shieldNotes": "",
   "rewardsList": [
    {
-    "name": "Elven blade",
-    "type": "",
-    "desc": "Sting",
-    "appliedTo": ""
+    "name": "Keen",
+    "type": "Weapon",
+    "desc": "Attack rolls score a Piercing Blow also on a Feat die result of 9+",
+    "appliedTo": "Sting"
    }
   ],
   "virtuesList": [
    {
     "name": "Brave at a Pinch",
-    "desc": "Inspired while Weary/Wounded"
+    "desc": "When Miserable, Weary, or Wounded: Inspired on all rolls"
    },
    {
     "name": "Mastery",
-    "desc": "+2 bonus favoured skills"
+    "desc": "Choose two Skills and make them Favoured"
    },
    {
     "name": "Sure at the Mark",
-    "desc": "Ranged attacks Favoured"
+    "desc": "All ranged attacks Favoured. Thrown stones: Piercing Blow on Rune, Injury 12"
    }
   ],
   "usefulItems": [
-   "Bilbo's Magic Ring (spend 1 Hope to turn invisible)",
-   "Finely-wrought Pipe (INSIGHT)"
-  ]
+   {
+    "name": "Bilbo's Magic Ring",
+    "skill": "",
+    "desc": ""
+   },
+   {
+    "name": "Finely-wrought Pipe",
+    "skill": "Insight",
+    "desc": ""
+   }
+  ],
+  "armourRewards": [],
+  "shieldRewards": [],
+  "helmRewards": []
  }
 ];
 
@@ -6744,7 +6901,10 @@ function _pregenToChar(p) {
   c.weapons = JSON.parse(JSON.stringify(p.weapons || []));
   c.rewardsList = JSON.parse(JSON.stringify(p.rewardsList || []));
   c.virtuesList = JSON.parse(JSON.stringify(p.virtuesList || []));
-  c.usefulItems = (p.usefulItems || []).slice();
+  c.usefulItems = JSON.parse(JSON.stringify(p.usefulItems || []));
+  c.armourRewards = (p.armourRewards || []).slice();
+  c.helmRewards = (p.helmRewards || []).slice();
+  c.shieldRewards = (p.shieldRewards || []).slice();
   c.fellowshipRating = p.patron ? 1 : 0;
   return c;
 }
@@ -12426,24 +12586,27 @@ function renderUsefulItemsDisplay() {
     div.innerHTML = '<p style="color:var(--text-faint);font-size:12px;text-align:center;padding:10px">No Useful Items picked yet. Pick some on the Build tab.</p>';
     return;
   }
-  div.innerHTML = owned.map(name => {
-    const item = USEFUL_ITEMS.find(x => x.name === name);
+  div.innerHTML = owned.map(entry => {
+    const isObj = entry && typeof entry === 'object';
+    const item = isObj ? entry : USEFUL_ITEMS.find(x => x.name === entry);
     if (!item) return '';
-    const skillTag = item.skillAlt ? `${item.skill} or ${item.skillAlt}` : item.skill;
+    const skillTag = item.skillAlt ? `${item.skill} or ${item.skillAlt}` : (item.skill || '');
     return `<div style="padding:10px;border:1px solid var(--border);border-radius:6px;margin-bottom:6px;background:var(--gold-soft)">
-      <strong>${item.name}</strong> <span style="color:var(--red);font-size:11px;font-weight:600">+1d ${skillTag}</span><br>
-      <small style="color:var(--text-muted);font-size:12px">${item.desc}</small>
+      <strong>${escapeHtml(item.name)}</strong> ${skillTag ? `<span style="color:var(--red);font-size:11px;font-weight:600">+1d ${skillTag}</span>` : ''}<br>
+      <small style="color:var(--text-muted);font-size:12px">${escapeHtml(item.desc || '')}</small>
     </div>`;
   }).join('');
 }
 
-// Returns useful item that matches the given skill name (or null)
+// Returns useful item matching the skill (or null). Supports catalog-name strings AND custom
+// item objects ({name, skill, skillAlt?, desc?}) used by pre-generated heroes.
 function getUsefulItemForSkill(skillName) {
   if (!Array.isArray(char.usefulItems) || !skillName) return null;
-  return USEFUL_ITEMS.find(item =>
-    char.usefulItems.includes(item.name) &&
-    (item.skill === skillName || item.skillAlt === skillName)
-  ) || null;
+  for (const e of char.usefulItems) {
+    if (e && typeof e === 'object') { if (e.skill === skillName || e.skillAlt === skillName) return e; }
+    else { const it = USEFUL_ITEMS.find(x => x.name === e); if (it && (it.skill === skillName || it.skillAlt === skillName)) return it; }
+  }
+  return null;
 }
 
 /* ---------- LIFEPATHS (Character Lifepaths supplement) ---------- */
