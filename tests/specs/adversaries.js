@@ -40,6 +40,21 @@ module.exports = {
     });
     checks.push({ ok: added.added === 1 && added.endMax > 0 && added.hateMax > 0 && added.attacks > 0, msg: `addFoeFromBestiary(villain) → End ${added.endMax}/Hate ${added.hateMax}/${added.attacks} attacks` });
 
+    // Attack-TN RAW fix: a foe's attack TN = the hero's Parry (incl. shield) alone, NOT atkTN+parry;
+    // and the hero's stance modifies the foe's dice (Forward +1d). Parry 16 + shield 1 → TN 17.
+    const tnLine = await page.evaluate(async () => {
+      char.parry = 16; char.shieldTotal = 1; char.stance = 'forward'; char.endMax = 30; char.endCur = 30;
+      ensureEncounterActive();
+      const id = 'tnfoe';
+      enc().foes.push({ id, name: 'Test Orc', source: 'Test', endMax: 10, endCur: 10, might: 1, hateMax: 2, hateCur: 2, parry: 1, armour: 0, atkTN: 14, attacks: [{ name: 'Blade', dice: 2, dmg: 3, inj: 0, special: '' }], engaged: true, wounded: false, slain: false });
+      await foeAttackHero(id, 0);
+      const txt = document.getElementById('encounter-card').innerText;
+      char.encounter = JSON.parse(JSON.stringify(DEFAULT_CHARACTER.encounter)); char.stance = ''; saveCharacter();
+      return txt;
+    });
+    checks.push({ ok: /your Parry 17\b/.test(tnLine) && !/vs TN 31/.test(tnLine), msg: 'foe attack TN = hero Parry+shield (17), not atkTN+parry' });
+    checks.push({ ok: /Forward \+1d/.test(tnLine), msg: 'hero Forward stance adds +1d to the foe’s attack (stance = ±success die)' });
+
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length})` });
     await context.close();
     return { checks };

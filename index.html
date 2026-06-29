@@ -12936,13 +12936,20 @@ async function foeAttackHero(foeId, attackIdx) {
   const f = getFoe(foeId); if (!f || f.slain) return;
   const atk = (f.attacks || [])[attackIdx] || (f.attacks || [])[0];
   if (!atk) return;
-  const heroParry = (parseInt(char.parry) || 0) + (parseInt(char.shieldTotal) || 0);
-  const tn = (parseInt(f.atkTN) || 0) + heroParry;
-  const roll = _doInlineRoll(parseInt(atk.dice) || 0, 'normal', tn);
+  // RAW (§7C-style fix, ported from the loremaster app): an adversary's attack TN against a
+  // hero IS the hero's Parry (a full TN incl. shield) — NOT the foe's own atkTN added on top.
+  // The foe's skill is its number of attack dice; the targeted hero's stance modifies the FOE's
+  // dice as a ±Success die (Forward = easier to hit, +1d; Defensive = harder, −1d), per STANCE_INFO.
+  const tn = (parseInt(char.parry) || 0) + (parseInt(char.shieldTotal) || 0);
+  let atkDice = parseInt(atk.dice) || 0;
+  let stanceNote = '';
+  if (char.stance === 'forward') { atkDice += 1; stanceNote = ' · you Forward +1d'; }
+  else if (char.stance === 'defensive') { atkDice = Math.max(0, atkDice - 1); stanceNote = ' · you Defensive −1d'; }
+  const roll = _doInlineRoll(atkDice, 'normal', tn);
   const hit = roll.outcome.startsWith('SUCCESS');
   const piercing = hit && (roll.featSpecial === 'rune' || roll.featValue === 10);
   const score = roll.featSpecial === 'rune' ? '★' : (roll.featSpecial === 'eye' ? '✗' : roll.total);
-  let line = `<strong>${escapeHtml(f.name)}</strong> · ${escapeHtml(atk.name)} · ${score} vs TN ${tn} (${f.atkTN} + your Parry ${heroParry}) → `;
+  let line = `<strong>${escapeHtml(f.name)}</strong> · ${escapeHtml(atk.name)} · ${score} vs your Parry ${tn}${stanceNote} → `;
   if (hit) {
     const dmg = parseInt(atk.dmg) || 0;
     char.endCur = Math.max(0, (parseInt(char.endCur) || 0) - dmg);
