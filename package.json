@@ -1,0 +1,12 @@
+{
+  "name": "tor2e-tracker",
+  "version": "1.0.0",
+  "description": "TOR2E Character Tracker — a single-file offline PWA. This package.json only declares the dev-only headless regression harness; the shipped app has no runtime dependencies.",
+  "private": true,
+  "scripts": {
+    "test": "node tests/run.js"
+  },
+  "devDependencies": {
+    "playwright-core": "^1.49.0"
+  }
+}
