@@ -45,14 +45,13 @@ As of last verification:
 
 ### Stack
 - **Pure HTML5 + CSS + JavaScript** — no frameworks, no build step, no dependencies
-- **Single file**: `character-tracker.html` (see Current state above for size)
+- **Thin HTML shell + classic `<script src>` files** (since P2, 2026-06-29): `character-tracker.html` (and its `index.html` mirror) is a ~145 KB shell that loads `styles.css` + `src/vendor-qrcode.js` + `src/01-core.js`…`src/06-tabs-init.js` in order. **Classic scripts (not ES modules)** — they share one global scope, so the 367 inline `onclick` handlers + 447 global functions work unchanged AND it still runs over `file://`. **No bundler/build step.** See Phase P2.
 - **Storage**: `localStorage` — see Current state above for the full key list
 
-### Why single-file?
-- Works offline from iOS Files app (no web server needed)
-- "Add to Home Screen" with zero config
-- One file to AirDrop / back up / sync via iCloud
-- No ES module / CORS issues on `file://` protocol
+### Why classic scripts (still clone-and-run)?
+- Works offline from iOS Files app over `file://` (classic `<script src>`/`<link>` load fine there; only ES modules/`fetch` are CORS-blocked on `file://`)
+- "Add to Home Screen" with zero config; AirDrop/iCloud the whole folder
+- No build step, no module/CORS issues — the split is purely for maintainability (6 navigable files vs one 15k-line block), guaranteed behavior-identical (the files concatenate byte-for-byte to the original script)
 
 ### File structure (within `character-tracker.html`)
 1. `<head>` — viewport, PWA meta tags, theme color
@@ -610,7 +609,7 @@ Encounter combat folds under one collapsible heading in the Chronicle timeline. 
 ### Design decisions (2026-06-29 — locked by Q&A, do not re-litigate)
 1. **Cloud scope:** full cloud, mirroring Dragonbane — Firebase is a first-class feature (not merely optional plumbing). It still degrades gracefully to local when unconfigured/offline.
 2. **Audience:** **both** — a peer Fellowship party view *and* an **optional Loremaster (GM) screen**; the `role: "player" | "loremaster"` schema is laid in from day one so no migration is needed later.
-3. **Architecture:** **split the single file into ES modules** (Dragonbane-style `src/*.js`). Accepted consequence: native ES modules don't load over `file://`, so **open-from-Files is dropped** — the app is served (Netlify) or run from a local server. (A future single-file bundle step could restore it; out of scope for now.)
+3. **Architecture:** split into `src/*.js`. **REVISED 2026-06-29 (in P2): classic `<script src>` files, NOT ES modules** — because 367 inline `onclick` handlers need global functions, ES modules would have broken them and dropped `file://`. Classic scripts share global scope, so **open-from-Files (`file://`) is KEPT** and all handlers work unchanged. (The earlier "drop file://" trade-off no longer applies.) See the Phase P2 entry.
 4. **Shared combat:** the Encounter tracker is **promoted to a live, GM-driven shared encounter** — the Loremaster runs the fight, all players see foes/rounds/damage in real time.
 5. **Account model:** **mirror Dragonbane** — instant anonymous sign-in, optional Google account link in Settings; **heroes become cloud-owned** (by uid), sync across the player's devices, and stay cached offline. The current per-device localStorage roster becomes the offline cache + migration source.
 6. **Extra features adopted (zero rules impact):** committed Playwright **test harness**, **accessibility pass**, **GM→player broadcast feed**. **Not adopting:** portrait image upload.
@@ -665,7 +664,7 @@ exported hero JSON** (`handlePartyFiles`), so the two data models are already co
   - Risk: low. Tooling only; ships nothing into the app.
 
 ### Phase P2 — Module split + CSS extraction (locked behind P1)
-- [ ] **Carve the single `<script>` into `src/*.js` ES modules; extract `<style>` → `styles.css`.**
+- [x] **Split into classic `<script src>` files + `styles.css`. ✅ done 2026-06-29.** **Approach revised from ES modules → classic scripts** (Q&A 2026-06-29): the app has **367 inline `onclick="fn()"` handlers** calling **447 global functions**; ES modules would scope those functions away (breaking every handler) and drop `file://`. Classic scripts share one global scope → all handlers keep working, **`file://` open-from-Files is PRESERVED**, still no build step. The single `<script>` was cut **order-preservingly** at section-banner boundaries into 6 files — `src/{01-core,02-data,03-state,04-render,05-combat-build,06-tabs-init}.js` — plus `src/vendor-qrcode.js` (the vendored QR lib) and `styles.css` (both `<style>` blocks). A generator script **asserted the 6 files concatenate byte-for-byte to the original script** (so execution is identical), and verified the only hoisting hazard (`let char/history/journal = load*()` calling later-declared `load*`) stays co-located in `03-state.js` with all load-time deps in `01–03`. The two HTML files became identical thin shells (`<link rel="stylesheet">` + 7 `<script src>` tags, ~145 KB vs 889 KB). Verified: all 7 files `node --check` clean; **harness 59/59 green against the split** (every tab renders, 0 page errors). SW `PRECACHE` gained `styles.css` + all `src/*.js`; cache → v81.
   - Goal: maintainability parity with Dragonbane; make the cloud/GM work reviewable.
   - Target: `character-tracker.html` → a thin shell loading `<link rel="stylesheet" href="styles.css">` + `<script type="module" src="src/main.js">`. Proposed modules (by the existing FILE-MAP banners): `core.js` (consts/util), `data-*.js` (SKILLS/WEAPONS/CULTURES/CALLINGS/PATRONS/REWARDS/VIRTUES/BESTIARY/oracle+Moria tables/PREGENS/LIFEPATHS), `state.js` (DEFAULT_CHARACTER, migrate/load/save, roster, share/QR), `render.js`, `dice.js`, `build.js` (pickers), `journey.js`, `council.js`, `endeavour.js`, `fellowship.js`, `treasure.js`, `combat.js` (encounter), `solo-strider.js`, `solo-moria.js`, `chronicle.js`, `tutorial.js`, `ui.js` (modals/toasts), `main.js` (init/wiring). Final list finalized during the split; update the §"File structure" + a new module-map table.
   - Behavior: **pure refactor, zero behavior change.** Cross-module references via `export`/`import` (no globals); runtime cycles are fine under ESM live bindings.
