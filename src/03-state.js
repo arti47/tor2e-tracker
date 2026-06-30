@@ -215,6 +215,58 @@ function applyActiveCharacter() {
   renderChronicle();
 }
 
+/* ---------- AUTO-BACKUP / RESTORE POINTS (U12) ----------
+   Per-hero ring buffer of full-slot snapshots (max 8), separate from the 50-deep in-memory
+   undo and from manual export. One auto-snapshot per app load; manual "Snapshot now"; restore
+   takes a safety snapshot of the current state first so a restore is itself undoable. */
+const BACKUPS_KEY = 'tor2e-backups';
+const BACKUPS_MAX = 8;
+function loadBackups() { try { return JSON.parse(localStorage.getItem(BACKUPS_KEY)) || {}; } catch (e) { return {}; } }
+function saveBackups(b) { try { localStorage.setItem(BACKUPS_KEY, JSON.stringify(b)); } catch (e) {} }
+function snapshotHero(id, reason) {
+  if (!id) return false;
+  let raw; try { raw = localStorage.getItem(CHAR_PREFIX + id); } catch (e) { return false; }
+  if (!raw) return false;
+  const all = loadBackups();
+  const list = all[id] || (all[id] = []);
+  if (list.length && list[0].data === raw) return false;   // unchanged since last snapshot
+  let name = id; try { name = JSON.parse(raw).name || id; } catch (e) {}
+  list.unshift({ ts: Date.now(), reason: reason || 'manual', name, data: raw });
+  if (list.length > BACKUPS_MAX) list.length = BACKUPS_MAX;
+  saveBackups(all);
+  return true;
+}
+function backupNow() {
+  const ok = snapshotHero(activeCharId, 'manual');
+  alert(ok ? 'Snapshot saved.' : 'No change since the last snapshot — nothing new to save.');
+  renderRestorePoints();
+}
+function openRestorePoints() {
+  document.getElementById('menu-overlay').classList.remove('show');
+  renderRestorePoints();
+  document.getElementById('restore-points-overlay').classList.add('show');
+}
+function closeRestorePoints() { document.getElementById('restore-points-overlay').classList.remove('show'); }
+function renderRestorePoints() {
+  const body = document.getElementById('restore-points-body'); if (!body) return;
+  const list = loadBackups()[activeCharId] || [];
+  if (!list.length) { body.innerHTML = '<div class="hint" style="text-align:center;padding:10px">No snapshots yet for this hero.</div>'; return; }
+  body.innerHTML = list.map((s, i) =>
+    `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)">
+      <span style="font-size:12px"><strong>${escapeHtml(s.name || 'Hero')}</strong><br><span style="color:var(--text-muted)">${new Date(s.ts).toLocaleString()} · ${escapeHtml(s.reason || '')}</span></span>
+      <button onclick="restoreSnapshot(${i})" style="flex:0 0 auto">Restore</button></div>`).join('');
+}
+async function restoreSnapshot(idx) {
+  const list = loadBackups()[activeCharId] || [];
+  const snap = list[idx]; if (!snap) return;
+  if (!await confirmStyled(`Roll <strong>this hero</strong> back to the snapshot from <strong>${new Date(snap.ts).toLocaleString()}</strong>?<br><br>A snapshot of the current state is taken first, so this restore is itself undoable.`, '♻️ Restore')) return;
+  snapshotHero(activeCharId, 'pre-restore');               // safety snapshot of current state
+  localStorage.setItem(CHAR_PREFIX + activeCharId, snap.data);
+  applyActiveCharacter();
+  closeRestorePoints();
+  alert('Restored to ' + new Date(snap.ts).toLocaleString() + '.');
+}
+
 function switchCharacter(id) {
   if (id === activeCharId) { closeRoster(); return; }
   saveCharacter();                       // persist the hero we're leaving

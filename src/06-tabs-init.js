@@ -1408,6 +1408,7 @@ document.addEventListener('DOMContentLoaded', () => {
   renderHistory();
   renderChronicle();
   restoreLastTab();   // U4: reopen the tab the player was last on (if still visible)
+  if (typeof snapshotHero === 'function') snapshotHero(activeCharId, 'load');   // U12: one auto-backup per load
   importFromHash();   // offer to import a character if the URL carries a shared payload
   maybeOfferTutorial();   // one-time first-run offer of the guided tutorial
 

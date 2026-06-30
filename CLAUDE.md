@@ -40,6 +40,7 @@ As of last verification:
   - `tor2e-theme` — `'light'` / `'dark'` / `'sepia'` / `'hc'` / unset = auto (U10)
   - `tor2e-textsize` — `'small'` / `'large'` / unset = normal (U9, device-global)
   - `tor2e-lasttab` — last-used tab id, reopened on load if still visible (U4, device-global)
+  - `tor2e-backups` — `{ [charId]: [{ts,reason,name,data}] }` per-hero snapshot ring buffer, max 8 (U12)
   - `tor2e-compact` — `'1'` = compact spacing, unset = normal (UX setting, device-global)
   - **Legacy (read-once for migration, then left as backup):** `tor2e-character-v1`, `tor2e-rolls-v1`. On first load under the roster system these are migrated into the first hero's slot. `loadCharacter()`/`saveCharacter()` operate on the active slot; `migrateCharacter(raw)` is the pure forward-migration used for slots, imports, and shared-link payloads.
 
@@ -760,7 +761,7 @@ exported hero JSON** (`handlePartyFiles`), so the two data models are already co
 - [ ] ~~Printable/PDF character sheet~~ — **not selected** (2026-06-29); existing `@media print` stays as-is.
 
 ### D. Data safety & insight
-- [ ] **U12 — Auto-backup & restore points.** Goal: guard against wipes / bad migrations. Target: storage layer. Behavior: periodic local snapshots per hero + one-tap restore (beyond manual export + 50-deep undo). **(do after P2 — and reconcile with the P3 cloud-backup work so they don't duplicate)**
+- [x] **U12 — Auto-backup & restore points. ✅ done 2026-06-29.** Per-hero ring buffer of full-slot snapshots (`tor2e-backups`, max 8/hero) in `src/03-state.js`: one auto-snapshot per app load (`snapshotHero(activeCharId,'load')` in the DOMContentLoaded init), a `📸 Snapshot now` button, and a `♻️ Restore Points` menu overlay listing snapshots (timestamp + reason) with one-tap Restore. Restore takes a **safety snapshot of the current state first**, so the restore is itself undoable; dedupes identical consecutive snapshots. Verified by 2 `ux`-spec checks (snapshot + dedupe + 2nd entry; UI lists 2 rows). Independent of the 50-deep in-memory undo and manual export. (Reconcile with P3 cloud backup when that lands.) SW cache → v82.
 - [x] **U13 — Roll stats. ✅ done 2026-06-29.** `renderRollStats()` adds a read-only summary bar above the Dice-tab history: total rolls, successes + success-rate %, failures, rolls-with-✦-icons, and great-successes (≥2 icons), over the stored history. Verified live (3 sample rolls → "3 rolls · ✅ 2 (67%) · ❌ 1 · ✦ 2 · 🌟 1 great+"; clears when empty). Shadow/Hope *trend over time* deferred until U15 (campaign timeline) provides the time-series.
 - [x] **U14 — Bulk export + restore. ✅ done 2026-06-29.** `📦 Export ALL Heroes (backup)` → `exportAllHeroes()` bundles every roster hero + their Chronicle + roll history into one `roster-export-v1` JSON. `📦 Restore Heroes (backup)` → `importAllHeroes()` adds them back with **fresh ids (never overwrites** existing heroes). Verified live (functions + menu buttons + file input wired; roster gather confirmed). Deferred: the "back up after big changes" **nudge** (small follow-up).
 - [ ] **U15 — Campaign timeline.** Goal: a lightweight campaign history for **all** modes (not just solo Chronicle). Target: extend the Chronicle/journal model. Behavior: cross-session log of XP awards, Shadow gains, milestones, Fellowship Phases. **(do after P2 — touches the Chronicle subsystem the split relocates)**

@@ -1865,6 +1865,7 @@
     <button onclick="exportAllHeroes()">📦 Export ALL Heroes (backup)</button>
     <button onclick="document.getElementById('import-all-file').click()">📦 Restore Heroes (backup)</button>
     <input type="file" id="import-all-file" accept=".json" style="display:none" onchange="importAllHeroes(event)">
+    <button onclick="openRestorePoints()">♻️ Restore Points (auto-backups)</button>
     <button onclick="newCharacter();toggleMenu()">➕ New Character</button>
     <button class="danger" onclick="resetCharacter()">🔄 Reset This Character</button>
     <button class="close" onclick="toggleMenu()">Close</button>
@@ -1889,6 +1890,16 @@
     <p class="hint" style="text-align:left;margin-bottom:10px">Read-only snapshot of every hero on this device — for the table at a glance.</p>
     <div id="party-view-body" style="overflow-x:auto"></div>
     <button class="close" onclick="closePartyView()" style="margin-top:10px">Close</button>
+  </div>
+</div>
+
+<div class="menu-overlay" id="restore-points-overlay">
+  <div class="menu" style="max-width:560px;width:96%;max-height:90vh;overflow-y:auto">
+    <h3>♻️ Restore Points</h3>
+    <p class="hint" style="text-align:left;margin-bottom:10px">Automatic local snapshots of the <strong>active hero</strong> (one per app load, last 8 kept). Restore rolls this hero back to an earlier state — a current snapshot is taken first, so you can undo the restore too.</p>
+    <button onclick="backupNow()" style="margin-bottom:10px">📸 Snapshot now</button>
+    <div id="restore-points-body"></div>
+    <button class="close" onclick="closeRestorePoints()" style="margin-top:10px">Close</button>
   </div>
 </div>
 

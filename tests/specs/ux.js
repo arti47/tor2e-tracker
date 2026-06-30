@@ -70,6 +70,27 @@ module.exports = {
     });
     checks.push({ ok: tab.restored === 'dice' && tab.afterHidden === 'character', msg: 'restoreLastTab reopens visible tab, skips hidden (oracle)' });
 
+    // U12 — auto-backup ring buffer + restore-points UI.
+    const backup = await page.evaluate(() => {
+      localStorage.removeItem('tor2e-backups');
+      const first = snapshotHero(activeCharId, 'test');           // creates a snapshot
+      const dupe = snapshotHero(activeCharId, 'test');            // identical → skipped
+      // mutate the slot, snapshot again → a 2nd entry
+      const raw = JSON.parse(localStorage.getItem(CHAR_PREFIX + activeCharId) || '{}');
+      raw.safeHaven = 'Backup Test ' + Date.now();
+      localStorage.setItem(CHAR_PREFIX + activeCharId, JSON.stringify(raw));
+      const second = snapshotHero(activeCharId, 'test');
+      const count = (loadBackups()[activeCharId] || []).length;
+      openRestorePoints();
+      const overlayShown = document.getElementById('restore-points-overlay').classList.contains('show');
+      const rows = document.querySelectorAll('#restore-points-body button[onclick^="restoreSnapshot"]').length;
+      closeRestorePoints();
+      localStorage.removeItem('tor2e-backups');
+      return { first, dupe, second, count, overlayShown, rows };
+    });
+    checks.push({ ok: backup.first === true && backup.dupe === false && backup.second === true && backup.count === 2, msg: `auto-backup: snapshot + dedupe + 2nd entry (count ${backup.count})` });
+    checks.push({ ok: backup.overlayShown && backup.rows === 2, msg: `restore-points UI lists snapshots (${backup.rows} rows)` });
+
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length})` });
     await context.close();
     return { checks };
