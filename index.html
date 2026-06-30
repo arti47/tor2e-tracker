@@ -1853,6 +1853,7 @@
     <button onclick="openPregens()">✨ Pre-generated Heroes</button>
     <button onclick="openPartyView()">🛡️ Party View</button>
     <button onclick="openTableMode()">📺 Table Mode (big screen)</button>
+    <button onclick="openTimeline()">📜 Campaign Timeline</button>
     <button onclick="openShare()">🔗 Share Character</button>
     <button onclick="cycleTheme()" id="dark-mode-btn">🎨 Theme: Auto</button>
     <button onclick="cycleTextSize()" id="textsize-btn">🔠 Text Size: Normal</button>
@@ -1911,6 +1912,18 @@
       <button onclick="closeTableMode()" style="font-size:1em;padding:8px 18px">✕ Close</button>
     </div>
     <div id="table-mode-body"></div>
+  </div>
+</div>
+
+<div class="menu-overlay" id="timeline-overlay">
+  <div class="menu" style="max-width:600px;width:96%;max-height:90vh;overflow-y:auto">
+    <h3>📜 Campaign Timeline</h3>
+    <p class="hint" style="text-align:left;margin-bottom:10px">This hero’s significant beats across sessions — session XP, Shadow &amp; Scar gains, Valour/Wisdom rank-ups, and Fellowship Phases. Works in all play modes; travels with the hero on export.</p>
+    <div id="timeline-body"></div>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button class="danger" onclick="clearTimeline()">Clear</button>
+      <button class="close" onclick="closeTimeline()" style="flex:1">Close</button>
+    </div>
   </div>
 </div>
 

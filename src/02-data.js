@@ -3250,6 +3250,7 @@ const DEFAULT_CHARACTER = {
   },
   // Past councils this device — persisted summaries for narrative continuity.
   councilHistory: [],        // [{topic, outcome, successesScored, resistance, attemptsUsed, when}]
+  timeline: [],              // U15 — cross-session campaign log: [{ts, type, text}] (all play modes)
   // Skill Endeavour state — prolonged-task tracker (Core Rules p.131).
   skillEndeavour: {
     active: false,

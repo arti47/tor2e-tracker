@@ -337,6 +337,7 @@ async function awardSessionXP() {
   saveCharacter();
   render();
   if (typeof journalAuto === 'function') journalAuto('advancement', 'milestone', 'End of session — earned +3 Skill Points and +3 Adventure Points.');
+  if (typeof logTimeline === 'function') logTimeline('xp', 'End of session: +3 Skill Points, +3 Adventure Points.');
   alert(`✅ Awarded +3 SP + 3 AP.\n\nSpend during Fellowship Phase (cap: 1 rank/skill, 1 rank/prof, Valour XOR Wisdom).`);
 }
 
@@ -623,6 +624,7 @@ async function fpComplete() {
     if (!await confirmStyled('No undertakings selected. Complete phase anyway?')) return;
   }
   const log = [];
+  if (typeof logTimeline === 'function') logTimeline('fp', 'Fellowship Phase' + (fpState.phaseType === 'yule' ? ' (Yule)' : '') + ' completed.');
 
   // for...of (not forEach) so awaits in case bodies actually pause the loop —
   // Visiting Treasury prompts the player and needs the answer before continuing.

@@ -110,6 +110,25 @@ module.exports = {
     checks.push({ ok: tm.shown && tm.heroCards >= 1 && tm.foeShown, msg: `Table Mode shows ${tm.heroCards} hero card(s) + encounter foe` });
     checks.push({ ok: tm.timerOn && tm.hidden && tm.timerOff, msg: 'Table Mode auto-refresh timer starts on open, clears on close' });
 
+    // U15 — campaign timeline: funnel logging via adj (Shadow) + the viewer.
+    const tl = await page.evaluate(() => {
+      char.timeline = [];
+      logTimeline('xp', 'Test session XP');           // direct
+      const before = char.shadow;
+      adj('shadow', 2);                               // funnel: should log a Shadow beat
+      adj('shadow', -2);                              // recovery: should NOT log
+      const len = (char.timeline || []).length;       // expect 2 (xp + shadow gain)
+      const types = (char.timeline || []).map(e => e.type);
+      openTimeline();
+      const shown = document.getElementById('timeline-overlay').classList.contains('show');
+      const rows = document.querySelectorAll('#timeline-body div').length;
+      closeTimeline();
+      char.timeline = []; char.shadow = before; saveCharacter();
+      return { len, types, shown, rows };
+    });
+    checks.push({ ok: tl.len === 2 && tl.types.includes('shadow') && tl.types.includes('xp'), msg: `timeline logs xp + Shadow-gain via adj, skips recovery (len ${tl.len}, types ${tl.types.join('/')})` });
+    checks.push({ ok: tl.shown && tl.rows === 2, msg: `timeline viewer lists entries (${tl.rows} rows)` });
+
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length})` });
     await context.close();
     return { checks };

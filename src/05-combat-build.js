@@ -1386,6 +1386,13 @@ function adj(field, delta) {
     if (field === 'shadow' && v > prevValue) journalAuto('status', 'status', `Gained ${v - prevValue} Shadow (now ${v}).`);
     else if (field === 'scars' && v > prevValue) journalAuto('status', 'status', `Took a Shadow Scar (now ${v}).`);
   }
+  // U15 campaign timeline beats (all modes).
+  if (typeof logTimeline === 'function' && v > prevValue) {
+    if (field === 'shadow') logTimeline('shadow', `Gained ${v - prevValue} Shadow (now ${v}).`);
+    else if (field === 'scars') logTimeline('scars', `Took a Shadow Scar (now ${v}).`);
+    else if (field === 'valour') logTimeline('rank', `Valour raised to ${v}.`);
+    else if (field === 'wisdom') logTimeline('rank', `Wisdom raised to ${v}.`);
+  }
 
   // If a Max was reduced below its Current, snap Current down
   if (field === 'endMax' && (parseInt(char.endCur) || 0) > v) char.endCur = v;

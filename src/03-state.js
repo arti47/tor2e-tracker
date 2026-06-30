@@ -72,6 +72,7 @@ function migrateCharacter(raw) {
       }
       // Migrate: persistent council history array added later.
       if (!Array.isArray(merged.councilHistory)) merged.councilHistory = [];
+      if (!Array.isArray(merged.timeline)) merged.timeline = [];
       // Migrate: skillEndeavour object added later.
       if (!merged.skillEndeavour || typeof merged.skillEndeavour !== 'object') {
         merged.skillEndeavour = JSON.parse(JSON.stringify(DEFAULT_CHARACTER.skillEndeavour));
@@ -550,6 +551,38 @@ function renderTableMode() {
           ${f.wounded ? pill('WOUNDED', '#7a1a1a') : ''}</div>`).join('')}</div>`
     : '';
   body.innerHTML = `<div style="font-size:20px"><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px">${heroCards}</div>${foeHtml}</div>`;
+}
+
+/* ---------- CAMPAIGN TIMELINE (U15) ----------
+   A lightweight, all-modes per-hero event log (separate from the solo Chronicle's prose journal).
+   Captured at funnel points (adj → Shadow/Scars/Valour/Wisdom; session XP; Fellowship Phase).
+   Stored on char.timeline so it exports/syncs with the hero. */
+const TIMELINE_ICON = { xp: '📈', shadow: '🌑', scars: '🗡', rank: '⭐', fp: '🌿', note: '•' };
+function logTimeline(type, text) {
+  if (!char) return;
+  if (!Array.isArray(char.timeline)) char.timeline = [];
+  char.timeline.unshift({ ts: Date.now(), type: type || 'note', text: String(text || '') });
+  if (char.timeline.length > 200) char.timeline.length = 200;
+  saveCharacter();
+}
+function openTimeline() {
+  document.getElementById('menu-overlay').classList.remove('show');
+  renderTimeline();
+  document.getElementById('timeline-overlay').classList.add('show');
+}
+function closeTimeline() { document.getElementById('timeline-overlay').classList.remove('show'); }
+async function clearTimeline() {
+  if (!await confirmStyled('Clear this hero’s entire campaign timeline? This cannot be undone.', 'Clear Timeline')) return;
+  char.timeline = []; saveCharacter(); renderTimeline();
+}
+function renderTimeline() {
+  const body = document.getElementById('timeline-body'); if (!body) return;
+  const list = Array.isArray(char.timeline) ? char.timeline : [];
+  if (!list.length) { body.innerHTML = '<div class="hint" style="text-align:center;padding:10px">No events yet. Session XP, Shadow/Scar gains, Valour/Wisdom rank-ups and Fellowship Phases will appear here.</div>'; return; }
+  body.innerHTML = list.map(ev =>
+    `<div style="display:flex;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px">
+      <span style="flex:0 0 auto">${TIMELINE_ICON[ev.type] || '•'}</span>
+      <span style="flex:1">${escapeHtml(ev.text)}<br><small style="color:var(--text-muted)">${new Date(ev.ts).toLocaleString()}</small></span></div>`).join('');
 }
 
 /* ---------- SHARE VIA LINK / QR ---------- */
