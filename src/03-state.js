@@ -503,6 +503,55 @@ function renderPartyView() {
     </tr></thead><tbody>${rows}</tbody></table>`;
 }
 
+/* ---------- BIG-SCREEN TABLE MODE (U11) ----------
+   Full-screen, high-contrast, large-text read-only dashboard for casting to a TV at an in-person
+   table: every hero's vitals/conditions + the active encounter's foes. Fixed dark palette (not the
+   app theme) for legibility across a room; auto-refreshes every 2s while open so it stays current. */
+let _tableModeTimer = null;
+function openTableMode() {
+  document.getElementById('menu-overlay').classList.remove('show');
+  renderTableMode();
+  document.getElementById('table-mode-overlay').classList.add('show');
+  clearInterval(_tableModeTimer);
+  _tableModeTimer = setInterval(renderTableMode, 2000);
+}
+function closeTableMode() {
+  document.getElementById('table-mode-overlay').classList.remove('show');
+  clearInterval(_tableModeTimer); _tableModeTimer = null;
+}
+function renderTableMode() {
+  const body = document.getElementById('table-mode-body'); if (!body) return;
+  const r = loadRoster() || { activeId: activeCharId, list: [] };
+  const pill = (t, bg) => `<span style="background:${bg};color:#fff;padding:3px 11px;border-radius:7px;font-size:.5em;font-weight:800;letter-spacing:1px">${t}</span>`;
+  const heroCards = r.list.map(e => {
+    const d = (e.id === activeCharId) ? char : readSlot(e.id);
+    if (!d) return '';
+    const totalShadow = (parseInt(d.shadow) || 0) + (parseInt(d.scars) || 0);
+    const dying = (parseInt(d.endCur) || 0) <= 0;
+    const conds = (dying ? [pill('DYING', '#b01010')] : [])
+      .concat([d.weary && pill('WEARY', '#8a5a14'), d.miserable && pill('MISERABLE', '#6a1a6a'), d.wounded && pill('WOUNDED', '#7a1a1a')].filter(Boolean)).join(' ');
+    return `<div style="border:3px solid #d4a635;border-radius:14px;padding:14px 18px;background:#1a1612">
+      <div style="font-size:1.25em;font-weight:800;color:#f1e4c4">${escapeHtml(d.name || '?')}${e.id === activeCharId ? ' ★' : ''}</div>
+      <div style="display:flex;gap:24px;flex-wrap:wrap;margin-top:8px;font-size:1.55em;font-weight:800">
+        <span style="color:#7ed07e">&#10084; ${d.endCur ?? '?'}/${d.endMax ?? '?'}</span>
+        <span style="color:#6fa8ff">&#10022; ${d.hopeCur ?? '?'}/${d.hopeMax ?? '?'}</span>
+        <span style="color:#e0a060">&#127769; ${totalShadow}</span>
+      </div>
+      ${conds ? `<div style="margin-top:10px">${conds}</div>` : ''}</div>`;
+  }).filter(Boolean).join('');
+  const enc = char.encounter;
+  const foes = (enc && enc.active && (enc.foes || []).filter(f => !f.slain)) || [];
+  const foeHtml = foes.length
+    ? `<h2 style="margin:22px 0 10px;font-size:1.2em;color:#e06060">&#9876; Encounter &middot; Round ${enc.round || 1}</h2>
+       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px">${foes.map(f =>
+        `<div style="border:3px solid #e06060;border-radius:14px;padding:12px 16px;background:#1a1612">
+          <div style="font-size:1.15em;font-weight:800;color:#f1e4c4">${escapeHtml(f.name)}</div>
+          <div style="font-size:1.45em;font-weight:800;color:#7ed07e;margin-top:4px">&#10084; ${f.endCur}/${f.endMax}</div>
+          ${f.wounded ? pill('WOUNDED', '#7a1a1a') : ''}</div>`).join('')}</div>`
+    : '';
+  body.innerHTML = `<div style="font-size:20px"><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px">${heroCards}</div>${foeHtml}</div>`;
+}
+
 /* ---------- SHARE VIA LINK / QR ---------- */
 // Trim a character down to only the fields that differ from the default schema — keeps the
 // shared payload as small as possible.

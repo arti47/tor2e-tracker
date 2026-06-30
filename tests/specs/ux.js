@@ -91,6 +91,25 @@ module.exports = {
     checks.push({ ok: backup.first === true && backup.dupe === false && backup.second === true && backup.count === 2, msg: `auto-backup: snapshot + dedupe + 2nd entry (count ${backup.count})` });
     checks.push({ ok: backup.overlayShown && backup.rows === 2, msg: `restore-points UI lists snapshots (${backup.rows} rows)` });
 
+    // U11 — big-screen Table Mode: full-screen dashboard of heroes + active encounter foes.
+    const tm = await page.evaluate(() => {
+      openTableMode();
+      const shown = document.getElementById('table-mode-overlay').classList.contains('show');
+      const heroCards = document.querySelectorAll('#table-mode-body div[style*="border:3px solid #d4a635"]').length;
+      ensureEncounterActive();
+      enc().foes.push({ id: 'tmf', name: 'TM Foe', source: 'T', endMax: 10, endCur: 7, might: 1, hateMax: 2, hateCur: 2, parry: 1, armour: 0, atkTN: 14, attacks: [{ name: 'a', dice: 2, dmg: 3, inj: 0, special: '' }], engaged: true, wounded: false, slain: false });
+      renderTableMode();
+      const foeShown = document.getElementById('table-mode-body').innerText.includes('TM Foe');
+      const timerOn = !!_tableModeTimer;
+      closeTableMode();
+      const hidden = !document.getElementById('table-mode-overlay').classList.contains('show');
+      const timerOff = !_tableModeTimer;
+      char.encounter = JSON.parse(JSON.stringify(DEFAULT_CHARACTER.encounter)); saveCharacter();
+      return { shown, heroCards, foeShown, timerOn, hidden, timerOff };
+    });
+    checks.push({ ok: tm.shown && tm.heroCards >= 1 && tm.foeShown, msg: `Table Mode shows ${tm.heroCards} hero card(s) + encounter foe` });
+    checks.push({ ok: tm.timerOn && tm.hidden && tm.timerOff, msg: 'Table Mode auto-refresh timer starts on open, clears on close' });
+
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length})` });
     await context.close();
     return { checks };
