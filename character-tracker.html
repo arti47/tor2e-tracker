@@ -151,6 +151,19 @@
     <h2>🎲 GM Screen</h2>
     <p class="hint" style="text-align:left">Every hero on this device, with quick hand-out controls — deal or heal Endurance, toggle conditions, add a Shadow point. Writes go through each hero's normal save path (and sync to the cloud if enabled). A live shared party arrives when cloud campaigns land.</p>
   </div>
+  <div class="card">
+    <h3 class="card-title">🌑 Group Shadow Test</h3>
+    <p class="hint" style="text-align:left">Rolls one test for every hero at once — Dread (Valour vs Heart TN), Greed / Sorcery (Wisdom vs Wits TN). Each hero's own Weary + Despair apply. Tap a failure's button to hand out the Shadow (capped, persisted).</p>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:6px">
+      <button onclick="gmGroupShadowTest('dread')" style="font-size:12px;padding:4px 10px">🌑 Dread</button>
+      <button onclick="gmGroupShadowTest('greed')" style="font-size:12px;padding:4px 10px">💰 Greed</button>
+      <button onclick="gmGroupShadowTest('sorcery')" style="font-size:12px;padding:4px 10px">🔮 Sorcery</button>
+      <label style="font-size:12px;margin-left:auto">Shadow on fail
+        <input type="number" id="gm-shadow-amount" value="1" min="1" max="3" style="width:46px;padding:2px 4px;margin-left:4px">
+      </label>
+    </div>
+    <div id="gm-shadow-results" aria-live="polite"></div>
+  </div>
   <div id="gm-party-body"></div>
   <div class="card">
     <p class="hint" style="text-align:left">To run a fight, drop adversaries from the Bestiary on the <b>Combat</b> tab's Encounter tracker.</p>

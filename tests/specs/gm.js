@@ -50,6 +50,25 @@ module.exports = {
     checks.push({ ok: mut.shadow === 2 && mut.capped === 10, msg: `gmShadow adds & clamps to hopeMax−scars (${mut.shadow}, cap ${mut.capped})` });
     checks.push({ ok: mut.persisted, msg: 'GM mutations persist to the hero slot' });
 
+    // Group Shadow Test — rolls for every roster hero and renders a PASS/FAIL row each.
+    const gst = await page.evaluate(() => {
+      localStorage.setItem('tor2e-gm', '1'); refreshGmUI();
+      const n = (loadRoster() || { list: [] }).list.length;
+      gmGroupShadowTest('dread');
+      const box = document.getElementById('gm-shadow-results');
+      const rows = box.querySelectorAll('div[style*="space-between"]').length;
+      const titled = /Dread/.test(box.innerHTML);
+      const verdicts = (box.innerHTML.match(/PASS|FAIL/g) || []).length;
+      // Despair forces Ill-Favoured: a maxed-Shadow hero should be flagged.
+      char.hopeMax = 4; char.shadow = 4; char.scars = 0; char.valour = 2; char.hrtTN = 14; saveCharacter();
+      gmGroupShadowTest('dread');
+      const despairFlag = /⚠Despair/.test(document.getElementById('gm-shadow-results').innerHTML);
+      char.shadow = 0; saveCharacter();
+      return { n, rows, titled, verdicts, despairFlag };
+    });
+    checks.push({ ok: gst.rows === gst.n && gst.titled && gst.verdicts === gst.n, msg: `group shadow test renders a verdict per hero (${gst.rows}/${gst.n})` });
+    checks.push({ ok: gst.despairFlag, msg: 'maxed-Shadow hero flagged ⚠Despair (Ill-Favoured)' });
+
     await page.evaluate(() => { localStorage.removeItem('tor2e-gm'); refreshGmUI(); });
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length})` });
     await context.close();
