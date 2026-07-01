@@ -64,6 +64,26 @@ const Sync = {
 
   _onSignedIn() {
     this._syncDown();   // pull cloud heroes missing locally, then push local heroes missing in cloud
+    if (this.currentCampaign()) this._setupPresence();   // resume presence if already in a campaign
+  },
+
+  // Lightweight presence: mark our member node online while connected; onDisconnect flips it false.
+  _presenceRef: null,
+  _setupPresence() {
+    if (!this.enabled || !this.uid) return;
+    const cid = this.currentCampaign(); if (!cid) return;
+    this._teardownPresence();
+    const memRef = this.db.ref('campaigns/' + cid + '/members/' + this.uid);
+    const connRef = this.db.ref('.info/connected');
+    this._presenceRef = connRef;
+    connRef.on('value', snap => {
+      if (snap.val() !== true) return;
+      memRef.child('online').onDisconnect().set(false);
+      memRef.child('online').set(true).catch(() => {});
+    });
+  },
+  _teardownPresence() {
+    if (this._presenceRef) { try { this._presenceRef.off('value'); } catch (e) {} this._presenceRef = null; }
   },
 
   // Debounced mirror-up (saveCharacter is called very frequently; coalesce writes per hero).
@@ -168,13 +188,13 @@ const Sync = {
     const member = {
       displayName: (typeof char !== 'undefined' && char.name) || 'Hero',
       characterId: activeCharId, role: role === 'loremaster' ? 'loremaster' : 'player',
-      updated: Date.now(), vitals: this._vitalsOf(typeof char !== 'undefined' ? char : null)
+      updated: Date.now(), online: true, vitals: this._vitalsOf(typeof char !== 'undefined' ? char : null)
     };
     const updates = {};
     updates['campaigns/' + cid + '/meta'] = meta;
     updates['campaigns/' + cid + '/members/' + this.uid] = member;
     updates['joinCodes/' + code] = cid;
-    return this.db.ref().update(updates).then(() => { this._saveCampaign(cid, code, true); return { cid, code }; });
+    return this.db.ref().update(updates).then(() => { this._saveCampaign(cid, code, true); this._setupPresence(); return { cid, code }; });
   },
 
   // Join by code: resolve joinCodes/{CODE} -> cid, then write our own membership.
@@ -188,9 +208,9 @@ const Sync = {
       const member = {
         displayName: (typeof char !== 'undefined' && char.name) || 'Hero',
         characterId: activeCharId, role: role === 'loremaster' ? 'loremaster' : 'player',
-        updated: Date.now(), vitals: this._vitalsOf(typeof char !== 'undefined' ? char : null)
+        updated: Date.now(), online: true, vitals: this._vitalsOf(typeof char !== 'undefined' ? char : null)
       };
-      return this.db.ref('campaigns/' + cid + '/members/' + this.uid).set(member).then(() => { this._saveCampaign(cid, code, false); return { cid, code }; });
+      return this.db.ref('campaigns/' + cid + '/members/' + this.uid).set(member).then(() => { this._saveCampaign(cid, code, false); this._setupPresence(); return { cid, code }; });
     });
   },
 
@@ -201,6 +221,7 @@ const Sync = {
     let code = null;
     try { code = (JSON.parse(localStorage.getItem('tor2e-campaign-v1')) || {}).code; } catch (e) {}
     this.unsubscribeParty();
+    this._teardownPresence();
     const updates = {};
     updates['campaigns/' + cid] = null;
     if (code) updates['joinCodes/' + code] = null;
@@ -210,6 +231,7 @@ const Sync = {
   leaveCampaign() {
     const cid = this.currentCampaign();
     this.unsubscribeParty();
+    this._teardownPresence();
     if (this.enabled && this.uid && cid) this.db.ref('campaigns/' + cid + '/members/' + this.uid).remove().catch(() => {});
     this._clearCampaign();
   },

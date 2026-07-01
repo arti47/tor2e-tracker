@@ -473,9 +473,44 @@ function renderRoster() {
 function openPartyView() {
   document.getElementById('menu-overlay').classList.remove('show');
   document.getElementById('party-view-overlay').classList.add('show');
-  renderPartyView();
+  // In a cloud campaign → show the LIVE Fellowship (all members' vitals); otherwise the local roster.
+  if (typeof Sync !== 'undefined' && Sync.isEnabled() && Sync.currentCampaign()) {
+    Sync.subscribeParty((m, e) => renderPartyViewLive(m, e));
+  } else {
+    renderPartyView();
+  }
 }
-function closePartyView() { document.getElementById('party-view-overlay').classList.remove('show'); }
+function closePartyView() {
+  if (typeof Sync !== 'undefined') Sync.unsubscribeParty();
+  document.getElementById('party-view-overlay').classList.remove('show');
+}
+// Live campaign party — same table shape as renderPartyView, plus an online dot and role.
+function renderPartyViewLive(members, err) {
+  const body = document.getElementById('party-view-body');
+  if (!body) return;
+  if (err) { body.innerHTML = '<div class="hint" style="text-align:center;padding:12px">Could not load the party (permission or network).</div>'; return; }
+  const th = 'style="padding:6px 8px;border-bottom:2px solid var(--border);text-align:left;white-space:nowrap"';
+  const td = 'style="padding:6px 8px;border-bottom:1px solid var(--border);vertical-align:top"';
+  const myUid = (typeof Sync !== 'undefined') ? Sync.uid : null;
+  const keys = members ? Object.keys(members) : [];
+  const rows = keys.map(uid => {
+    const m = members[uid] || {}; const v = m.vitals || {};
+    const conds = [v.weary && 'Weary', v.miserable && 'Miserable', v.wounded && 'Wounded', v.dying && 'DYING'].filter(Boolean).join(', ') || '—';
+    const dot = m.online ? '🟢' : '⚪';
+    return `<tr style="${uid === myUid ? 'background:var(--gold-soft)' : ''}">
+      <td ${td}>${dot} <strong>${escapeHtml(v.name || m.displayName || 'Hero')}</strong>${uid === myUid ? ' ★' : ''}<br><small style="color:var(--text-muted)">${m.role === 'loremaster' ? '🎲 Loremaster' : 'Player'}</small></td>
+      <td ${td}>${v.endCur ?? '?'}/${v.endMax ?? '?'}</td>
+      <td ${td}>${v.hopeCur ?? '?'}/${v.hopeMax ?? '?'}</td>
+      <td ${td}>${v.shadow ?? 0}</td>
+      <td ${td}>V${v.valour ?? '?'} · W${v.wisdom ?? '?'}</td>
+      <td ${td}>${escapeHtml(conds)}</td>
+    </tr>`;
+  }).join('');
+  body.innerHTML = `<p class="hint" style="text-align:left;margin:0 0 8px">🏰 Live campaign party — updates in real time (🟢 online · ⚪ offline).</p>
+    <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:480px">
+    <thead><tr><th ${th}>Hero</th><th ${th}>End</th><th ${th}>Hope</th><th ${th}>Shadow</th><th ${th}>V/W</th><th ${th}>Conditions</th></tr></thead>
+    <tbody>${rows || `<tr><td ${td} colspan="6">No members yet.</td></tr>`}</tbody></table>`;
+}
 
 function renderPartyView() {
   const body = document.getElementById('party-view-body');
