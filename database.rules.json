@@ -1,0 +1,21 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "characters": {
+      ".indexOn": ["owner"],
+      ".read": "auth != null && query.orderByChild == 'owner' && query.equalTo == auth.uid",
+      "$characterId": {
+        ".read": "auth != null && data.child('owner').val() === auth.uid",
+        ".write": "auth != null && ( (!data.exists() && newData.child('owner').val() === auth.uid) || (data.exists() && data.child('owner').val() === auth.uid && (!newData.exists() || newData.child('owner').val() === auth.uid)) )",
+        "owner": { ".validate": "newData.isString()" },
+        "updated": { ".validate": "newData.isNumber() || newData.val() == now" },
+        "name": { ".validate": "newData.isString()" },
+        "data": { ".validate": "newData.hasChildren()" },
+        "rolls": {},
+        "journal": {},
+        "$other": { ".validate": false }
+      }
+    }
+  }
+}

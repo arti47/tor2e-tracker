@@ -720,7 +720,8 @@ exported hero JSON** (`handlePartyFiles`), so the two data models are already co
   - Risk: medium.
 
 ### Phase P7 — Firebase Security Rules
-- [ ] **`database.rules.json` enforcing ownership + roles.**
+- [~] **IN PROGRESS — `characters` ownership rules shipped 2026-07-01 (ahead of order, to gate P3 verification safely).** `database.rules.json` created with **default-deny** (`.read/.write:false` at root) + a `characters` block that is **owner-only**: per-hero `.read`/`.write` require `auth.uid === owner` (write also covers create/update/delete without letting `owner` be reassigned), a parent-level `.read` that permits **only** the exact query `Sync._syncDown` issues (`orderByChild('owner').equalTo(uid)`), `.indexOn:["owner"]` (this satisfies the index the P3 sync-down query needed — previously flagged pending), and per-field `.validate` (owner string, data object, `$other:false` to reject stray keys). **Campaign/encounter/broadcast rules are deliberately NOT written yet** — those nodes don't ship until P4/P5/P6, and the root default-deny keeps them locked; adding rules for unbuilt nodes would be speculative + risky. Pure valid JSON (no comments) so it deploys via `firebase deploy --only database` or paste into the console. **Not yet verified against a live project / emulator** (that's part of the P3 live check).
+- [ ] **(remaining) campaign/encounter/broadcast rules + role enforcement.**
   - Goal: players read/write only their own hero + shared campaign state they're allowed to; loremaster gets campaign-wide write.
   - Target: new `database.rules.json` (port + adapt Dragonbane's).
   - Behavior: `characters/{id}` writable only by `owner`; `campaigns/{id}/members` self-write own membership; `campaigns/{id}/encounter` writable by members but GM-locked fields restricted to `role==="loremaster"`; `broadcast` GM-write/member-read.
