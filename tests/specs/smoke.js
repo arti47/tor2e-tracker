@@ -30,6 +30,15 @@ module.exports = {
     }
     checks.push({ ok: visibleTabs.includes('reference'), msg: 'Reference tab is present & visible' });
 
+    // P3 graceful degradation: with no Firebase SDK, Sync must stay dormant and the app fully local.
+    const sync = await page.evaluate(() => ({
+      defined: typeof Sync,
+      enabled: (typeof Sync !== 'undefined') ? Sync.isEnabled() : null,
+      firebaseAbsent: typeof firebase === 'undefined',
+      configPresent: typeof window.FIREBASE_CONFIG === 'object'
+    }));
+    checks.push({ ok: sync.defined === 'object' && sync.enabled === false && sync.firebaseAbsent && sync.configPresent, msg: `Sync dormant + app local when Firebase SDK absent (enabled=${sync.enabled})` });
+
     checks.push({ ok: errors.length === 0, msg: `0 page errors during boot+tabs (got ${errors.length}${errors.length ? ': ' + errors[0] : ''})` });
 
     await context.close();

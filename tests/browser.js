@@ -67,9 +67,12 @@ async function newPage(browser, url) {
   const errors = [];
   page.on('pageerror', e => errors.push(String(e)));
   page.on('console', m => { if (m.type() === 'error') errors.push('console.error: ' + m.text()); });
-  // Belt-and-braces: never fetch the SW or Firebase (Firebase isn't used today, but future-proof).
+  // Never register the SW during tests.
   await context.route('**/sw.js', r => r.abort());
-  await context.route('**/*firebasejs*', r => r.abort());
+  // Firebase CDN: fulfill EMPTY (not abort) so there's no failed-load console error — this simulates
+  // "SDK unavailable / offline", which is exactly the graceful-degradation path (Sync stays dormant,
+  // app runs fully local). Aborting would log console errors and fail the smoke "0 errors" check.
+  await context.route(/firebasejs/, r => r.fulfill({ status: 200, contentType: 'application/javascript', body: '' }));
   await page.goto(url, { waitUntil: 'load' });
   await page.waitForFunction(() => typeof window.renderReference === 'function', { timeout: 8000 }).catch(() => {});
   return { context, page, errors };

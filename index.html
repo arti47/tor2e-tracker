@@ -2118,11 +2118,19 @@
      Kazuhiko Arase qrcode-generator. Inlined to keep the app single-file & fully offline. -->
 <script src="src/vendor-qrcode.js"></script>
 
+<!-- Firebase compat SDK (OPTIONAL cloud sync). Loaded from CDN; a failed load (offline / file://)
+     is harmless — the Sync module detects the missing SDK and the app runs fully local. -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="firebase-config.js"></script>
+
 <script src="src/01-core.js"></script>
 <script src="src/02-data.js"></script>
 <script src="src/03-state.js"></script>
 <script src="src/04-render.js"></script>
 <script src="src/05-combat-build.js"></script>
 <script src="src/06-tabs-init.js"></script>
+<script src="src/07-sync.js"></script>
 </body>
 </html>

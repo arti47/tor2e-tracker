@@ -1400,6 +1400,7 @@ const TUTORIAL_LESSONS = [
 ];
 
 document.addEventListener('DOMContentLoaded', () => {
+  if (typeof Sync !== 'undefined') Sync.init();   // P3: boot cloud sync if configured; else a no-op (stays local)
   bindInputs();
   bindTabs();
   bindDice();

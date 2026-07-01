@@ -9,12 +9,13 @@
 //     This keeps clients from getting stuck on a stale build.
 // Bump CACHE_VERSION on any deploy so old caches are garbage-collected on activate.
 
-const CACHE_VERSION = 'tor2e-v84';
+const CACHE_VERSION = 'tor2e-v85';
 const PRECACHE = [
   './',
   './index.html',
   './character-tracker.html',
   './styles.css',
+  './firebase-config.js',
   './src/vendor-qrcode.js',
   './src/01-core.js',
   './src/02-data.js',
@@ -22,6 +23,7 @@ const PRECACHE = [
   './src/04-render.js',
   './src/05-combat-build.js',
   './src/06-tabs-init.js',
+  './src/07-sync.js',
   './manifest.json',
   './icon-192.png',
   './icon-512.png',
