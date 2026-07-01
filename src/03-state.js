@@ -199,6 +199,8 @@ function saveCharacter() {
   entry.name = char.name || 'New Hero';
   roster.activeId = activeCharId;
   saveRoster(roster);
+  // P3: mirror this hero to the cloud (debounced). No-op unless cloud sync is active.
+  if (typeof Sync !== 'undefined' && Sync.enabled) Sync.queuePush(activeCharId);
 }
 
 function readSlot(id) {

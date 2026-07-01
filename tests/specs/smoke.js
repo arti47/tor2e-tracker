@@ -39,6 +39,14 @@ module.exports = {
     }));
     checks.push({ ok: sync.defined === 'object' && sync.enabled === false && sync.firebaseAbsent && sync.configPresent, msg: `Sync dormant + app local when Firebase SDK absent (enabled=${sync.enabled})` });
 
+    // Cloud calls must be safe no-ops while disabled (guards against a mirror firing with no backend).
+    const syncGuard = await page.evaluate(() => {
+      let threw = false;
+      try { Sync.queuePush('nope'); Sync.pushChar('nope'); saveCharacter(); } catch (e) { threw = true; }
+      return { threw, stillDisabled: Sync.isEnabled() === false, api: ['queuePush', 'pushChar', '_syncDown', 'linkGoogle', 'status'].every(m => typeof Sync[m] === 'function') };
+    });
+    checks.push({ ok: !syncGuard.threw && syncGuard.stillDisabled && syncGuard.api, msg: 'cloud calls are safe no-ops while disabled; Sync API present' });
+
     checks.push({ ok: errors.length === 0, msg: `0 page errors during boot+tabs (got ${errors.length}${errors.length ? ': ' + errors[0] : ''})` });
 
     await context.close();
