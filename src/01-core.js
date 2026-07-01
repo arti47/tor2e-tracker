@@ -1115,6 +1115,8 @@ function refreshStriderUI() {
   if (btn) btn.textContent = char.striderMode ? '🗡️ Disable Strider Mode' : '🗡️ Enable Strider Mode (solo)';
   const mbtn = document.getElementById('moria-mode-btn');
   if (mbtn) mbtn.textContent = char.moriaMode ? '⛏️ Disable Moria Solo Mode' : '⛏️ Enable Moria Solo Mode';
+  // GM Screen (P6): device-global toggle, independent of char mode. Keep its tab + label in sync.
+  if (typeof refreshGmUI === 'function') refreshGmUI();
 }
 
 function toggleDarkMode() {

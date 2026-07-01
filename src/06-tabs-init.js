@@ -14,6 +14,7 @@ function bindTabs() {
       }
       if (t.dataset.tab === 'chronicle') renderChronicle();
       if (t.dataset.tab === 'reference') renderReference();
+      if (t.dataset.tab === 'gm' && typeof renderGm === 'function') renderGm();
       window.scrollTo(0, 0);
     };
   });

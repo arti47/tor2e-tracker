@@ -41,6 +41,7 @@
     <button class="tab" data-tab="chronicle" style="display:none">Chronicle</button>
     <button class="tab" data-tab="build">Build</button>
     <button class="tab" data-tab="reference">📖 Ref</button>
+    <button class="tab" data-tab="gm" style="display:none">🎲 GM</button>
   </nav>
 </header>
 
@@ -141,6 +142,18 @@
     <input type="text" id="ref-filter" placeholder="🔍 Search reference…" oninput="renderReference()"
            style="width:100%;padding:8px 10px;margin:6px 0 4px;border:1px solid var(--border);border-radius:8px;background:var(--card-bg);color:var(--ink);font-size:14px">
     <div id="reference-body"></div>
+  </div>
+</section>
+
+<!-- ============ GM SCREEN (P6 — local Loremaster dashboard) ============ -->
+<section class="panel" id="panel-gm">
+  <div class="card" style="border-color:var(--gold)">
+    <h2>🎲 GM Screen</h2>
+    <p class="hint" style="text-align:left">Every hero on this device, with quick hand-out controls — deal or heal Endurance, toggle conditions, add a Shadow point. Writes go through each hero's normal save path (and sync to the cloud if enabled). A live shared party arrives when cloud campaigns land.</p>
+  </div>
+  <div id="gm-party-body"></div>
+  <div class="card">
+    <p class="hint" style="text-align:left">To run a fight, drop adversaries from the Bestiary on the <b>Combat</b> tab's Encounter tracker.</p>
   </div>
 </section>
 
@@ -1862,6 +1875,7 @@
     <button onclick="window.print();toggleMenu()">🖨️ Print / Save PDF</button>
     <button onclick="toggleStriderMode()" id="strider-mode-btn">🗡️ Enable Strider Mode (solo)</button>
     <button onclick="toggleMoriaMode()" id="moria-mode-btn">⛏️ Enable Moria Solo Mode</button>
+    <button onclick="toggleGmScreen()" id="gm-mode-btn">🎲 Enable GM Screen</button>
     <button onclick="exportData()">📤 Export Character (JSON)</button>
     <button onclick="document.getElementById('import-file').click()">📥 Import Character</button>
     <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)">
@@ -2134,5 +2148,6 @@
 <script src="src/05-combat-build.js"></script>
 <script src="src/06-tabs-init.js"></script>
 <script src="src/07-sync.js"></script>
+<script src="src/08-gm.js"></script>
 </body>
 </html>
