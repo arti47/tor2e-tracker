@@ -7,7 +7,7 @@
 const { startServer } = require('./serve');
 const { launch, newPage } = require('./browser');
 
-const ALL_SPECS = ['smoke', 'adversaries', 'ux', 'spillage'];
+const ALL_SPECS = ['smoke', 'adversaries', 'ux', 'spillage', 'a11y'];
 
 async function main() {
   const filter = process.argv.slice(2);

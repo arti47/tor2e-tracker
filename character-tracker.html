@@ -27,7 +27,7 @@
     <button class="menu-btn" id="undo-btn" onclick="undoLast()" aria-label="Undo" title="Undo last change" style="display:none">↶</button>
     <span id="retired-pill" style="display:none;background:var(--btn-alert-bg);color:white;padding:3px 10px;border-radius:10px;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase" title=""></span>
   </div>
-  <nav class="tabs">
+  <nav class="tabs" aria-label="Main sections">
     <button class="tab active" data-tab="character">Character</button>
     <button class="tab" data-tab="skills">Skills</button>
     <button class="tab" data-tab="combat">Combat</button>
@@ -417,7 +417,7 @@
       </div>
       <div class="counter">
         <div class="counter-label">Current <span id="weary-pill" style="display:none;background:var(--btn-warn-bg);color:white;padding:1px 6px;border-radius:8px;font-size:9px;margin-left:4px;animation:pulse 1.4s infinite">WEARY</span><span id="dying-badge" style="display:none;background:var(--btn-alert-bg);color:white;padding:1px 6px;border-radius:8px;font-size:9px;margin-left:4px;animation:pulse 1.2s infinite">DYING</span></div>
-        <div class="counter-value" id="end-cur-v">0</div>
+        <div class="counter-value" id="end-cur-v" role="status" aria-live="polite" aria-label="Current Endurance">0</div>
         <div class="counter-buttons">
           <button onclick="adj('endCur',-1)">−</button>
           <button onclick="adj('endCur',1)">+</button>
@@ -469,7 +469,7 @@
       </div>
       <div class="counter">
         <div class="counter-label">Current</div>
-        <div class="counter-value" id="hope-cur-v">0</div>
+        <div class="counter-value" id="hope-cur-v" role="status" aria-live="polite" aria-label="Current Hope">0</div>
         <div class="counter-buttons">
           <button onclick="adj('hopeCur',-1)">−</button>
           <button onclick="adj('hopeCur',1)">+</button>
@@ -1363,7 +1363,7 @@
 
     <button class="roll-btn" onclick="rollDice()" style="margin-top:10px">🎲 Roll Dice</button>
 
-    <div class="roll-result" id="roll-result" style="margin-top:12px; display:none">
+    <div class="roll-result" id="roll-result" role="status" aria-live="polite" style="margin-top:12px; display:none">
       <div class="result-dice" id="result-dice"></div>
       <div class="result-total" id="result-total">—</div>
       <div class="result-summary" id="result-summary"></div>

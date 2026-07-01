@@ -2,9 +2,10 @@
 function bindTabs() {
   document.querySelectorAll('.tab').forEach(t => {
     t.onclick = () => {
-      document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+      document.querySelectorAll('.tab').forEach(x => { x.classList.remove('active'); x.removeAttribute('aria-current'); });
       document.querySelectorAll('.panel').forEach(x => x.classList.remove('active'));
       t.classList.add('active');
+      t.setAttribute('aria-current', 'page');   // P8: a11y — mark the active tab for screen readers
       document.getElementById('panel-' + t.dataset.tab).classList.add('active');
       try { localStorage.setItem('tor2e-lasttab', t.dataset.tab); } catch (e) {}  // U4: remember last tab
       // Auto-lock Skills tab when leaving it (extra safety against accidental edits)
@@ -1409,8 +1410,64 @@ const TUTORIAL_LESSONS = [
     ] }
 ];
 
+/* ---------- ACCESSIBILITY (P8) ----------
+   Dialog semantics + focus management for every .menu-overlay (both the static overlays and the
+   showModal() styled modals), keyboard Escape-to-close, Tab focus-trap, and focus restore to the
+   opener. Additive — no visual/behavior change for mouse/touch users. */
+function initA11y() {
+  const activeTab = document.querySelector('.tab.active');
+  if (activeTab) activeTab.setAttribute('aria-current', 'page');
+
+  const overlays = Array.from(document.querySelectorAll('.menu-overlay'));
+  overlays.forEach(ov => {
+    ov.setAttribute('role', 'dialog');
+    ov.setAttribute('aria-modal', 'true');
+    const h = ov.querySelector('h2, h3');
+    if (h) { if (!h.id) h.id = 'dlg-h-' + Math.random().toString(36).slice(2, 7); ov.setAttribute('aria-labelledby', h.id); }
+  });
+
+  const focusables = ov => Array.from(ov.querySelectorAll('button, a[href], input, select, textarea, [tabindex]:not([tabindex="-1"])'))
+    .filter(el => !el.disabled && el.offsetParent !== null);
+
+  let opener = null;
+  const obs = new MutationObserver(muts => {
+    muts.forEach(m => {
+      if (m.attributeName !== 'class') return;
+      const ov = m.target;
+      const shown = ov.classList.contains('show');
+      const wasShown = (m.oldValue || '').split(/\s+/).includes('show');
+      if (shown && !wasShown) {
+        opener = document.activeElement;
+        const f = focusables(ov);
+        if (f.length) setTimeout(() => { try { f[0].focus(); } catch (e) {} }, 30);
+      } else if (!shown && wasShown) {
+        if (opener && typeof opener.focus === 'function') { try { opener.focus(); } catch (e) {} opener = null; }
+      }
+    });
+  });
+  overlays.forEach(ov => obs.observe(ov, { attributes: true, attributeFilter: ['class'], attributeOldValue: true }));
+
+  document.addEventListener('keydown', e => {
+    const shownList = Array.from(document.querySelectorAll('.menu-overlay.show'));
+    if (!shownList.length) return;
+    const ov = shownList[shownList.length - 1];
+    if (e.key === 'Escape') {
+      // Click a close/cancel control so its cleanup runs (e.g. table-mode's timer). If none, leave it
+      // (don't force-hide a styled modal whose promise is still pending).
+      const closeBtn = ov.querySelector('.close, [onclick*="close"], [onclick*="toggleMenu"]');
+      if (closeBtn) { e.preventDefault(); closeBtn.click(); }
+    } else if (e.key === 'Tab') {
+      const f = focusables(ov); if (!f.length) return;
+      const first = f[0], last = f[f.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+  });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   if (typeof Sync !== 'undefined') Sync.init();   // P3: boot cloud sync if configured; else a no-op (stays local)
+  initA11y();                                      // P8: dialog/focus/keyboard accessibility
   bindInputs();
   bindTabs();
   bindDice();
