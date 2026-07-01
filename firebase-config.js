@@ -8,13 +8,13 @@
 // These are public web-app identifiers, not secrets — but do NOT commit a config
 // for a project whose database rules aren't locked down (see database.rules.json).
 // ---------------------------------------------------------------------------
-window.FIREBASE_ENABLED = false;
+window.FIREBASE_ENABLED = true;
 window.FIREBASE_CONFIG = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
-  projectId: "YOUR_PROJECT",
-  storageBucket: "YOUR_PROJECT.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyDL28UL_twZKvqQfs5SQ0o9gog-3UMaUkE",
+  authDomain: "tor2e-tracker.firebaseapp.com",
+  databaseURL: "https://tor2e-tracker-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "tor2e-tracker",
+  storageBucket: "tor2e-tracker.firebasestorage.app",
+  messagingSenderId: "12814245621",
+  appId: "1:12814245621:web:163b3d8cb3e99ea2ebafbc"
 };
