@@ -30,7 +30,17 @@ function restoreLastTab() {
 
 /* ---------- MENU ---------- */
 function toggleMenu() {
-  document.getElementById('menu-overlay').classList.toggle('show');
+  const ov = document.getElementById('menu-overlay');
+  ov.classList.toggle('show');
+  // P3: refresh the cloud sync status line whenever the menu opens.
+  if (ov.classList.contains('show')) {
+    const el = document.getElementById('sync-status-line');
+    if (el && typeof Sync !== 'undefined') {
+      const on = Sync.isEnabled();
+      el.textContent = (on ? '☁️ ' : '📴 ') + Sync.status();
+      el.style.color = on ? 'var(--success-text)' : 'var(--text-muted)';
+    }
+  }
 }
 
 function exportData() {

@@ -47,6 +47,17 @@ module.exports = {
     });
     checks.push({ ok: !syncGuard.threw && syncGuard.stillDisabled && syncGuard.api, msg: 'cloud calls are safe no-ops while disabled; Sync API present' });
 
+    // P3 UI hooks: menu shows a sync-status line + a Link Google button.
+    const syncUi = await page.evaluate(() => {
+      toggleMenu();  // open — populates the status line from Sync.status()
+      const line = document.getElementById('sync-status-line');
+      const txt = line ? line.textContent : '';
+      const linkBtn = !!document.querySelector('button[onclick="Sync.linkGoogle()"]');
+      toggleMenu();  // close
+      return { txt, linkBtn };
+    });
+    checks.push({ ok: /local/i.test(syncUi.txt) && syncUi.linkBtn, msg: `menu shows sync status ("${syncUi.txt}") + Link Google button` });
+
     checks.push({ ok: errors.length === 0, msg: `0 page errors during boot+tabs (got ${errors.length}${errors.length ? ': ' + errors[0] : ''})` });
 
     await context.close();

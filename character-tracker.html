@@ -1848,6 +1848,7 @@
 <div class="menu-overlay" id="menu-overlay">
   <div class="menu">
     <h3>Menu</h3>
+    <div id="sync-status-line" style="font-size:11px;color:var(--text-muted);text-align:center;margin:-4px 0 8px">📴 Local only</div>
     <button onclick="openTutorial()" style="background:var(--gold);color:var(--ink);border-color:var(--gold)">📖 Tutorial — Learn the Game</button>
     <button onclick="openRoster()">👥 Characters…</button>
     <button onclick="openPregens()">✨ Pre-generated Heroes</button>
@@ -1868,6 +1869,7 @@
     <button onclick="document.getElementById('import-all-file').click()">📦 Restore Heroes (backup)</button>
     <input type="file" id="import-all-file" accept=".json" style="display:none" onchange="importAllHeroes(event)">
     <button onclick="openRestorePoints()">♻️ Restore Points (auto-backups)</button>
+    <button onclick="Sync.linkGoogle()">☁️ Link Google Account (cloud backup)</button>
     <button onclick="newCharacter();toggleMenu()">➕ New Character</button>
     <button class="danger" onclick="resetCharacter()">🔄 Reset This Character</button>
     <button class="close" onclick="toggleMenu()">Close</button>
