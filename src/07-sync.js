@@ -133,7 +133,8 @@ const Sync = {
     try { const c = JSON.parse(localStorage.getItem('tor2e-campaign-v1')); if (c && c.id) { this.campaignId = c.id; return c.id; } } catch (e) {}
     return null;
   },
-  _saveCampaign(id, code) { try { localStorage.setItem('tor2e-campaign-v1', JSON.stringify({ id, code })); } catch (e) {} this.campaignId = id; },
+  _saveCampaign(id, code, owner) { try { localStorage.setItem('tor2e-campaign-v1', JSON.stringify({ id, code, owner: !!owner })); } catch (e) {} this.campaignId = id; },
+  isCampaignOwner() { try { return !!(JSON.parse(localStorage.getItem('tor2e-campaign-v1')) || {}).owner; } catch (e) { return false; } },
   _clearCampaign() { try { localStorage.removeItem('tor2e-campaign-v1'); } catch (e) {} this.campaignId = null; },
 
   // Memorable two-word code, e.g. "SHADOW-MITHRIL". Avoids ambiguous look-alikes by using whole words.
@@ -173,7 +174,7 @@ const Sync = {
     updates['campaigns/' + cid + '/meta'] = meta;
     updates['campaigns/' + cid + '/members/' + this.uid] = member;
     updates['joinCodes/' + code] = cid;
-    return this.db.ref().update(updates).then(() => { this._saveCampaign(cid, code); return { cid, code }; });
+    return this.db.ref().update(updates).then(() => { this._saveCampaign(cid, code, true); return { cid, code }; });
   },
 
   // Join by code: resolve joinCodes/{CODE} -> cid, then write our own membership.
@@ -189,8 +190,21 @@ const Sync = {
         characterId: activeCharId, role: role === 'loremaster' ? 'loremaster' : 'player',
         updated: Date.now(), vitals: this._vitalsOf(typeof char !== 'undefined' ? char : null)
       };
-      return this.db.ref('campaigns/' + cid + '/members/' + this.uid).set(member).then(() => { this._saveCampaign(cid, code); return { cid, code }; });
+      return this.db.ref('campaigns/' + cid + '/members/' + this.uid).set(member).then(() => { this._saveCampaign(cid, code, false); return { cid, code }; });
     });
+  },
+
+  // Owner-only: tear down the whole campaign + its join-code index (rules enforce ownership).
+  deleteCampaign() {
+    const cid = this.currentCampaign();
+    if (!this.enabled || !this.uid || !cid) return Promise.reject(new Error('Not in a campaign.'));
+    let code = null;
+    try { code = (JSON.parse(localStorage.getItem('tor2e-campaign-v1')) || {}).code; } catch (e) {}
+    this.unsubscribeParty();
+    const updates = {};
+    updates['campaigns/' + cid] = null;
+    if (code) updates['joinCodes/' + code] = null;
+    return this.db.ref().update(updates).then(() => { this._clearCampaign(); });
   },
 
   leaveCampaign() {

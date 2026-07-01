@@ -532,6 +532,11 @@ async function campaignLeave() {
   if (!(await confirmStyled('Leave this campaign? Your hero stays on your device.'))) return;
   Sync.leaveCampaign(); renderCampaign();
 }
+async function campaignDelete() {
+  if (!(await confirmStyled('Delete this campaign for everyone? This removes it and its join code — it cannot be undone.'))) return;
+  try { await Sync.deleteCampaign(); renderCampaign(); }
+  catch (e) { alertStyled('Could not delete: ' + (e && e.message ? e.message : e)); }
+}
 function renderCampaign() {
   const body = document.getElementById('campaign-body'); if (!body) return;
   const hint = document.getElementById('campaign-cloud-hint');
@@ -550,7 +555,8 @@ function renderCampaign() {
         <div style="font-weight:700">You are in a campaign.</div>
         <div style="margin:6px 0">Join code: <b style="letter-spacing:1px;font-size:15px">${escapeHtml(code || '—')}</b>
           ${code ? `<button onclick="navigator.clipboard&&navigator.clipboard.writeText('${code}');alertStyled('Copied ${code}')" style="font-size:11px;padding:2px 8px;margin-left:8px">Copy</button>` : ''}</div>
-        <button onclick="campaignLeave()" style="background:var(--btn-alert-bg);color:#fff">Leave campaign</button>
+        <button onclick="campaignLeave()" style="background:var(--btn-secondary-bg);color:#fff">Leave campaign</button>
+        ${Sync.isCampaignOwner() ? '<button onclick="campaignDelete()" style="background:var(--btn-alert-bg);color:#fff;margin-left:6px">Delete campaign</button>' : ''}
       </div>
       <div class="card"><h3 class="card-title">Party (live)</h3><div id="campaign-members"><div class="hint">Loading…</div></div></div>`;
     Sync.subscribeParty(renderCampaignMembers);

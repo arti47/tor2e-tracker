@@ -20,12 +20,13 @@
     "joinCodes": {
       "$code": {
         ".read": "auth != null",
-        ".write": "auth != null && !data.exists() && newData.isString()"
+        ".write": "auth != null && ( (!data.exists() && newData.isString()) || (!newData.exists() && root.child('campaigns').child(data.val()).child('meta').child('ownerUid').val() === auth.uid) )"
       }
     },
     "campaigns": {
       "$cid": {
         ".read": "auth != null && data.child('members').child(auth.uid).exists()",
+        ".write": "auth != null && !newData.exists() && data.child('meta').child('ownerUid').val() === auth.uid",
         "meta": {
           ".write": "auth != null && ( (!data.exists() && newData.child('ownerUid').val() === auth.uid) || (data.exists() && data.child('ownerUid').val() === auth.uid) )",
           ".validate": "newData.hasChildren(['name','joinCode','ownerUid'])",
