@@ -65,7 +65,11 @@ const Sync = {
   _onSignedIn() {
     this._syncDown();   // pull cloud heroes missing locally, then push local heroes missing in cloud
     if (this.currentCampaign()) this._setupPresence();   // resume presence if already in a campaign
+    if (typeof refreshPartyPill === 'function') refreshPartyPill();   // light up the header pill once signed in
   },
+
+  // Latest campaign members snapshot (populated while any party listener is active), for read-only views.
+  lastParty() { return this._lastParty; },
 
   // Lightweight presence: mark our member node online while connected; onDisconnect flips it false.
   _presenceRef: null,
@@ -146,7 +150,8 @@ const Sync = {
      Role ("player"|"loremaster") is stored from day one (gates the P6 GM surface later). */
   campaignId: null,
   _partyRef: null,
-  _partyCb: null,
+  _partyListeners: [],
+  _lastParty: null,
 
   currentCampaign() {
     if (this.campaignId) return this.campaignId;
@@ -249,18 +254,26 @@ const Sync = {
     }, 1500);
   },
 
-  // Live party subscription: cb(membersObject) fires on every change to the campaign roster.
+  // Live party subscription (multi-listener): each cb(membersObject) fires on every roster change.
+  // One underlying RTDB listener is shared across all subscribers so the header pill, Party View,
+  // Table Mode, and campaign overlay can all listen at once. Returns the cb (its unsubscribe handle).
   subscribeParty(cb) {
     const cid = this.currentCampaign();
-    if (!this.enabled || !this.uid || !cid) { cb && cb(null); return; }
-    this.unsubscribeParty();
-    this._partyCb = cb;
-    this._partyRef = this.db.ref('campaigns/' + cid + '/members');
-    this._partyRef.on('value', snap => { cb && cb(snap.val() || {}); }, err => { cb && cb(null, err); });
+    if (!this.enabled || !this.uid || !cid) { cb && cb(null); return cb; }
+    if (this._partyListeners.indexOf(cb) === -1) this._partyListeners.push(cb);
+    if (!this._partyRef) {
+      this._partyRef = this.db.ref('campaigns/' + cid + '/members');
+      this._partyRef.on('value',
+        snap => { this._lastParty = snap.val() || {}; this._partyListeners.slice().forEach(l => { try { l(this._lastParty); } catch (e) {} }); },
+        err => { this._partyListeners.slice().forEach(l => { try { l(null, err); } catch (e) {} }); });
+    } else if (this._lastParty) { try { cb && cb(this._lastParty); } catch (e) {} }   // replay latest to the new subscriber
+    return cb;
   },
-  unsubscribeParty() {
-    if (this._partyRef && this._partyCb) { try { this._partyRef.off('value'); } catch (e) {} }
-    this._partyRef = null; this._partyCb = null;
+  // Remove one listener (pass the cb) or all (no arg). Detaches the RTDB listener when none remain.
+  unsubscribeParty(cb) {
+    if (cb) this._partyListeners = this._partyListeners.filter(l => l !== cb);
+    else this._partyListeners = [];
+    if (!this._partyListeners.length && this._partyRef) { try { this._partyRef.off('value'); } catch (e) {} this._partyRef = null; this._lastParty = null; }
   },
 
   // Optional: upgrade the anonymous account to a Google account (cross-device identity). Step 3 UI.

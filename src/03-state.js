@@ -475,13 +475,13 @@ function openPartyView() {
   document.getElementById('party-view-overlay').classList.add('show');
   // In a cloud campaign → show the LIVE Fellowship (all members' vitals); otherwise the local roster.
   if (typeof Sync !== 'undefined' && Sync.isEnabled() && Sync.currentCampaign()) {
-    Sync.subscribeParty((m, e) => renderPartyViewLive(m, e));
+    Sync.subscribeParty(renderPartyViewLive);
   } else {
     renderPartyView();
   }
 }
 function closePartyView() {
-  if (typeof Sync !== 'undefined') Sync.unsubscribeParty();
+  if (typeof Sync !== 'undefined') Sync.unsubscribeParty(renderPartyViewLive);
   document.getElementById('party-view-overlay').classList.remove('show');
 }
 // Live campaign party — same table shape as renderPartyView, plus an online dot and role.
@@ -549,7 +549,7 @@ function openCampaign() {
   renderCampaign();
 }
 function closeCampaign() {
-  if (typeof Sync !== 'undefined') Sync.unsubscribeParty();
+  if (typeof Sync !== 'undefined') Sync.unsubscribeParty(renderCampaignMembers);
   document.getElementById('campaign-overlay').classList.remove('show');
 }
 function _campRole() { const el = document.getElementById('camp-role'); return el ? el.value : 'player'; }
@@ -573,6 +573,7 @@ async function campaignDelete() {
   catch (e) { alertStyled('Could not delete: ' + (e && e.message ? e.message : e)); }
 }
 function renderCampaign() {
+  if (typeof refreshPartyPill === 'function') refreshPartyPill();   // keep the header pill in sync
   const body = document.getElementById('campaign-body'); if (!body) return;
   const hint = document.getElementById('campaign-cloud-hint');
   const active = (typeof Sync !== 'undefined') && Sync.isEnabled();
@@ -615,6 +616,24 @@ function renderCampaign() {
       </div>`;
   }
 }
+// Header pill: live "🏰 online/total" while in a campaign; hidden otherwise. Persistent subscription.
+function updatePartyPill(members) {
+  const pill = document.getElementById('campaign-pill'); if (!pill) return;
+  const inC = (typeof Sync !== 'undefined') && Sync.isEnabled() && Sync.currentCampaign();
+  if (!inC || !members) { pill.style.display = 'none'; return; }
+  const keys = Object.keys(members);
+  const online = keys.filter(k => members[k] && members[k].online).length;
+  pill.style.display = '';
+  pill.textContent = '🏰 ' + online + '/' + keys.length;
+  pill.title = 'Fellowship campaign — ' + online + ' online of ' + keys.length + ' member(s). Tap to open.';
+}
+function refreshPartyPill() {
+  if (typeof Sync === 'undefined') return;
+  const pill = document.getElementById('campaign-pill');
+  if (Sync.isEnabled() && Sync.currentCampaign()) { Sync.subscribeParty(updatePartyPill); }
+  else { Sync.unsubscribeParty(updatePartyPill); if (pill) pill.style.display = 'none'; }
+}
+
 function renderCampaignMembers(members, err) {
   const box = document.getElementById('campaign-members'); if (!box) return;
   if (err) { box.innerHTML = '<div class="hint">Could not load the party (permission or network).</div>'; return; }
@@ -652,22 +671,38 @@ function renderTableMode() {
   const body = document.getElementById('table-mode-body'); if (!body) return;
   const r = loadRoster() || { activeId: activeCharId, list: [] };
   const pill = (t, bg) => `<span style="background:${bg};color:#fff;padding:3px 11px;border-radius:7px;font-size:.5em;font-weight:800;letter-spacing:1px">${t}</span>`;
-  const heroCards = r.list.map(e => {
-    const d = (e.id === activeCharId) ? char : readSlot(e.id);
-    if (!d) return '';
-    const totalShadow = (parseInt(d.shadow) || 0) + (parseInt(d.scars) || 0);
-    const dying = (parseInt(d.endCur) || 0) <= 0;
-    const conds = (dying ? [pill('DYING', '#b01010')] : [])
-      .concat([d.weary && pill('WEARY', '#8a5a14'), d.miserable && pill('MISERABLE', '#6a1a6a'), d.wounded && pill('WOUNDED', '#7a1a1a')].filter(Boolean)).join(' ');
-    return `<div style="border:3px solid #d4a635;border-radius:14px;padding:14px 18px;background:#1a1612">
-      <div style="font-size:1.25em;font-weight:800;color:#f1e4c4">${escapeHtml(d.name || '?')}${e.id === activeCharId ? ' ★' : ''}</div>
+  const card = (title, endCur, endMax, hopeCur, hopeMax, shadow, conds) =>
+    `<div style="border:3px solid #d4a635;border-radius:14px;padding:14px 18px;background:#1a1612">
+      <div style="font-size:1.25em;font-weight:800;color:#f1e4c4">${title}</div>
       <div style="display:flex;gap:24px;flex-wrap:wrap;margin-top:8px;font-size:1.55em;font-weight:800">
-        <span style="color:#7ed07e">&#10084; ${d.endCur ?? '?'}/${d.endMax ?? '?'}</span>
-        <span style="color:#6fa8ff">&#10022; ${d.hopeCur ?? '?'}/${d.hopeMax ?? '?'}</span>
-        <span style="color:#e0a060">&#127769; ${totalShadow}</span>
-      </div>
-      ${conds ? `<div style="margin-top:10px">${conds}</div>` : ''}</div>`;
-  }).filter(Boolean).join('');
+        <span style="color:#7ed07e">&#10084; ${endCur ?? '?'}/${endMax ?? '?'}</span>
+        <span style="color:#6fa8ff">&#10022; ${hopeCur ?? '?'}/${hopeMax ?? '?'}</span>
+        <span style="color:#e0a060">&#127769; ${shadow}</span>
+      </div>${conds ? `<div style="margin-top:10px">${conds}</div>` : ''}</div>`;
+  // In a campaign → show the LIVE Fellowship (with online dots); otherwise the local device roster.
+  const party = (typeof Sync !== 'undefined' && Sync.isEnabled() && Sync.currentCampaign() && Sync.lastParty) ? Sync.lastParty() : null;
+  let heroCards;
+  if (party && Object.keys(party).length) {
+    const myUid = (typeof Sync !== 'undefined') ? Sync.uid : null;
+    heroCards = Object.keys(party).map(uid => {
+      const m = party[uid] || {}; const v = m.vitals || {};
+      const dying = v.dying || (parseInt(v.endCur) || 0) <= 0;
+      const conds = (dying ? [pill('DYING', '#b01010')] : [])
+        .concat([v.weary && pill('WEARY', '#8a5a14'), v.miserable && pill('MISERABLE', '#6a1a6a'), v.wounded && pill('WOUNDED', '#7a1a1a')].filter(Boolean)).join(' ');
+      const title = (m.online ? '🟢 ' : '⚪ ') + escapeHtml(v.name || m.displayName || 'Hero') + (uid === myUid ? ' ★' : '');
+      return card(title, v.endCur, v.endMax, v.hopeCur, v.hopeMax, v.shadow ?? 0, conds);
+    }).join('');
+  } else {
+    heroCards = r.list.map(e => {
+      const d = (e.id === activeCharId) ? char : readSlot(e.id);
+      if (!d) return '';
+      const totalShadow = (parseInt(d.shadow) || 0) + (parseInt(d.scars) || 0);
+      const dying = (parseInt(d.endCur) || 0) <= 0;
+      const conds = (dying ? [pill('DYING', '#b01010')] : [])
+        .concat([d.weary && pill('WEARY', '#8a5a14'), d.miserable && pill('MISERABLE', '#6a1a6a'), d.wounded && pill('WOUNDED', '#7a1a1a')].filter(Boolean)).join(' ');
+      return card(escapeHtml(d.name || '?') + (e.id === activeCharId ? ' ★' : ''), d.endCur, d.endMax, d.hopeCur, d.hopeMax, totalShadow, conds);
+    }).filter(Boolean).join('');
+  }
   const enc = char.encounter;
   const foes = (enc && enc.active && (enc.foes || []).filter(f => !f.slain)) || [];
   const foeHtml = foes.length
