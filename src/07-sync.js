@@ -119,6 +119,114 @@ const Sync = {
     }).catch(e => console.warn('cloud sync-down failed:', e && e.message));
   },
 
+  /* ---------- P4: campaigns & live Fellowship party ----------
+     A campaign is a shared node with a memorable join code. Members publish a lightweight VITALS
+     snapshot into their own member node (readable by fellow members) so the party banner can show
+     End/Hope/Shadow/conditions live WITHOUT exposing each other's full owner-only character record.
+     Role ("player"|"loremaster") is stored from day one (gates the P6 GM surface later). */
+  campaignId: null,
+  _partyRef: null,
+  _partyCb: null,
+
+  currentCampaign() {
+    if (this.campaignId) return this.campaignId;
+    try { const c = JSON.parse(localStorage.getItem('tor2e-campaign-v1')); if (c && c.id) { this.campaignId = c.id; return c.id; } } catch (e) {}
+    return null;
+  },
+  _saveCampaign(id, code) { try { localStorage.setItem('tor2e-campaign-v1', JSON.stringify({ id, code })); } catch (e) {} this.campaignId = id; },
+  _clearCampaign() { try { localStorage.removeItem('tor2e-campaign-v1'); } catch (e) {} this.campaignId = null; },
+
+  // Memorable two-word code, e.g. "SHADOW-MITHRIL". Avoids ambiguous look-alikes by using whole words.
+  _genCode() {
+    const A = ['SHADOW', 'MITHRIL', 'ELVEN', 'DARK', 'GOLDEN', 'SILVER', 'ANCIENT', 'HIDDEN', 'GREY', 'WILD', 'DEEP', 'LONELY', 'MISTY', 'BLACK', 'WHITE', 'STONE'];
+    const B = ['RING', 'DELVING', 'HALL', 'GATE', 'PEAK', 'RIVER', 'FOREST', 'CROWN', 'HOARD', 'WARG', 'RAVEN', 'EMBER', 'THORN', 'HOLLOW', 'MARCH', 'DURIN'];
+    const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+    return pick(A) + '-' + pick(B) + '-' + (Math.floor(Math.random() * 90) + 10);
+  },
+
+  // Build the lightweight vitals snapshot published to fellow members (no full character data).
+  _vitalsOf(d) {
+    if (!d) return null;
+    return {
+      name: d.name || 'Hero',
+      endCur: parseInt(d.endCur) || 0, endMax: parseInt(d.endMax) || 0,
+      hopeCur: parseInt(d.hopeCur) || 0, hopeMax: parseInt(d.hopeMax) || 0,
+      shadow: (parseInt(d.shadow) || 0) + (parseInt(d.scars) || 0),
+      valour: parseInt(d.valour) || 0, wisdom: parseInt(d.wisdom) || 0,
+      weary: !!d.weary, miserable: !!d.miserable, wounded: !!d.wounded,
+      dying: (parseInt(d.endCur) || 0) <= 0
+    };
+  },
+
+  // Create a campaign with the ACTIVE hero as first member. role: 'player' | 'loremaster'.
+  createCampaign(name, role) {
+    if (!this.enabled || !this.uid) return Promise.reject(new Error('Cloud sync is not active.'));
+    const cid = this.db.ref('campaigns').push().key;
+    const code = this._genCode();
+    const meta = { name: name || 'Fellowship', joinCode: code, ownerUid: this.uid, createdAt: firebase.database.ServerValue ? firebase.database.ServerValue.TIMESTAMP : Date.now() };
+    const member = {
+      displayName: (typeof char !== 'undefined' && char.name) || 'Hero',
+      characterId: activeCharId, role: role === 'loremaster' ? 'loremaster' : 'player',
+      updated: Date.now(), vitals: this._vitalsOf(typeof char !== 'undefined' ? char : null)
+    };
+    const updates = {};
+    updates['campaigns/' + cid + '/meta'] = meta;
+    updates['campaigns/' + cid + '/members/' + this.uid] = member;
+    updates['joinCodes/' + code] = cid;
+    return this.db.ref().update(updates).then(() => { this._saveCampaign(cid, code); return { cid, code }; });
+  },
+
+  // Join by code: resolve joinCodes/{CODE} -> cid, then write our own membership.
+  joinCampaign(codeRaw, role) {
+    if (!this.enabled || !this.uid) return Promise.reject(new Error('Cloud sync is not active.'));
+    const code = (codeRaw || '').trim().toUpperCase();
+    if (!code) return Promise.reject(new Error('Enter a join code.'));
+    return this.db.ref('joinCodes/' + code).once('value').then(snap => {
+      const cid = snap.val();
+      if (!cid) throw new Error('No campaign found for code ' + code + '.');
+      const member = {
+        displayName: (typeof char !== 'undefined' && char.name) || 'Hero',
+        characterId: activeCharId, role: role === 'loremaster' ? 'loremaster' : 'player',
+        updated: Date.now(), vitals: this._vitalsOf(typeof char !== 'undefined' ? char : null)
+      };
+      return this.db.ref('campaigns/' + cid + '/members/' + this.uid).set(member).then(() => { this._saveCampaign(cid, code); return { cid, code }; });
+    });
+  },
+
+  leaveCampaign() {
+    const cid = this.currentCampaign();
+    this.unsubscribeParty();
+    if (this.enabled && this.uid && cid) this.db.ref('campaigns/' + cid + '/members/' + this.uid).remove().catch(() => {});
+    this._clearCampaign();
+  },
+
+  // Debounced vitals publish (called from saveCharacter alongside queuePush).
+  publishVitals() {
+    if (!this.enabled || !this.uid) return;
+    const cid = this.currentCampaign(); if (!cid) return;
+    clearTimeout(this._vitalsTimer);
+    this._vitalsTimer = setTimeout(() => {
+      this.db.ref('campaigns/' + cid + '/members/' + this.uid).update({
+        displayName: (typeof char !== 'undefined' && char.name) || 'Hero',
+        updated: Date.now(), vitals: this._vitalsOf(typeof char !== 'undefined' ? char : null)
+      }).catch(() => {});
+    }, 1500);
+  },
+
+  // Live party subscription: cb(membersObject) fires on every change to the campaign roster.
+  subscribeParty(cb) {
+    const cid = this.currentCampaign();
+    if (!this.enabled || !this.uid || !cid) { cb && cb(null); return; }
+    this.unsubscribeParty();
+    this._partyCb = cb;
+    this._partyRef = this.db.ref('campaigns/' + cid + '/members');
+    this._partyRef.on('value', snap => { cb && cb(snap.val() || {}); }, err => { cb && cb(null, err); });
+  },
+  unsubscribeParty() {
+    if (this._partyRef && this._partyCb) { try { this._partyRef.off('value'); } catch (e) {} }
+    this._partyRef = null; this._partyCb = null;
+  },
+
   // Optional: upgrade the anonymous account to a Google account (cross-device identity). Step 3 UI.
   linkGoogle() {
     if (!this.enabled || !this.auth) { alert('Cloud sync is not active.'); return; }

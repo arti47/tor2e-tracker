@@ -1903,6 +1903,7 @@
     <button onclick="openRoster()">👥 Characters…</button>
     <button onclick="openPregens()">✨ Pre-generated Heroes</button>
     <button onclick="openPartyView()">🛡️ Party View</button>
+    <button onclick="openCampaign()">🏰 Fellowship Campaign…</button>
     <button onclick="openTableMode()">📺 Table Mode (big screen)</button>
     <button onclick="openTimeline()">📜 Campaign Timeline</button>
     <button onclick="openShare()">🔗 Share Character</button>
@@ -1945,6 +1946,16 @@
     <p class="hint" style="text-align:left;margin-bottom:10px">Read-only snapshot of every hero on this device — for the table at a glance.</p>
     <div id="party-view-body" style="overflow-x:auto"></div>
     <button class="close" onclick="closePartyView()" style="margin-top:10px">Close</button>
+  </div>
+</div>
+
+<!-- ============ FELLOWSHIP CAMPAIGN (P4) ============ -->
+<div class="menu-overlay" id="campaign-overlay">
+  <div class="menu" style="max-width:560px;width:96%;max-height:90vh;overflow-y:auto">
+    <h3>🏰 Fellowship Campaign</h3>
+    <p class="hint" id="campaign-cloud-hint" style="text-align:left;margin-bottom:10px"></p>
+    <div id="campaign-body"></div>
+    <button class="close" onclick="closeCampaign()" style="margin-top:10px">Close</button>
   </div>
 </div>
 

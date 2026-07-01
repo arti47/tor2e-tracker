@@ -200,7 +200,7 @@ function saveCharacter() {
   roster.activeId = activeCharId;
   saveRoster(roster);
   // P3: mirror this hero to the cloud (debounced). No-op unless cloud sync is active.
-  if (typeof Sync !== 'undefined' && Sync.enabled) Sync.queuePush(activeCharId);
+  if (typeof Sync !== 'undefined' && Sync.enabled) { Sync.queuePush(activeCharId); Sync.publishVitals(); }
 }
 
 function readSlot(id) {
@@ -504,6 +504,91 @@ function renderPartyView() {
     <thead><tr>
       <th ${th}>Hero</th><th ${th}>End</th><th ${th}>Hope</th><th ${th}>Shadow</th><th ${th}>V/W</th><th ${th}>Conditions</th>
     </tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+/* ---------- FELLOWSHIP CAMPAIGN (P4) — create/join/leave + live party ---------- */
+const _CAMP_INPUT = 'width:100%;padding:7px 9px;margin:4px 0;border:1px solid var(--border);border-radius:8px;background:var(--card-bg);color:var(--ink);font-size:14px';
+function openCampaign() {
+  document.getElementById('menu-overlay').classList.remove('show');
+  document.getElementById('campaign-overlay').classList.add('show');
+  renderCampaign();
+}
+function closeCampaign() {
+  if (typeof Sync !== 'undefined') Sync.unsubscribeParty();
+  document.getElementById('campaign-overlay').classList.remove('show');
+}
+function _campRole() { const el = document.getElementById('camp-role'); return el ? el.value : 'player'; }
+async function campaignCreate() {
+  const name = (document.getElementById('camp-name') || {}).value || '';
+  try { const r = await Sync.createCampaign(name, _campRole()); alertStyled('Campaign created!\nShare this join code: ' + r.code); renderCampaign(); }
+  catch (e) { alertStyled('Could not create campaign: ' + (e && e.message ? e.message : e)); }
+}
+async function campaignJoin() {
+  const code = (document.getElementById('camp-code') || {}).value || '';
+  try { const r = await Sync.joinCampaign(code, _campRole()); alertStyled('Joined campaign ' + r.code + '.'); renderCampaign(); }
+  catch (e) { alertStyled('Could not join: ' + (e && e.message ? e.message : e)); }
+}
+async function campaignLeave() {
+  if (!(await confirmStyled('Leave this campaign? Your hero stays on your device.'))) return;
+  Sync.leaveCampaign(); renderCampaign();
+}
+function renderCampaign() {
+  const body = document.getElementById('campaign-body'); if (!body) return;
+  const hint = document.getElementById('campaign-cloud-hint');
+  const active = (typeof Sync !== 'undefined') && Sync.isEnabled();
+  const status = (typeof Sync !== 'undefined' && Sync.status) ? Sync.status() : 'Local only';
+  if (hint) hint.textContent = active
+    ? 'A campaign links a Fellowship across devices — share the join code so others can see the live party.'
+    : 'Cloud sync is not active — serve the app over http(s) with Firebase configured to use campaigns. (' + status + ')';
+  if (!active) { body.innerHTML = '<div class="hint" style="text-align:center;padding:12px">📴 Cloud sync required for campaigns.</div>'; return; }
+  const cid = Sync.currentCampaign();
+  if (cid) {
+    let code = '';
+    try { code = (JSON.parse(localStorage.getItem('tor2e-campaign-v1')) || {}).code || ''; } catch (e) {}
+    body.innerHTML = `
+      <div class="card" style="border-color:var(--gold)">
+        <div style="font-weight:700">You are in a campaign.</div>
+        <div style="margin:6px 0">Join code: <b style="letter-spacing:1px;font-size:15px">${escapeHtml(code || '—')}</b>
+          ${code ? `<button onclick="navigator.clipboard&&navigator.clipboard.writeText('${code}');alertStyled('Copied ${code}')" style="font-size:11px;padding:2px 8px;margin-left:8px">Copy</button>` : ''}</div>
+        <button onclick="campaignLeave()" style="background:var(--btn-alert-bg);color:#fff">Leave campaign</button>
+      </div>
+      <div class="card"><h3 class="card-title">Party (live)</h3><div id="campaign-members"><div class="hint">Loading…</div></div></div>`;
+    Sync.subscribeParty(renderCampaignMembers);
+  } else {
+    body.innerHTML = `
+      <div class="card">
+        <h3 class="card-title">Create a campaign</h3>
+        <input type="text" id="camp-name" placeholder="Campaign name" style="${_CAMP_INPUT}">
+        <div style="margin:6px 0;font-size:13px">Your role:
+          <select id="camp-role" style="padding:4px 8px;border-radius:6px;background:var(--card-bg);color:var(--ink);border:1px solid var(--border)">
+            <option value="player">Player</option><option value="loremaster">Loremaster</option></select></div>
+        <button onclick="campaignCreate()" style="width:100%">Create + get a join code</button>
+      </div>
+      <div class="card">
+        <h3 class="card-title">Join a campaign</h3>
+        <input type="text" id="camp-code" placeholder="Join code (e.g. SHADOW-DURIN-42)" style="${_CAMP_INPUT}">
+        <div style="margin:6px 0;font-size:13px">Your role:
+          <select id="camp-role" style="padding:4px 8px;border-radius:6px;background:var(--card-bg);color:var(--ink);border:1px solid var(--border)">
+            <option value="player">Player</option><option value="loremaster">Loremaster</option></select></div>
+        <button onclick="campaignJoin()" style="width:100%">Join</button>
+      </div>`;
+  }
+}
+function renderCampaignMembers(members, err) {
+  const box = document.getElementById('campaign-members'); if (!box) return;
+  if (err) { box.innerHTML = '<div class="hint">Could not load the party (permission or network).</div>'; return; }
+  const keys = members ? Object.keys(members) : [];
+  if (!keys.length) { box.innerHTML = '<div class="hint">No members yet.</div>'; return; }
+  const myUid = (typeof Sync !== 'undefined') ? Sync.uid : null;
+  box.innerHTML = keys.map(uid => {
+    const m = members[uid] || {}; const v = m.vitals || {};
+    const conds = [v.weary && 'Weary', v.miserable && 'Miserable', v.wounded && 'Wounded', v.dying && 'DYING'].filter(Boolean).join(', ');
+    return `<div style="padding:6px 0;border-bottom:1px solid var(--border)">
+      <b>${escapeHtml(v.name || m.displayName || 'Hero')}</b>${uid === myUid ? ' ★' : ''}
+      <small style="color:var(--text-muted)">· ${m.role === 'loremaster' ? '🎲 Loremaster' : 'Player'}</small><br>
+      <small style="color:var(--text-muted)">❤ ${v.endCur ?? '?'}/${v.endMax ?? '?'} · ✦ ${v.hopeCur ?? '?'}/${v.hopeMax ?? '?'} · 🌑 ${v.shadow ?? 0} · V${v.valour ?? '?'}/W${v.wisdom ?? '?'}${conds ? ' · <span style="color:var(--error-text)">' + conds + '</span>' : ''}</small>
+    </div>`;
+  }).join('');
 }
 
 /* ---------- BIG-SCREEN TABLE MODE (U11) ----------
