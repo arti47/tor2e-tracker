@@ -166,7 +166,31 @@
   </div>
   <div id="gm-party-body"></div>
   <div class="card">
-    <p class="hint" style="text-align:left">To run a fight, drop adversaries from the Bestiary on the <b>Combat</b> tab's Encounter tracker.</p>
+    <h3 class="card-title">⚔️ Encounter</h3>
+    <p class="hint" id="gm-enc-line" style="text-align:left">No active encounter.</p>
+    <button onclick="openBestiary()" style="width:100%">➕ Drop a foe into the Encounter</button>
+    <p class="hint" style="text-align:left;margin-top:6px">Adds to the active hero's Combat-tab encounter. A single <b>shared</b> encounter arrives with cloud campaigns.</p>
+  </div>
+  <div class="card">
+    <h3 class="card-title">👁 Eye of Mordor</h3>
+    <div id="gm-eye-body"></div>
+    <p class="hint" style="text-align:left;margin-top:6px">Each hero's Eye Awareness vs their Hunt threshold (solo modes track this). ⚠ = a Revelation is due.</p>
+  </div>
+  <div class="card">
+    <h3 class="card-title">👤 NPC Ledger</h3>
+    <input type="text" id="gm-npc-filter" placeholder="🔍 Search NPCs…" oninput="renderGmNpc()"
+           style="width:100%;padding:6px 8px;margin-bottom:6px;border:1px solid var(--border);border-radius:8px;background:var(--card-bg);color:var(--ink);font-size:13px">
+    <div id="gm-npc-body"></div>
+    <details style="margin-top:8px">
+      <summary style="cursor:pointer;font-size:13px;font-weight:600">➕ Add NPC</summary>
+      <div style="display:flex;flex-direction:column;gap:5px;margin-top:6px">
+        <input type="text" id="gm-npc-name" placeholder="Name" style="padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card-bg);color:var(--ink)">
+        <input type="text" id="gm-npc-role" placeholder="Role / title" style="padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card-bg);color:var(--ink)">
+        <input type="text" id="gm-npc-features" placeholder="Features (e.g. Aged, Cunning)" style="padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card-bg);color:var(--ink)">
+        <textarea id="gm-npc-notes" placeholder="Notes" rows="2" style="padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card-bg);color:var(--ink)"></textarea>
+        <button onclick="gmAddNpc()">Add NPC</button>
+      </div>
+    </details>
   </div>
 </section>
 

@@ -61,6 +61,75 @@ function renderGm() {
       </div></div>`;
   }).join('');
   body.innerHTML = rows || '<div class="hint" style="text-align:center;padding:10px">No heroes on this device yet.</div>';
+  // Encounter line + the Eye and NPC sub-panels (present only when the GM tab is rendered).
+  const encLine = document.getElementById('gm-enc-line');
+  if (encLine) {
+    const en = char.encounter || {};
+    const foes = Array.isArray(en.foes) ? en.foes : [];
+    const living = foes.filter(f => !f.slain).length;
+    encLine.textContent = (en.active && foes.length)
+      ? `Active encounter (${char.name || 'active hero'}): ${living} living / ${foes.length} foe(s), round ${en.round || 1}.`
+      : 'No active encounter.';
+  }
+  renderGmEye();
+  renderGmNpc();
+}
+
+/* ---------- GM: Eye of Mordor (surfaces the per-hero solo-mode Eye Awareness) ---------- */
+function gmEye(id, delta) { gmMutateHero(id, d => { d.eyeAwareness = Math.max(0, (parseInt(d.eyeAwareness) || 0) + delta); }); }
+function renderGmEye() {
+  const body = document.getElementById('gm-eye-body'); if (!body) return;
+  const HT = (typeof HUNT_THRESHOLDS !== 'undefined') ? HUNT_THRESHOLDS : { border: 18, wild: 16, dark: 14 };
+  const r = loadRoster() || { list: [] };
+  body.innerHTML = r.list.map(e => {
+    const d = (e.id === activeCharId) ? char : readSlot(e.id); if (!d) return '';
+    const ea = parseInt(d.eyeAwareness) || 0;
+    const hunt = (HT[d.huntRegion] || 16) + (parseInt(d.huntMod) || 0);
+    const over = ea >= hunt;
+    return `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--border)">
+      <span><b>${escapeHtml(d.name || '?')}</b> <small style="color:${over ? 'var(--error-text)' : 'var(--text-muted)'}">👁 ${ea} / Hunt ${hunt}${over ? ' ⚠' : ''}</small></span>
+      <span><button onclick="gmEye('${e.id}',-1)" style="font-size:11px;padding:2px 9px" aria-label="Lower Eye Awareness for ${escapeHtml(d.name || 'hero')}">−</button>
+      <button onclick="gmEye('${e.id}',1)" style="font-size:11px;padding:2px 9px" aria-label="Raise Eye Awareness for ${escapeHtml(d.name || 'hero')}">+</button></span>
+    </div>`;
+  }).join('') || '<div class="hint">No heroes.</div>';
+}
+
+/* ---------- GM: NPC Ledger (device-global; lore refs ported from tor2e-loremaster-main) ---------- */
+const GM_LORE_NPCS = [
+  { name: 'Captain Gurnow', role: 'Master of Tharbad (former bandit)', features: 'Aged, Lazy', notes: 'Lairs in Tharbad. Heir: Tharnow.' },
+  { name: 'Tharnow', role: 'Deputy Captain', features: 'Oafish, Ambitious', notes: 'Seeking the treasures of Moria.' },
+  { name: 'Arcinyas the Healer', role: 'Scholarly spy of Saruman', features: 'Old, Frail, Blind', notes: 'Acts as a healer to gather intelligence on explorers in Moria and Minhiriath.' },
+  { name: 'Ibin the Ring-seeker', role: 'Crazed Dwarf waylayer', features: 'Crazed, Reckless', notes: 'Waylays travelers in Moria searching for the Ring of Alfrigga.' },
+  { name: 'Gorgol, son of Bolg', role: 'Warlord of Moria Orcs', features: 'Brutal, Regal', notes: 'Eldest son of Bolg, grandson of Azog. Wields a spell-bound scimitar.' }
+];
+const GM_NPC_KEY = 'tor2e-gm-npcs';
+function gmNpcs() { try { return JSON.parse(localStorage.getItem(GM_NPC_KEY)) || []; } catch (e) { return []; } }
+function gmSaveNpcs(list) { try { localStorage.setItem(GM_NPC_KEY, JSON.stringify(list)); } catch (e) {} }
+function gmAddNpc() {
+  const val = id => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
+  const name = val('gm-npc-name'); if (!name) return;
+  const list = gmNpcs();
+  list.push({ id: 'npc-' + Date.now().toString(36), name, role: val('gm-npc-role'), features: val('gm-npc-features'), notes: val('gm-npc-notes') });
+  gmSaveNpcs(list);
+  ['gm-npc-name', 'gm-npc-role', 'gm-npc-features', 'gm-npc-notes'].forEach(i => { const el = document.getElementById(i); if (el) el.value = ''; });
+  renderGmNpc();
+}
+function gmDelNpc(id) { gmSaveNpcs(gmNpcs().filter(n => n.id !== id)); renderGmNpc(); }
+function renderGmNpc() {
+  const body = document.getElementById('gm-npc-body'); if (!body) return;
+  const fEl = document.getElementById('gm-npc-filter');
+  const q = (fEl && fEl.value || '').toLowerCase();
+  const rows = [...gmNpcs().map(n => ({ n, custom: true })), ...GM_LORE_NPCS.map(n => ({ n, custom: false }))]
+    .filter(({ n }) => n.name.toLowerCase().includes(q) || (n.role || '').toLowerCase().includes(q) || (n.features || '').toLowerCase().includes(q));
+  body.innerHTML = rows.map(({ n, custom }) => `
+    <div style="padding:6px 0;border-bottom:1px solid var(--border)">
+      <b style="color:var(--gold-soft)">${escapeHtml(n.name)}</b>${n.role ? ` <small style="color:var(--text-muted)">(${escapeHtml(n.role)})</small>` : ''}
+      ${custom
+      ? `<button onclick="gmDelNpc('${n.id}')" style="float:right;font-size:10px;padding:1px 7px;background:var(--btn-alert-bg);color:#fff" aria-label="Delete ${escapeHtml(n.name)}">×</button>`
+      : '<span style="float:right;font-size:9px;color:var(--gold)">Lore</span>'}
+      ${n.features ? `<div style="font-size:11px;color:var(--warn-orange)">Features: ${escapeHtml(n.features)}</div>` : ''}
+      ${n.notes ? `<div style="font-size:11px;color:var(--text-muted)">${escapeHtml(n.notes)}</div>` : ''}
+    </div>`).join('') || '<div class="hint">No matching NPCs.</div>';
 }
 
 /* ---------- GM: Group Shadow Test (ported from tor2e-loremaster-main) ----------

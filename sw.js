@@ -9,7 +9,7 @@
 //     This keeps clients from getting stuck on a stale build.
 // Bump CACHE_VERSION on any deploy so old caches are garbage-collected on activate.
 
-const CACHE_VERSION = 'tor2e-v90';
+const CACHE_VERSION = 'tor2e-v91';
 const PRECACHE = [
   './',
   './index.html',
