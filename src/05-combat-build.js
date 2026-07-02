@@ -522,7 +522,7 @@ function renderWeapons() {
       <td><input value="${escapeHtml(w.inj || '')}" oninput="updateWeapon(${i},'inj',this.value)" ${ro}></td>
       <td><input value="${escapeHtml(w.load || '')}" oninput="updateWeapon(${i},'load',this.value)" ${ro}></td>
       <td><input value="${escapeHtml(w.notes || '')}" oninput="updateWeapon(${i},'notes',this.value)"></td>
-      <td style="white-space:nowrap"><button class="del-btn" onclick="moveWeapon(${i},-1)" title="Move up" style="padding:2px 5px">▲</button><button class="del-btn" onclick="moveWeapon(${i},1)" title="Move down" style="padding:2px 5px">▼</button><button class="del-btn" onclick="removeWeapon(${i})">×</button></td>
+      <td style="white-space:nowrap"><button class="del-btn" onclick="moveWeapon(${i},-1)" title="Move up" aria-label="Move ${escapeHtml(w.name || 'weapon')} up" style="padding:2px 5px">▲</button><button class="del-btn" onclick="moveWeapon(${i},1)" title="Move down" aria-label="Move ${escapeHtml(w.name || 'weapon')} down" style="padding:2px 5px">▼</button><button class="del-btn" onclick="removeWeapon(${i})" aria-label="Remove ${escapeHtml(w.name || 'weapon')}">×</button></td>
     `;
     tbody.appendChild(tr);
   });

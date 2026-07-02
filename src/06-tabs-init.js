@@ -56,6 +56,7 @@ function exportData() {
   a.href = URL.createObjectURL(blob);
   a.download = (char.name || 'character') + '.tor2e.json';
   a.click();
+  try { localStorage.setItem('tor2e-lastexport', String(Date.now())); } catch (e) {}   // U14 nudge baseline
   toggleMenu();
 }
 
@@ -76,6 +77,7 @@ function exportAllHeroes() {
   a.href = URL.createObjectURL(blob);
   a.download = 'tor2e-all-heroes-' + new Date().toISOString().slice(0, 10) + '.json';
   a.click();
+  try { localStorage.setItem('tor2e-lastexport', String(Date.now())); } catch (e) {}   // U14 nudge baseline
   toggleMenu();
 }
 // U14 — restore an "all heroes" backup. Heroes are ADDED with fresh ids (never overwrites existing).
@@ -1415,6 +1417,104 @@ const TUTORIAL_LESSONS = [
    Dialog semantics + focus management for every .menu-overlay (both the static overlays and the
    showModal() styled modals), keyboard Escape-to-close, Tab focus-trap, and focus restore to the
    opener. Additive — no visual/behavior change for mouse/touch users. */
+/* ---------- U4: swipe between tabs (touch) ---------- */
+// Horizontal swipe on panel content switches to the prev/next VISIBLE tab. Ignores swipes that
+// start inside form fields or horizontally-scrollable content, and does nothing while a dialog is open.
+function initSwipeTabs() {
+  let sx = 0, sy = 0, st = 0, valid = false;
+  document.addEventListener('touchstart', e => {
+    valid = false;
+    if (e.touches.length !== 1) return;
+    if (document.querySelector('.menu-overlay.show')) return;   // dialog open — don't hijack
+    const t = e.touches[0];
+    let el = e.target;
+    while (el && el !== document.body) {
+      const tag = el.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      if (el.scrollWidth > el.clientWidth + 5) return;          // horizontally scrollable — let it scroll
+      el = el.parentElement;
+    }
+    sx = t.clientX; sy = t.clientY; st = Date.now(); valid = true;
+  }, { passive: true });
+  document.addEventListener('touchend', e => {
+    if (!valid) return; valid = false;
+    const t = e.changedTouches[0]; if (!t) return;
+    const dx = t.clientX - sx, dy = t.clientY - sy;
+    if (Date.now() - st > 600 || Math.abs(dx) < 70 || Math.abs(dy) > Math.abs(dx) * 0.6) return;
+    const tabs = Array.from(document.querySelectorAll('.tab')).filter(x => x.style.display !== 'none');
+    const cur = tabs.findIndex(x => x.classList.contains('active'));
+    if (cur < 0) return;
+    const next = dx < 0 ? cur + 1 : cur - 1;   // swipe left = next tab, right = previous
+    if (next >= 0 && next < tabs.length) tabs[next].click();
+  }, { passive: true });
+}
+
+/* ---------- U3: collapsible cards with remembered state ---------- */
+const COLLAPSE_KEY = 'tor2e-collapsed';   // { "<panelId>|<title>": 1 } — device-global
+function loadCollapsed() { try { return JSON.parse(localStorage.getItem(COLLAPSE_KEY)) || {}; } catch (e) { return {}; } }
+function initCollapsibleCards() {
+  const saved = loadCollapsed();
+  document.querySelectorAll('.panel .card').forEach(card => {
+    const h = card.querySelector(':scope > h2, :scope > h3.card-title');
+    if (!h || h.classList.contains('collapsible')) return;
+    const panel = card.closest('.panel');
+    const key = (panel ? panel.id : '?') + '|' + h.textContent.trim().slice(0, 40);
+    h.classList.add('collapsible');
+    h.setAttribute('role', 'button');
+    h.setAttribute('tabindex', '0');
+    if (saved[key]) card.classList.add('collapsed');
+    h.setAttribute('aria-expanded', card.classList.contains('collapsed') ? 'false' : 'true');
+    const toggle = () => {
+      const on = card.classList.toggle('collapsed');
+      h.setAttribute('aria-expanded', on ? 'false' : 'true');
+      const s = loadCollapsed();
+      if (on) s[key] = 1; else delete s[key];
+      try { localStorage.setItem(COLLAPSE_KEY, JSON.stringify(s)); } catch (e) {}
+    };
+    h.addEventListener('click', e => { if (e.target.closest('button, input, select, a')) return; toggle(); });
+    h.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
+  });
+}
+
+/* ---------- U7: contextual (?) hints on key Character-tab labels ---------- */
+// Reuses the Reference tab's REFERENCE.terms as the single source of truth.
+const HINT_LABELS = { 'End Max': 'Endurance', 'Hope Max': 'Hope', 'Parry': 'Parry', 'Load': 'Load', 'Fatigue': 'Fatigue', 'Shadow': 'Shadow / Scars', 'Scars': 'Shadow / Scars', 'Valour': 'Valour', 'Wisdom': 'Wisdom' };
+function hintFor(term) {
+  const row = (REFERENCE.terms || []).find(t => t[0] === term) || (REFERENCE.tn || []).find(t => t[0] === term);
+  if (row) alert(row[0] + '\n\n' + row[1]);
+}
+function initHintButtons() {
+  document.querySelectorAll('#panel-character .counter-label').forEach(el => {
+    if (el.dataset.hinted) return;
+    const label = el.textContent.replace('🔒', '').trim();
+    const term = HINT_LABELS[label];
+    if (!term) return;
+    el.dataset.hinted = '1';
+    const b = document.createElement('button');
+    b.className = 'hint-q'; b.textContent = '?';
+    b.setAttribute('aria-label', 'What is ' + term + '?');
+    b.onclick = ev => { ev.stopPropagation(); hintFor(term); };
+    el.appendChild(b);
+  });
+}
+
+/* ---------- U14: gentle backup nudge ---------- */
+// First run stamps a baseline; afterwards, if no export for 14+ days, toast at most once per 3 days.
+function maybeBackupNudge() {
+  try {
+    const roster = loadRoster();
+    if (!roster || !roster.list.length) return false;
+    const DAY = 86400000;
+    const last = parseInt(localStorage.getItem('tor2e-lastexport')) || 0;
+    if (!last) { localStorage.setItem('tor2e-lastexport', String(Date.now())); return false; }   // baseline, don't nag new installs
+    const lastN = parseInt(localStorage.getItem('tor2e-lastnudge')) || 0;
+    if (Date.now() - last < 14 * DAY || Date.now() - lastN < 3 * DAY) return false;
+    localStorage.setItem('tor2e-lastnudge', String(Date.now()));
+    if (typeof showToast === 'function') showToast('💾 Backup reminder — ☰ Menu → 📦 Export ALL Heroes');
+    return true;
+  } catch (e) { return false; }
+}
+
 function initA11y() {
   const activeTab = document.querySelector('.tab.active');
   if (activeTab) activeTab.setAttribute('aria-current', 'page');
@@ -1477,9 +1577,13 @@ document.addEventListener('DOMContentLoaded', () => {
   renderHistory();
   renderChronicle();
   restoreLastTab();   // U4: reopen the tab the player was last on (if still visible)
+  initSwipeTabs();          // U4: swipe between tabs on touch
+  initCollapsibleCards();   // U3: tap a card title to collapse (remembered per device)
+  initHintButtons();        // U7: (?) hints on key Character-tab labels
   if (typeof snapshotHero === 'function') snapshotHero(activeCharId, 'load');   // U12: one auto-backup per load
   importFromHash();   // offer to import a character if the URL carries a shared payload
   maybeOfferTutorial();   // one-time first-run offer of the guided tutorial
+  maybeBackupNudge();       // U14: gentle export reminder (14-day threshold, 3-day throttle)
 
   // Prevent iOS double-tap zoom
   let lastTouch = 0;

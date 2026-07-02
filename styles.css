@@ -669,3 +669,18 @@
     background: var(--bg-deep); color: var(--ink);
   }
   .skill-note::placeholder { color: var(--text-faint); }
+
+/* ---------- U3: collapsible cards (tap a card title; remembered per device) ---------- */
+.card h2.collapsible, .card h3.card-title.collapsible { cursor: pointer; user-select: none; }
+.card h2.collapsible::after, .card h3.card-title.collapsible::after { content: ' ▾'; color: var(--text-faint); font-size: 0.75em; }
+.card.collapsed h2.collapsible::after, .card.collapsed h3.card-title.collapsible::after { content: ' ▸'; }
+.card.collapsed > *:not(h2):not(h3.card-title) { display: none !important; }
+
+/* ---------- U7: contextual (?) hint buttons ---------- */
+.hint-q {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 15px; height: 15px; margin-left: 4px; padding: 0;
+  border: 1px solid var(--border); border-radius: 50%;
+  background: var(--bg-deep); color: var(--text-muted);
+  font-size: 10px; font-weight: 700; line-height: 1; cursor: pointer; vertical-align: middle;
+}

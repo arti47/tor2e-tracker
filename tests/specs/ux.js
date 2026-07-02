@@ -129,6 +129,76 @@ module.exports = {
     checks.push({ ok: tl.len === 2 && tl.types.includes('shadow') && tl.types.includes('xp'), msg: `timeline logs xp + Shadow-gain via adj, skips recovery (len ${tl.len}, types ${tl.types.join('/')})` });
     checks.push({ ok: tl.shown && tl.rows === 2, msg: `timeline viewer lists entries (${tl.rows} rows)` });
 
+    // U4-swipe — synthetic touch swipe left switches to the next visible tab.
+    const swipe = await page.evaluate(() => {
+      document.querySelector('.tab[data-tab="character"]').click();
+      const panel = document.querySelector('.panel.active');
+      const mk = (x, y) => new Touch({ identifier: 1, target: panel, clientX: x, clientY: y });
+      panel.dispatchEvent(new TouchEvent('touchstart', { touches: [mk(300, 300)], changedTouches: [mk(300, 300)], bubbles: true }));
+      panel.dispatchEvent(new TouchEvent('touchend', { touches: [], changedTouches: [mk(120, 310)], bubbles: true }));
+      const after = document.querySelector('.tab.active')?.dataset.tab;
+      document.querySelector('.tab[data-tab="character"]').click();
+      return { after };
+    });
+    checks.push({ ok: swipe.after === 'skills', msg: `swipe left advances to next visible tab (got ${swipe.after})` });
+
+    // U3-collapse — tap a card title toggles + persists; aria-expanded flips.
+    const col = await page.evaluate(() => {
+      localStorage.removeItem('tor2e-collapsed');
+      const h = document.querySelector('#panel-character .card h3.card-title.collapsible, #panel-character .card h2.collapsible');
+      if (!h) return { found: false };
+      const card = h.closest('.card');
+      h.click();
+      const collapsed = card.classList.contains('collapsed');
+      const savedAfter = Object.keys(JSON.parse(localStorage.getItem('tor2e-collapsed') || '{}')).length;
+      const ariaCollapsed = h.getAttribute('aria-expanded');
+      h.click();
+      const expanded = !card.classList.contains('collapsed');
+      const savedCleared = Object.keys(JSON.parse(localStorage.getItem('tor2e-collapsed') || '{}')).length;
+      return { found: true, collapsed, savedAfter, ariaCollapsed, expanded, savedCleared };
+    });
+    checks.push({ ok: col.found && col.collapsed && col.savedAfter === 1 && col.ariaCollapsed === 'false' && col.expanded && col.savedCleared === 0, msg: 'collapsible card toggles, persists, aria-expanded flips' });
+
+    // U7-hints — (?) buttons injected; tapping one opens the styled modal with the term.
+    const hint = await page.evaluate(async () => {
+      const btns = document.querySelectorAll('#panel-character .hint-q');
+      if (!btns.length) return { count: 0 };
+      btns[0].click();
+      await new Promise(r => setTimeout(r, 80));
+      const ov = document.getElementById('styled-modal-overlay');
+      const shown = ov.classList.contains('show');
+      const body = document.getElementById('styled-modal-body').textContent;
+      const ok = document.querySelector('#styled-modal-buttons button'); if (ok) ok.click();
+      await new Promise(r => setTimeout(r, 50));
+      return { count: btns.length, shown, hasText: body.length > 20 };
+    });
+    checks.push({ ok: hint.count >= 5 && hint.shown && hint.hasText, msg: `hint (?) buttons injected (${hint.count}) and open a styled explanation` });
+
+    // U14-nudge — 14-day threshold fires once, then throttles; fresh install just stamps a baseline.
+    const nudge = await page.evaluate(() => {
+      localStorage.removeItem('tor2e-lastexport'); localStorage.removeItem('tor2e-lastnudge');
+      const fresh = maybeBackupNudge();                                   // stamps baseline, no toast
+      const stamped = !!localStorage.getItem('tor2e-lastexport');
+      localStorage.setItem('tor2e-lastexport', String(Date.now() - 20 * 86400000));
+      const fires = maybeBackupNudge();
+      const throttled = maybeBackupNudge();
+      const toast = !!document.querySelector('#toast-wrap div');
+      localStorage.removeItem('tor2e-lastexport'); localStorage.removeItem('tor2e-lastnudge');
+      return { fresh, stamped, fires, throttled, toast };
+    });
+    checks.push({ ok: nudge.fresh === false && nudge.stamped && nudge.fires === true && nudge.throttled === false && nudge.toast, msg: 'backup nudge: baseline on fresh, fires at 14d, throttles, toasts' });
+
+    // P8-minor — generated weapon reorder/remove buttons carry aria-labels.
+    const wAria = await page.evaluate(() => {
+      char.weapons = [{ name: 'Spear', dmg: '4', inj: '14', picked: true }];
+      renderWeapons();
+      const btns = Array.from(document.querySelectorAll('#weapon-tbody button'));
+      const ok = btns.length >= 3 && btns.every(b => (b.getAttribute('aria-label') || '').includes('Spear'));
+      char.weapons = []; saveCharacter(); renderWeapons();
+      return ok;
+    });
+    checks.push({ ok: wAria, msg: 'weapon ▲▼× buttons carry aria-labels' });
+
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length})` });
     await context.close();
     return { checks };
