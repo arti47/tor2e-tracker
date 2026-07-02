@@ -199,6 +199,34 @@ module.exports = {
     });
     checks.push({ ok: wAria, msg: 'weapon ▲▼× buttons carry aria-labels' });
 
+    // Dice-tab QoL (2026-07-02): quick-roll grid sits right above the Roll button (result is
+    // right below it), and roll history is deletable (per-row × + clear-all).
+    const diceQol = await page.evaluate(async () => {
+      const out = {};
+      const qs = document.getElementById('quick-skills');
+      const rollBtn = document.querySelector('#panel-dice .roll-btn');
+      const result = document.getElementById('roll-result');
+      // DOM order: quick-skills → roll button → result
+      out.gridAboveBtn = !!(qs.compareDocumentPosition(rollBtn) & Node.DOCUMENT_POSITION_FOLLOWING);
+      out.btnAboveResult = !!(rollBtn.compareDocumentPosition(result) & Node.DOCUMENT_POSITION_FOLLOWING);
+      // History delete: seed 3 fake rolls, delete one by index, then clear all (confirm stubbed).
+      history.length = 0;
+      history.push({ label: 'A', total: 10, tn: 14, outcome: 'FAIL', icons: 0, time: '1:00' },
+                   { label: 'B', total: 18, tn: 14, outcome: 'SUCCESS', icons: 1, time: '1:01' },
+                   { label: 'C', total: 12, tn: 14, outcome: 'FAIL', icons: 0, time: '1:02' });
+      saveHistory(); renderHistory();
+      out.rowDeleteBtns = document.querySelectorAll('#roll-history .history-item button').length === 3;
+      deleteRollAt(1);
+      out.afterRowDelete = history.length === 2 && history.every(h => h.label !== 'B');
+      const origConfirm = window.confirmStyled; window.confirmStyled = async () => true;
+      await clearRollHistory();
+      window.confirmStyled = origConfirm;
+      out.afterClear = history.length === 0 && /No rolls yet/.test(document.getElementById('roll-history').innerHTML);
+      return out;
+    });
+    checks.push({ ok: diceQol.gridAboveBtn && diceQol.btnAboveResult, msg: 'dice tab order: quick-roll grid → Roll button → result' });
+    checks.push({ ok: diceQol.rowDeleteBtns && diceQol.afterRowDelete && diceQol.afterClear, msg: 'roll history: per-row × deletes, 🗑 clear-all empties' });
+
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length})` });
     await context.close();
     return { checks };

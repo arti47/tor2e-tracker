@@ -11,9 +11,10 @@ An HTML5 character sheet + play tracker for **The One Ring 2nd Edition** RPG —
 > current whenever work lands (and prune it — it must stay one screen).
 
 ### Current state
-- **All roadmap phases COMPLETE (incl. the full loremaster port):** P0 adversaries · P1 test harness (`npm test`, **100/100 green**, 6 specs) · P2 module split (`src/01…08` + `styles.css`) · P3 cloud-owned heroes · P4 live campaigns/party · P5 shared GM-driven encounter · P6 Loremaster screen (role-gated GM tab, peek, broadcast) · P7 security rules (**deployed + live-verified 2026-07-02**) · P8 accessibility. Plus the full UX batch (U3, U4, U5/6/7/8, U9–U15 — all shipped; "group rolls" deliberately skipped).
+- **All roadmap phases COMPLETE (incl. the full loremaster port):** P0 adversaries · P1 test harness (`npm test`, **102/102 green**, 6 specs) · P2 module split (`src/01…08` + `styles.css`) · P3 cloud-owned heroes · P4 live campaigns/party · P5 shared GM-driven encounter · P6 Loremaster screen (role-gated GM tab, peek, broadcast) · P7 security rules (**deployed + live-verified 2026-07-02**) · P8 accessibility. Plus the full UX batch (U3, U4, U5/6/7/8, U9–U15 — all shipped; "group rolls" deliberately skipped).
 - **Cloud is LIVE**: real Firebase config committed (`FIREBASE_ENABLED=true`); rules deployed; broadcast / in-campaign push / peek all verified against the real project 2026-07-02.
-- **SW cache `tor2e-v99`** · git repo (origin = github.com/arti47/tor2e-tracker, branch main) · shells (`character-tracker.html` = `index.html`) in sync.
+- **SW cache `tor2e-v100`** · git repo (origin = github.com/arti47/tor2e-tracker, branch main) · shells (`character-tracker.html` = `index.html`) in sync.
+- **Dice-tab QoL (2026-07-02):** quick-roll grid moved to sit directly above the 🎲 Roll button (result renders right below → tap-to-result with no hunting) + the result `scrollIntoView`s on every roll (`behavior:'auto'` on purpose — `'smooth'` never completes in some headless/older-Safari engines); roll history gets a per-row **×** delete (`deleteRollAt`, index via `history.indexOf`) and a **🗑 Clear** button (`clearRollHistory`, confirmed). +2 ux-spec checks.
 
 ### The dev workflow (every change)
 1. Edit **`src/*.js`** (JS) or **`character-tracker.html`** (markup) or `styles.css`.

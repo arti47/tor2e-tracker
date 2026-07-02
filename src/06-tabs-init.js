@@ -708,6 +708,12 @@ function rollDice(skillLabel) {
   // Render result
   const resultEl = document.getElementById('roll-result');
   resultEl.style.display = 'block';
+  // Bring the result into view — quick-roll / Combat Task / Shadow Test buttons can sit well
+  // above it on a phone. 'nearest' = no movement if already fully visible, else the minimal
+  // jump. behavior:'auto' (instant) on purpose: 'smooth' never completes in some headless/older
+  // Safari engines, and instant means zero tap→result latency. Deferred a tick so the panel has
+  // its final size before we measure.
+  setTimeout(() => { try { resultEl.scrollIntoView({ behavior: 'auto', block: 'nearest' }); } catch (e) {} }, 50);
 
   const diceDiv = document.getElementById('result-dice');
   diceDiv.innerHTML = '';
@@ -983,12 +989,31 @@ function renderHistory() {
     const item = document.createElement('div');
     item.className = 'history-item';
     const color = h.outcome.startsWith('SUCCESS') ? '#2e7d32' : 'var(--error-text)';
+    // Real index into the full history array (rows is filtered/sliced; object identity maps back).
+    const realIdx = history.indexOf(h);
     item.innerHTML = `
       <span><strong>${h.label}</strong> · ${h.total} vs ${h.tn}</span>
-      <span style="color:${color}">${h.outcome}${h.icons ? ' · '+h.icons+'⬢' : ''} · ${h.time}</span>
+      <span style="color:${color}">${h.outcome}${h.icons ? ' · '+h.icons+'⬢' : ''} · ${h.time}
+        <button onclick="deleteRollAt(${realIdx})" aria-label="Delete this roll" title="Delete this roll" style="background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:14px;padding:0 0 0 6px;vertical-align:middle">×</button></span>
     `;
     div.appendChild(item);
   });
+}
+
+// Delete one stored roll (× on a history row). Index is into the FULL history array.
+function deleteRollAt(i) {
+  if (i < 0 || i >= history.length) return;
+  history.splice(i, 1);
+  saveHistory();
+  renderHistory();
+}
+// Delete the whole roll history for the active hero (🗑 Clear button; confirmed).
+async function clearRollHistory() {
+  if (!history.length) { alert('No rolls to clear.'); return; }
+  if (!await confirmStyled(`Delete all ${history.length} stored roll(s) for this hero? This cannot be undone.`, 'Clear Roll History')) return;
+  history.length = 0;
+  saveHistory();
+  renderHistory();
 }
 
 /* ---------- INIT ---------- */

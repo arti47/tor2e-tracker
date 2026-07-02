@@ -1358,11 +1358,6 @@
       </div>
     </div>
 
-    <div style="margin-top:12px">
-      <label style="font-size:12px;color:var(--red-dark);text-transform:uppercase;letter-spacing:0.5px;">Quick Roll from Skill</label>
-      <div class="quick-skills" id="quick-skills"></div>
-    </div>
-
     <div id="combat-tasks-card" style="margin-top:12px;display:none;padding:10px;background:var(--bg-deep);border:1px solid var(--border);border-radius:6px">
       <label style="font-size:12px;color:var(--red-dark);text-transform:uppercase;letter-spacing:0.5px;font-weight:600">Combat Tasks <span style="font-size:10px;color:var(--text-faint);text-transform:none;letter-spacing:0;font-weight:400">— main action, gated by stance</span></label>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px" id="combat-tasks-grid">
@@ -1439,6 +1434,11 @@
     </button>
     <p class="hint" id="hope-cost-hint" style="display:none;color:var(--gold);font-weight:600">Hope will be deducted on roll</p>
 
+    <div style="margin-top:12px">
+      <label style="font-size:12px;color:var(--red-dark);text-transform:uppercase;letter-spacing:0.5px;">Quick Roll from Skill</label>
+      <div class="quick-skills" id="quick-skills"></div>
+    </div>
+
     <button class="roll-btn" onclick="rollDice()" style="margin-top:10px">🎲 Roll Dice</button>
 
     <div class="roll-result" id="roll-result" role="status" aria-live="polite" style="margin-top:12px; display:none">
@@ -1481,6 +1481,7 @@
         <option value="success">Successes</option>
         <option value="fail">Failures</option>
       </select>
+      <button onclick="clearRollHistory()" aria-label="Clear all roll history" title="Delete every stored roll" style="font-size:12px;padding:4px 8px;border:1px solid var(--border);border-radius:5px;background:var(--bg-deep);color:var(--error-text);cursor:pointer">🗑 Clear</button>
     </div>
     <div id="roll-stats"></div>
     <div class="roll-history" id="roll-history"></div>
