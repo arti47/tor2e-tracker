@@ -16,3 +16,5 @@ npm test         # boots the app headless and runs all specs (smoke / adversarie
 `npm test` exits non-zero on any failure. Set `CHROMIUM_BIN` to a Chrome/Chromium
 binary to override browser auto-detection. The harness is dev-only — it is not part
 of the shipped PWA (it lives outside the service-worker cache list).
+
+
