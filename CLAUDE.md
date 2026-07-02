@@ -13,7 +13,7 @@ An HTML5 character sheet + play tracker for **The One Ring 2nd Edition** RPG —
 ### Current state
 - **All roadmap phases COMPLETE (incl. the full loremaster port):** P0 adversaries · P1 test harness (`npm test`, **93/93 green**, 6 specs) · P2 module split (`src/01…08` + `styles.css`) · P3 cloud-owned heroes · P4 live campaigns/party · P5 shared GM-driven encounter · P6 Loremaster screen (role-gated GM tab, peek, broadcast) · P7 security rules (**deployed + live-verified 2026-07-02**) · P8 accessibility. Plus the UX batch (U3\*, U4\*, U5/6/8, U9–U15; \*=partial, see Open items).
 - **Cloud is LIVE**: real Firebase config committed (`FIREBASE_ENABLED=true`); rules deployed; broadcast / in-campaign push / peek all verified against the real project 2026-07-02.
-- **SW cache `tor2e-v97`** · git repo (local-only, no remote) · shells (`character-tracker.html` = `index.html`) in sync.
+- **SW cache `tor2e-v97`** · git repo (origin = github.com/arti47/tor2e-tracker, branch main) · shells (`character-tracker.html` = `index.html`) in sync.
 
 ### The dev workflow (every change)
 1. Edit **`src/*.js`** (JS) or **`character-tracker.html`** (markup) or `styles.css`.
@@ -28,13 +28,13 @@ An HTML5 character sheet + play tracker for **The One Ring 2nd Edition** RPG —
 |---|---|---|---|
 | 1 | **Deploy/redeploy the hosted app (Netlify)** | S | Everything multiplayer is built + verified but unusable at a real table until hosted. Bundle = the whole folder (shell now needs `src/`, `styles.css`, `firebase-config.js`). |
 | 2 | **Real-device table test** (2+ devices: loremaster + player) | S | The last mile no harness covers: join code entry, live party, shared combat, broadcast toasts on phones. |
-| 3 | **Push repo to GitHub** (backup / issues) | S | Repo is local-only; iCloud is the only copy. |
+| ~~3~~ | ~~Push repo to GitHub~~ ✅ **done 2026-07-02** | — | Remote **`github.com/arti47/tor2e-tracker` completely replaced** (force-push per user direction; old 2026-06-13 single-file history discarded). Local branch renamed `master→main`, upstream tracking set — from now on just `git push`. Note: the repo is **public**, so `firebase-config.js` (real web config) is published — acceptable per its documented policy (web keys are client-visible by design; the deployed+verified rules are the security boundary), and the same config ships publicly via any hosted deploy anyway. |
 | ~~4~~ | ~~Port remaining loremaster GM tables~~ ✅ **done 2026-07-02** | — | All 6 tables (4×6 action decks, water perils, false/genuine rumours, famous/obscure landmarks) ported **verbatim from `github.com/arti47/tor2e-loremaster`** (the local folder was deleted — the GitHub repo is the recovery source) into `src/08-gm.js` + 2 GM-tab cards (🃏 deck draw, 📜 Moria tables rollers). +2 gm-spec checks; harness **95/95**; live-verified. **The loremaster port is now 100% complete.** SW v98. |
 | 5 | GM hand-out to **remote** players | M | Documented deviation: `characters/{id}` is owner-only-write. Needs a request-queue node (or rule relaxation) if wanted. |
 | ~~6~~ | ~~UX leftovers~~ ✅ **done 2026-07-02** | — | All five shipped (SW v99, harness **100/100**, +5 ux-spec checks): **U4-swipe** (`initSwipeTabs` — horizontal swipe switches visible tabs; ignores form fields, horizontally-scrollable content, open dialogs), **U3-collapse** (`initCollapsibleCards` — tap any card title to collapse, ▸/▾ + `aria-expanded`, remembered in `tor2e-collapsed`), **U7-hints** (`initHintButtons`/`hintFor` — (?) buttons on key Character-tab labels, text sourced from `REFERENCE.terms` = single source of truth), **U14-nudge** (`maybeBackupNudge` — baseline stamped on install, toast if no export in 14 days, 3-day throttle; both exports stamp `tor2e-lastexport`), **P8-minor** (aria-labels on the generated weapon ▲▼× buttons). Skipped by design: the old "group rolls" idea (a feature, not polish — stays on the legacy wishlist). |
 | 7 | CLAUDE.md deep prune | M | This dashboard fixes navigation; a fuller archive/split of the historical sections is optional housekeeping. |
 
-**Recommended order: 1 → 2 → 3, then 4 (nice content win), then 6 as filler. 5 and 7 only if a real need emerges.**
+**Recommended order: 1 (deploy) → 2 (table test). 5 and 7 only if a real need emerges. Items 3, 4, 6 ✅ done 2026-07-02.**
 
 ---
 
