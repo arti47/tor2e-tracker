@@ -862,7 +862,22 @@ function renderOracleHistory() {
     el.innerHTML = '<div style="text-align:center;color:var(--text-faint);padding:10px;font-size:12px">No rolls yet.</div>';
     return;
   }
-  el.innerHTML = oracleHistory.map(h => `<div style="padding:5px 8px;border-bottom:1px solid var(--border)"><strong>${h.label}</strong> · ${h.result} <span style="float:right;color:var(--text-muted);font-size:11px">${h.time}</span></div>`).join('');
+  el.innerHTML = oracleHistory.map((h, i) => `<div style="padding:5px 8px;border-bottom:1px solid var(--border)"><strong>${h.label}</strong> · ${h.result} <span style="float:right;color:var(--text-muted);font-size:11px">${h.time} <button onclick="deleteOracleRollAt(${i})" aria-label="Delete this oracle roll" title="Delete this roll" style="background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:14px;padding:0 0 0 4px;vertical-align:middle">×</button></span></div>`).join('');
+}
+// Delete one oracle roll (× on a row). Rows render in array order, so the index is direct.
+function deleteOracleRollAt(i) {
+  if (i < 0 || i >= oracleHistory.length) return;
+  oracleHistory.splice(i, 1);
+  saveOracleHistory();
+  renderOracleHistory();
+}
+// Delete the whole oracle history (🗑 Clear button; confirmed). Device-global, not per-hero.
+async function clearOracleHistory() {
+  if (!oracleHistory.length) { alert('No oracle rolls to clear.'); return; }
+  if (!await confirmStyled(`Delete all ${oracleHistory.length} oracle roll(s)? This history is shared across heroes on this device.`, 'Clear Oracle History')) return;
+  oracleHistory.length = 0;
+  saveOracleHistory();
+  renderOracleHistory();
 }
 
 // Core Telling-Table resolution — shared by the Oracle tab and the inline Chronicle ask.

@@ -227,6 +227,29 @@ module.exports = {
     checks.push({ ok: diceQol.gridAboveBtn && diceQol.btnAboveResult, msg: 'dice tab order: quick-roll grid → Roll button → result' });
     checks.push({ ok: diceQol.rowDeleteBtns && diceQol.afterRowDelete && diceQol.afterClear, msg: 'roll history: per-row × deletes, 🗑 clear-all empties' });
 
+    // 2026-07-02: skill name leads the visible result summary; oracle history is deletable.
+    const oracleDice = await page.evaluate(async () => {
+      const out = {};
+      // Quick-roll Valour (meta — always in the grid) and check the summary names it.
+      renderQuickSkills();
+      document.querySelector('#quick-skills .quick-skill').click();
+      out.nameInSummary = /Valour/.test(document.getElementById('result-summary').innerHTML);
+      history.length = 0; saveHistory(); renderHistory();   // leave dice history clean
+      // Oracle history: seed two rolls, per-row × the newest, then clear-all (confirm stubbed).
+      oracleHistory.length = 0;
+      logOracleRoll('T1', 'YES'); logOracleRoll('T2', 'NO');
+      out.rowBtns = document.querySelectorAll('#oracle-history button[aria-label="Delete this oracle roll"]').length === 2;
+      deleteOracleRollAt(0);   // newest first (unshift) → removes T2
+      out.afterDelete = oracleHistory.length === 1 && oracleHistory[0].label === 'T1';
+      const orig = window.confirmStyled; window.confirmStyled = async () => true;
+      await clearOracleHistory();
+      window.confirmStyled = orig;
+      out.afterClear = oracleHistory.length === 0 && /No rolls yet/.test(document.getElementById('oracle-history').innerHTML);
+      return out;
+    });
+    checks.push({ ok: oracleDice.nameInSummary, msg: 'roll result summary leads with the skill name (quick roll)' });
+    checks.push({ ok: oracleDice.rowBtns && oracleDice.afterDelete && oracleDice.afterClear, msg: 'oracle history: per-row × deletes, 🗑 clear-all empties' });
+
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length})` });
     await context.close();
     return { checks };

@@ -1562,7 +1562,10 @@
 
   <div class="card">
     <h3 class="card-title">📜 Oracle History</h3>
-    <p class="hint" style="text-align:left;margin-bottom:8px">Recent rolls (last 30).</p>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+      <p class="hint" style="text-align:left;margin:0;flex:1">Recent rolls (last 30).</p>
+      <button onclick="clearOracleHistory()" aria-label="Clear all oracle history" title="Delete every stored oracle roll" style="font-size:12px;padding:4px 8px;border:1px solid var(--border);border-radius:5px;background:var(--bg-deep);color:var(--error-text);cursor:pointer">🗑 Clear</button>
+    </div>
     <div id="oracle-history" style="font-size:12px;line-height:1.5;max-height:280px;overflow-y:auto;-webkit-overflow-scrolling:touch"></div>
   </div>
 

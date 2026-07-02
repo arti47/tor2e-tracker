@@ -737,7 +737,8 @@ function rollDice(skillLabel) {
   document.getElementById('result-total').textContent = isAutoSuccess ? '★' : (isAutoFail ? '✗' : total);
 
   const tnLabel = foeParryBonus > 0 ? `${tn} (${baseTn} Str + ${foeParryBonus} Foe Parry)` : `${tn}`;
-  let summary = `<strong>vs TN ${tnLabel}</strong> — `;
+  // Lead with WHAT was rolled (quick rolls pass the skill/prof name; manual rolls have none).
+  let summary = `<strong>${skillLabel ? escapeHtml(skillLabel) + ' · ' : ''}vs TN ${tnLabel}</strong> — `;
   summary += outcome.startsWith('SUCCESS')
     ? `<span class="result-tag tag-success">${outcome}</span>`
     : `<span class="result-tag tag-fail">${outcome}</span>`;

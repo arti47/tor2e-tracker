@@ -4,8 +4,8 @@
     {
       "name": "tor2e",
       "runtimeExecutable": "python3",
-      "runtimeArgs": ["-m", "http.server", "8137"],
-      "port": 8137,
+      "runtimeArgs": ["-m", "http.server", "8139"],
+      "port": 8139,
       "autoPort": false
     }
   ]
