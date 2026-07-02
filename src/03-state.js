@@ -542,6 +542,24 @@ function renderPartyView() {
     </tr></thead><tbody>${rows}</tbody></table>`;
 }
 
+/* ---------- TOAST (P6 — broadcast arrivals & cloud notices) ---------- */
+function showToast(msg) {
+  let wrap = document.getElementById('toast-wrap');
+  if (!wrap) {
+    wrap = document.createElement('div');
+    wrap.id = 'toast-wrap';
+    wrap.style.cssText = 'position:fixed;bottom:18px;left:50%;transform:translateX(-50%);z-index:9999;display:flex;flex-direction:column;gap:6px;align-items:center;pointer-events:none';
+    document.body.appendChild(wrap);
+  }
+  const t = document.createElement('div');
+  t.setAttribute('role', 'status');
+  t.style.cssText = 'background:var(--btn-secondary-bg);color:#fff;padding:9px 16px;border-radius:10px;font-size:13px;max-width:86vw;box-shadow:0 4px 14px rgba(0,0,0,.35);opacity:0;transition:opacity .25s';
+  t.textContent = String(msg);
+  wrap.appendChild(t);
+  requestAnimationFrame(() => { t.style.opacity = '1'; });
+  setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 4500);
+}
+
 /* ---------- FELLOWSHIP CAMPAIGN (P4) — create/join/leave + live party ---------- */
 const _CAMP_INPUT = 'width:100%;padding:7px 9px;margin:4px 0;border:1px solid var(--border);border-radius:8px;background:var(--card-bg);color:var(--ink);font-size:14px';
 function openCampaign() {
@@ -575,6 +593,7 @@ async function campaignDelete() {
 }
 function renderCampaign() {
   if (typeof refreshPartyPill === 'function') refreshPartyPill();   // keep the header pill in sync
+  if (typeof refreshGmUI === 'function') refreshGmUI();             // P6: GM tab is role-controlled in a campaign
   const body = document.getElementById('campaign-body'); if (!body) return;
   const hint = document.getElementById('campaign-cloud-hint');
   const active = (typeof Sync !== 'undefined') && Sync.isEnabled();
@@ -595,8 +614,11 @@ function renderCampaign() {
         <button onclick="campaignLeave()" style="background:var(--btn-secondary-bg);color:#fff">Leave campaign</button>
         ${Sync.isCampaignOwner() ? '<button onclick="campaignDelete()" style="background:var(--btn-alert-bg);color:#fff;margin-left:6px">Delete campaign</button>' : ''}
       </div>
-      <div class="card"><h3 class="card-title">Party (live)</h3><div id="campaign-members"><div class="hint">Loading…</div></div></div>`;
+      <div class="card"><h3 class="card-title">Party (live)</h3><div id="campaign-members"><div class="hint">Loading…</div></div></div>
+      <div class="card"><h3 class="card-title">📢 Loremaster Feed</h3><div id="campaign-bcast"><div class="hint">No broadcasts yet.</div></div>
+        ${Sync.isLoremaster && Sync.isLoremaster() ? '<p class="hint" style="text-align:left;margin-top:6px">Send broadcasts from the 🎲 GM tab.</p>' : ''}</div>`;
     Sync.subscribeParty(renderCampaignMembers);
+    renderBroadcastFeed(Sync.lastBroadcasts ? Sync.lastBroadcasts() : []);
   } else {
     body.innerHTML = `
       <div class="card">
@@ -633,6 +655,18 @@ function refreshPartyPill() {
   const pill = document.getElementById('campaign-pill');
   if (Sync.isEnabled() && Sync.currentCampaign()) { Sync.subscribeParty(updatePartyPill); }
   else { Sync.unsubscribeParty(updatePartyPill); if (pill) pill.style.display = 'none'; }
+}
+
+// P6: broadcast feed (rendered into the campaign overlay and the GM tab, whichever is open).
+function renderBroadcastFeed(msgs) {
+  const boxes = [document.getElementById('campaign-bcast'), document.getElementById('gm-bcast-feed')].filter(Boolean);
+  if (!boxes.length) return;
+  const html = (msgs && msgs.length)
+    ? msgs.slice().reverse().map(m => `<div style="padding:5px 0;border-bottom:1px solid var(--border)">
+        <span style="font-size:11px;color:var(--text-muted)">${m.ts ? new Date(m.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''} · ${escapeHtml(m.from || 'Loremaster')}</span><br>
+        <span style="font-size:13px">${escapeHtml(m.text || '')}</span></div>`).join('')
+    : '<div class="hint">No broadcasts yet.</div>';
+  boxes.forEach(b => { b.innerHTML = html; });
 }
 
 function renderCampaignMembers(members, err) {

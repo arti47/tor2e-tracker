@@ -123,6 +123,24 @@ module.exports = {
     checks.push({ ok: p5.helpers && p5.sharedOff && p5.canGmLocal && p5.encIsLocal && p5.pushNoop, msg: 'P5 bridge inert locally (enc()===char.encounter, canGm, push no-op)' });
     checks.push({ ok: p5.localAddBtn, msg: 'local encounter render unchanged (+ Add Adversary shown)' });
 
+    // P6-final — role gating, broadcast, peek: all inert/local-fallback with Sync disabled.
+    const p6 = await page.evaluate(async () => {
+      const out = {};
+      out.helpers = typeof gmVisible === 'function' && typeof gmInCampaign === 'function'
+        && typeof Sync.sendBroadcast === 'function' && typeof Sync.peekCharacter === 'function'
+        && typeof Sync.subscribeBroadcast === 'function' && typeof renderBroadcastFeed === 'function'
+        && typeof renderGmCampaign === 'function' && typeof gmPeek === 'function' && typeof showToast === 'function';
+      out.noCampaign = gmInCampaign() === false;
+      out.visibleFollowsToggle = gmVisible() === gmEnabled();          // out of a campaign → local toggle rules
+      out.campaignBodyEmpty = (document.getElementById('gm-campaign-body') || {}).innerHTML === '';
+      out.bcastRejects = await Sync.sendBroadcast('test').then(() => false, () => true);   // not in a campaign
+      showToast('harness toast');
+      out.toastShown = !!document.querySelector('#toast-wrap div');
+      return out;
+    });
+    checks.push({ ok: p6.helpers && p6.noCampaign && p6.visibleFollowsToggle && p6.campaignBodyEmpty, msg: 'P6 role-gating inert locally (gmVisible follows toggle, campaign body empty)' });
+    checks.push({ ok: p6.bcastRejects && p6.toastShown, msg: 'broadcast rejects out of campaign; showToast renders' });
+
     await page.evaluate(() => { localStorage.removeItem('tor2e-gm'); refreshGmUI(); });
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length})` });
     await context.close();

@@ -5,19 +5,34 @@
    Writes go through the normal per-slot path (and mirror to cloud if active). */
 const GM_KEY = 'tor2e-gm';
 function gmEnabled() { try { return localStorage.getItem(GM_KEY) === '1'; } catch (e) { return false; } }
+// P6: in a campaign the ROLE decides — the loremaster always sees the GM tab, players never do
+// (regardless of the local toggle). Out of a campaign, the device-local toggle decides as before.
+function gmInCampaign() { return typeof Sync !== 'undefined' && Sync.isEnabled && Sync.isEnabled() && Sync.currentCampaign && !!Sync.currentCampaign(); }
+function gmVisible() { return gmInCampaign() ? Sync.isLoremaster() : gmEnabled(); }
 
 function refreshGmUI() {
   const tab = document.querySelector('.tab[data-tab="gm"]');
-  if (tab) tab.style.display = gmEnabled() ? '' : 'none';
+  const vis = gmVisible();
+  if (tab) tab.style.display = vis ? '' : 'none';
   const btn = document.getElementById('gm-mode-btn');
-  if (btn) btn.textContent = gmEnabled() ? '🎲 Disable GM Screen' : '🎲 Enable GM Screen';
-  if (!gmEnabled() && tab && tab.classList.contains('active')) {
+  if (btn) btn.textContent = gmInCampaign()
+    ? (Sync.isLoremaster() ? '🎲 GM Screen (campaign: you are Loremaster)' : '🎲 GM Screen (campaign: Loremaster only)')
+    : (gmEnabled() ? '🎲 Disable GM Screen' : '🎲 Enable GM Screen');
+  if (!vis && tab && tab.classList.contains('active')) {
     const home = document.querySelector('.tab[data-tab="character"]');
     if (home) home.click();
   }
-  if (gmEnabled()) renderGm();   // keep the party body fresh across hero switches / re-renders
+  if (vis) renderGm();   // keep the party body fresh across hero switches / re-renders
 }
 function toggleGmScreen() {
+  if (gmInCampaign()) {
+    // Role-controlled while in a campaign — the toggle is informational only.
+    alert(Sync.isLoremaster()
+      ? 'You are this campaign\'s Loremaster — the 🎲 GM tab is always available while in the campaign.'
+      : 'In a campaign, the GM Screen belongs to the Loremaster. Leave the campaign to use the local GM Screen.');
+    if (Sync.isLoremaster()) { const t = document.querySelector('.tab[data-tab="gm"]'); if (t) t.click(); if (typeof toggleMenu === 'function') toggleMenu(); }
+    return;
+  }
   try { gmEnabled() ? localStorage.removeItem(GM_KEY) : localStorage.setItem(GM_KEY, '1'); } catch (e) {}
   refreshGmUI();
   if (gmEnabled()) { const t = document.querySelector('.tab[data-tab="gm"]'); if (t) t.click(); }
@@ -75,6 +90,70 @@ function renderGm() {
   }
   renderGmEye();
   renderGmNpc();
+  renderGmCampaign();
+}
+
+/* ---------- P6: campaign Fellowship (live members + peek + broadcast) ---------- */
+function _gmOnParty() {
+  // Re-render the GM tab live when the party changes and the tab is open.
+  const tab = document.querySelector('.tab[data-tab="gm"]');
+  if (tab && tab.classList.contains('active')) renderGmCampaign();
+}
+function renderGmCampaign() {
+  const box = document.getElementById('gm-campaign-body'); if (!box) return;
+  if (!gmInCampaign() || !Sync.isLoremaster()) { box.innerHTML = ''; return; }
+  Sync.subscribeParty(_gmOnParty);   // multi-listener; replays the latest snapshot
+  const members = (Sync.lastParty && Sync.lastParty()) || {};
+  const rows = Object.keys(members).map(uid => {
+    const m = members[uid] || {}; const v = m.vitals || {};
+    const conds = [v.weary && 'Weary', v.miserable && 'Miserable', v.wounded && 'Wounded', v.dying && 'DYING'].filter(Boolean).join(', ');
+    return `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)">
+      <span>${m.online ? '🟢' : '⚪'} <b>${escapeHtml(v.name || m.displayName || 'Hero')}</b>${uid === Sync.uid ? ' ★' : ''}
+        <small style="color:var(--text-muted)">❤ ${v.endCur ?? '?'}/${v.endMax ?? '?'} · ✦ ${v.hopeCur ?? '?'}/${v.hopeMax ?? '?'} · 🌑 ${v.shadow ?? 0}${conds ? ' · <span style="color:var(--error-text)">' + conds + '</span>' : ''}</small></span>
+      ${m.characterId ? `<button onclick="gmPeek('${m.characterId}')" style="font-size:11px;padding:2px 9px" aria-label="Peek at ${escapeHtml(v.name || 'hero')}'s sheet">👁 Peek</button>` : ''}
+    </div>`;
+  }).join('');
+  box.innerHTML = `<div class="card" style="border-color:var(--gold)">
+    <h3 class="card-title">🏰 Campaign Fellowship (live)</h3>
+    <div>${rows || '<div class="hint">No members yet.</div>'}</div>
+  </div>
+  <div class="card">
+    <h3 class="card-title">📢 Broadcast to the party</h3>
+    <textarea id="gm-bcast-text" rows="2" placeholder="Message every player sees as a toast + in their Loremaster Feed…" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card-bg);color:var(--ink);font-size:13px"></textarea>
+    <button onclick="gmBroadcastSend()" style="width:100%;margin-top:6px">📢 Send</button>
+    <div id="gm-bcast-feed" style="margin-top:8px"></div>
+  </div>`;
+  if (typeof renderBroadcastFeed === 'function' && Sync.lastBroadcasts) renderBroadcastFeed(Sync.lastBroadcasts());
+}
+async function gmBroadcastSend() {
+  const el = document.getElementById('gm-bcast-text');
+  const text = el ? el.value : '';
+  try { await Sync.sendBroadcast(text); if (el) el.value = ''; }
+  catch (e) { alert('Broadcast failed: ' + (e && e.message ? e.message : e)); }
+}
+// Read-only peek at a member's full sheet (rule-enforced: loremaster of their campaign only).
+async function gmPeek(characterId) {
+  let rec = null;
+  try { rec = await Sync.peekCharacter(characterId); }
+  catch (e) { alert('Could not read that sheet: ' + (e && e.message ? e.message : e)); return; }
+  const d = rec && rec.data;
+  if (!d) { alert('No sheet found for that hero.'); return; }
+  const skills = Object.keys(d.skills || {}).filter(s => (d.skills[s] && (d.skills[s].rating || d.skills[s])) > 0)
+    .map(s => { const sk = d.skills[s]; const r = (sk && sk.rating) || 0; return `${escapeHtml(s)} ${r}${sk && sk.favoured ? '★' : ''}`; }).join(' · ');
+  const profs = Object.keys(d.profs || {}).filter(p => (parseInt(d.profs[p]) || 0) > 0).map(p => `${escapeHtml(p)} ${d.profs[p]}`).join(' · ');
+  const weapons = (d.weapons || []).map(w => escapeHtml(w.name)).filter(Boolean).join(', ');
+  const conds = [d.weary && 'Weary', d.miserable && 'Miserable', d.wounded && 'Wounded'].filter(Boolean).join(', ') || '—';
+  const msg = `<div style="text-align:left;font-size:13px;line-height:1.55">
+    <b>${escapeHtml(d.name || 'Hero')}</b> — ${escapeHtml([d.culture, d.calling].filter(Boolean).join(' · ') || '')}<br>
+    Str ${d.strRating ?? '?'} (TN ${d.strTN ?? '?'}) · Heart ${d.hrtRating ?? '?'} (TN ${d.hrtTN ?? '?'}) · Wits ${d.witRating ?? '?'} (TN ${d.witTN ?? '?'})<br>
+    ❤ ${d.endCur ?? '?'}/${d.endMax ?? '?'} · ✦ ${d.hopeCur ?? '?'}/${d.hopeMax ?? '?'} · 🌑 ${(parseInt(d.shadow) || 0)}+${(parseInt(d.scars) || 0)}scar · Parry ${d.parry ?? '?'}<br>
+    Valour ${d.valour ?? '?'} · Wisdom ${d.wisdom ?? '?'} · Conditions: ${escapeHtml(conds)}<br>
+    ${skills ? `<span style="color:var(--text-muted)">Skills:</span> ${skills}<br>` : ''}
+    ${profs ? `<span style="color:var(--text-muted)">Profs:</span> ${profs}<br>` : ''}
+    ${weapons ? `<span style="color:var(--text-muted)">Weapons:</span> ${weapons}` : ''}
+  </div>`;
+  if (typeof showModal === 'function') await showModal({ title: '👁 ' + (d.name || 'Hero') + ' (read-only)', message: msg, buttons: [{ label: 'Close' }] });
+  else alert((d.name || 'Hero') + ' — see console');
 }
 
 /* ---------- GM: Eye of Mordor (surfaces the per-hero solo-mode Eye Awareness) ---------- */

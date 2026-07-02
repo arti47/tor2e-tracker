@@ -64,7 +64,7 @@ const Sync = {
 
   _onSignedIn() {
     this._syncDown();   // pull cloud heroes missing locally, then push local heroes missing in cloud
-    if (this.currentCampaign()) { this._setupPresence(); this.subscribeEncounter(); }   // resume campaign surfaces
+    if (this.currentCampaign()) { this._setupPresence(); this.subscribeEncounter(); this.subscribeBroadcast(); }   // resume campaign surfaces
     if (typeof refreshPartyPill === 'function') refreshPartyPill();   // light up the header pill once signed in
   },
 
@@ -104,10 +104,13 @@ const Sync = {
     if (!data) return;
     try { rolls = JSON.parse(localStorage.getItem(ROLLS_PREFIX + id)); } catch (e) {}
     try { journal = JSON.parse(localStorage.getItem(JOURNAL_PREFIX + id)); } catch (e) {}
+    // campaignId (P6): lets the campaign's loremaster read this record for the read-only "peek"
+    // (rule-enforced; null when not in a campaign — RTDB drops null keys).
     this.db.ref('characters/' + id).set({
       owner: this.uid,
       updated: firebase.database.ServerValue ? firebase.database.ServerValue.TIMESTAMP : Date.now(),
       name: data.name || 'Hero',
+      campaignId: this.currentCampaign() || null,
       data, rolls: rolls || null, journal: journal || null
     }).catch(e => console.warn('cloud push failed:', e && e.message));
   },
@@ -201,7 +204,7 @@ const Sync = {
     updates['campaigns/' + cid + '/meta'] = meta;
     updates['campaigns/' + cid + '/members/' + this.uid] = member;
     updates['joinCodes/' + code] = cid;
-    return this.db.ref().update(updates).then(() => { this._saveCampaign(cid, code, true, member.role); this._setupPresence(); this.subscribeEncounter(); return { cid, code }; });
+    return this.db.ref().update(updates).then(() => { this._saveCampaign(cid, code, true, member.role); this._setupPresence(); this.subscribeEncounter(); this.subscribeBroadcast(); this.queuePush(activeCharId); return { cid, code }; });
   },
 
   // Join by code: resolve joinCodes/{CODE} -> cid, then write our own membership.
@@ -217,7 +220,7 @@ const Sync = {
         characterId: activeCharId, role: role === 'loremaster' ? 'loremaster' : 'player',
         updated: Date.now(), online: true, vitals: this._vitalsOf(typeof char !== 'undefined' ? char : null)
       };
-      return this.db.ref('campaigns/' + cid + '/members/' + this.uid).set(member).then(() => { this._saveCampaign(cid, code, false, member.role); this._setupPresence(); this.subscribeEncounter(); return { cid, code }; });
+      return this.db.ref('campaigns/' + cid + '/members/' + this.uid).set(member).then(() => { this._saveCampaign(cid, code, false, member.role); this._setupPresence(); this.subscribeEncounter(); this.subscribeBroadcast(); this.queuePush(activeCharId); return { cid, code }; });
     });
   },
 
@@ -230,11 +233,13 @@ const Sync = {
     this.unsubscribeParty();
     this._teardownPresence();
     this.unsubscribeEncounter();
+    this.unsubscribeBroadcast();
     const updates = {};
     updates['campaigns/' + cid] = null;
     if (code) updates['joinCodes/' + code] = null;
     return this.db.ref().update(updates).then(() => {
       this._clearCampaign();
+      this.queuePush(activeCharId);   // refresh the record's campaignId → null
       if (typeof renderEncounter === 'function') renderEncounter();   // back to the local encounter
     });
   },
@@ -244,8 +249,10 @@ const Sync = {
     this.unsubscribeParty();
     this._teardownPresence();
     this.unsubscribeEncounter();
+    this.unsubscribeBroadcast();
     if (this.enabled && this.uid && cid) this.db.ref('campaigns/' + cid + '/members/' + this.uid).remove().catch(() => {});
     this._clearCampaign();
+    this.queuePush(activeCharId);   // refresh the record's campaignId → null (revokes loremaster peek)
     if (typeof renderEncounter === 'function') renderEncounter();   // flip the Combat tab back to the local encounter
   },
 
@@ -371,6 +378,61 @@ const Sync = {
           console.warn('encounter push failed:', e && e.message);
         });
     }, 300);
+  },
+
+  /* ---------- P6: Loremaster broadcast feed + read-only peek ----------
+     broadcast: campaigns/{cid}/broadcast/{pushId} = { text, ts, from } — loremaster-write
+     (create-only), member-read (rule-enforced). Subscribed persistently while in a campaign;
+     new messages toast on every member's device (the first snapshot after attach is history,
+     so it renders the feed without toasting). peek: the loremaster may read a member's full
+     characters/{id} record read-only — enabled by the campaignId field pushChar stamps. */
+  _bcastRef: null,
+  _bcastMsgs: [],
+  _bcastPrimed: false,
+
+  lastBroadcasts() { return this._bcastMsgs; },
+
+  subscribeBroadcast() {
+    if (!this.enabled || !this.uid || !this.currentCampaign()) return;
+    this.unsubscribeBroadcast();
+    const cid = this.currentCampaign();
+    this._bcastRef = this.db.ref('campaigns/' + cid + '/broadcast').limitToLast(20);
+    this._bcastRef.on('value', snap => {
+      const v = snap.val() || {};
+      const msgs = Object.keys(v).map(k => v[k]).sort((a, b) => (a.ts || 0) - (b.ts || 0));
+      this._bcastMsgs = msgs;
+      // Toast only messages newer than the watermark (the limitToLast window keeps length
+      // constant once full, so a length compare would miss arrivals). First snapshot = history.
+      const lastTs = this._bcastLastTs || 0;
+      if (this._bcastPrimed && typeof showToast === 'function') {
+        msgs.filter(m => (m.ts || 0) > lastTs).forEach(m => showToast('📢 ' + (m.from || 'Loremaster') + ': ' + m.text));
+      }
+      msgs.forEach(m => { if ((m.ts || 0) > (this._bcastLastTs || 0)) this._bcastLastTs = m.ts; });
+      this._bcastPrimed = true;
+      if (typeof renderBroadcastFeed === 'function') renderBroadcastFeed(msgs);
+    }, () => {});
+  },
+  unsubscribeBroadcast() {
+    if (this._bcastRef) { try { this._bcastRef.off('value'); } catch (e) {} this._bcastRef = null; }
+    this._bcastMsgs = []; this._bcastPrimed = false; this._bcastLastTs = 0;
+  },
+
+  sendBroadcast(text) {
+    const t = String(text || '').trim().slice(0, 500);
+    if (!t) return Promise.reject(new Error('Nothing to send.'));
+    if (!this.enabled || !this.uid || !this.currentCampaign()) return Promise.reject(new Error('Not in a campaign.'));
+    if (!this.isLoremaster()) return Promise.reject(new Error('Only the Loremaster can broadcast.'));
+    return this.db.ref('campaigns/' + this.currentCampaign() + '/broadcast').push({
+      text: t,
+      ts: firebase.database.ServerValue ? firebase.database.ServerValue.TIMESTAMP : Date.now(),
+      from: (typeof char !== 'undefined' && char.name) || 'Loremaster'
+    });
+  },
+
+  // One-shot read-only fetch of a member's full character record (loremaster peek; rule-enforced).
+  peekCharacter(characterId) {
+    if (!this.enabled || !this.uid || !characterId) return Promise.reject(new Error('Cloud sync is not active.'));
+    return this.db.ref('characters/' + characterId).once('value').then(s => s.val());
   },
 
   // Optional: upgrade the anonymous account to a Google account (cross-device identity). Step 3 UI.

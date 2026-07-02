@@ -6,11 +6,12 @@
       ".indexOn": ["owner"],
       ".read": "auth != null && query.orderByChild == 'owner' && query.equalTo == auth.uid",
       "$characterId": {
-        ".read": "auth != null && data.child('owner').val() === auth.uid",
+        ".read": "auth != null && (data.child('owner').val() === auth.uid || (data.child('campaignId').isString() && root.child('campaigns').child(data.child('campaignId').val()).child('members').child(auth.uid).child('role').val() === 'loremaster'))",
         ".write": "auth != null && ( (!data.exists() && newData.child('owner').val() === auth.uid) || (data.exists() && data.child('owner').val() === auth.uid && (!newData.exists() || newData.child('owner').val() === auth.uid)) )",
         "owner": { ".validate": "newData.isString()" },
         "updated": { ".validate": "newData.isNumber() || newData.val() == now" },
         "name": { ".validate": "newData.isString()" },
+        "campaignId": { ".validate": "newData.isString()" },
         "data": { ".validate": "newData.hasChildren()" },
         "rolls": {},
         "journal": {},
@@ -44,6 +45,12 @@
         },
         "encounter": {
           ".write": "auth != null && root.child('campaigns').child($cid).child('members').child(auth.uid).exists()"
+        },
+        "broadcast": {
+          "$msgId": {
+            ".write": "auth != null && !data.exists() && root.child('campaigns').child($cid).child('members').child(auth.uid).child('role').val() === 'loremaster'",
+            ".validate": "newData.hasChildren(['text','ts','from'])"
+          }
         }
       }
     }
