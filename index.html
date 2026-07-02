@@ -194,6 +194,32 @@
       </div>
     </details>
   </div>
+  <div class="card">
+    <h3 class="card-title">🃏 Combat Action Deck</h3>
+    <p class="hint" style="text-align:left">Draw an adversary tactic for the round — a GM inspiration aid (never repeats the last card).</p>
+    <div style="display:flex;gap:6px;align-items:center">
+      <select id="gm-deck-select" style="flex:1;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card-bg);color:var(--ink);font-size:13px">
+        <option value="standard">Standard foes</option>
+        <option value="orc">Orcs &amp; Goblins</option>
+        <option value="troll">Trolls</option>
+        <option value="undead">Undead</option>
+      </select>
+      <button onclick="gmDrawActionCard()" style="font-size:12px;padding:6px 12px">🃏 Draw</button>
+    </div>
+    <div id="gm-deck-result" aria-live="polite"></div>
+  </div>
+  <div class="card">
+    <h3 class="card-title">📜 Moria Tables — Rumours · Landmarks · Water</h3>
+    <p class="hint" style="text-align:left">Feat-die tables from the Moria Loremaster chapter (11 = 👁 Eye row, 12 = ᚱ Rune row). Landmark seeking: SCAN vs Wits TN — Obscure −1d, Hidden −2d.</p>
+    <div style="display:flex;flex-wrap:wrap;gap:6px">
+      <button onclick="gmRollRumour('genuine')" style="font-size:12px;padding:4px 10px">🗣 Genuine Rumour</button>
+      <button onclick="gmRollRumour('false')" style="font-size:12px;padding:4px 10px">🗣 False Rumour</button>
+      <button onclick="gmRollLandmark('famous')" style="font-size:12px;padding:4px 10px">🗺 Famous Landmark</button>
+      <button onclick="gmRollLandmark('obscure')" style="font-size:12px;padding:4px 10px">🗺 Obscure Landmark</button>
+      <button onclick="gmRollWaterPeril()" style="font-size:12px;padding:4px 10px">🌊 Water Peril</button>
+    </div>
+    <div id="gm-tables-result" aria-live="polite"></div>
+  </div>
 </section>
 
 <!-- ============ BUILD ============ -->

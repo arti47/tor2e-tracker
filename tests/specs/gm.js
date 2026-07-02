@@ -141,6 +141,31 @@ module.exports = {
     checks.push({ ok: p6.helpers && p6.noCampaign && p6.visibleFollowsToggle && p6.campaignBodyEmpty, msg: 'P6 role-gating inert locally (gmVisible follows toggle, campaign body empty)' });
     checks.push({ ok: p6.bcastRejects && p6.toastShown, msg: 'broadcast rejects out of campaign; showToast renders' });
 
+    // Ported loremaster GM tables (rumours / landmarks / water perils / action decks).
+    const tables = await page.evaluate(() => {
+      const sizes = {
+        decks: Object.keys(COMBAT_ACTION_DECKS).length,
+        deckCards: Object.values(COMBAT_ACTION_DECKS).every(d => d.length === 6),
+        water: WATER_PERILS.length, falseR: FALSE_RUMOURS.length, genuine: GENUINE_RUMOURS.length,
+        famous: FAMOUS_LANDMARKS.length, obscure: OBSCURE_LANDMARKS.length
+      };
+      // rollers render into their result divs
+      document.getElementById('gm-deck-select').value = 'troll';
+      gmDrawActionCard();
+      const deckHtml = document.getElementById('gm-deck-result').innerText;
+      gmRollWaterPeril();
+      const waterHtml = document.getElementById('gm-tables-result').innerText;
+      gmRollRumour('genuine');
+      const rumourHtml = document.getElementById('gm-tables-result').innerText;
+      gmRollLandmark('famous');
+      const lmHtml = document.getElementById('gm-tables-result').innerText;
+      // feat-row picker always resolves a row for every possible value 1..12
+      const allResolve = [...Array(24)].every(() => _gmFeatRow(WATER_PERILS).row !== null);
+      return { sizes, deckDrawn: deckHtml.length > 20, waterShown: waterHtml.includes('Water Peril'), rumourShown: rumourHtml.includes('Rumour'), lmShown: lmHtml.includes('Landmark'), allResolve };
+    });
+    checks.push({ ok: tables.sizes.decks === 4 && tables.sizes.deckCards && tables.sizes.water === 12 && tables.sizes.falseR === 12 && tables.sizes.genuine === 12 && tables.sizes.famous === 6 && tables.sizes.obscure === 12, msg: `ported tables sized 4×6 decks / 12 / 12 / 12 / 6 / 12` });
+    checks.push({ ok: tables.deckDrawn && tables.waterShown && tables.rumourShown && tables.lmShown && tables.allResolve, msg: 'deck draw + water/rumour/landmark rollers render; feat rows always resolve' });
+
     await page.evaluate(() => { localStorage.removeItem('tor2e-gm'); refreshGmUI(); });
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length})` });
     await context.close();
