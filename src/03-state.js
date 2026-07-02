@@ -200,7 +200,8 @@ function saveCharacter() {
   roster.activeId = activeCharId;
   saveRoster(roster);
   // P3: mirror this hero to the cloud (debounced). No-op unless cloud sync is active.
-  if (typeof Sync !== 'undefined' && Sync.enabled) { Sync.queuePush(activeCharId); Sync.publishVitals(); }
+  // P5: also push the shared encounter if its shared subset changed (dirty-checked inside).
+  if (typeof Sync !== 'undefined' && Sync.enabled) { Sync.queuePush(activeCharId); Sync.publishVitals(); Sync.queuePushEncounter(); }
 }
 
 function readSlot(id) {
@@ -703,10 +704,11 @@ function renderTableMode() {
       return card(escapeHtml(d.name || '?') + (e.id === activeCharId ? ' ★' : ''), d.endCur, d.endMax, d.hopeCur, d.hopeMax, totalShadow, conds);
     }).filter(Boolean).join('');
   }
-  const enc = char.encounter;
-  const foes = (enc && enc.active && (enc.foes || []).filter(f => !f.slain)) || [];
+  // P5: shared-aware — in a campaign the shared encounter shows on the table screen for everyone.
+  const en = (typeof enc === 'function') ? enc() : (char.encounter || {});
+  const foes = (en && en.active && (en.foes || []).filter(f => !f.slain)) || [];
   const foeHtml = foes.length
-    ? `<h2 style="margin:22px 0 10px;font-size:1.2em;color:#e06060">&#9876; Encounter &middot; Round ${enc.round || 1}</h2>
+    ? `<h2 style="margin:22px 0 10px;font-size:1.2em;color:#e06060">&#9876; Encounter &middot; Round ${en.round || 1}</h2>
        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px">${foes.map(f =>
         `<div style="border:3px solid #e06060;border-radius:14px;padding:12px 16px;background:#1a1612">
           <div style="font-size:1.15em;font-weight:800;color:#f1e4c4">${escapeHtml(f.name)}</div>

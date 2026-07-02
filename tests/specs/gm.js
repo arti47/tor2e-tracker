@@ -105,6 +105,24 @@ module.exports = {
     checks.push({ ok: npc.loreShown && npc.added, msg: 'NPC ledger shows lore + adds a custom NPC' });
     checks.push({ ok: npc.filtered && npc.deleted, msg: 'NPC ledger search filters + delete removes' });
 
+    // P5 — shared-encounter bridge must be INERT locally (Sync disabled under the harness):
+    // enc() stays char.encounter, everyone can GM, and the local render still offers Add Adversary.
+    const p5 = await page.evaluate(() => {
+      const out = {};
+      out.helpers = typeof encShared === 'function' && typeof encCanGm === 'function'
+        && typeof Sync.sharedEncActive === 'function' && typeof Sync.queuePushEncounter === 'function'
+        && typeof Sync.subscribeEncounter === 'function' && typeof Sync.myRole === 'function';
+      out.sharedOff = encShared() === false && Sync.sharedEncActive() === false;
+      out.canGmLocal = encCanGm() === true;
+      out.encIsLocal = enc() === char.encounter;
+      out.pushNoop = (() => { try { Sync.queuePushEncounter(); return true; } catch (e) { return false; } })();
+      char.encounter = JSON.parse(JSON.stringify(DEFAULT_CHARACTER.encounter)); renderEncounter();
+      out.localAddBtn = /Add Adversary/.test(document.getElementById('encounter-card').innerHTML);
+      return out;
+    });
+    checks.push({ ok: p5.helpers && p5.sharedOff && p5.canGmLocal && p5.encIsLocal && p5.pushNoop, msg: 'P5 bridge inert locally (enc()===char.encounter, canGm, push no-op)' });
+    checks.push({ ok: p5.localAddBtn, msg: 'local encounter render unchanged (+ Add Adversary shown)' });
+
     await page.evaluate(() => { localStorage.removeItem('tor2e-gm'); refreshGmUI(); });
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length})` });
     await context.close();

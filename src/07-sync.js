@@ -64,7 +64,7 @@ const Sync = {
 
   _onSignedIn() {
     this._syncDown();   // pull cloud heroes missing locally, then push local heroes missing in cloud
-    if (this.currentCampaign()) this._setupPresence();   // resume presence if already in a campaign
+    if (this.currentCampaign()) { this._setupPresence(); this.subscribeEncounter(); }   // resume campaign surfaces
     if (typeof refreshPartyPill === 'function') refreshPartyPill();   // light up the header pill once signed in
   },
 
@@ -158,8 +158,10 @@ const Sync = {
     try { const c = JSON.parse(localStorage.getItem('tor2e-campaign-v1')); if (c && c.id) { this.campaignId = c.id; return c.id; } } catch (e) {}
     return null;
   },
-  _saveCampaign(id, code, owner) { try { localStorage.setItem('tor2e-campaign-v1', JSON.stringify({ id, code, owner: !!owner })); } catch (e) {} this.campaignId = id; },
+  _saveCampaign(id, code, owner, role) { try { localStorage.setItem('tor2e-campaign-v1', JSON.stringify({ id, code, owner: !!owner, role: role === 'loremaster' ? 'loremaster' : 'player' })); } catch (e) {} this.campaignId = id; },
   isCampaignOwner() { try { return !!(JSON.parse(localStorage.getItem('tor2e-campaign-v1')) || {}).owner; } catch (e) { return false; } },
+  myRole() { try { return (JSON.parse(localStorage.getItem('tor2e-campaign-v1')) || {}).role || 'player'; } catch (e) { return 'player'; } },
+  isLoremaster() { return this.myRole() === 'loremaster'; },
   _clearCampaign() { try { localStorage.removeItem('tor2e-campaign-v1'); } catch (e) {} this.campaignId = null; },
 
   // Memorable two-word code, e.g. "SHADOW-MITHRIL". Avoids ambiguous look-alikes by using whole words.
@@ -199,7 +201,7 @@ const Sync = {
     updates['campaigns/' + cid + '/meta'] = meta;
     updates['campaigns/' + cid + '/members/' + this.uid] = member;
     updates['joinCodes/' + code] = cid;
-    return this.db.ref().update(updates).then(() => { this._saveCampaign(cid, code, true); this._setupPresence(); return { cid, code }; });
+    return this.db.ref().update(updates).then(() => { this._saveCampaign(cid, code, true, member.role); this._setupPresence(); this.subscribeEncounter(); return { cid, code }; });
   },
 
   // Join by code: resolve joinCodes/{CODE} -> cid, then write our own membership.
@@ -215,7 +217,7 @@ const Sync = {
         characterId: activeCharId, role: role === 'loremaster' ? 'loremaster' : 'player',
         updated: Date.now(), online: true, vitals: this._vitalsOf(typeof char !== 'undefined' ? char : null)
       };
-      return this.db.ref('campaigns/' + cid + '/members/' + this.uid).set(member).then(() => { this._saveCampaign(cid, code, false); this._setupPresence(); return { cid, code }; });
+      return this.db.ref('campaigns/' + cid + '/members/' + this.uid).set(member).then(() => { this._saveCampaign(cid, code, false, member.role); this._setupPresence(); this.subscribeEncounter(); return { cid, code }; });
     });
   },
 
@@ -227,18 +229,24 @@ const Sync = {
     try { code = (JSON.parse(localStorage.getItem('tor2e-campaign-v1')) || {}).code; } catch (e) {}
     this.unsubscribeParty();
     this._teardownPresence();
+    this.unsubscribeEncounter();
     const updates = {};
     updates['campaigns/' + cid] = null;
     if (code) updates['joinCodes/' + code] = null;
-    return this.db.ref().update(updates).then(() => { this._clearCampaign(); });
+    return this.db.ref().update(updates).then(() => {
+      this._clearCampaign();
+      if (typeof renderEncounter === 'function') renderEncounter();   // back to the local encounter
+    });
   },
 
   leaveCampaign() {
     const cid = this.currentCampaign();
     this.unsubscribeParty();
     this._teardownPresence();
+    this.unsubscribeEncounter();
     if (this.enabled && this.uid && cid) this.db.ref('campaigns/' + cid + '/members/' + this.uid).remove().catch(() => {});
     this._clearCampaign();
+    if (typeof renderEncounter === 'function') renderEncounter();   // flip the Combat tab back to the local encounter
   },
 
   // Debounced vitals publish (called from saveCharacter alongside queuePush).
@@ -274,6 +282,95 @@ const Sync = {
     if (cb) this._partyListeners = this._partyListeners.filter(l => l !== cb);
     else this._partyListeners = [];
     if (!this._partyListeners.length && this._partyRef) { try { this._partyRef.off('value'); } catch (e) {} this._partyRef = null; this._lastParty = null; }
+  },
+
+  /* ---------- P5: shared, GM-driven encounter ----------
+     While in a campaign, the encounter's SHARED state (active/round/foes) lives at
+     campaigns/{cid}/encounter and renders live for every member; the per-player dice options
+     (weaponIdx + adv row) stay LOCAL on the mirror and are never pushed or overwritten.
+     enc() in 05-combat-build.js returns this mirror whenever sharedEncActive(); out of a
+     campaign the encounter is char.encounter exactly as before (local mode byte-identical).
+     Conflict policy: last-write-wins on the shared subset with a dirty-check (we only push
+     when OUR serialized copy changed, so a no-op save can never clobber a newer remote state).
+     GM-locking (add/edit/remove foes, round, end) is enforced in the UI by role; the RTDB rule
+     gates writes to campaign MEMBERS (per-field GM locks aren't sanely expressible over a foes
+     array in RTDB rules — deviation from the original P5 spec, documented in CLAUDE.md). */
+  _encRef: null,
+  _sharedEnc: null,
+  _lastEncJson: null,
+  _encTimer: null,
+  _encPushPending: false,
+
+  sharedEncActive() { return !!(this.enabled && this.uid && this.currentCampaign()); },
+  // The in-memory mirror. Stable object identity — the encounter engine mutates it in place.
+  sharedEnc() {
+    if (!this._sharedEnc) this._sharedEnc = this._normEnc(null);
+    return this._sharedEnc;
+  },
+  // Normalize a raw RTDB value into a full encounter shape (RTDB drops empty arrays/objects).
+  _normEnc(v) {
+    const base = (typeof DEFAULT_CHARACTER !== 'undefined' && DEFAULT_CHARACTER.encounter)
+      ? JSON.parse(JSON.stringify(DEFAULT_CHARACTER.encounter))
+      : { active: false, round: 1, foes: [], weaponIdx: 0, adv: { open: false, hope: false, fav: 'normal', extra: 0, keen: false } };
+    if (!v || typeof v !== 'object') return base;
+    base.active = !!v.active;
+    base.round = parseInt(v.round) || 1;
+    base.foes = Array.isArray(v.foes) ? v.foes : Object.values(v.foes || {});
+    base.foes.forEach(f => { f.attacks = Array.isArray(f.attacks) ? f.attacks : Object.values(f.attacks || {}); });
+    return base;
+  },
+  _encSharedPayload() {
+    const m = this.sharedEnc();
+    return { active: !!m.active, round: parseInt(m.round) || 1, foes: m.foes || [] };
+  },
+
+  subscribeEncounter() {
+    if (!this.sharedEncActive()) return;
+    this.unsubscribeEncounter();
+    const cid = this.currentCampaign();
+    this._encRef = this.db.ref('campaigns/' + cid + '/encounter');
+    this._encRef.on('value', snap => {
+      // A local push is in flight: applying this (possibly stale/initial-null) snapshot would wipe
+      // the unpushed change. Skip it — our own set() will echo back through here with the truth.
+      if (this._encPushPending) return;
+      const norm = this._normEnc(snap.val());
+      const m = this.sharedEnc();
+      // Merge only the SHARED subset; keep this device's weaponIdx/adv untouched.
+      m.active = norm.active; m.round = norm.round; m.foes = norm.foes;
+      this._lastEncJson = JSON.stringify(this._encSharedPayload());
+      if (typeof encDeriveEngaged === 'function') encDeriveEngaged();
+      if (typeof renderEncounter === 'function') renderEncounter();
+      if (typeof renderGm === 'function' && document.querySelector('.tab[data-tab="gm"].active')) renderGm();
+    }, () => {});
+  },
+  unsubscribeEncounter() {
+    if (this._encRef) { try { this._encRef.off('value'); } catch (e) {} this._encRef = null; }
+    clearTimeout(this._encTimer);
+    this._sharedEnc = null; this._lastEncJson = null; this._encPushPending = false;
+  },
+
+  // Called from saveCharacter() on EVERY save; the dirty-check makes non-encounter saves free
+  // and guarantees we never push an unchanged (possibly stale) copy over a newer remote one.
+  queuePushEncounter() {
+    if (!this.sharedEncActive() || !this._sharedEnc) return;
+    const j = JSON.stringify(this._encSharedPayload());
+    if (j === this._lastEncJson) return;
+    this._lastEncJson = j;
+    this._encPushPending = true;
+    clearTimeout(this._encTimer);
+    this._encTimer = setTimeout(() => {
+      const cid = this.currentCampaign(); if (!cid) { this._encPushPending = false; return; }
+      const payload = this._encSharedPayload();
+      payload.updated = Date.now();
+      this.db.ref('campaigns/' + cid + '/encounter').set(payload)
+        .then(() => { this._encPushPending = false; })
+        .catch(e => {
+          // Failed (offline / rules): clear the flags so remote snapshots apply again and the
+          // next save retries the push instead of being dirty-check-suppressed.
+          this._encPushPending = false; this._lastEncJson = null;
+          console.warn('encounter push failed:', e && e.message);
+        });
+    }, 300);
   },
 
   // Optional: upgrade the anonymous account to a Google account (cross-device identity). Step 3 UI.

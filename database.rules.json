@@ -41,6 +41,9 @@
             ".validate": "newData.hasChildren(['characterId','role'])",
             "role": { ".validate": "newData.val() === 'player' || newData.val() === 'loremaster'" }
           }
+        },
+        "encounter": {
+          ".write": "auth != null && root.child('campaigns').child($cid).child('members').child(auth.uid).exists()"
         }
       }
     }

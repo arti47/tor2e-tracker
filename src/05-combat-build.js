@@ -906,7 +906,15 @@ function rollWoundSeverity() {
 
 /* ---------- COMBAT-TAB ENCOUNTER TRACKER ---------- */
 let _encResults = {};  // transient inline roll results, keyed by foe id (not persisted)
-function enc() { return char.encounter || (char.encounter = JSON.parse(JSON.stringify(DEFAULT_CHARACTER.encounter))); }
+// P5: in a cloud campaign the encounter is SHARED (Sync mirror of campaigns/{cid}/encounter);
+// otherwise it's this hero's local char.encounter, exactly as before.
+function encShared() { return typeof Sync !== 'undefined' && Sync.sharedEncActive && Sync.sharedEncActive(); }
+// GM-locked controls (add/edit/remove foes, round, end) — everyone in local mode, loremaster in shared.
+function encCanGm() { return !encShared() || (Sync.isLoremaster && Sync.isLoremaster()); }
+function enc() {
+  if (encShared()) return Sync.sharedEnc();
+  return char.encounter || (char.encounter = JSON.parse(JSON.stringify(DEFAULT_CHARACTER.encounter)));
+}
 function getFoe(id) { return enc().foes.find(f => f.id === id); }
 function encEngagedFoes() { return enc().foes.filter(f => f.engaged && !f.slain); }
 function ensureEncounterActive() { const e = enc(); if (!e.active) { e.active = true; e.round = 1; } }
@@ -922,7 +930,8 @@ async function endEncounter() {
   const e = enc();
   if (e.foes.length && !await confirmStyled('End the encounter and clear all adversaries?', 'End Encounter')) return;
   _encFinishGroup();  // finalise the Chronicle combat group (summary) BEFORE clearing the encounter
-  char.encounter = JSON.parse(JSON.stringify(DEFAULT_CHARACTER.encounter));
+  if (encShared()) { const m = Sync.sharedEnc(); m.active = false; m.round = 1; m.foes = []; }
+  else char.encounter = JSON.parse(JSON.stringify(DEFAULT_CHARACTER.encounter));
   char.engagedFoes = 0;
   _encResults = {};
   saveCharacter(); render(); renderEncounter();
@@ -1171,19 +1180,23 @@ function renderEncounter() {
   const card = document.getElementById('encounter-card');
   if (!card) return;
   const e = enc();
+  const shared = encShared(), canGm = encCanGm();
+  const sharedBanner = shared ? `<p class="hint" style="text-align:left;margin:0 0 8px;border:1px solid var(--gold);border-radius:6px;padding:5px 8px">🏰 <b>Shared campaign encounter</b> — every member sees this fight live.${canGm ? ' You run it (Loremaster).' : ' The Loremaster runs the foes; roll your own attacks and defences.'}</p>` : '';
   if (!e.active && (!e.foes || e.foes.length === 0)) {
-    card.innerHTML = `<p class="hint" style="text-align:left;margin:0 0 8px">Key in adversaries, roll your attacks and theirs, and apply damage — all here. Works in solo or group play.</p>
-      <button class="add-row-btn" onclick="openBestiary()" style="width:100%;background:var(--btn-alert-bg)">+ Add Adversary</button>`;
+    card.innerHTML = sharedBanner + (canGm
+      ? `<p class="hint" style="text-align:left;margin:0 0 8px">Key in adversaries, roll your attacks and theirs, and apply damage — all here. Works in solo or group play.</p>
+      <button class="add-row-btn" onclick="openBestiary()" style="width:100%;background:var(--btn-alert-bg)">+ Add Adversary</button>`
+      : `<p class="hint" style="text-align:center;padding:8px">No active encounter — waiting for the Loremaster to add adversaries.</p>`);
     return;
   }
   const wpns = _equippedWeapons();
   const wIdx = Math.min(e.weaponIdx || 0, Math.max(0, wpns.length - 1));
   const a = e.adv;
-  let html = `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+  let html = sharedBanner + `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:8px">
       <strong style="font-size:14px">Round ${e.round}</strong>
-      <button onclick="nextRound()" class="add-row-btn" style="font-size:11px;padding:3px 8px;background:var(--btn-secondary-bg);color:white">Next round ▸</button>
+      ${canGm ? `<button onclick="nextRound()" class="add-row-btn" style="font-size:11px;padding:3px 8px;background:var(--btn-secondary-bg);color:white">Next round ▸</button>` : ''}
       <span style="flex:1"></span>
-      <button onclick="endEncounter()" class="add-row-btn" style="font-size:11px;padding:3px 8px;background:var(--btn-secondary-bg);color:white">End encounter</button>
+      ${canGm ? `<button onclick="endEncounter()" class="add-row-btn" style="font-size:11px;padding:3px 8px;background:var(--btn-secondary-bg);color:white">End encounter</button>` : ''}
     </div>
     <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:12px;margin-bottom:6px">
       <span>Attack with:</span>
@@ -1205,21 +1218,21 @@ function renderEncounter() {
       </div>`;
   }
   if (encEngagedFoes().length > 1) html += `<button onclick="allFoesAttack()" class="add-row-btn" style="width:100%;margin-bottom:8px;background:var(--btn-alert-bg)">🗡️ All engaged foes attack</button>`;
-  (e.foes || []).forEach(f => { html += _renderFoeCard(f); });
-  html += `<button onclick="openBestiary()" class="add-row-btn" style="width:100%;margin-top:4px;background:var(--gold)">+ Add Adversary</button>`;
+  (e.foes || []).forEach(f => { html += _renderFoeCard(f, canGm); });
+  if (canGm) html += `<button onclick="openBestiary()" class="add-row-btn" style="width:100%;margin-top:4px;background:var(--gold)">+ Add Adversary</button>`;
   card.innerHTML = html;
 }
-function _renderFoeCard(f) {
+function _renderFoeCard(f, canGm = true) {
   const slain = f.slain;
-  const step = (field, d, lbl) => `<button onclick="adjFoe('${f.id}','${field}',${d})" style="width:24px;height:24px;border:1px solid var(--border);background:var(--card-bg);color:var(--ink);border-radius:4px;cursor:pointer">${lbl}</button>`;
+  const step = (field, d, lbl) => canGm ? `<button onclick="adjFoe('${f.id}','${field}',${d})" style="width:24px;height:24px;border:1px solid var(--border);background:var(--card-bg);color:var(--ink);border-radius:4px;cursor:pointer">${lbl}</button>` : '';
   let h = `<div style="border:1px solid var(--border);border-radius:8px;padding:8px;margin-bottom:8px;${slain ? 'opacity:0.55' : ''}">
     <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
       <strong style="font-size:14px">${escapeHtml(f.name)}</strong>
       ${slain ? '<span class="result-tag tag-fail">SLAIN</span>' : (f.wounded ? '<span class="result-tag" style="background:var(--btn-warn-bg);color:white">WOUNDED</span>' : '')}
       <span style="font-size:10px;color:var(--text-faint)">${escapeHtml(f.source || '')}</span>
       <span style="flex:1"></span>
-      <button onclick="toggleFoeEdit('${f.id}')" title="Edit stats" style="background:none;border:none;cursor:pointer;color:var(--text-faint)">✎</button>
-      <button onclick="removeFoe('${f.id}')" title="Remove" style="background:none;border:none;cursor:pointer;color:var(--text-faint)">×</button>
+      ${canGm ? `<button onclick="toggleFoeEdit('${f.id}')" title="Edit stats" style="background:none;border:none;cursor:pointer;color:var(--text-faint)">✎</button>
+      <button onclick="removeFoe('${f.id}')" title="Remove" style="background:none;border:none;cursor:pointer;color:var(--text-faint)">×</button>` : ''}
     </div>
     <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;font-size:13px;margin-top:5px">
       <span>End <strong>${f.endCur}/${f.endMax}</strong></span>${step('endCur', -1, '−')}${step('endCur', 1, '+')}
@@ -1234,7 +1247,7 @@ function _renderFoeCard(f) {
       </div>`;
   }
   if (_encResults[f.id]) h += `<div style="font-size:12px;margin-top:6px;padding:6px;background:var(--bg-deep);border-radius:6px;line-height:1.45">${_encResults[f.id]}</div>`;
-  if (f._edit) h += _renderFoeEdit(f);
+  if (f._edit && canGm) h += _renderFoeEdit(f);
   return h + `</div>`;
 }
 function _renderFoeEdit(f) {

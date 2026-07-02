@@ -64,12 +64,14 @@ function renderGm() {
   // Encounter line + the Eye and NPC sub-panels (present only when the GM tab is rendered).
   const encLine = document.getElementById('gm-enc-line');
   if (encLine) {
-    const en = char.encounter || {};
+    // P5: shared-aware — in a campaign this reads the shared encounter (same as the Combat tab).
+    const shared = (typeof encShared === 'function') && encShared();
+    const en = (typeof enc === 'function') ? enc() : (char.encounter || {});
     const foes = Array.isArray(en.foes) ? en.foes : [];
     const living = foes.filter(f => !f.slain).length;
     encLine.textContent = (en.active && foes.length)
-      ? `Active encounter (${char.name || 'active hero'}): ${living} living / ${foes.length} foe(s), round ${en.round || 1}.`
-      : 'No active encounter.';
+      ? `Active ${shared ? 'SHARED campaign' : ''} encounter${shared ? '' : ` (${char.name || 'active hero'})`}: ${living} living / ${foes.length} foe(s), round ${en.round || 1}.`
+      : (shared ? 'No active encounter (shared — visible to the whole campaign when started).' : 'No active encounter.');
   }
   renderGmEye();
   renderGmNpc();
