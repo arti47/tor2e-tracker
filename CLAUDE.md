@@ -11,9 +11,9 @@ An HTML5 character sheet + play tracker for **The One Ring 2nd Edition** RPG —
 > current whenever work lands (and prune it — it must stay one screen).
 
 ### Current state
-- **All roadmap phases COMPLETE (incl. the full loremaster port):** P0 adversaries · P1 test harness (`npm test`, **93/93 green**, 6 specs) · P2 module split (`src/01…08` + `styles.css`) · P3 cloud-owned heroes · P4 live campaigns/party · P5 shared GM-driven encounter · P6 Loremaster screen (role-gated GM tab, peek, broadcast) · P7 security rules (**deployed + live-verified 2026-07-02**) · P8 accessibility. Plus the UX batch (U3\*, U4\*, U5/6/8, U9–U15; \*=partial, see Open items).
+- **All roadmap phases COMPLETE (incl. the full loremaster port):** P0 adversaries · P1 test harness (`npm test`, **100/100 green**, 6 specs) · P2 module split (`src/01…08` + `styles.css`) · P3 cloud-owned heroes · P4 live campaigns/party · P5 shared GM-driven encounter · P6 Loremaster screen (role-gated GM tab, peek, broadcast) · P7 security rules (**deployed + live-verified 2026-07-02**) · P8 accessibility. Plus the full UX batch (U3, U4, U5/6/7/8, U9–U15 — all shipped; "group rolls" deliberately skipped).
 - **Cloud is LIVE**: real Firebase config committed (`FIREBASE_ENABLED=true`); rules deployed; broadcast / in-campaign push / peek all verified against the real project 2026-07-02.
-- **SW cache `tor2e-v97`** · git repo (origin = github.com/arti47/tor2e-tracker, branch main) · shells (`character-tracker.html` = `index.html`) in sync.
+- **SW cache `tor2e-v99`** · git repo (origin = github.com/arti47/tor2e-tracker, branch main) · shells (`character-tracker.html` = `index.html`) in sync.
 
 ### The dev workflow (every change)
 1. Edit **`src/*.js`** (JS) or **`character-tracker.html`** (markup) or `styles.css`.
@@ -32,9 +32,52 @@ An HTML5 character sheet + play tracker for **The One Ring 2nd Edition** RPG —
 | ~~4~~ | ~~Port remaining loremaster GM tables~~ ✅ **done 2026-07-02** | — | All 6 tables (4×6 action decks, water perils, false/genuine rumours, famous/obscure landmarks) ported **verbatim from `github.com/arti47/tor2e-loremaster`** (the local folder was deleted — the GitHub repo is the recovery source) into `src/08-gm.js` + 2 GM-tab cards (🃏 deck draw, 📜 Moria tables rollers). +2 gm-spec checks; harness **95/95**; live-verified. **The loremaster port is now 100% complete.** SW v98. |
 | 5 | GM hand-out to **remote** players | M | Documented deviation: `characters/{id}` is owner-only-write. Needs a request-queue node (or rule relaxation) if wanted. |
 | ~~6~~ | ~~UX leftovers~~ ✅ **done 2026-07-02** | — | All five shipped (SW v99, harness **100/100**, +5 ux-spec checks): **U4-swipe** (`initSwipeTabs` — horizontal swipe switches visible tabs; ignores form fields, horizontally-scrollable content, open dialogs), **U3-collapse** (`initCollapsibleCards` — tap any card title to collapse, ▸/▾ + `aria-expanded`, remembered in `tor2e-collapsed`), **U7-hints** (`initHintButtons`/`hintFor` — (?) buttons on key Character-tab labels, text sourced from `REFERENCE.terms` = single source of truth), **U14-nudge** (`maybeBackupNudge` — baseline stamped on install, toast if no export in 14 days, 3-day throttle; both exports stamp `tor2e-lastexport`), **P8-minor** (aria-labels on the generated weapon ▲▼× buttons). Skipped by design: the old "group rolls" idea (a feature, not polish — stays on the legacy wishlist). |
-| 7 | CLAUDE.md deep prune | M | This dashboard fixes navigation; a fuller archive/split of the historical sections is optional housekeeping. |
+| 7 | CLAUDE.md deep prune | M | **Partially addressed 2026-07-02 (no-deletion tidy):** added 🧭 MAP OF THIS FILE + ⚠️ GOTCHAS sections and 🗄 ARCHIVE banners on the three historical roadmaps — full context preserved in one file by user choice. A size-reducing split (move history to `docs/HISTORY.md`) remains optional if context cost ever becomes a problem. |
 
 **Recommended order: 1 (deploy) → 2 (table test). 5 and 7 only if a real need emerges. Items 3, 4, 6 ✅ done 2026-07-02.**
+
+---
+
+## 🧭 MAP OF THIS FILE
+
+> **Nothing has been deleted** — the full build history is preserved below, so any reader
+> (human or AI) has the complete context. This map + the 🗄 ARCHIVE banners just make the
+> live-vs-history split explicit.
+
+**Live reference (current truth):**
+- **⭐ STATUS DASHBOARD** *(above)* — where we are, dev workflow, open items
+- **⚠️ GOTCHAS** *(next section)* — settled decisions & traps; read before changing anything they touch
+- **Project Overview** · **Architecture** (Current state / Stack / File structure / Data constants / JS function groups)
+- **Field Lock Reference** — which fields are locked vs editable, per tab
+- **Current Features** — per-tab feature inventory
+- **Data Sources** — rulebook PDFs + NotebookLM (with its numeric-table caveat)
+- Inside the Roadmap section (still-current docs interleaved with history): **Deploying on iOS/Android**, **Core Rules coverage matrix** (2026-05-23 snapshot), **Combat-tab Encounter tracker**, **Chronicle: combat groups**
+- **Interactive Tutorial** — lessons/sandbox reference
+- **Moria Solo Mode** — full subsystem reference
+- **Design Constraints** · **Known Issues / Limitations** · **Local Development** · **Deployment** · **File Layout**
+
+**History (all ✅ complete — kept verbatim, marked with 🗄 ARCHIVE banners):**
+- **Roadmap** — Priorities 1–7, supplements, playtest + audit fixes (note the live docs interleaved, listed above)
+- **Cloud, Multiplayer & Modularization Roadmap** — the P0–P8 build log (all phases shipped + live-verified; its "PLAN ONLY" preamble is historical)
+- **UX & Quality Enhancements** — U1–U15 (all shipped; "group rolls" deliberately skipped)
+
+---
+
+## ⚠️ GOTCHAS — settled decisions & traps (do not re-litigate)
+
+> Highlights **copied** from the history below so they can't be missed; each points to its full entry.
+
+1. **`XP_COST_TO_REACH = [0, 4, 8, 12, 20, 26, 30]` is CORRECT** — verified by visually rendering Core Rules p.119. NotebookLM's text extraction hallucinates a clean 4/8/12/16/20/24 progression, which is **wrong**. Do not "fix" this table. *(→ Notebook audit fixes)*
+2. **NotebookLM garbles numeric tables** — for any rulebook number, render the actual PDF page (`render_pdf_page`); never trust the textual answer alone. *(→ Data Sources)*
+3. **Classic `<script src>` files, NOT ES modules** — 367 inline `onclick` handlers need one shared global scope, and `file://` open-from-Files must keep working. Locked 2026-06-29. *(→ Design decisions / Phase P2)*
+4. **An adversary's attack TN vs a hero = the hero's Parry (incl. shield) alone**; the target's stance applies as **±1 Success die on the FOE's dice** (Forward +1d / Defensive −1d). Do not revert to `atkTN + Parry`. *(→ Phase P0)*
+5. **`FLAWS_BY_PATH` is the corrected mapping** (Core Rules p.140) — the original was shifted one column; don't re-shift it. *(→ Notebook audit fixes)*
+6. **`history` is the roll-history array in this app** — use `window.history` for the browser API. *(→ Priority 5, Share via URL)*
+7. **Scars count as Shadow for all triggers** (p.137) — every `(shadow + scars)` comparison is intentional. *(→ Notebook audit fixes)*
+8. **Shared encounter: only `{active, round, foes}` sync** — per-player dice options (`weaponIdx`, `adv`) stay local by design. All encounter reads go through `enc()`, and every mutation must end in `saveCharacter()` (that funnel powers the cloud push). *(→ Phase P5)*
+9. **`characters/{id}` is owner-only-write by design** — GM hand-outs to REMOTE heroes need a request-queue node or rule change; a documented deviation, not a bug. *(→ Phase P6 deviation / Open item 5)*
+10. **Cloud needs http(s)** — over `file://` the Firebase SDK never loads and the app correctly runs local-only. After a deploy, a stale service worker can serve old JS (hard-reload clears it). The test harness **blocks** the SDK, so cloud paths are no-ops in tests — verify live via the preview server. *(→ Phase P3)*
+11. **Firebase rules are default-deny at root** — don't add rules for nodes that haven't shipped. *(→ Phase P7)*
 
 ---
 
@@ -284,6 +327,10 @@ Reference PDFs are now stored at:
 ---
 
 ## Roadmap
+
+> **🗄 ARCHIVE + live docs interleaved.** The ✅ (DONE) subsections are completed history, kept
+> verbatim. Still-current reference that lives INSIDE this section: **Deploying on iOS/Android**,
+> **Core Rules coverage matrix**, **Combat-tab Encounter tracker**, **Chronicle: combat groups**.
 
 ### ✅ Priority 1 — Core rule coverage gaps (DONE)
 - [x] Parry derived stat field with auto formula
@@ -634,6 +681,10 @@ Encounter combat folds under one collapsible heading in the Chronicle timeline. 
 
 ## Cloud, Multiplayer & Modularization Roadmap (PLANNED — 2026-06-29)
 
+> **🗄 ARCHIVE — FULLY EXECUTED.** Every phase P0–P8 shipped and was live-verified (see the
+> STATUS DASHBOARD). Kept verbatim as the build log + decision record; the "PLAN ONLY"
+> preamble below is what this section said BEFORE the work — historical, not current.
+
 > **Status: PLAN ONLY. No code written yet.** This roadmap ports the *"how the app is
 > run"* features of the sibling **Dragonbane Player** app (Firebase live multiplayer,
 > a GM screen, a modular codebase, a committed test harness) into TOR2E **without
@@ -790,6 +841,9 @@ exported hero JSON** (`handlePartyFiles`), so the two data models are already co
 ---
 
 ## UX & Quality Enhancements (PLANNED — 2026-06-29)
+
+> **🗄 ARCHIVE — FULLY EXECUTED** (all items shipped 2026-06-29 → 2026-07-02; "group rolls"
+> deliberately skipped — a feature, not polish). The preamble below is historical.
 
 > **Status: PLAN ONLY.** A rules-neutral backlog gathered 2026-06-29 (Q&A), distinct from the
 > cloud/GM roadmap above. **None change any TOR2E rule** — they surface, speed up, present, or
