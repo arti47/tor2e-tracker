@@ -4,18 +4,20 @@ An HTML5 character sheet + play tracker for **The One Ring 2nd Edition** RPG —
 
 ---
 
-## ⭐ STATUS DASHBOARD — read this first (updated 2026-07-02)
+## ⭐ STATUS DASHBOARD — read this first (updated 2026-08-19)
 
 > **This section is the single source of truth for "where are we and what's next."**
 > Everything below it is reference detail and per-phase history. Keep this dashboard
 > current whenever work lands (and prune it — it must stay one screen).
 
 ### Current state
-- **All roadmap phases COMPLETE (incl. the full loremaster port):** P0 adversaries · P1 test harness (`npm test`, **102/102 green**, 6 specs) · P2 module split (`src/01…08` + `styles.css`) · P3 cloud-owned heroes · P4 live campaigns/party · P5 shared GM-driven encounter · P6 Loremaster screen (role-gated GM tab, peek, broadcast) · P7 security rules (**deployed + live-verified 2026-07-02**) · P8 accessibility. Plus the full UX batch (U3, U4, U5/6/7/8, U9–U15 — all shipped; "group rolls" deliberately skipped).
+- **All roadmap phases COMPLETE (incl. the full loremaster port):** P0 adversaries · P1 test harness (`npm test`, **104/104 green**, 6 specs) · P2 module split (`src/01…08` + `styles.css`) · P3 cloud-owned heroes · P4 live campaigns/party · P5 shared GM-driven encounter · P6 Loremaster screen (role-gated GM tab, peek, broadcast) · P7 security rules (**deployed + live-verified 2026-07-02**) · P8 accessibility. Plus the full UX batch (U3, U4, U5/6/7/8, U9–U15 — all shipped; "group rolls" deliberately skipped).
 - **Cloud is LIVE**: real Firebase config committed (`FIREBASE_ENABLED=true`); rules deployed; broadcast / in-campaign push / peek all verified against the real project 2026-07-02.
-- **SW cache `tor2e-v100`** · git repo (origin = github.com/arti47/tor2e-tracker, branch main) · shells (`character-tracker.html` = `index.html`) in sync.
+- **SW cache `tor2e-v101`** · git repo (origin = github.com/arti47/tor2e-tracker, branch main) · shells (`character-tracker.html` = `index.html`) in sync.
 - **Dice-tab QoL (2026-07-02):** quick-roll grid moved to sit directly above the 🎲 Roll button (result renders right below → tap-to-result with no hunting) + the result `scrollIntoView`s on every roll (`behavior:'auto'` on purpose — `'smooth'` never completes in some headless/older-Safari engines); roll history gets a per-row **×** delete (`deleteRollAt`, index via `history.indexOf`) and a **🗑 Clear** button (`clearRollHistory`, confirmed). +2 ux-spec checks.
 - **Dice/Oracle QoL 2 (2026-07-02, SW v101, harness 104/104):** the roll-result summary now **leads with the skill/prof name** (quick rolls pass it as `rollDice(skillLabel)`; e.g. "Valour · vs TN 15 — SUCCESS"); **Oracle History** gets per-row **×** (`deleteOracleRollAt` — direct index, newest-first) + **🗑 Clear** (`clearOracleHistory`, confirmed; device-global history). +2 ux-spec checks. *(Preview-verification note: the local `http.server` + SW combo can poison the HTTP cache so even a new SW precaches stale JS — when the preview serves old code, switch the preview port = fresh origin.)*
+
+- **Documentation verification pass (2026-08-19):** every figure in this file re-derived from the working tree — SW `tor2e-v101`, harness **104/104 green** (23 smoke / 11 adversaries / 23 ux / 20 spillage / 7 a11y / 20 gm), shells byte-identical, 8 modules (~14.8k lines JS + 686 lines CSS), **14 tabs** (the doc said 12 — Reference and GM were missing), 3 undocumented localStorage keys added (`tor2e-collapsed`, `tor2e-lastexport`, `tor2e-lastnudge`). Added the **Module map** table P2 called for but never delivered, rewrote **File Layout** to the real repo tree (the old one still described the pre-split single file + a "future structure if we ever split"), marked the superseded *single-file* design constraint, and added GOTCHAS 12–14. No code changed.
 
 ### The dev workflow (every change)
 1. Edit **`src/*.js`** (JS) or **`character-tracker.html`** (markup) or `styles.css`.
@@ -49,7 +51,7 @@ An HTML5 character sheet + play tracker for **The One Ring 2nd Edition** RPG —
 **Live reference (current truth):**
 - **⭐ STATUS DASHBOARD** *(above)* — where we are, dev workflow, open items
 - **⚠️ GOTCHAS** *(next section)* — settled decisions & traps; read before changing anything they touch
-- **Project Overview** · **Architecture** (Current state / Stack / File structure / Data constants / JS function groups)
+- **Project Overview** · **Architecture** (Current state / Stack / **Module map** — which `src/*.js` holds what / File structure / Data constants / JS function groups)
 - **Field Lock Reference** — which fields are locked vs editable, per tab
 - **Current Features** — per-tab feature inventory
 - **Data Sources** — rulebook PDFs + NotebookLM (with its numeric-table caveat)
@@ -79,7 +81,10 @@ An HTML5 character sheet + play tracker for **The One Ring 2nd Edition** RPG —
 8. **Shared encounter: only `{active, round, foes}` sync** — per-player dice options (`weaponIdx`, `adv`) stay local by design. All encounter reads go through `enc()`, and every mutation must end in `saveCharacter()` (that funnel powers the cloud push). *(→ Phase P5)*
 9. **`characters/{id}` is owner-only-write by design** — GM hand-outs to REMOTE heroes need a request-queue node or rule change; a documented deviation, not a bug. *(→ Phase P6 deviation / Open item 5)*
 10. **Cloud needs http(s)** — over `file://` the Firebase SDK never loads and the app correctly runs local-only. After a deploy, a stale service worker can serve old JS (hard-reload clears it). The test harness **blocks** the SDK, so cloud paths are no-ops in tests — verify live via the preview server. *(→ Phase P3)*
-11. **Firebase rules are default-deny at root** — don't add rules for nodes that haven't shipped. *(→ Phase P7)*
+11. **Firebase rules are default-deny at root** — don't add rules for nodes that haven't shipped. Editing `database.rules.json` does nothing until it is **redeployed**; every past phase that shipped a rules change had to redeploy before the feature worked. *(→ Phase P7)*
+12. **A local preview server + the service worker can serve stale JS** — the HTTP cache can be poisoned such that even a freshly-installed SW precaches old code. If the preview shows code you just changed as missing, **switch the preview port** (a new origin = a clean cache) rather than debugging the change. *(→ Dice/Oracle QoL 2)*
+13. **A fresh clone needs `npm install` before `npm test`** — `playwright-core` is gitignored via `node_modules/`. The harness resolves a cached Chromium by glob; `CHROMIUM_BIN` overrides it. *(→ Phase P1)*
+14. **Adding a shipped file means three edits, not one** — the `<script>`/`<link>` tag in **both** shells, the `PRECACHE` list in `sw.js`, and a `CACHE_VERSION` bump. *(→ dev workflow)*
 
 ---
 
@@ -95,19 +100,20 @@ An HTML5 character sheet + play tracker for **The One Ring 2nd Edition** RPG —
 
 ### Current state (verify before quoting — figures drift)
 
-Last verified: **2026-07-02**. Re-run these commands to refresh:
+Last verified: **2026-08-19** (full re-verification pass: figures below re-derived from the working tree, harness re-run green). Re-run these commands to refresh:
 
 ```bash
 grep CACHE_VERSION sw.js                    # current service worker cache version
 wc -l src/*.js styles.css                   # per-file sizes
 grep -ro "tor2e-[a-z0-9-]*" src/ | grep -o "tor2e-[a-z0-9-]*" | sort -u   # all localStorage keys
-npm test                                    # harness must be green
+grep -o 'data-tab="[a-z-]*"' character-tracker.html | sort -u              # the live tab list
+npm install && npm test                     # harness must be green (npm install needed on a fresh clone)
 ```
 
 As of last verification:
 - **Layout (since P2, 2026-06-29)**: thin `character-tracker.html` shell (mirrored to `index.html`) loading `styles.css` + `src/vendor-qrcode.js` + `src/01-core.js`…`src/08-gm.js` in order — **classic scripts, no build step, still works over `file://`**. `firebase-config.js` (real keys, `FIREBASE_ENABLED=true`) + Firebase compat CDN scripts power the optional-but-live cloud layer (`src/07-sync.js`); the app degrades gracefully to fully-local when offline.
-- **`sw.js` `CACHE_VERSION`**: `tor2e-v97` (bump on every deploy). SW strategy: HTML/navigations network-first; static assets cache-first; auto-activate.
-- **Test harness**: `npm test` → 6 specs / **93 checks** (smoke, adversaries, ux, spillage, a11y, gm). Cloud paths are no-ops in tests (SDK blocked) — verify live features via preview against the real project.
+- **`sw.js` `CACHE_VERSION`**: `tor2e-v101` (bump on every deploy). `PRECACHE` lists all 8 `src/*.js` + `vendor-qrcode.js` + `styles.css` + `firebase-config.js` + shells + PWA assets — **add any new file there**. SW strategy: HTML/navigations network-first; static assets cache-first; auto-activate.
+- **Test harness**: `npm test` → 6 specs / **104 checks** (smoke 23, adversaries 11, ux 23, spillage 20, a11y 7, gm 20). A fresh clone needs `npm install` first (`playwright-core` is the only devDependency; `tests/browser.js` glob-resolves a cached Chromium, `CHROMIUM_BIN` overrides). Cloud paths are no-ops in tests (SDK blocked) — verify live features via preview against the real project.
 - **Cloud (P3–P7)**: heroes mirror to `characters/{id}` (owner-only, rules-enforced); campaigns at `campaigns/{cid}` (join codes, live vitals party, presence, shared encounter, loremaster broadcast). `database.rules.json` **deployed + live-verified 2026-07-02**.
 - **Solo modes**: Strider + Moria complete (see their sections below).
 - **localStorage keys**: a **multi-character roster** (added 2026-05-31):
@@ -124,26 +130,47 @@ As of last verification:
   - `tor2e-tutorial` — tutorial progress `{completed, resume, offered}` (device-global)
   - `tor2e-gm` — `'1'` = local GM Screen tab visible (P6; in a campaign the loremaster ROLE overrides this)
   - `tor2e-gm-npcs` — GM NPC-ledger custom entries (device-global, P6)
-  - `tor2e-campaign-v1` — current campaign `{cid, code, role}` (device-global, P4)
+  - `tor2e-campaign-v1` — current campaign `{cid, code, role, owner}` (device-global, P4)
+  - `tor2e-collapsed` — `{ "<panelId>|<title>": 1 }` collapsed cards (U3, device-global)
+  - `tor2e-lastexport` / `tor2e-lastnudge` — backup-nudge timestamps (U14, device-global; both exports stamp `lastexport`, the toast throttles on `lastnudge`)
   - **Legacy (read-once for migration, then left as backup):** `tor2e-character-v1`, `tor2e-rolls-v1`. On first load under the roster system these are migrated into the first hero's slot. `loadCharacter()`/`saveCharacter()` operate on the active slot; `migrateCharacter(raw)` is the pure forward-migration used for slots, imports, and shared-link payloads.
 
 ### Stack
 - **Pure HTML5 + CSS + JavaScript** — no frameworks, no build step, no dependencies
-- **Thin HTML shell + classic `<script src>` files** (since P2, 2026-06-29): `character-tracker.html` (and its `index.html` mirror) is a ~145 KB shell that loads `styles.css` + `src/vendor-qrcode.js` + `src/01-core.js`…`src/06-tabs-init.js` in order. **Classic scripts (not ES modules)** — they share one global scope, so the 367 inline `onclick` handlers + 447 global functions work unchanged AND it still runs over `file://`. **No bundler/build step.** See Phase P2.
+- **Thin HTML shell + classic `<script src>` files** (since P2, 2026-06-29): `character-tracker.html` (and its byte-identical `index.html` mirror) is a ~157 KB shell that loads `styles.css` + `src/vendor-qrcode.js` + `src/01-core.js`…`src/08-gm.js` (8 modules) in order, with the Firebase compat CDN scripts + `firebase-config.js` before them. **Classic scripts (not ES modules)** — they share one global scope, so the ~370 inline `onclick` handlers (233 in the shell + 139 in JS-generated markup) and ~487 top-level functions work unchanged AND it still runs over `file://`. **No bundler/build step.** See Phase P2.
 - **Storage**: `localStorage` — see Current state above for the full key list
 
 ### Why classic scripts (still clone-and-run)?
 - Works offline from iOS Files app over `file://` (classic `<script src>`/`<link>` load fine there; only ES modules/`fetch` are CORS-blocked on `file://`)
 - "Add to Home Screen" with zero config; AirDrop/iCloud the whole folder
-- No build step, no module/CORS issues — the split is purely for maintainability (6 navigable files vs one 15k-line block), guaranteed behavior-identical (the files concatenate byte-for-byte to the original script)
+- No build step, no module/CORS issues — the split is purely for maintainability (8 navigable files vs one 15k-line block); the original 6-way cut was guaranteed behavior-identical (the files concatenated byte-for-byte to the pre-split script), and `07-sync.js` / `08-gm.js` were appended later as new code
 
-### File structure (within `character-tracker.html`)
-1. `<head>` — viewport, PWA meta tags, theme color
-2. `<style>` — CSS with variables for theming + readonly state styling
-3. `<header>` — sticky nav with character name + tabs (scrollable)
-4. `<section.panel>` — **12 tabs**: Character / Skills / Combat / Journey / Council / Gear / Dice / **Oracle** / **Band** / **Battle** / **Chronicle** / Build. Oracle is shown in any solo mode (`isSolo()` in `refreshStriderUI`); **Chronicle is solo-only** (`isSolo()` — Strider or Moria solo). **Band & Battle are Moria-only** (`char.moriaMode`). Journey & Council are always present. (Tab defaults to `display:none`; `refreshStriderUI` owns its visibility.)
-5. **Overlay modals** — Menu, Weapon/Armour/Shield pickers, Spend XP, New Reward, New Virtue, Apply Reward To, Prowess TN, +1-Attribute (`kings-overlay`, Rangers/High Elves), Hoard roller, FP wizard, milestone/desperate-stand/kingly-gift pickers
-6. `<script>` — at the bottom
+### Module map (`src/*.js`, load order = execution order)
+
+> The P2 split cut the original single `<script>` at section-banner boundaries. Load order matters:
+> `03-state.js` runs `loadCharacter()`/`loadHistory()`/`loadJournal()` at top level, so everything
+> those touch must already be declared in `01`–`03`. Grep the `/* ---------- BANNER ---------- */`
+> comments inside each file to navigate further.
+
+| File | ~lines | Contents |
+|---|---|---|
+| `src/vendor-qrcode.js` | 1 (minified) | vendored davidshimjs/qrcodejs (MIT) for the share-link QR |
+| `src/01-core.js` | 1,277 | title banner + FILE MAP, core constants & helpers, Strider **Solo Journey Event Details**, **Moria** journey events / Band / mission planning / battles-clash / generators, **Patron Quests**, **Oracle tables**, **Eye of Mordor**, Compact Mode, Text Size (U9), Undo |
+| `src/02-data.js` | 3,331 | the big data tables — `SKILLS`/`WEAPONS`/`CULTURES`/`CALLINGS`/`PATRONS`/`REWARDS`/`VIRTUES`/`PREGENS`/`LIFEPATHS`/`BESTIARY` + the ported **`ADVERSARY_DB`** (44 foes) and `loremasterFoeToEncounter()` |
+| `src/03-state.js` | 1,663 | `DEFAULT_CHARACTER`/`migrateCharacter`/load+save, **multi-character roster**, auto-backups (U12), pregen loader, Party View, toasts, **Fellowship Campaign UI (P4)**, Table Mode (U11), Campaign Timeline (U15), share-link/QR, and the whole **Chronicle** (scenes/blocks/clock/render/combat-log/markdown export) |
+| `src/04-render.js` | 3,131 | `render()` + all renderers, plus the **Fellowship Phase wizard**, **Skill Endeavour**, **Council**, **Journey**, **Magical Treasure** subsystems |
+| `src/05-combat-build.js` | 2,970 | Strider special-success spends, gear pickers, Protection/Wound rolls, the **Combat-tab Encounter tracker**, Load/Virtue/counters/input binding, and every **Build-tab picker** (useful items, lifepaths, prof choices, PE, reward apply-to, favoured, Spend XP, features/rewards/virtues, quick build) + the **Reference tab** (U5/U6/U8) |
+| `src/06-tabs-init.js` | 1,654 | tab wiring, the ☰ menu, `DOMContentLoaded` init, the whole **interactive Tutorial**, **a11y (P8)**, U4 swipe, U3 collapsible cards, U7 (?) hints, U14 backup nudge |
+| `src/07-sync.js` | 447 | the `Sync` module — Firebase auth, character mirror, campaigns/party/presence, shared encounter, broadcast. Dormant unless enabled **and** the SDK loaded |
+| `src/08-gm.js` | 402 | GM Screen (P6): local hand-out dashboard, campaign Fellowship + peek + broadcast composer, Eye manager, NPC ledger, Group Shadow Test, the 6 **ported loremaster GM tables** |
+| `styles.css` | 686 | both original `<style>` blocks — theme vars (light/dark/sepia/hc), compact & text-size classes, print rules |
+
+### File structure (within the `character-tracker.html` shell)
+1. `<head>` — viewport, PWA meta tags, theme color, `<link rel="stylesheet" href="styles.css">`
+2. `<header>` — sticky nav with character name + tabs (scrollable) + campaign pill + undo button
+3. `<section.panel>` — **14 tabs**: Character / Skills / Combat / Journey / Council / Gear / Dice / **📖 Ref** / **Oracle** / **Band** / **Battle** / **Chronicle** / Build / **🎲 GM**. Oracle is shown in any solo mode (`isSolo()` in `refreshStriderUI`); **Chronicle is solo-only** (`isSolo()` — Strider or Moria solo). **Band & Battle are Moria-only** (`char.moriaMode`). **GM** is gated by `gmVisible()` (in a campaign the ROLE decides; otherwise the `tor2e-gm` device toggle). Reference, Journey & Council are always present. (Hidden tabs default to `display:none`; `refreshStriderUI`/`refreshGmUI` own visibility.)
+4. **Overlay modals** — Menu, Weapon/Armour/Shield pickers, Spend XP, New Reward, New Virtue, Apply Reward To, Prowess TN, +1-Attribute (`kings-overlay`, Rangers/High Elves), Hoard roller, FP wizard, milestone/desperate-stand/kingly-gift pickers, bestiary, campaign, restore points, timeline, Table Mode
+5. `<script src>` tags — Firebase compat CDN + `firebase-config.js` + the 8 `src/*.js` modules, at the bottom
 
 ### Data constants in `<script>`
 - `SKILLS` — 18 skills grouped by attribute
@@ -933,12 +960,14 @@ The *Moria — Through the Doors of Durin* solo campaign, built as a **self-cont
 
 ## Design Constraints
 
-- **No build step** — must remain a plain HTML file openable from Files app
+- **No build step** — no bundler, no transpile; the folder is served/opened as-is
+- **Classic `<script src>`, never ES modules** — see GOTCHA 3; inline `onclick` handlers need one shared global scope, and `file://` must keep working
+- **Works from the Files app over `file://`** — the whole folder (shell + `styles.css` + `src/`) opens with no server. Only cloud sync and the service worker need http(s)
 - **iOS Safari compatibility** — test all features in mobile Safari
 - **Touch-first** — tap targets ≥ 32px, no hover-dependent UI
-- **Offline-first** — never depend on a network request
+- **Offline-first** — never depend on a network request; every cloud path degrades to local
 - **Data preservation** — never destroy character data without explicit user confirmation
-- **Single file unless necessary** — only split when file grows past ~200KB or maintenance becomes painful
+- ~~**Single file unless necessary**~~ — **superseded by P2 (2026-06-29)**. The app is now a thin shell + 8 `src/*.js` modules + `styles.css`; new code goes in the module its section belongs to, not back into the shell
 
 ---
 
@@ -968,12 +997,16 @@ The *Moria — Through the Doors of Durin* solo campaign, built as a **self-cont
 ## Local Development
 
 ```bash
-# Just open the file in a browser
-open "character-tracker.html"
+# Fully offline, no server — works because the app uses classic <script src>
+open "character-tracker.html"          # cloud sync + service worker are inert over file://
 
-# Or serve locally (optional, for testing PWA features)
-python3 -m http.server 8000
-# Then visit http://localhost:8000/character-tracker.html
+# Serve locally when you need the cloud layer, the SW, or a real PWA test
+python3 -m http.server 8000            # → http://localhost:8000/character-tracker.html
+# If the preview serves stale JS, change the port (fresh origin = clean cache) — GOTCHA 12.
+
+# Regression harness (headless Chromium)
+npm install                            # once per clone — playwright-core is gitignored
+npm test                               # 6 specs / 104 checks; must be green before committing
 ```
 
 ---
@@ -1047,33 +1080,27 @@ Before any major update, the user can export their character via the ☰ Menu �
 
 ## File Layout
 
-```
-TOR2E Tracker/
-├── character-tracker.html              # canonical edit target — all changes start here
-├── index.html                          # mirror of character-tracker.html for hosted deploys
-├── sw.js · manifest.json · icon-*.png/svg  # PWA service worker + install assets
-├── CLAUDE.md                            # this file — single source of truth (incl. full Moria subsystem ref)
-├── MD FIles/                            # extracted rulebook markdown (source reference for Claude)
-│   ├── Moria - Solo Rules.md · Moria - Rules.md
-│   └── (Strider Mode, etc.)
-└── *.pdf                               # original rulebook PDFs (Core Rules, Cheat Sheet, supplements)
-```
-
-**Workflow rule for Claude**: after any batch of edits to `character-tracker.html`, run `cp character-tracker.html index.html` to keep the deployed mirror in sync, and bump `CACHE_VERSION` in `sw.js`. Mention the deployed file is updated when reporting completed work.
-
-Future structure if we ever split (only if file becomes unmaintainable):
+Actual layout of the git repo (`github.com/arti47/tor2e-tracker`, branch `main`):
 
 ```
-TOR2E Tracker/
-├── index.html
-├── styles.css
-├── app.js
-├── data/
-│   ├── cultures.js
-│   ├── callings.js
-│   ├── weapons.js
-│   ├── rewards.js
-│   └── virtues.js
-├── manifest.json
-└── service-worker.js
+tor2e-tracker/
+├── character-tracker.html      # the shell — MARKUP edit target (JS lives in src/)
+├── index.html                  # byte-identical mirror for hosted deploys (`cp` after every markup change)
+├── styles.css                  # all CSS (theme vars, compact/text-size, print)
+├── src/
+│   ├── vendor-qrcode.js        # vendored qrcodejs (MIT)
+│   └── 01-core.js … 08-gm.js   # the 8 app modules — see the Module map above
+├── firebase-config.js          # real web config, FIREBASE_ENABLED = true (public by design; rules are the boundary)
+├── database.rules.json         # RTDB security rules — deployed; redeploy after any rules edit
+├── sw.js                       # service worker (bump CACHE_VERSION + add new files to PRECACHE)
+├── manifest.json · icon-192.png · icon-512.png · icon.svg   # PWA install assets
+├── tests/
+│   ├── run.js · serve.js · browser.js
+│   └── specs/{smoke,adversaries,ux,spillage,a11y,gm}.js
+├── package.json                # dev-only: `npm test`, playwright-core (node_modules gitignored)
+├── CLAUDE.md · README.md · LICENSE
 ```
+
+**Not in the repo** (local/iCloud only, on the user's Mac): the rulebook PDFs and the extracted `MD Files/` markdown. Rules questions therefore go through NotebookLM or the local PDFs — see **Data Sources**, and heed GOTCHA 2 on numeric tables.
+
+**Workflow rule for Claude**: JS changes go in `src/*.js`; markup changes go in `character-tracker.html`, then `cp character-tracker.html index.html`. Bump `CACHE_VERSION` in `sw.js` for any shipped file change, and add any NEW file to the `PRECACHE` list. Run `npm test` before committing.
