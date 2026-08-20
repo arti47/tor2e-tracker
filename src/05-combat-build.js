@@ -145,7 +145,7 @@ function applyPierce() {
 }
 
 function rollFirstAid() {
-  if (!char.wounded) { alert('First Aid only applies when Wounded.'); return; }
+  if (!char.wounded) return requireStep('First Aid treats a <strong>Wound</strong>, and your hero doesn\'t have one.<br><br>Wounds are set by the <strong>Wounded</strong> toggle in the Conditions card (a failed Protection roll sets it for you).', 'character', null, '⚠️ Not Wounded');
   const days = parseInt(char.injuryDays) || 0;
   if (days <= 0) { alert('No Severe Injury day-count to reduce. (Moderate/Grievous injuries do not use day-tracking.)'); return; }
   if (char.firstAidUsed) {
@@ -301,7 +301,7 @@ function pickRandom(arr) {
 
 async function generateRandomName() {
   if (!char.culture || !NAMES[char.culture]) {
-    alert('Pick a Culture first (Build tab) so I know which name list to use.');
+    await requireStep('Names are drawn from your hero\'s people, so pick a <strong>Heroic Culture</strong> first.<br><br>It\'s the first choice on the Build tab.', 'build', null, '⚠️ No culture yet');
     return;
   }
   const data = NAMES[char.culture];
@@ -578,6 +578,12 @@ function isWeaponRestricted(weaponName, culture) {
 function openWeaponPicker() {
   const list = document.getElementById('weapon-list');
   list.innerHTML = '';
+  // Legend: the picker prints bare stat notation that means nothing to a new player.
+  const legend = document.createElement('p');
+  legend.className = 'hint';
+  legend.style.cssText = 'text-align:left;margin:0 0 8px 0;line-height:1.45';
+  legend.innerHTML = '<strong>Dmg</strong> = Endurance taken off a foe on a hit. <strong>Inj</strong> = how deadly a Piercing Blow is (higher is worse for them; “16/18” = one-handed / two-handed). <strong>Load</strong> = weight — the more you carry, the sooner you tire. You may take one weapon per rank of its Combat Proficiency.';
+  list.appendChild(legend);
   // Group by proficiency
   const groups = {};
   WEAPONS.forEach((w, i) => {
@@ -712,6 +718,12 @@ function halveForDwarf(load) {
 function openArmourPicker() {
   const list = document.getElementById('armour-list');
   list.innerHTML = '';
+  // Legend: the picker prints bare stat notation that means nothing to a new player.
+  const legend = document.createElement('p');
+  legend.className = 'hint';
+  legend.style.cssText = 'text-align:left;margin:0 0 8px 0;line-height:1.45';
+  legend.innerHTML = '<strong>“3d”</strong> = Protection dice: when something wounds you, you roll that many dice to shrug it off — more is better. <strong>Load</strong> = weight, which drives Fatigue. <strong>min:</strong> = the Standard of Living you need to afford it.';
+  list.appendChild(legend);
   ARMOURS.forEach((a, i) => {
     const btn = document.createElement('button');
     btn.style.cssText = 'background:var(--card-bg);color:var(--ink);text-align:left;padding:10px 12px;font-size:13px;border:1px solid var(--border);border-radius:6px;cursor:pointer;display:block;width:100%;line-height:1.4;';
@@ -943,7 +955,7 @@ function openBestiary() { renderBestiaryList(); document.getElementById('bestiar
 function renderBestiaryList() {
   const q = (document.getElementById('bestiary-filter')?.value || '').toLowerCase().trim();
   const list = document.getElementById('bestiary-list'); if (!list) return;
-  let html = '', src = '';
+  let html = '<p class="hint" style="text-align:left;margin:0 0 8px 0;line-height:1.45">Each foe reads <strong>End</strong> (endurance) · <strong>Parry</strong> (how hard to hit) · <strong>Armour</strong> (their Protection dice) · <strong>Might</strong> (how monstrous). An attack like “sword 2d (5/16)” = 2 dice, Damage 5, Injury 16. Every number is editable after you add them.</p>', src = '';
   allBestiary().forEach((b, idx) => {
     if (!b.name.toLowerCase().includes(q)) return;
     if (b.source !== src) { src = b.source; html += `<div style="font-size:11px;font-weight:700;color:var(--text-muted);margin:8px 0 4px">${src}</div>`; }
@@ -1085,7 +1097,7 @@ function _foeProtectionRoll(foe, tn) {
 async function heroAttackFoe(foeId) {
   const f = getFoe(foeId); if (!f || f.slain) return;
   const wpns = _equippedWeapons();
-  if (!wpns.length) { alert('Equip a weapon in War Gear first.'); return; }
+  if (!wpns.length) return requireStep('You have nothing to fight with — no weapon is equipped.<br><br>Scroll down to <strong>War Gear</strong> on this tab and tap <strong>+ Pick Weapon</strong>. Unarmed is a valid choice too, if you meant it.', 'combat', 'war-gear-card', '⚠️ No weapon equipped');
   const e = enc();
   const w = wpns[Math.min(e.weaponIdx || 0, wpns.length - 1)];
   const prof = w.prof;
@@ -2956,7 +2968,13 @@ const REFERENCE = {
     ['Scene (Chronicle)', 'The unit your solo story is written in: a place, a moment, and something you want. Open one, play it out — writing prose and rolling as needed — then close it and open the next. Your rolls and oracle answers file themselves into the open scene.'],
     ['Stance', 'Where your hero stands in a fight, chosen each combat. It trades safety against aggression: <strong>Forward</strong> attacks hardest but is easiest to hit, <strong>Open</strong> is neutral, <strong>Defensive</strong> is hardest to hit but weakens your attacks, <strong>Rearward</strong> is ranged-only. Each stance also unlocks its own Combat Task.'],
     ['Resistance', 'How much a Council or a long task pushes back — the number of successes you must accumulate to win it (higher = harder).'],
-    ['Time Limit', 'How many attempts you get before a Council or Endeavour ends, win or lose.']
+    ['Time Limit', 'How many attempts you get before a Council or Endeavour ends, win or lose.'],
+    ['Damage', 'The Endurance a weapon takes off a foe on a hit. Listed as <em>Dmg</em> in the weapon picker.'],
+    ['Injury', 'The Target Number a foe must beat on their Protection roll if you land a <strong>Piercing Blow</strong>. Higher is deadlier. Listed as <em>Inj</em>; “16/18” means one-handed / two-handed.'],
+    ['Protection', 'Armour is rated in <em>dice</em> (e.g. “3d”): when something wounds you, roll that many Success dice plus a Feat die against the attack’s Injury number to shrug it off.'],
+    ['Might', 'A measure of how monstrous a foe is. Might 1 is a tough warrior; Might 2+ shrugs off effects that would stop a lesser creature.'],
+    ['Hate', 'An adversary’s version of Hope — the pool the Loremaster spends to make a foe hit harder or resist longer. Ordinary people have <em>Resolve</em> instead.'],
+    ['Adversary stat line', 'Reads: <strong>End</strong> (endurance) · <strong>Parry</strong> (how hard to hit) · <strong>Armour</strong> (Protection dice) · <strong>Might</strong>. An attack like “Broad-bladed sword 2d (5/16)” means 2 Success dice, Damage 5, Injury 16.']
   ],
   solo: [
     ['Playing with no Game Master', 'Normally a <em>Loremaster</em> describes the world and decides what happens. Playing solo, <strong>you do both jobs</strong> — you play your hero, and you ask the app’s <strong>Oracle</strong> whenever you genuinely don’t know what the world does. The Oracle’s job is to surprise you so the story isn’t just what you already planned.'],

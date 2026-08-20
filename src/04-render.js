@@ -399,7 +399,7 @@ function fpRenderStep() {
 
 async function fpNextStep() {
   if (fpState.step === 1 && !fpState.phaseType) {
-    alert('Pick Ordinary or Yule first.');
+    alertStyled('Choose the phase type first — <strong>Ordinary</strong> (the usual rest between adventures) or <strong>Yule</strong> (the midwinter feast, which recovers more and ages your hero a year). The two buttons are at the top of this step.', '⚠️ Pick a phase type');
     return;
   }
   if (fpState.step === 2 && !fpState.recoveryApplied) {
@@ -748,7 +748,10 @@ function startSkillEndeavour() {
   const resBtn = document.querySelector('#se-resistance-pick .seg-btn.active');
   const timeBtn = document.querySelector('#se-time-pick .seg-btn.active');
   const riskBtn = document.querySelector('#se-risk-pick .seg-btn.active');
-  if (!resBtn || !timeBtn || !riskBtn) { alert('Pick Resistance, Time Limit, and Risk Level first.'); return; }
+  if (!resBtn || !timeBtn || !riskBtn) {
+    const missing = [!resBtn && 'Resistance (how hard the task is)', !timeBtn && 'Time Limit (how many attempts you get)', !riskBtn && 'Risk Level (what failure costs)'].filter(Boolean);
+    return requireStep('Still to choose: <strong>' + missing.join('</strong>, <strong>') + '</strong>.<br><br>Each is a row of buttons in the Skill Endeavour Setup card — tap one option in every row, then Begin.', 'council', 'endeavour-setup-title', '⚠️ Endeavour not set up');
+  }
   char.skillEndeavour = {
     active: true,
     task: task || '(no task set)',
@@ -1003,7 +1006,10 @@ function startCouncil() {
   const topic = (document.getElementById('c-topic').value || '').trim();
   const resBtn = document.querySelector('#c-resistance-pick .seg-btn.active');
   const attBtn = document.querySelector('#c-attitude-pick .seg-btn.active');
-  if (!resBtn || !attBtn) { alert('Pick Resistance and Audience Attitude first.'); return; }
+  if (!resBtn || !attBtn) {
+    const missing = [!resBtn && 'Resistance (how hard they are to sway)', !attBtn && 'Audience Attitude (how they feel about you)'].filter(Boolean);
+    return requireStep('Still to choose: <strong>' + missing.join('</strong> and <strong>') + '</strong>.<br><br>Each is a row of buttons in the Council Setup card — tap one option in every row, then Begin.', 'council', 'council-setup-title', '⚠️ Council not set up');
+  }
   char.council = {
     active: true,
     topic: topic || '(no topic set)',
@@ -1415,7 +1421,7 @@ async function rollMarchingTest() {
   if (!j.active) { alert('No active journey.'); return; }
   if (j.currentHex >= j.totalHexes) { alert('Already at destination — tap Arrive.'); return; }
   if (j.nextEventHex !== null && j.nextEventHex !== undefined && j.currentHex >= j.nextEventHex) {
-    alert('An event is queued. Resolve it before making the next Marching Test.');
+    return requireStep('Something has happened on the road — resolve it before you march on.<br><br>Tap <strong>🎲 Resolve Event Now</strong> in the Journey in Progress card.', 'journey', 'journey-active-card', '⚠️ Event waiting');
     return;
   }
   // Solo (Strider or Moria): no roles assigned — the lone hero is the de-facto Guide.
@@ -2377,7 +2383,7 @@ function resolveJourneyEvent(isPeril) {
   if (isPeril) {
     if ((parseInt(j.perilEventsRemaining) || 0) <= 0) { alert('No peril events remaining.'); return; }
   } else {
-    if (j.nextEventHex === null || j.nextEventHex === undefined) { alert('No event scheduled. Make a Marching Test first.'); return; }
+    if (j.nextEventHex === null || j.nextEventHex === undefined) return requireStep('No event is due yet — events are scheduled by marching.<br><br>Tap <strong>🚶 Marching Test</strong> in the Journey in Progress card first.', 'journey', 'journey-active-card', '⚠️ Nothing to resolve');
     if (j.currentHex < j.nextEventHex) { alert('Not yet at the event hex.'); return; }
   }
 

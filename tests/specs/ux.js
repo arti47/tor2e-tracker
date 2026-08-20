@@ -428,6 +428,68 @@ module.exports = {
     checks.push({ ok: seq2.manualFolds && seq2.manualIntact, msg: 'manual dice controls fold away but stay intact' });
     checks.push({ ok: seq2.gmPartyFirst, msg: 'GM tab leads with the party dashboard' });
 
+    // ---- Idiot-proofing sweep 2: no dead-end guards, no unexplained modal notation ----
+    const sweep = await page.evaluate(async () => {
+      const out = {};
+      char.culture = 'Bardings'; char.calling = 'Warden'; char.weapons = []; char.wounded = false;
+      char.journey = { active: true, totalHexes: 6, currentHex: 0, nextEventHex: null, events: [], roles: {} };
+      saveCharacter();
+
+      // Every one of these guards must go through requireStep (a modal that offers the trip),
+      // never a bare alert that names a place and abandons you there.
+      const seen = [];
+      const origModal = window.showModal, origAlert = window.alert;
+      window.showModal = async (o) => { seen.push({ via: 'modal', msg: o.message, btns: (o.buttons || []).map(b => b.label) }); return null; };
+      window.alert = (m) => seen.push({ via: 'alert', msg: String(m) });
+
+      addFoeFromBestiary(0);
+      await heroAttackFoe(enc().foes[0].id);   // no weapon equipped
+      resolveJourneyEvent();                   // no event scheduled
+      rollFirstAid();                          // not Wounded
+
+      window.showModal = origModal; window.alert = origAlert;
+      out.guardCount = seen.length;
+      out.allViaModal = seen.length > 0 && seen.every(x => x.via === 'modal');
+      out.allOfferJump = seen.every(x => (x.btns || []).some(b => /take me there/i.test(b)) || /tap|scroll|card/i.test(x.msg));
+      out.noBareAlert = !seen.some(x => x.via === 'alert');
+
+      // Picker modals must define their own notation.
+      openWeaponPicker();
+      out.weaponLegend = /Dmg/.test(document.getElementById('weapon-list').innerText)
+                      && /Endurance taken off/.test(document.getElementById('weapon-list').innerText);
+      openArmourPicker();
+      out.armourLegend = /Protection dice/.test(document.getElementById('armour-list').innerText);
+      openBestiary();
+      out.bestiaryLegend = /how monstrous|Might/.test(document.getElementById('bestiary-list').innerText)
+                        && /Damage 5, Injury 16/.test(document.getElementById('bestiary-list').innerText);
+      document.querySelectorAll('.menu-overlay.show').forEach(o => o.classList.remove('show'));
+
+      // Every overlay must have a visible way out (not just Escape).
+      out.noTrap = [...document.querySelectorAll('.menu-overlay')].filter(o => o.id !== 'styled-modal-overlay')
+        .every(o => [...o.querySelectorAll('button')].some(b => /close|cancel|skip|done|back|×/i.test(b.textContent || '')));
+
+      out.setupDefaults = ['c-resistance-pick', 'c-attitude-pick', 'se-resistance-pick', 'se-time-pick', 'se-risk-pick']
+        .map(id => document.getElementById(id))
+        .filter(Boolean)
+        .every(row => !!row.querySelector('.seg-btn.active'));
+
+      // The notation terms must resolve for the (?) system too.
+      out.termsResolve = ['Damage', 'Injury', 'Protection', 'Might', 'Hate', 'Adversary stat line']
+        .every(t => !!hintRow(t));
+      return out;
+    });
+    checks.push({ ok: sweep.guardCount === 3, msg: `sequence guards fire on wrong-order actions (got ${sweep.guardCount})` });
+    // Council/Endeavour can't be started unconfigured at all — their setup rows ship with a
+    // selected default, so the guard is unreachable. That is the stronger property; pin it.
+    checks.push({ ok: sweep.setupDefaults, msg: 'Council + Endeavour setup rows have safe defaults (cannot start unconfigured)' });
+    checks.push({ ok: sweep.allViaModal && sweep.noBareAlert, msg: 'no guard falls back to a bare alert()' });
+    checks.push({ ok: sweep.allOfferJump, msg: 'every guard names the next step or offers the trip' });
+    checks.push({ ok: sweep.weaponLegend, msg: 'weapon picker explains Dmg / Inj / Load' });
+    checks.push({ ok: sweep.armourLegend, msg: 'armour picker explains Protection dice' });
+    checks.push({ ok: sweep.bestiaryLegend, msg: 'bestiary explains the adversary stat line' });
+    checks.push({ ok: sweep.noTrap, msg: 'no overlay traps the user without a visible exit' });
+    checks.push({ ok: sweep.termsResolve, msg: 'combat notation terms resolve in the (?) vocabulary' });
+
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length})` });
     await context.close();
     return { checks };
