@@ -273,9 +273,24 @@ module.exports = {
       out.hintResolves = !!hintRow('Ill-Favoured') && !!hintRow('The Oracle') && !!hintRow('Resistance');
       out.hintIdempotent = (initHintButtons(), document.querySelectorAll('[data-hint] .hint-q').length) === out.hintBtns;
 
-      // D: the five previously-bare tabs now open with an explanation.
+      // D: every tab opens with an explanation — all 14, not just the 5 that were bare.
+      const ALL_TABS = ['character','skills','combat','journey','council','gear','dice','reference','oracle','band','battle','chronicle','build','gm'];
       out.intros = ['character','combat','journey','dice','chronicle']
         .filter(t => document.querySelector('#panel-' + t + ' .tab-intro')).length;
+      out.introsAll = ALL_TABS.filter(t => {
+        const p = document.querySelector('#panel-' + t);
+        // reference/skills/etc. explain themselves via their own leading .hint; accept either.
+        return p && (p.querySelector('.tab-intro') || (p.querySelector('.card .hint') && p.querySelector('.card .hint').innerText.trim().length > 80));
+      }).length;
+      // B (deep pass): the jargon-dense solo tabs must carry hints, not just the Character tab.
+      out.hintsByTab = {};
+      ALL_TABS.forEach(t => {
+        const p = document.querySelector('#panel-' + t);
+        out.hintsByTab[t] = p ? p.querySelectorAll('[data-hint]').length : 0;
+      });
+      out.tabsWithHints = Object.values(out.hintsByTab).filter(n => n > 0).length;
+      // every data-hint in the document must resolve to real text (no dead (?) buttons)
+      out.deadHints = [...document.querySelectorAll('[data-hint]')].map(e => e.dataset.hint).filter(t => !hintRow(t));
 
       // E: rolling with no hero warns once, then never again.
       let seen = 0; const origAlert = window.alertStyled;
@@ -296,6 +311,10 @@ module.exports = {
     checks.push({ ok: onboard.hintResolves, msg: 'hint lookup resolves terms/solo/council vocabulary' });
     checks.push({ ok: onboard.hintIdempotent, msg: 'initHintButtons is idempotent (no duplicate ? buttons)' });
     checks.push({ ok: onboard.intros === 5, msg: `the 5 bare tabs gained an intro card (got ${onboard.intros})` });
+    checks.push({ ok: onboard.introsAll === 14, msg: `all 14 tabs open with an explanation (got ${onboard.introsAll})` });
+    checks.push({ ok: onboard.tabsWithHints >= 13, msg: `(?) hints reach 13+ of 14 tabs (got ${onboard.tabsWithHints})` });
+    checks.push({ ok: onboard.hintsByTab.band >= 10 && onboard.hintsByTab.battle >= 8, msg: `Moria Band/Battle jargon is hinted (band ${onboard.hintsByTab.band}, battle ${onboard.hintsByTab.battle})` });
+    checks.push({ ok: onboard.deadHints.length === 0, msg: `no data-hint points at missing text (dead: ${onboard.deadHints.join(', ') || 'none'})` });
     checks.push({ ok: onboard.blankWarnOnce, msg: 'rolling with no hero built warns exactly once' });
     checks.push({ ok: onboard.menuGroups >= 6, msg: `menu is grouped into sections (got ${onboard.menuGroups})` });
     checks.push({ ok: onboard.soloLabel, msg: 'solo toggle is labelled in plain language (Solo Play)' });

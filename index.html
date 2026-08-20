@@ -125,7 +125,7 @@
   </div>
 
   <div class="card">
-    <h3 class="card-title">Chronicle <span id="ch-count" style="font-size:11px;color:var(--text-muted);font-weight:400"></span></h3>
+    <h3 class="card-title" data-hint="Scene (Chronicle)">Chronicle <span id="ch-count" style="font-size:11px;color:var(--text-muted);font-weight:400"></span></h3>
     <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
       <input id="ch-search" placeholder="Filter entries…" oninput="renderChronicleTimeline()" style="flex:1;min-width:120px;font-size:12px;padding:4px 8px;border:1px solid var(--border);border-radius:5px;background:var(--bg-deep);color:var(--ink)">
       <button class="add-row-btn" onclick="exportChronicleMarkdown('split')" style="background:var(--btn-secondary-bg);font-size:12px" title="Prose, then a Rules Bits appendix per scene (polished document)">⬇ Story</button>
@@ -156,7 +156,7 @@
   </div>
   <div id="gm-campaign-body"></div>
   <div class="card">
-    <h3 class="card-title">🌑 Group Shadow Test</h3>
+    <h3 class="card-title" data-hint="Shadow / Scars">🌑 Group Shadow Test</h3>
     <p class="hint" style="text-align:left">Rolls one test for every hero at once — Dread (Valour vs Heart TN), Greed / Sorcery (Wisdom vs Wits TN). Each hero's own Weary + Despair apply. Tap a failure's button to hand out the Shadow (capped, persisted).</p>
     <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:6px">
       <button onclick="gmGroupShadowTest('dread')" style="font-size:12px;padding:4px 10px">🌑 Dread</button>
@@ -176,7 +176,7 @@
     <p class="hint" style="text-align:left;margin-top:6px">Adds to the active hero's Combat-tab encounter. A single <b>shared</b> encounter arrives with cloud campaigns.</p>
   </div>
   <div class="card">
-    <h3 class="card-title">👁 Eye of Mordor</h3>
+    <h3 class="card-title" data-hint="Eye of Mordor">👁 Eye of Mordor</h3>
     <div id="gm-eye-body"></div>
     <p class="hint" style="text-align:left;margin-top:6px">Each hero's Eye Awareness vs their Hunt threshold (solo modes track this). ⚠ = a Revelation is due.</p>
   </div>
@@ -232,7 +232,7 @@
     <p class="hint" style="margin-bottom:10px">Auto-fill attributes, skills & gear from culture/calling defaults. Then switch to the Character tab to fine-tune.</p>
 
     <div class="field">
-      <label>Culture</label>
+      <label data-hint="Heroic Culture">Culture</label>
       <select id="culture-pick">
         <option value="">— Select —</option>
         <optgroup label="Core Rules">
@@ -262,7 +262,7 @@
     <button class="add-row-btn" id="apply-culture-btn" onclick="applyCulture()" style="display:none; width:100%;">Apply Culture Defaults</button>
 
     <div class="field" style="margin-top:14px">
-      <label>Calling</label>
+      <label data-hint="Calling">Calling</label>
       <select id="calling-pick">
         <option value="">— Select —</option>
         <optgroup label="Core Callings">
@@ -334,7 +334,7 @@
   </div>
 
   <div class="card" id="pe-card" style="display:none">
-    <h3 class="card-title">Previous Experience (10 pts)</h3>
+    <h3 class="card-title" data-hint="Previous Experience">Previous Experience (10 pts)</h3>
     <p class="hint" style="margin-bottom:8px">Spend up to 10 pts raising Skills (cap ◆◆◆◆) and Combat Proficiencies (cap ◆◆◆) above your Culture's baseline. <em>Costs differ from in-game XP.</em></p>
     <div id="pe-budget" style="text-align:center;padding:10px;background:var(--bg-deep);border-radius:6px;margin-bottom:10px;font-weight:700;font-size:14px;color:var(--red-dark)"></div>
     <div style="text-align:center;margin-bottom:10px">
@@ -344,13 +344,13 @@
   </div>
 
   <div class="card" id="favoured-card" style="display:none">
-    <h3 class="card-title">Favoured Skills</h3>
+    <h3 class="card-title" data-hint="Favoured">Favoured Skills</h3>
     <p class="hint" style="margin-bottom:8px">Pick 1 from Culture · 2 from Calling · 2 more if you take the Mastery virtue.</p>
     <div id="favoured-content"></div>
   </div>
 
   <div class="card" id="features-card" style="display:none">
-    <h3 class="card-title">Distinctive Features</h3>
+    <h3 class="card-title" data-hint="Distinctive Feature">Distinctive Features</h3>
     <p class="hint" style="margin-bottom:8px">Pick 2 from your culture's 8. Your calling's feature is auto-added.</p>
     <div id="features-checklist"></div>
     <div id="features-summary" style="margin-top:10px;padding:8px;background:var(--bg);border-radius:6px;font-size:12px;display:none"></div>
@@ -698,7 +698,7 @@
   </div>
 
   <div class="card" id="eye-of-mordor-card" style="display:none;border-color:var(--red-dark);background:linear-gradient(180deg,var(--red-soft) 0%,var(--card-bg) 50%)">
-    <h3 class="card-title" style="color:var(--red-dark)">👁️ Eye of Mordor</h3>
+    <h3 class="card-title" data-hint="Eye of Mordor" style="color:var(--red-dark)">👁️ Eye of Mordor</h3>
     <p class="hint" style="text-align:left;line-height:1.5;margin-bottom:10px">Your visibility to the Enemy. Raise by 1 for any Eye icon outside combat; raise by amount of Shadow gained outside combat. When Eye Awareness ≥ Hunt Threshold, face a Revelation Episode.</p>
     <div class="row-3">
       <div class="counter">
@@ -789,7 +789,7 @@
   </div>
 
   <div class="card">
-    <h3 class="card-title">Skills</h3>
+    <h3 class="card-title" data-hint="Favoured">Skills</h3>
     <p class="hint">🔒 Locked — toggle Edit Mode above to change manually, or use Spend XP on Character tab</p>
     <div class="skill-cols">
       <div id="skills-str"></div>
@@ -1026,7 +1026,7 @@
   </div>
 
   <div class="card" id="journey-progress-card" style="display:none">
-    <h3 class="card-title">Journey in Progress</h3>
+    <h3 class="card-title" data-hint="Marching Test">Journey in Progress</h3>
     <div id="j-summary" style="font-size:13px;line-height:1.6;margin-bottom:10px"></div>
     <div style="background:var(--bg-deep);border-radius:6px;height:24px;position:relative;margin-bottom:8px;overflow:hidden">
       <div id="j-progress-bar" style="background:linear-gradient(90deg,var(--gold),var(--red));height:100%;width:0%;transition:width 0.3s"></div>
@@ -1294,7 +1294,7 @@
     <textarea class="full" data-field="travel" style="min-height:160px" placeholder="Describe your travelling clothes and supplies..."></textarea>
   </div>
   <div class="card" style="border-color:var(--gold);background:linear-gradient(180deg,var(--gold-paler) 0%,var(--pure-white) 100%)">
-    <h3 class="card-title" style="color:var(--gold)">✨ Magical Treasure</h3>
+    <h3 class="card-title" data-hint="Blessing (magical item)" style="color:var(--gold)">✨ Magical Treasure</h3>
     <p class="hint" style="text-align:left;margin-bottom:10px;line-height:1.5">Marvellous Artefacts (1 Blessing → +2d on that skill + Magical Success), Wondrous Items (2 Blessings), Famous Weapons/Armour. Each magical item counts as <strong>+1 Load</strong>.</p>
     <div style="display:flex;gap:6px;margin-bottom:10px">
       <button class="add-row-btn" onclick="openHoardRoller()" style="flex:1;background:var(--gold)">🎲 Roll Hoard</button>
@@ -1508,7 +1508,7 @@
   </div>
 
   <div class="card">
-    <h3 class="card-title">Telling Table — yes/no question</h3>
+    <h3 class="card-title" data-hint="Telling Table">Telling Table — yes/no question</h3>
     <p class="hint" style="text-align:left">Pick the chance of "yes", then tap Ask.</p>
     <div class="field"><label>Question</label><input id="oracle-telling-q" placeholder="e.g. Is there a light in the passage?"></div>
     <div class="field"><label>Chance</label>
@@ -1525,7 +1525,7 @@
   </div>
 
   <div class="card">
-    <h3 class="card-title">Lore Table — open-ended prompt</h3>
+    <h3 class="card-title" data-hint="Lore Table">Lore Table — open-ended prompt</h3>
     <p class="hint" style="text-align:left;line-height:1.4">Rolls one Feat die (12 sections) + one Success die (6 rows) to produce three words across Action / Aspect / Focus. Interpret them within your current situation — sometimes literal, sometimes metaphor.</p>
     <div style="margin-top:6px">
       <label style="font-size:11px;color:var(--red-dark);text-transform:uppercase;letter-spacing:0.5px;font-weight:600">Columns to roll</label>
@@ -1585,8 +1585,10 @@
 <!-- ============ BAND TAB (Moria Solo) ============ -->
 <section class="panel" id="panel-band">
 
+  <div class="card tab-intro"><p class="hint" style="text-align:left;line-height:1.55;margin:0"><strong>Your Band of dwarves — the Moria campaign’s second character.</strong> You don’t track allies as individual sheets: the Band is one group with a <strong>Readiness</strong> (which sets its Target Number) and five <strong>Dispositions</strong> it rolls with. Plan a mission up top, roll Dispositions when the Band must act, and use <strong>Tests</strong> when it takes punishment. Tap any <span style="font-weight:700">?</span> for what a term means.</p></div>
+
   <div class="card">
-    <h3 class="card-title">🗺️ Mission Planning</h3>
+    <h3 class="card-title" data-hint="Mission (Moria)">🗺️ Mission Planning</h3>
     <p class="hint" style="text-align:left;line-height:1.5">Set your mission, then choose the Band's <strong>composition</strong> — it seeds Dispositions, Burden, Readiness, Eye Awareness, and the Hunt Threshold.</p>
     <div class="field"><label style="flex:0 0 70px">Objective</label><input id="m-objective" placeholder="What does Balin send you to do?" onchange="char.mission.objective=this.value;saveCharacter()"></div>
     <button class="add-row-btn" onclick="rollMissionObjective()" style="width:100%;font-size:12px;background:var(--btn-secondary-bg);margin-bottom:10px">🎲 Roll Mission Objective</button>
@@ -1610,7 +1612,7 @@
       <button class="seg-btn" data-spec="stalwarts">Stalwarts <small>+Rally</small></button>
       <button class="seg-btn" data-spec="experts">Experts <small>+Exp</small></button>
     </div>
-    <label style="font-size:12px;color:var(--red-dark);text-transform:uppercase;letter-spacing:0.5px;font-weight:600">Previous Mission (Hunt mod)</label>
+    <label data-hint="Hunt Threshold" style="font-size:12px;color:var(--red-dark);text-transform:uppercase;letter-spacing:0.5px;font-weight:600">Previous Mission (Hunt mod)</label>
     <div class="seg-btns" id="m-prev-pick" style="margin:4px 0 8px">
       <button class="seg-btn" data-prev="">First / —</button>
       <button class="seg-btn" data-prev="astounding">Astound <small>+4</small></button>
@@ -1618,7 +1620,7 @@
       <button class="seg-btn" data-prev="minorFail">Minor <small>−2</small></button>
       <button class="seg-btn" data-prev="devastating">Devast <small>−4</small></button>
     </div>
-    <label style="font-size:12px;color:var(--red-dark);text-transform:uppercase;letter-spacing:0.5px;font-weight:600">Fellowship Phase (Hunt mod)</label>
+    <label data-hint="Moria Fellowship Phase" style="font-size:12px;color:var(--red-dark);text-transform:uppercase;letter-spacing:0.5px;font-weight:600">Fellowship Phase (Hunt mod)</label>
     <div class="seg-btns" id="m-fp-pick" style="margin:4px 0 8px">
       <button class="seg-btn" data-fp="hurried">Hurried <small>+2</small></button>
       <button class="seg-btn" data-fp="brief">Brief <small>0</small></button>
@@ -1671,7 +1673,7 @@
   </div>
 
   <div class="card">
-    <h3 class="card-title">Solo Tools</h3>
+    <h3 class="card-title" data-hint="Hero or Band?">Solo Tools</h3>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="add-row-btn" onclick="rollHeroOrBand()" style="flex:1;min-width:130px;font-size:12px">🎲 Hero or Band?</button>
       <button class="add-row-btn" onclick="desperateStand()" style="flex:1;min-width:130px;font-size:12px;background:var(--btn-alert-bg)">🛡️ Desperate Stand</button>
@@ -1683,7 +1685,7 @@
   <div class="card">
     <h3 class="card-title">Tests</h3>
     <div style="margin-bottom:10px">
-      <label style="font-size:12px;color:var(--red-dark);text-transform:uppercase;letter-spacing:0.5px;font-weight:600">Endurance Test (Rally vs TN + Damage Threat)</label>
+      <label data-hint="Endurance Test (Band)" style="font-size:12px;color:var(--red-dark);text-transform:uppercase;letter-spacing:0.5px;font-weight:600">Endurance Test (Rally vs TN + Damage Threat)</label>
       <div class="seg-btns" id="band-threat-pick" style="margin-top:4px">
         <button class="seg-btn active" data-threat="bothersome">Bother. 0</button>
         <button class="seg-btn" data-threat="painful">Painful 1</button>
@@ -1693,7 +1695,7 @@
       <button class="roll-btn" onclick="enduranceTest()" style="margin-top:6px">🩸 Roll Endurance Test</button>
     </div>
     <div style="border-top:1px dashed var(--border);padding-top:10px">
-      <label style="font-size:12px;color:var(--red-dark);text-transform:uppercase;letter-spacing:0.5px;font-weight:600">Fatigue Test (Rally vs TN + Fatigue pts, ± Burden)</label>
+      <label data-hint="Fatigue Test (Band)" style="font-size:12px;color:var(--red-dark);text-transform:uppercase;letter-spacing:0.5px;font-weight:600">Fatigue Test (Rally vs TN + Fatigue pts, ± Burden)</label>
       <div class="field" style="margin-top:4px"><label style="flex:0 0 110px">Fatigue points</label><input type="number" id="band-fatigue-pts" min="0" value="2"></div>
       <button class="roll-btn" onclick="fatigueTest()" style="margin-top:2px;background:var(--btn-secondary-bg)">😓 Roll Fatigue Test</button>
     </div>
@@ -1705,7 +1707,7 @@
   </div>
 
   <div class="card">
-    <h3 class="card-title">Allies <span id="band-ally-count" style="color:var(--text-muted);font-weight:400;font-size:12px"></span></h3>
+    <h3 class="card-title" data-hint="Ally Gift / Quirk">Allies <span id="band-ally-count" style="color:var(--text-muted);font-weight:400;font-size:12px"></span></h3>
     <div style="display:flex;gap:8px;margin-bottom:8px">
       <button class="add-row-btn" onclick="generateAlly()" style="flex:1">🎲 Generate Ally</button>
       <button class="add-row-btn" onclick="addStartingBand()" style="flex:1;background:var(--btn-secondary-bg)">+ Roll 6 Starting Allies</button>
@@ -1714,7 +1716,7 @@
   </div>
 
   <div class="card" style="border-color:var(--green-soft)">
-    <h3 class="card-title">🌿 Fellowship Phase (Moria)</h3>
+    <h3 class="card-title" data-hint="Moria Fellowship Phase">🌿 Fellowship Phase (Moria)</h3>
     <p class="hint" style="text-align:left;line-height:1.5">Return to Balin's camp. Pick a <strong>duration</strong> to recover (no Yule in Moria); longer rests heal more but let Shadow gain ground (lower next Hunt Threshold).</p>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px">
       <button class="add-row-btn" onclick="moriaFP('hurried')" style="font-size:11px">⏱️ Hurried<br><small>hours</small></button>
@@ -1739,17 +1741,19 @@
 <!-- ============ BATTLE TAB (Moria Solo) ============ -->
 <section class="panel" id="panel-battle">
 
+  <div class="card tab-intro"><p class="hint" style="text-align:left;line-height:1.55;margin:0"><strong>Large-scale fights, resolved as a whole rather than blow by blow.</strong> Set the enemy <strong>War Party</strong> (its Might and Resistance), then run <strong>Clashes</strong>: pick how you lead, pick how the Band commits, roll, and spend your successes — cutting the foe’s Resistance, banking an Advantage, or clearing a Complication. Drive Resistance to 0 to win. Tap any <span style="font-weight:700">?</span> for what a term means.</p></div>
+
   <!-- SETUP -->
   <div class="card" id="battle-setup-card">
-    <h3 class="card-title">⚔️ Battle Setup</h3>
+    <h3 class="card-title" data-hint="War Party (Battle)">⚔️ Battle Setup</h3>
     <p class="hint" style="text-align:left;line-height:1.5">Set the enemy War Party, then begin. Clashes resolve the whole fight in rounds (your Band's <strong>War</strong> vs Readiness TN + foe <strong>Might</strong>); reduce the foe's <strong>Resistance</strong> to 0 to win.</p>
     <button class="add-row-btn" onclick="rollWarParty()" style="width:100%;font-size:12px;background:var(--btn-secondary-bg);margin-bottom:8px">🎲 Roll War Party (Fav small band / Ill large)</button>
     <div class="field"><label style="flex:0 0 60px">Scale</label><input id="b-scale" readonly placeholder="— roll or type —"></div>
     <div class="row-2">
-      <div class="field" style="margin:0"><label style="flex:0 0 50px">Might</label><input id="b-might" type="number" min="0" value="1"></div>
+      <div class="field" style="margin:0"><label data-hint="Might (foe)" style="flex:0 0 50px">Might</label><input id="b-might" type="number" min="0" value="1"></div>
       <div class="field" style="margin:0"><label style="flex:0 0 60px">Resist.</label><input id="b-resistance" type="number" min="1" value="6"></div>
     </div>
-    <label style="font-size:12px;color:var(--red-dark);text-transform:uppercase;letter-spacing:0.5px;font-weight:600;margin-top:6px;display:block">Archfoe</label>
+    <label data-hint="Archfoe" style="font-size:12px;color:var(--red-dark);text-transform:uppercase;letter-spacing:0.5px;font-weight:600;margin-top:6px;display:block">Archfoe</label>
     <div class="seg-btns" id="b-archfoe-pick" style="margin:4px 0 6px">
       <button class="seg-btn" data-archfoe="none">None</button>
       <button class="seg-btn" data-archfoe="lesser">Lesser <small>R+1</small></button>
@@ -1764,21 +1768,21 @@
       <button class="seg-btn" data-objres="daunting">Daunt. 9</button>
       <button class="seg-btn" data-objres="overwhelming">Overw. 12</button>
     </div>
-    <button class="add-row-btn" onclick="rollBattlefield()" style="width:100%;font-size:11px;background:var(--btn-secondary-bg);margin-bottom:4px">🎲 Roll Battlefield Aspect (flavour)</button>
+    <button data-hint="Battlefield Aspect" class="add-row-btn" onclick="rollBattlefield()" style="width:100%;font-size:11px;background:var(--btn-secondary-bg);margin-bottom:4px">🎲 Roll Battlefield Aspect (flavour)</button>
     <div id="b-battlefield" class="hint" style="text-align:left;margin:2px 0"></div>
-    <button class="roll-btn" onclick="beginBattle()" style="width:100%;margin-top:6px">⚔️ Begin Battle (Get in Position)</button>
+    <button data-hint="Advantage / Complication" class="roll-btn" onclick="beginBattle()" style="width:100%;margin-top:6px">⚔️ Begin Battle (Get in Position)</button>
   </div>
 
   <!-- IN PROGRESS -->
   <div class="card" id="battle-active-card" style="display:none;border-color:var(--red);">
     <h3 class="card-title" data-hint="Clash">⚔️ Clash <span id="b-round" style="color:var(--text-muted);font-weight:400;font-size:12px"></span></h3>
     <div class="row-2">
-      <div class="counter"><div class="counter-label">Foe Resistance</div><div class="counter-value" id="b-foeres-v">6</div><div class="hint" style="margin:0">Might <span id="b-foemight-v">1</span></div></div>
+      <div class="counter"><div class="counter-label" data-hint="Foe Resistance">Foe Resistance</div><div class="counter-value" id="b-foeres-v">6</div><div class="hint" style="margin:0">Might <span id="b-foemight-v">1</span></div></div>
       <div class="counter" id="b-obj-counter" style="display:none"><div class="counter-label">Objective</div><div class="counter-value" id="b-objres-v">0</div><div class="hint" style="margin:0" id="b-obj-name"></div></div>
     </div>
     <div id="b-chips" style="margin:8px 0"></div>
 
-    <label style="font-size:12px;color:var(--red-dark);text-transform:uppercase;letter-spacing:0.5px;font-weight:600">1 · Leader Focus</label>
+    <label data-hint="Leader Focus" style="font-size:12px;color:var(--red-dark);text-transform:uppercase;letter-spacing:0.5px;font-weight:600">1 · Leader Focus</label>
     <div class="seg-btns" id="b-focus-pick" style="margin:4px 0">
       <button class="seg-btn" data-focus="command">Command</button>
       <button class="seg-btn" data-focus="inspire">Inspire</button>
@@ -1787,7 +1791,7 @@
     </div>
     <button class="add-row-btn" onclick="resolveLeaderFocus()" style="width:100%;font-size:12px;margin-bottom:8px">▶ Resolve Leader Focus</button>
 
-    <label style="font-size:12px;color:var(--red-dark);text-transform:uppercase;letter-spacing:0.5px;font-weight:600">2 · Band Stance</label>
+    <label data-hint="Band Stance" style="font-size:12px;color:var(--red-dark);text-transform:uppercase;letter-spacing:0.5px;font-weight:600">2 · Band Stance</label>
     <div class="seg-btns" id="b-stance-pick" style="margin:4px 0">
       <button class="seg-btn" data-stance="aggressive">Aggr. <small>Ill</small></button>
       <button class="seg-btn" data-stance="balanced">Balanced</button>
