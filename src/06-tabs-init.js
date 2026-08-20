@@ -1051,6 +1051,7 @@ function _tutBuildIfBlank(c) {
     weapons: [{ name: 'Spear', dmg: '4', inj: '14', prof: 'Spears', picked: true }, { name: 'Long-bow', dmg: '4', inj: '16', prof: 'Bows', picked: true }]
   });
 }
+const TUT_SANDBOX_KEY = 'tor2e-tut-sandbox';   // survives a reload so a half-finished tutorial can be unwound
 function _tutEnterSandbox() {
   if (window._tutSandbox) return;
   saveCharacter();
@@ -1065,6 +1066,9 @@ function _tutEnterSandbox() {
   localStorage.setItem(CHAR_PREFIX + id, JSON.stringify(char));
   saveHistory(); saveJournal();
   window._tutSandbox = { prevActiveId, practiceId: id };
+  // Persist it: the sandbox lived only in memory, so closing the app mid-tutorial left the player
+  // reopening AS the practice hero with their real character inactive and no explanation.
+  try { localStorage.setItem(TUT_SANDBOX_KEY, JSON.stringify(window._tutSandbox)); } catch (e) {}
   if (typeof clearUndo === 'function') clearUndo();
   render(); renderHistory(); renderChronicle();
 }
@@ -1091,6 +1095,30 @@ async function _tutExitSandbox() {
     applyActiveCharacter();
   }
   window._tutSandbox = null;
+  try { localStorage.removeItem(TUT_SANDBOX_KEY); } catch (e) {}
+}
+
+/* Recovery: a persisted sandbox with no tutorial running means the app was closed mid-lesson.
+   Offer the same Keep/Discard choice the tutorial would have, instead of silently leaving the
+   player on a practice hero. */
+async function _tutRecoverSandbox() {
+  if (window._tutSandbox) return;
+  let sb = null;
+  try { sb = JSON.parse(localStorage.getItem(TUT_SANDBOX_KEY) || 'null'); } catch (e) {}
+  if (!sb || !sb.practiceId) return;
+  // Nothing to recover if the practice hero is already gone.
+  if (!localStorage.getItem(CHAR_PREFIX + sb.practiceId)) { try { localStorage.removeItem(TUT_SANDBOX_KEY); } catch (e) {} return; }
+  const roster = loadRoster() || { list: [] };
+  const prev = (roster.list || []).find(e => e.id === sb.prevActiveId);
+  const practice = (roster.list || []).find(e => e.id === sb.practiceId);
+  window._tutSandbox = sb;                       // let _tutExitSandbox do the actual work
+  await alertStyled(
+    'You closed the app while the <strong>tutorial</strong> was open, so you are currently on its ' +
+    'practice hero' + (practice ? ' — <strong>' + escapeHtml(practice.name) + '</strong>' : '') + '.<br><br>' +
+    'Your own character' + (prev ? ' <strong>' + escapeHtml(prev.name) + '</strong>' : '') + ' is safe in your roster. ' +
+    'Choose next whether to keep the practice hero or discard it.',
+    '📖 Tutorial was still open');
+  await _tutExitSandbox();
 }
 
 /* ----- the Lessons menu ----- */
@@ -1118,7 +1146,7 @@ function renderTutMenu() {
       <h3 style="margin-top:0">📖 Learn the Game</h3>
       <p class="hint" style="text-align:left;margin:0 0 10px">Lessons run on a safe <strong>practice hero</strong> — your real characters aren't touched. Pick any topic.</p>
       ${items}
-      <button onclick="tutDone()" class="add-row-btn" style="width:100%;margin-top:8px;background:var(--btn-secondary-bg);color:white">Done — exit tutorial</button>
+      <button onclick="tutDone()" class="close add-row-btn" style="width:100%;margin-top:8px;background:var(--btn-secondary-bg);color:white">Done — exit tutorial</button>
       <button onclick="resetTutorial()" class="add-row-btn" style="width:100%;margin-top:6px;background:none;border:1px solid var(--border);color:var(--text-muted);font-size:12px">↺ Reset tutorial progress</button>
     </div>`;
   ov.classList.add('show');
@@ -1699,6 +1727,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   if (typeof snapshotHero === 'function') snapshotHero(activeCharId, 'load');   // U12: one auto-backup per load
   importFromHash();   // offer to import a character if the URL carries a shared payload
+  _tutRecoverSandbox();   // unwind a tutorial the app was closed during (before offering a new one)
   maybeOfferTutorial();   // one-time first-run offer of the guided tutorial
   maybeBackupNudge();       // U14: gentle export reminder (14-day threshold, 3-day throttle)
 

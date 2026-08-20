@@ -524,6 +524,43 @@ module.exports = {
     checks.push({ ok: hints.thinTabs.length === 0, msg: `no jargon tab left without a (?) (thin: ${hints.thinTabs.join(', ') || 'none'})` });
     checks.push({ ok: hints.total >= 24, msg: `data-hint coverage held (got ${hints.total})` });
 
+    // ---- Tutorial integrity + sandbox recovery ----
+    const tut = await page.evaluate(() => {
+      const out = {};
+      // Every lesson step must point at a real tab and a resolvable selector, and carry copy.
+      out.lessons = TUTORIAL_LESSONS.length;
+      out.steps = TUTORIAL_LESSONS.reduce((n, L) => n + L.steps.length, 0);
+      const bad = [];
+      TUTORIAL_LESSONS.forEach(L => L.steps.forEach((st, i) => {
+        if (st.tab && !document.getElementById('panel-' + st.tab)) bad.push(L.id + '#' + i + ' tab');
+        if (st.sel) { try { if (!document.querySelector(st.sel)) bad.push(L.id + '#' + i + ' sel'); } catch (e) { bad.push(L.id + '#' + i + ' badsel'); } }
+        if (!st.body || st.body.length < 20) bad.push(L.id + '#' + i + ' body');
+      }));
+      out.bad = bad;
+      // The sandbox must be persisted, so closing the app mid-lesson can be unwound.
+      char.name = 'RealHero'; saveCharacter();
+      const realId = activeCharId;
+      openTutorial();
+      out.persisted = !!localStorage.getItem('tor2e-tut-sandbox');
+      out.swapped = activeCharId !== realId;
+      const sb = JSON.parse(localStorage.getItem('tor2e-tut-sandbox') || '{}');
+      out.remembersReal = sb.prevActiveId === realId;
+      // …and cleared once the tutorial is properly exited.
+      const origConfirm = window.confirmStyled;
+      window.confirmStyled = async () => false;          // "discard the practice hero"
+      return { out, cleanup: true, origSet: true };
+    });
+    // finish the exit outside the first evaluate so the async dialog can resolve
+    const tut2 = await page.evaluate(async () => {
+      await _tutExitSandbox();
+      return { cleared: !localStorage.getItem('tor2e-tut-sandbox'), back: char.name };
+    });
+    checks.push({ ok: tut.out.lessons === 10 && tut.out.steps === 57, msg: `tutorial has 10 lessons / 57 steps (got ${tut.out.lessons}/${tut.out.steps})` });
+    checks.push({ ok: tut.out.bad.length === 0, msg: `every tutorial step resolves its tab+selector and has copy (bad: ${tut.out.bad.slice(0, 4).join(', ') || 'none'})` });
+    checks.push({ ok: tut.out.persisted && tut.out.swapped && tut.out.remembersReal, msg: 'tutorial sandbox is persisted and remembers the real hero' });
+    checks.push({ ok: tut2.cleared, msg: 'exiting the tutorial clears the persisted sandbox' });
+    checks.push({ ok: tut2.back === 'RealHero', msg: 'discarding the practice hero restores the real one' });
+
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length})` });
     await context.close();
     return { checks };
