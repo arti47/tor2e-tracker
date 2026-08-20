@@ -15,6 +15,8 @@ function bindTabs() {
       if (t.dataset.tab === 'chronicle') renderChronicle();
       if (t.dataset.tab === 'reference') renderReference();
       if (t.dataset.tab === 'gm' && typeof renderGm === 'function') renderGm();
+      if (typeof initHintButtons === 'function') initHintButtons();       // (?) hints on any newly-shown markup
+      if (typeof renderNewcomerBanner === 'function') renderNewcomerBanner();
       window.scrollTo(0, 0);
     };
   });
@@ -635,6 +637,12 @@ function pickFeat(rolls) {
 }
 
 function rollDice(skillLabel) {
+  // A hero with no culture applied has placeholder attributes, so every roll here is meaningless
+  // (and always vs the default TN). Say so once rather than silently printing nonsense numbers.
+  if (typeof newcomerNeedsHelp === 'function' && newcomerNeedsHelp() && !window._blankRollWarned) {
+    window._blankRollWarned = true;
+    alertStyled('Your hero has no <strong>Culture</strong> yet, so their Strength / Heart / Wits are still placeholders — this roll is being scored against a default Target Number and doesn’t mean anything.<br><br>Build a hero on the <strong>Build</strong> tab (or load a ready-made one from ☰ Menu → ✨ Pre-generated Heroes) and your rolls will use their real numbers.<br><br><span style="opacity:.8">Rolling anyway — this notice won’t show again.</span>', '⚠️ No hero built yet');
+  }
   // Despair (Core Rules p.137): at Shadow + Scars = Max Hope every roll is Ill-Favoured.
   // Ensure the source is present even for manual Dice-tab rolls (quickRoll already sets it).
   if (shadowDespairActive()) {
@@ -1330,13 +1338,57 @@ function _tutRender() {
 function maybeOfferTutorial() {
   const p = loadTutProgress();
   if (p.offered) return;
-  p.offered = true; saveTutProgress(p);
   setTimeout(async () => {
-    if (await confirmStyled(`Welcome to the TOR2E Tracker!<br><br>New to the app or to <em>The One Ring</em>? Take a short <strong>guided tutorial</strong> — it runs on a practice hero and walks you through making a character, combat, journeys, and more.`, '📖 Welcome')) {
-      openTutorial();
-    }
+    // NB: `offered` is stamped only AFTER the user answers. Stamping it up-front (the old
+    // behaviour) meant a dismissal — or a reload inside this delay — permanently destroyed the
+    // only proactive onboarding a first-time player ever gets.
+    const choice = await showModal({
+      title: '📖 Welcome to the TOR2E Tracker',
+      message: `This app plays <em>The One Ring</em> 2nd Edition — solo or with a group. It does the rules and the maths for you.<br><br>` +
+               `<strong>Never played before?</strong> The guided tutorial runs on a throwaway practice hero and teaches the whole game: making a character, rolling dice, fighting, journeying — and how to play <strong>on your own, with no Game Master</strong>.<br><br>` +
+               `<span style="opacity:.8">You can start it any time from ☰ Menu → 📖 Tutorial.</span>`,
+      buttons: [
+        { label: '📖 Start the tutorial', value: 'go' },
+        { label: 'Not now', value: 'later', style: 'background:var(--btn-secondary-bg);color:white;border:1px solid var(--btn-secondary-bg);border-radius:5px;padding:10px;font-size:14px;cursor:pointer' }
+      ]
+    });
+    if (choice) { const q = loadTutProgress(); q.offered = true; saveTutProgress(q); }
+    if (choice === 'go') openTutorial();
+    renderNewcomerBanner();
   }, 700);
 }
+
+/* ---------- A: persistent newcomer banner ----------
+   The first-run modal is a single moment; this is the standing safety net. While the active hero
+   has no culture applied (i.e. nothing has been built yet), the Character tab carries a dismissible
+   "start here" banner pointing at the two real entry points: the tutorial and the Build tab.
+   Dismissal is per-hero-state, not persisted — it reappears for a genuinely new hero. */
+function newcomerNeedsHelp() {
+  return !char || !char.culture;
+}
+function renderNewcomerBanner() {
+  const host = document.getElementById('newcomer-banner');
+  if (!host) return;
+  if (!newcomerNeedsHelp() || window._newcomerDismissed) { host.style.display = 'none'; host.innerHTML = ''; return; }
+  host.style.display = 'block';
+  host.innerHTML =
+    '<div class="card" style="border-color:var(--gold);background:linear-gradient(180deg,var(--gold-paler) 0%,var(--card-bg) 100%)">' +
+      '<h3 class="card-title" style="color:var(--gold)">👋 Start here</h3>' +
+      '<p class="hint" style="text-align:left;line-height:1.55;margin:0 0 10px 0">' +
+        'This hero is empty. Nothing on this page can be edited yet — almost every number here is ' +
+        '<strong>calculated for you</strong> once you pick a culture and a calling.' +
+      '</p>' +
+      '<button class="add-row-btn" style="width:100%;margin-bottom:6px" onclick="openTutorial()">📖 Teach me the game (guided tutorial)</button>' +
+      '<button class="add-row-btn" style="width:100%;margin-bottom:6px" onclick="document.querySelector(\'.tab[data-tab=build]\').click()">🛠️ Build my hero (Build tab)</button>' +
+      '<button class="add-row-btn" style="width:100%;margin-bottom:6px" onclick="openPregens()">✨ Just give me a ready-made hero</button>' +
+      '<p class="hint" style="text-align:left;margin:8px 0 0 0">' +
+        'Playing alone, with no Game Master? That works — see ☰ Menu → <strong>🗡️ Solo Play</strong>, ' +
+        'or read <strong>📖 Ref → How a solo session runs</strong>.' +
+      '</p>' +
+      '<button class="add-row-btn" style="width:100%;margin-top:8px;background:transparent;color:var(--text-muted);border:1px solid var(--text-faint)" onclick="dismissNewcomerBanner()">Dismiss</button>' +
+    '</div>';
+}
+function dismissNewcomerBanner() { window._newcomerDismissed = true; renderNewcomerBanner(); }
 
 /* ----- lesson content (flavoured intros + plain steps) ----- */
 const TUTORIAL_LESSONS = [
@@ -1505,23 +1557,47 @@ function initCollapsibleCards() {
 /* ---------- U7: contextual (?) hints on key Character-tab labels ---------- */
 // Reuses the Reference tab's REFERENCE.terms as the single source of truth.
 const HINT_LABELS = { 'End Max': 'Endurance', 'Hope Max': 'Hope', 'Parry': 'Parry', 'Load': 'Load', 'Fatigue': 'Fatigue', 'Shadow': 'Shadow / Scars', 'Scars': 'Shadow / Scars', 'Valour': 'Valour', 'Wisdom': 'Wisdom' };
-function hintFor(term) {
-  const row = (REFERENCE.terms || []).find(t => t[0] === term) || (REFERENCE.tn || []).find(t => t[0] === term);
-  if (row) alert(row[0] + '\n\n' + row[1]);
+
+/** Look a term up across every REFERENCE group (terms, TN, conditions, solo) — one vocabulary,
+ *  so a (?) anywhere in the app resolves against the same text the Reference tab shows. */
+function hintRow(term) {
+  const groups = [REFERENCE.terms, REFERENCE.tn, REFERENCE.conditions, REFERENCE.solo, REFERENCE.combatTasks];
+  for (const g of groups) {
+    const row = (g || []).find(t => t[0] === term);
+    if (row) return row;
+  }
+  if (typeof STANCE_INFO !== 'undefined' && STANCE_INFO[term]) return [term, STANCE_INFO[term]];
+  return null;
 }
+function hintFor(term) {
+  const row = hintRow(term);
+  if (row) alertStyled(row[1], row[0]);
+}
+
+/* Attach a (?) button to one element. Idempotent. */
+function _attachHint(el, term) {
+  if (!el || el.dataset.hinted) return;
+  if (!hintRow(term)) return;               // never render a (?) that would open nothing
+  el.dataset.hinted = '1';
+  const b = document.createElement('button');
+  b.className = 'hint-q'; b.textContent = '?';
+  b.setAttribute('aria-label', 'What is ' + term + '?');
+  b.onclick = ev => { ev.stopPropagation(); ev.preventDefault(); hintFor(term); };
+  el.appendChild(b);
+}
+
+/* Declarative hints anywhere in the app: put data-hint="Key Term" on any element and it gets a (?).
+   Runs app-wide (not just the Character tab) and is re-run after renders, so JS-generated markup
+   picks it up too. */
 function initHintButtons() {
+  // 1) legacy: Character-tab counter labels matched by their text
   document.querySelectorAll('#panel-character .counter-label').forEach(el => {
-    if (el.dataset.hinted) return;
-    const label = el.textContent.replace('🔒', '').trim();
+    const label = el.textContent.replace('🔒', '').replace('?', '').trim();
     const term = HINT_LABELS[label];
-    if (!term) return;
-    el.dataset.hinted = '1';
-    const b = document.createElement('button');
-    b.className = 'hint-q'; b.textContent = '?';
-    b.setAttribute('aria-label', 'What is ' + term + '?');
-    b.onclick = ev => { ev.stopPropagation(); hintFor(term); };
-    el.appendChild(b);
+    if (term) _attachHint(el, term);
   });
+  // 2) declarative: anything carrying data-hint, on any tab
+  document.querySelectorAll('[data-hint]').forEach(el => _attachHint(el, el.dataset.hint));
 }
 
 /* ---------- U14: gentle backup nudge ---------- */
@@ -1605,7 +1681,8 @@ document.addEventListener('DOMContentLoaded', () => {
   restoreLastTab();   // U4: reopen the tab the player was last on (if still visible)
   initSwipeTabs();          // U4: swipe between tabs on touch
   initCollapsibleCards();   // U3: tap a card title to collapse (remembered per device)
-  initHintButtons();        // U7: (?) hints on key Character-tab labels
+  initHintButtons();        // U7/B: (?) hints app-wide (text-matched labels + data-hint)
+  renderNewcomerBanner();   // A: 'start here' card while the active hero is still blank
   if (typeof snapshotHero === 'function') snapshotHero(activeCharId, 'load');   // U12: one auto-backup per load
   importFromHash();   // offer to import a character if the URL carries a shared payload
   maybeOfferTutorial();   // one-time first-run offer of the guided tutorial

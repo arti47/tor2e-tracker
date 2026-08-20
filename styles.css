@@ -684,3 +684,15 @@
   background: var(--bg-deep); color: var(--text-muted);
   font-size: 10px; font-weight: 700; line-height: 1; cursor: pointer; vertical-align: middle;
 }
+
+/* Menu section headers (F: grouped ☰ menu — a flat 24-item list gave a newcomer no way in). */
+.menu-group{
+  font-size:10px;text-transform:uppercase;letter-spacing:.8px;font-weight:700;
+  color:var(--text-muted);margin:12px 0 4px;padding:0 2px;
+  border-bottom:1px solid var(--border);
+}
+.menu-group:first-of-type{margin-top:2px}
+
+/* Tab intro cards (D) — a quieter card than the rest; it explains, it doesn't compete. */
+.tab-intro{background:var(--bg);border-style:dashed}
+.tab-intro .hint{color:var(--ink-soft,var(--ink))}

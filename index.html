@@ -52,6 +52,8 @@
 <!-- ============ CHRONICLE ============ -->
 <section class="panel" id="panel-chronicle">
 
+  <div class="card tab-intro"><p class="hint" style="text-align:left;line-height:1.55;margin:0"><strong>Your solo journal — the story you’re telling.</strong> Play happens in <em>scenes</em>: open one, write what your hero does in plain prose, and let your dice and oracle results drop in beside it automatically. You are writing a book and playing a game at the same time; the app keeps the dates and the bookkeeping. Export the whole tale as Markdown when you like.</p></div>
+
   <div class="card" style="border-color:var(--gold)">
     <h3 class="card-title">Tale of Years</h3>
     <div class="row-2" style="gap:8px">
@@ -401,6 +403,10 @@
 <!-- ============ CHARACTER ============ -->
 <section class="panel active" id="panel-character">
 
+  <div id="newcomer-banner" style="display:none"></div>
+
+  <div class="card tab-intro"><p class="hint" style="text-align:left;line-height:1.55;margin:0"><strong>This is your hero’s sheet.</strong> Most numbers here are <em>calculated</em> — a 🔒 means the app owns that value, so change its source instead (the <strong>Build</strong> tab, or <strong>Spend XP</strong>). The +/− counters are yours to move in play: Endurance and Hope go down as you strain and hope fades, Shadow goes up as dread gathers. Tap any <span style="font-weight:700">?</span> to learn what a term means.</p></div>
+
   <div class="card">
     <h3 class="card-title">Character</h3>
     <div class="field"><label class="locked-label">Heroic Culture</label><input data-field="culture" readonly placeholder="Set from Build tab"></div>
@@ -410,7 +416,7 @@
     <button id="moria-madness-btn" onclick="toggleMoriaMadnessPath()" class="add-row-btn" style="display:none;width:100%;font-size:11px;padding:5px 10px;margin-bottom:8px;background:var(--btn-secondary-bg)" title="Moria-madness afflicts Dwarves in Moria — see Moria solo rules p.43"></button>
     <div class="field"><label class="locked-label">Patron</label><input data-field="patron" readonly placeholder="Set from Build tab"></div>
     <div class="field">
-      <label>Standard of Living</label>
+      <label data-hint="Standard of Living">Standard of Living</label>
       <select data-field="standard">
         <option value="">—</option>
         <option>Poor</option>
@@ -664,7 +670,7 @@
       </div>
     </div>
     <div class="field" id="focus-row" style="margin-top:12px">
-      <label>Fellowship Focus</label>
+      <label data-hint="Fellowship Focus">Fellowship Focus</label>
       <select data-field="fellowshipFocus" id="focus-pick">
         <option value="">— None —</option>
       </select>
@@ -803,8 +809,10 @@
 <!-- ============ COMBAT ============ -->
 <section class="panel" id="panel-combat">
 
+  <div class="card tab-intro"><p class="hint" style="text-align:left;line-height:1.55;margin:0"><strong>Everything for a fight.</strong> Pick a <strong>Stance</strong> first — it trades safety for aggression and changes your dice. Add foes under <strong>Encounter</strong> to run the whole fight here (attack, take hits, track wounds). <strong>War Gear</strong>, armour and shield below feed your damage and your Parry automatically.</p></div>
+
   <div class="card">
-    <h3 class="card-title">Stance</h3>
+    <h3 class="card-title" data-hint="Stance">Stance</h3>
     <div class="conditions" style="grid-template-columns:repeat(4,1fr)">
       <button class="cond-btn" data-stance="forward">Forward</button>
       <button class="cond-btn" data-stance="open">Open</button>
@@ -960,6 +968,8 @@
 <!-- ============ JOURNEY ============ -->
 <section class="panel" id="panel-journey">
 
+  <div class="card tab-intro"><p class="hint" style="text-align:left;line-height:1.55;margin:0"><strong>Travel from one place to another.</strong> Fill in where you’re going and how far (in hexes on the map), then tap <strong>Start Journey</strong>. From there you repeat two steps: a <strong>Marching Test</strong> to cover ground, and <strong>Resolve Event</strong> when the road throws something at you. Fatigue builds as you go; <strong>Arrive</strong> closes the journey and settles it.</p></div>
+
   <div class="card" id="journey-setup-card">
     <h3 class="card-title">Journey Setup</h3>
     <div class="field"><label>Origin</label><input id="j-origin" placeholder="e.g. Rivendell"></div>
@@ -1065,7 +1075,7 @@
     <p class="hint" style="text-align:left;margin-bottom:10px;line-height:1.5">A council is a formal gathering where the stakes are high. To win, the Company must accumulate successful rolls equal to the Resistance, within a Time Limit determined by the Introduction roll.</p>
     <div class="field"><label>Topic / Goal</label><input id="c-topic" placeholder="e.g. Petition Elrond for safe passage"></div>
     <div style="margin-top:10px">
-      <label style="font-size:12px;color:var(--red-dark);text-transform:uppercase;letter-spacing:0.5px;font-weight:600">Resistance</label>
+      <label data-hint="Resistance" style="font-size:12px;color:var(--red-dark);text-transform:uppercase;letter-spacing:0.5px;font-weight:600">Resistance</label>
       <div class="seg-btns" id="c-resistance-pick" style="margin-top:4px">
         <button class="seg-btn active" data-val="3">Reasonable (3)</button>
         <button class="seg-btn" data-val="6">Bold (6)</button>
@@ -1191,7 +1201,7 @@
     <p class="hint" style="text-align:left;margin-bottom:10px;line-height:1.5">A Skill Endeavour is a complicated task that requires multiple rolls — searching a wide area, fortifying a steading, deciphering a riddle. Players accumulate successes equal to Resistance within the Time Limit.</p>
     <div class="field"><label>Task</label><input id="se-task" placeholder="e.g. Search the ruined keep for clues"></div>
     <div style="margin-top:10px">
-      <label style="font-size:12px;color:var(--red-dark);text-transform:uppercase;letter-spacing:0.5px;font-weight:600">Resistance</label>
+      <label data-hint="Resistance" style="font-size:12px;color:var(--red-dark);text-transform:uppercase;letter-spacing:0.5px;font-weight:600">Resistance</label>
       <div class="seg-btns" id="se-resistance-pick" style="margin-top:4px">
         <button class="seg-btn active" data-val="3">Simple (3)</button>
         <button class="seg-btn" data-val="6">Laborious (6)</button>
@@ -1200,7 +1210,7 @@
       <p class="hint" id="se-resistance-hint" style="text-align:left;margin-top:6px"></p>
     </div>
     <div style="margin-top:10px">
-      <label style="font-size:12px;color:var(--red-dark);text-transform:uppercase;letter-spacing:0.5px;font-weight:600">Time Limit (attempts)</label>
+      <label data-hint="Time Limit" style="font-size:12px;color:var(--red-dark);text-transform:uppercase;letter-spacing:0.5px;font-weight:600">Time Limit (attempts)</label>
       <div class="seg-btns" id="se-time-pick" style="margin-top:4px">
         <button class="seg-btn" data-val="3">3 — Not enough</button>
         <button class="seg-btn active" data-val="4">4 — Short</button>
@@ -1305,12 +1315,13 @@
 
 <!-- ============ DICE ============ -->
 <section class="panel" id="panel-dice">
+  <div class="card tab-intro"><p class="hint" style="text-align:left;line-height:1.55;margin:0"><strong>Roll when the outcome is in doubt.</strong> Every roll is one <em>Feat die</em> (d12) plus some <em>Success dice</em> (d6), totalled against a Target Number — meet or beat it and you succeed. Easiest way in: use a <strong>quick-roll</strong> button below, which fills in the right dice and TN for that skill. Tap any <span style="font-weight:700">?</span> for what a term means.</p></div>
   <div class="card">
     <h3 class="card-title">Dice Roller</h3>
 
     <div class="dice-controls">
       <div class="control-group">
-        <label>Success Dice</label>
+        <label data-hint="Success icons (✦)">Success Dice</label>
         <div class="seg-btns" id="success-count">
           <button class="seg-btn" data-val="0">0</button>
           <button class="seg-btn active" data-val="1">1</button>
@@ -1322,7 +1333,7 @@
         </div>
       </div>
       <div class="control-group">
-        <label>TN (target)</label>
+        <label data-hint="Target Number (TN)">TN (target)</label>
         <div class="seg-btns" id="tn-pick">
           <button class="seg-btn active" data-val="str">Str</button>
           <button class="seg-btn" data-val="hrt">Heart</button>
@@ -1333,7 +1344,7 @@
 
     <div class="dice-controls" style="margin-top:8px">
       <div class="control-group">
-        <label>Receive Support <span style="font-size:10px;color:var(--text-faint);text-transform:none;letter-spacing:0;font-weight:400">(ally spends 1 Hope)</span></label>
+        <label data-hint="Support">Receive Support <span style="font-size:10px;color:var(--text-faint);text-transform:none;letter-spacing:0;font-weight:400">(ally spends 1 Hope)</span></label>
         <div class="seg-btns" id="support-pick">
           <button class="seg-btn active" data-val="none">None</button>
           <button class="seg-btn" data-val="1d">+1d</button>
@@ -1341,7 +1352,7 @@
         </div>
       </div>
       <div class="control-group">
-        <label>Feat Die</label>
+        <label data-hint="Favoured">Feat Die</label>
         <div class="seg-btns" id="fav-pick">
           <button class="seg-btn" data-val="ill">Ill</button>
           <button class="seg-btn active" data-val="normal">Normal</button>
@@ -1618,11 +1629,11 @@
   </div>
 
   <div class="card" style="border-color:var(--gold);background:linear-gradient(180deg,var(--gold-paler) 0%,var(--pure-white) 100%)">
-    <h3 class="card-title">⛏️ Band of Allies</h3>
+    <h3 class="card-title" data-hint="Your Band (Moria)">⛏️ Band of Allies</h3>
     <p class="hint" style="text-align:left;line-height:1.5">Your Band of Dwarves under Balin's expedition. Roll <strong>Dispositions</strong> for the Band vs the <strong>Readiness TN</strong> (= 20 − Readiness). Generate allies below.</p>
     <div class="row-2" style="margin-top:6px">
       <div class="counter">
-        <div class="counter-label">Readiness</div>
+        <div class="counter-label" data-hint="Readiness">Readiness</div>
         <div class="counter-value" id="band-readiness-v">4</div>
         <div class="counter-buttons"><button onclick="adjReadiness(-1)">−</button><button onclick="adjReadiness(1)">+</button></div>
       </div>
@@ -1633,7 +1644,7 @@
       </div>
     </div>
     <div style="margin-top:8px">
-      <label style="font-size:12px;color:var(--red-dark);text-transform:uppercase;letter-spacing:0.5px;font-weight:600">Burden</label>
+      <label data-hint="Burden" style="font-size:12px;color:var(--red-dark);text-transform:uppercase;letter-spacing:0.5px;font-weight:600">Burden</label>
       <div class="seg-btns" id="band-burden-pick" style="margin-top:4px">
         <button class="seg-btn" data-burden="light">Light <small>+1d</small></button>
         <button class="seg-btn" data-burden="medium">Medium</button>
@@ -1645,7 +1656,7 @@
   </div>
 
   <div class="card">
-    <h3 class="card-title">Dispositions</h3>
+    <h3 class="card-title" data-hint="Dispositions">Dispositions</h3>
     <p class="hint" style="text-align:left">Tap a Disposition to roll it for the Band (Feat + rating in Success dice) vs Readiness TN. <span id="band-focus-note" style="color:var(--gold)"></span></p>
     <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
       <select id="band-gift-pick" style="flex:1;min-width:150px;font-size:12px;padding:4px"></select>
@@ -1760,7 +1771,7 @@
 
   <!-- IN PROGRESS -->
   <div class="card" id="battle-active-card" style="display:none;border-color:var(--red);">
-    <h3 class="card-title">⚔️ Clash <span id="b-round" style="color:var(--text-muted);font-weight:400;font-size:12px"></span></h3>
+    <h3 class="card-title" data-hint="Clash">⚔️ Clash <span id="b-round" style="color:var(--text-muted);font-weight:400;font-size:12px"></span></h3>
     <div class="row-2">
       <div class="counter"><div class="counter-label">Foe Resistance</div><div class="counter-value" id="b-foeres-v">6</div><div class="hint" style="margin:0">Might <span id="b-foemight-v">1</span></div></div>
       <div class="counter" id="b-obj-counter" style="display:none"><div class="counter-label">Objective</div><div class="counter-value" id="b-objres-v">0</div><div class="hint" style="margin:0" id="b-obj-name"></div></div>
@@ -1931,21 +1942,34 @@
   <div class="menu">
     <h3>Menu</h3>
     <div id="sync-status-line" style="font-size:11px;color:var(--text-muted);text-align:center;margin:-4px 0 8px">📴 Local only</div>
+    <div class="menu-group">New here?</div>
     <button onclick="openTutorial()" style="background:var(--gold);color:var(--ink);border-color:var(--gold)">📖 Tutorial — Learn the Game</button>
+    <button onclick="openPregens()">✨ Pre-generated Heroes — play in one tap</button>
+    <button onclick="openReferenceTab()">📖 Rules Reference — look up any term</button>
+
+    <div class="menu-group">Play on your own (no Game Master)</div>
+    <button onclick="toggleStriderMode()" id="strider-mode-btn">🗡️ Solo Play: Strider Mode</button>
+    <button onclick="toggleMoriaMode()" id="moria-mode-btn">⛏️ Solo Play: Moria campaign</button>
+
+    <div class="menu-group">Heroes</div>
     <button onclick="openRoster()">👥 Characters…</button>
-    <button onclick="openPregens()">✨ Pre-generated Heroes</button>
-    <button onclick="openPartyView()">🛡️ Party View</button>
+    <button onclick="newCharacter();toggleMenu()">➕ New Character</button>
+    <button onclick="openShare()">🔗 Share Character</button>
+
+    <div class="menu-group">Play with others</div>
     <button onclick="openCampaign()">🏰 Fellowship Campaign…</button>
+    <button onclick="openPartyView()">🛡️ Party View</button>
     <button onclick="openTableMode()">📺 Table Mode (big screen)</button>
     <button onclick="openTimeline()">📜 Campaign Timeline</button>
-    <button onclick="openShare()">🔗 Share Character</button>
+    <button onclick="toggleGmScreen()" id="gm-mode-btn">🎲 Enable GM Screen</button>
+
+    <div class="menu-group">Appearance</div>
     <button onclick="cycleTheme()" id="dark-mode-btn">🎨 Theme: Auto</button>
     <button onclick="cycleTextSize()" id="textsize-btn">🔠 Text Size: Normal</button>
     <button onclick="toggleCompactMode()" id="compact-mode-btn">📏 Compact Mode</button>
     <button onclick="window.print();toggleMenu()">🖨️ Print / Save PDF</button>
-    <button onclick="toggleStriderMode()" id="strider-mode-btn">🗡️ Enable Strider Mode (solo)</button>
-    <button onclick="toggleMoriaMode()" id="moria-mode-btn">⛏️ Enable Moria Solo Mode</button>
-    <button onclick="toggleGmScreen()" id="gm-mode-btn">🎲 Enable GM Screen</button>
+
+    <div class="menu-group">Backup &amp; restore</div>
     <button onclick="exportData()">📤 Export Character (JSON)</button>
     <button onclick="document.getElementById('import-file').click()">📥 Import Character</button>
     <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)">
@@ -1954,7 +1978,8 @@
     <input type="file" id="import-all-file" accept=".json" style="display:none" onchange="importAllHeroes(event)">
     <button onclick="openRestorePoints()">♻️ Restore Points (auto-backups)</button>
     <button onclick="Sync.linkGoogle()">☁️ Link Google Account (cloud backup)</button>
-    <button onclick="newCharacter();toggleMenu()">➕ New Character</button>
+
+    <div class="menu-group">Danger zone</div>
     <button class="danger" onclick="resetCharacter()">🔄 Reset This Character</button>
     <button class="close" onclick="toggleMenu()">Close</button>
   </div>

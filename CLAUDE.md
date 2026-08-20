@@ -4,20 +4,29 @@ An HTML5 character sheet + play tracker for **The One Ring 2nd Edition** RPG —
 
 ---
 
-## ⭐ STATUS DASHBOARD — read this first (updated 2026-08-19)
+## ⭐ STATUS DASHBOARD — read this first (updated 2026-08-20)
 
 > **This section is the single source of truth for "where are we and what's next."**
 > Everything below it is reference detail and per-phase history. Keep this dashboard
 > current whenever work lands (and prune it — it must stay one screen).
 
 ### Current state
-- **All roadmap phases COMPLETE (incl. the full loremaster port):** P0 adversaries · P1 test harness (`npm test`, **104/104 green**, 6 specs) · P2 module split (`src/01…08` + `styles.css`) · P3 cloud-owned heroes · P4 live campaigns/party · P5 shared GM-driven encounter · P6 Loremaster screen (role-gated GM tab, peek, broadcast) · P7 security rules (**deployed + live-verified 2026-07-02**) · P8 accessibility. Plus the full UX batch (U3, U4, U5/6/7/8, U9–U15 — all shipped; "group rolls" deliberately skipped).
+- **All roadmap phases COMPLETE (incl. the full loremaster port):** P0 adversaries · P1 test harness (`npm test`, **115/115 green**, 6 specs) · P2 module split (`src/01…08` + `styles.css`) · P3 cloud-owned heroes · P4 live campaigns/party · P5 shared GM-driven encounter · P6 Loremaster screen (role-gated GM tab, peek, broadcast) · P7 security rules (**deployed + live-verified 2026-07-02**) · P8 accessibility. Plus the full UX batch (U3, U4, U5/6/7/8, U9–U15 — all shipped; "group rolls" deliberately skipped).
 - **Cloud is LIVE**: real Firebase config committed (`FIREBASE_ENABLED=true`); rules deployed; broadcast / in-campaign push / peek all verified against the real project 2026-07-02.
-- **SW cache `tor2e-v101`** · git repo (origin = github.com/arti47/tor2e-tracker, branch main) · shells (`character-tracker.html` = `index.html`) in sync.
+- **SW cache `tor2e-v102`** · git repo (origin = github.com/arti47/tor2e-tracker, branch main) · shells (`character-tracker.html` = `index.html`) in sync.
 - **Dice-tab QoL (2026-07-02):** quick-roll grid moved to sit directly above the 🎲 Roll button (result renders right below → tap-to-result with no hunting) + the result `scrollIntoView`s on every roll (`behavior:'auto'` on purpose — `'smooth'` never completes in some headless/older-Safari engines); roll history gets a per-row **×** delete (`deleteRollAt`, index via `history.indexOf`) and a **🗑 Clear** button (`clearRollHistory`, confirmed). +2 ux-spec checks.
 - **Dice/Oracle QoL 2 (2026-07-02, SW v101, harness 104/104):** the roll-result summary now **leads with the skill/prof name** (quick rolls pass it as `rollDice(skillLabel)`; e.g. "Valour · vs TN 15 — SUCCESS"); **Oracle History** gets per-row **×** (`deleteOracleRollAt` — direct index, newest-first) + **🗑 Clear** (`clearOracleHistory`, confirmed; device-global history). +2 ux-spec checks. *(Preview-verification note: the local `http.server` + SW combo can poison the HTTP cache so even a new SW precaches stale JS — when the preview serves old code, switch the preview port = fresh origin.)*
 
 - **Documentation verification pass (2026-08-19):** every figure in this file re-derived from the working tree — SW `tor2e-v101`, harness **104/104 green** (23 smoke / 11 adversaries / 23 ux / 20 spillage / 7 a11y / 20 gm), shells byte-identical, 8 modules (~14.8k lines JS + 686 lines CSS), **14 tabs** (the doc said 12 — Reference and GM were missing), 3 undocumented localStorage keys added (`tor2e-collapsed`, `tor2e-lastexport`, `tor2e-lastnudge`). Added the **Module map** table P2 called for but never delivered, rewrote **File Layout** to the real repo tree (the old one still described the pre-split single file + a "future structure if we ever split"), marked the superseded *single-file* design constraint, and added GOTCHAS 12–14. No code changed.
+
+- **Newcomer onboarding pass (2026-08-20, SW v102, harness 115/115):** audited the app as someone who owns neither rulebook nor solo-RPG experience, then closed every gap found. Measured before/after: **tab intros 9/14 → 14/14**, **(?) hints 9 (Character only) → 23 across 5 tabs**, Reference groups 6 → 7. Six changes, all additive — **no rules, schema, or dice-math change**:
+  - **A — first run.** `maybeOfferTutorial` stamped `offered = true` *before* awaiting the dialog, so a dismissal (or a reload inside its 700 ms delay) destroyed the only proactive onboarding permanently; it is now stamped only after an answer. Buttons are "📖 Start the tutorial" / "Not now" (was OK/Cancel). New **`renderNewcomerBanner()`** puts a dismissible "👋 Start here" card on the Character tab whenever the active hero has no culture (`newcomerNeedsHelp()`), offering tutorial / Build tab / pre-gen hero, and naming solo play. Re-rendered from `render()` and on tab switch.
+  - **B — hints everywhere.** `initHintButtons()` was hard-scoped to `#panel-character .counter-label`. Now it also binds **`data-hint="Term"` on any element, any tab**, via idempotent `_attachHint`; `hintRow()` resolves one shared vocabulary across `REFERENCE.terms`/`tn`/`conditions`/`solo`/`combatTasks` + `STANCE_INFO`, and renders no (?) that would open nothing. Hints now use `alertStyled` (was native `alert`).
+  - **C — the Reference tab had ZERO solo content** (verified: Oracle/Telling/Lore/Eye/Chronicle/Moria/Fortune all absent). Added a **`REFERENCE.solo`** group (10 entries) incl. **"How a solo session runs"** — the six-step loop (open a scene → act → ask the Oracle → roll → write it down → repeat) that nothing in the app taught. Also added 10 Key Terms that appear on-screen but were never defined (Favoured, Ill-Favoured, Inspired, Fellowship Focus, Support, Stance, Resistance, Time Limit, Standard of Living, the two phases) and 7 Moria/Band terms (Readiness, Dispositions, Disposition Focus, Burden, Hardened, Clash, the Band itself).
+  - **D — tab intros** for the 5 tabs that opened with no explanation at all: character, combat, **journey (had no `.hint` anywhere)**, dice, chronicle. New `.tab-intro` style (dashed, quieter than a real card).
+  - **E — blank-hero guards.** `rollDice()` on an unbuilt hero silently printed `9 / 3 / 12 vs TN 15 — FAIL` against placeholder attributes; it now warns **once** (`_blankRollWarned`) and still rolls. `startJourney`/`startCouncil`/`startSkillEndeavour` refuse with a pointer to Build / pre-gens.
+  - **F — the ☰ menu** was a flat 24-item list; now grouped under 7 `.menu-group` headers (New here? · Play on your own · Heroes · Play with others · Appearance · Backup & restore · Danger zone), with a "📖 Rules Reference" entry (`openReferenceTab()`). The solo toggles read **"🗡️ Solo Play: Strider Mode"** (was "Enable Strider Mode (solo)"), and both enable-dialogs now lead with *what solo play is* before the stat deltas.
+  - +11 ux-spec checks (banner show/hide, hint attach + idempotence + lookup, 5 intros, warn-once, menu grouping, solo label, Reference solo group).
 
 ### The dev workflow (every change)
 1. Edit **`src/*.js`** (JS) or **`character-tracker.html`** (markup) or `styles.css`.
@@ -84,7 +93,8 @@ An HTML5 character sheet + play tracker for **The One Ring 2nd Edition** RPG —
 11. **Firebase rules are default-deny at root** — don't add rules for nodes that haven't shipped. Editing `database.rules.json` does nothing until it is **redeployed**; every past phase that shipped a rules change had to redeploy before the feature worked. *(→ Phase P7)*
 12. **A local preview server + the service worker can serve stale JS** — the HTTP cache can be poisoned such that even a freshly-installed SW precaches old code. If the preview shows code you just changed as missing, **switch the preview port** (a new origin = a clean cache) rather than debugging the change. *(→ Dice/Oracle QoL 2)*
 13. **A fresh clone needs `npm install` before `npm test`** — `playwright-core` is gitignored via `node_modules/`. The harness resolves a cached Chromium by glob; `CHROMIUM_BIN` overrides it. *(→ Phase P1)*
-14. **Adding a shipped file means three edits, not one** — the `<script>`/`<link>` tag in **both** shells, the `PRECACHE` list in `sw.js`, and a `CACHE_VERSION` bump. *(→ dev workflow)*
+14. **Onboarding is a tested invariant, not decoration** — every tab must keep a `.tab-intro`, jargon gets `data-hint="<Term>"` (the term must exist in a `REFERENCE` group or `STANCE_INFO`, else no (?) renders), and a first-run prompt must never stamp `offered` before the user answers. 11 ux-spec checks enforce this; adding a tab or a jargon control means adding its intro/hint too. *(→ Newcomer onboarding pass)*
+15. **Adding a shipped file means three edits, not one** — the `<script>`/`<link>` tag in **both** shells, the `PRECACHE` list in `sw.js`, and a `CACHE_VERSION` bump. *(→ dev workflow)*
 
 ---
 
@@ -112,8 +122,8 @@ npm install && npm test                     # harness must be green (npm install
 
 As of last verification:
 - **Layout (since P2, 2026-06-29)**: thin `character-tracker.html` shell (mirrored to `index.html`) loading `styles.css` + `src/vendor-qrcode.js` + `src/01-core.js`…`src/08-gm.js` in order — **classic scripts, no build step, still works over `file://`**. `firebase-config.js` (real keys, `FIREBASE_ENABLED=true`) + Firebase compat CDN scripts power the optional-but-live cloud layer (`src/07-sync.js`); the app degrades gracefully to fully-local when offline.
-- **`sw.js` `CACHE_VERSION`**: `tor2e-v101` (bump on every deploy). `PRECACHE` lists all 8 `src/*.js` + `vendor-qrcode.js` + `styles.css` + `firebase-config.js` + shells + PWA assets — **add any new file there**. SW strategy: HTML/navigations network-first; static assets cache-first; auto-activate.
-- **Test harness**: `npm test` → 6 specs / **104 checks** (smoke 23, adversaries 11, ux 23, spillage 20, a11y 7, gm 20). A fresh clone needs `npm install` first (`playwright-core` is the only devDependency; `tests/browser.js` glob-resolves a cached Chromium, `CHROMIUM_BIN` overrides). Cloud paths are no-ops in tests (SDK blocked) — verify live features via preview against the real project.
+- **`sw.js` `CACHE_VERSION`**: `tor2e-v102` (bump on every deploy). `PRECACHE` lists all 8 `src/*.js` + `vendor-qrcode.js` + `styles.css` + `firebase-config.js` + shells + PWA assets — **add any new file there**. SW strategy: HTML/navigations network-first; static assets cache-first; auto-activate.
+- **Test harness**: `npm test` → 6 specs / **115 checks** (smoke 23, adversaries 11, ux 34, spillage 20, a11y 7, gm 20). A fresh clone needs `npm install` first (`playwright-core` is the only devDependency; `tests/browser.js` glob-resolves a cached Chromium, `CHROMIUM_BIN` overrides). Cloud paths are no-ops in tests (SDK blocked) — verify live features via preview against the real project.
 - **Cloud (P3–P7)**: heroes mirror to `characters/{id}` (owner-only, rules-enforced); campaigns at `campaigns/{cid}` (join codes, live vitals party, presence, shared encounter, loremaster broadcast). `database.rules.json` **deployed + live-verified 2026-07-02**.
 - **Solo modes**: Strider + Moria complete (see their sections below).
 - **localStorage keys**: a **multi-character roster** (added 2026-05-31):
@@ -132,6 +142,7 @@ As of last verification:
   - `tor2e-gm-npcs` — GM NPC-ledger custom entries (device-global, P6)
   - `tor2e-campaign-v1` — current campaign `{cid, code, role, owner}` (device-global, P4)
   - `tor2e-collapsed` — `{ "<panelId>|<title>": 1 }` collapsed cards (U3, device-global)
+  - *(the 2026-08-20 onboarding pass added no keys — the newcomer banner's dismissal and the blank-hero warning are deliberately in-memory `window._newcomerDismissed` / `window._blankRollWarned`, so they return for a genuinely new hero)*
   - `tor2e-lastexport` / `tor2e-lastnudge` — backup-nudge timestamps (U14, device-global; both exports stamp `lastexport`, the toast throttles on `lastnudge`)
   - **Legacy (read-once for migration, then left as backup):** `tor2e-character-v1`, `tor2e-rolls-v1`. On first load under the roster system these are migrated into the first hero's slot. `loadCharacter()`/`saveCharacter()` operate on the active slot; `migrateCharacter(raw)` is the pure forward-migration used for slots, imports, and shared-link payloads.
 
@@ -160,7 +171,7 @@ As of last verification:
 | `src/03-state.js` | 1,663 | `DEFAULT_CHARACTER`/`migrateCharacter`/load+save, **multi-character roster**, auto-backups (U12), pregen loader, Party View, toasts, **Fellowship Campaign UI (P4)**, Table Mode (U11), Campaign Timeline (U15), share-link/QR, and the whole **Chronicle** (scenes/blocks/clock/render/combat-log/markdown export) |
 | `src/04-render.js` | 3,131 | `render()` + all renderers, plus the **Fellowship Phase wizard**, **Skill Endeavour**, **Council**, **Journey**, **Magical Treasure** subsystems |
 | `src/05-combat-build.js` | 2,970 | Strider special-success spends, gear pickers, Protection/Wound rolls, the **Combat-tab Encounter tracker**, Load/Virtue/counters/input binding, and every **Build-tab picker** (useful items, lifepaths, prof choices, PE, reward apply-to, favoured, Spend XP, features/rewards/virtues, quick build) + the **Reference tab** (U5/U6/U8) |
-| `src/06-tabs-init.js` | 1,654 | tab wiring, the ☰ menu, `DOMContentLoaded` init, the whole **interactive Tutorial**, **a11y (P8)**, U4 swipe, U3 collapsible cards, U7 (?) hints, U14 backup nudge |
+| `src/06-tabs-init.js` | ~1,730 | tab wiring, the ☰ menu, `DOMContentLoaded` init, the whole **interactive Tutorial**, **a11y (P8)**, U4 swipe, U3 collapsible cards, U7 (?) hints, U14 backup nudge |
 | `src/07-sync.js` | 447 | the `Sync` module — Firebase auth, character mirror, campaigns/party/presence, shared encounter, broadcast. Dormant unless enabled **and** the SDK loaded |
 | `src/08-gm.js` | 402 | GM Screen (P6): local hand-out dashboard, campaign Fellowship + peek + broadcast composer, Eye manager, NPC ledger, Group Shadow Test, the 6 **ported loremaster GM tables** |
 | `styles.css` | 686 | both original `<style>` blocks — theme vars (light/dark/sepia/hc), compact & text-size classes, print rules |

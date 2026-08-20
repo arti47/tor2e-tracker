@@ -39,9 +39,13 @@ module.exports = {
       document.getElementById('ref-filter').value = 'stealth'; renderReference();
       const filtered = document.getElementById('reference-body').innerText;
       document.getElementById('ref-filter').value = ''; renderReference();
-      return { groups, hasWeary: all.includes('Weary'), hasStealth: all.includes('Stealth'), filterShowsStealth: filtered.includes('Stealth'), filterHidesWeary: !filtered.includes('Weary') };
+      return { groups, hasWeary: all.includes('Weary'), hasStealth: all.includes('Stealth'), filterShowsStealth: filtered.includes('Stealth'), filterHidesWeary: !filtered.includes('Weary'),
+               hasSolo: all.includes('Playing Solo'), hasLoop: all.includes('How a solo session runs'), hasFavoured: all.includes('Ill-Favoured') };
     });
-    checks.push({ ok: ref.groups === 6, msg: `Reference renders 6 groups (got ${ref.groups})` });
+    checks.push({ ok: ref.groups === 7, msg: `Reference renders 7 groups (got ${ref.groups})` });
+    // Onboarding C: the Reference tab must carry solo-play guidance, not just group-play terms.
+    checks.push({ ok: ref.hasSolo && ref.hasLoop, msg: 'Reference has a Playing Solo group incl. the session walkthrough' });
+    checks.push({ ok: ref.hasFavoured, msg: 'Reference defines Favoured/Ill-Favoured (Dice-tab jargon)' });
     checks.push({ ok: ref.hasWeary && ref.hasStealth, msg: 'Reference includes Conditions (Weary) + Skills (Stealth)' });
     checks.push({ ok: ref.filterShowsStealth && ref.filterHidesWeary, msg: 'Reference search filters (stealth shows, Weary hidden)' });
 
@@ -249,6 +253,52 @@ module.exports = {
     });
     checks.push({ ok: oracleDice.nameInSummary, msg: 'roll result summary leads with the skill name (quick roll)' });
     checks.push({ ok: oracleDice.rowBtns && oracleDice.afterDelete && oracleDice.afterClear, msg: 'oracle history: per-row × deletes, 🗑 clear-all empties' });
+
+    // ---- Onboarding pass (A/B/D/E/F): a newcomer must never hit a blank wall ----
+    const onboard = await page.evaluate(async () => {
+      const out = {};
+      // A: the 'start here' banner shows while the hero has no culture, and hides once built.
+      window._newcomerDismissed = false;
+      char.culture = ''; renderNewcomerBanner();
+      const host = document.getElementById('newcomer-banner');
+      out.bannerWhenBlank = host.style.display !== 'none' && /Start here/i.test(host.innerText);
+      out.bannerLinksBuild = /Build my hero/.test(host.innerText);
+      char.culture = 'Bardings'; renderNewcomerBanner();
+      out.bannerHiddenWhenBuilt = host.style.display === 'none';
+      char.culture = '';                                   // restore blank for the E check below
+
+      // B: data-hint elements get a (?) that resolves to real Reference text.
+      initHintButtons();
+      out.hintBtns = document.querySelectorAll('[data-hint] .hint-q').length;
+      out.hintResolves = !!hintRow('Ill-Favoured') && !!hintRow('The Oracle') && !!hintRow('Resistance');
+      out.hintIdempotent = (initHintButtons(), document.querySelectorAll('[data-hint] .hint-q').length) === out.hintBtns;
+
+      // D: the five previously-bare tabs now open with an explanation.
+      out.intros = ['character','combat','journey','dice','chronicle']
+        .filter(t => document.querySelector('#panel-' + t + ' .tab-intro')).length;
+
+      // E: rolling with no hero warns once, then never again.
+      let seen = 0; const origAlert = window.alertStyled;
+      window.alertStyled = async () => { seen++; };
+      window._blankRollWarned = false;
+      rollDice(); rollDice();
+      window.alertStyled = origAlert;
+      out.blankWarnOnce = seen === 1;
+
+      // F: the menu is grouped and the solo entry says what it means.
+      out.menuGroups = document.querySelectorAll('#menu-overlay .menu-group').length;
+      out.soloLabel = /Solo Play/.test(document.getElementById('strider-mode-btn').textContent);
+      return out;
+    });
+    checks.push({ ok: onboard.bannerWhenBlank && onboard.bannerLinksBuild, msg: 'newcomer banner shows on a blank hero and points at Build' });
+    checks.push({ ok: onboard.bannerHiddenWhenBuilt, msg: 'newcomer banner hides once a culture is applied' });
+    checks.push({ ok: onboard.hintBtns >= 8, msg: `data-hint (?) buttons attach app-wide (got ${onboard.hintBtns})` });
+    checks.push({ ok: onboard.hintResolves, msg: 'hint lookup resolves terms/solo/council vocabulary' });
+    checks.push({ ok: onboard.hintIdempotent, msg: 'initHintButtons is idempotent (no duplicate ? buttons)' });
+    checks.push({ ok: onboard.intros === 5, msg: `the 5 bare tabs gained an intro card (got ${onboard.intros})` });
+    checks.push({ ok: onboard.blankWarnOnce, msg: 'rolling with no hero built warns exactly once' });
+    checks.push({ ok: onboard.menuGroups >= 6, msg: `menu is grouped into sections (got ${onboard.menuGroups})` });
+    checks.push({ ok: onboard.soloLabel, msg: 'solo toggle is labelled in plain language (Solo Play)' });
 
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length})` });
     await context.close();

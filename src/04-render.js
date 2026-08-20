@@ -86,6 +86,8 @@ function render() {
   renderQuickSkills();
   renderProtectionParry();
   renderEncounter();
+
+  if (typeof renderNewcomerBanner === 'function') renderNewcomerBanner();   // A: newcomer 'start here' card
 }
 
 function renderDerivedStats() {
@@ -735,6 +737,11 @@ const SE_RISK_HINTS = {
 };
 
 function startSkillEndeavour() {
+  if (typeof newcomerNeedsHelp === 'function' && newcomerNeedsHelp()) {
+    alertStyled('Build a hero first — pick a <strong>Culture</strong> and <strong>Calling</strong> on the <strong>Build</strong> tab (or load a ready-made hero from ☰ Menu → ✨ Pre-generated Heroes). Until then this subsystem has no skills or attributes to roll against.', '⚠️ No hero built yet');
+    return;
+  }
+
   const task = (document.getElementById('se-task').value || '').trim();
   const resBtn = document.querySelector('#se-resistance-pick .seg-btn.active');
   const timeBtn = document.querySelector('#se-time-pick .seg-btn.active');
@@ -986,6 +993,11 @@ function _councilSkillRating(skillName) {
 }
 
 function startCouncil() {
+  if (typeof newcomerNeedsHelp === 'function' && newcomerNeedsHelp()) {
+    alertStyled('Build a hero first — pick a <strong>Culture</strong> and <strong>Calling</strong> on the <strong>Build</strong> tab (or load a ready-made hero from ☰ Menu → ✨ Pre-generated Heroes). Until then this subsystem has no skills or attributes to roll against.', '⚠️ No hero built yet');
+    return;
+  }
+
   const topic = (document.getElementById('c-topic').value || '').trim();
   const resBtn = document.querySelector('#c-resistance-pick .seg-btn.active');
   const attBtn = document.querySelector('#c-attitude-pick .seg-btn.active');
@@ -1287,6 +1299,11 @@ function _doInlineRoll(successDice, fav, tn) {
 }
 
 function startJourney() {
+  if (typeof newcomerNeedsHelp === 'function' && newcomerNeedsHelp()) {
+    alertStyled('Build a hero first — pick a <strong>Culture</strong> and <strong>Calling</strong> on the <strong>Build</strong> tab (or load a ready-made hero from ☰ Menu → ✨ Pre-generated Heroes). Until then this subsystem has no skills or attributes to roll against.', '⚠️ No hero built yet');
+    return;
+  }
+
   const total = parseInt(document.getElementById('j-totalHexes').value) || 0;
   if (total <= 0) { alert('Total Hexes must be greater than 0.'); return; }
   char.journey = {

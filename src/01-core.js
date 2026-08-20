@@ -168,7 +168,7 @@ async function toggleStriderMode() {
   document.getElementById('menu-overlay').classList.remove('show');  // close menu so the dialog + result are visible
   const turningOn = !char.striderMode;
   const msg = turningOn
-    ? `<strong>Enable Strider Mode?</strong><br><br>Solo / no-Loremaster play variant. Changes:<ul style="text-align:left;font-size:12px;padding-left:18px;margin:6px 0"><li>PE budget: 10 → <strong>15</strong></li><li>Attribute TN: <strong>18 − Rating</strong> (was 20 − Rating)</li><li>Fellowship Rating starts at <strong>3</strong></li><li>Adds free <strong>Strider</strong> Distinctive Feature (Inspired while journeying)</li><li>Unlocks <strong>Oracle tab</strong> (Telling / Lore / Fortune / Ill-Fortune tables)</li><li>Unlocks <strong>Skirmish stance</strong> + <strong>Gain Ground</strong> combat task</li><li>Unlocks <strong>Eye of Mordor</strong> tracking</li></ul>You can switch back any time. Attribute TNs will recalculate.`
+    ? `<strong>Play on your own, with no Game Master?</strong><br><br>Normally one player is the <em>Loremaster</em>, who describes the world and decides what happens. In Strider Mode <strong>you play both parts</strong>: you act as your hero, and you ask the <strong>Oracle</strong> whenever you don't know what the world does.<br><br>New to solo play? Read <strong>📖 Ref → Playing Solo</strong> — it walks through a whole session step by step.<br><br>Rules changes:<ul style="text-align:left;font-size:12px;padding-left:18px;margin:6px 0"><li>PE budget: 10 → <strong>15</strong></li><li>Attribute TN: <strong>18 − Rating</strong> (was 20 − Rating)</li><li>Fellowship Rating starts at <strong>3</strong></li><li>Adds free <strong>Strider</strong> Distinctive Feature (Inspired while journeying)</li><li>Unlocks <strong>Oracle tab</strong> (Telling / Lore / Fortune / Ill-Fortune tables)</li><li>Unlocks <strong>Skirmish stance</strong> + <strong>Gain Ground</strong> combat task</li><li>Unlocks <strong>Eye of Mordor</strong> tracking</li></ul>You can switch back any time. Attribute TNs will recalculate.`
     : `<strong>Disable Strider Mode?</strong><br><br>Revert to standard play. PE budget → 10, TN → 20 − Rating, Strider Distinctive Feature can be removed manually. Oracle tab + Skirmish stance + Eye of Mordor will hide.`;
   if (!await confirmStyled(msg, turningOn ? '🗡️ Strider Mode' : 'Disable Strider Mode')) return;
   char.striderMode = turningOn;
@@ -198,7 +198,7 @@ async function toggleMoriaMode() {
   document.getElementById('menu-overlay').classList.remove('show');  // close menu so the dialog + result are visible
   const turningOn = !char.moriaMode;
   const msg = turningOn
-    ? `<strong>Enable Moria Solo Mode?</strong><br><br>Solo campaign leading a Band of Allies under Balin's expedition. Changes (Phase 1):<ul style="text-align:left;font-size:12px;padding-left:18px;margin:6px 0"><li>PE budget: → <strong>15</strong> (solo)</li><li><strong>+5 max Hope</strong> (support of your Band)</li><li>Patron is <strong>Balin</strong> — <em>Balin's Counsel</em>: spend Fellowship to make a combat/battle roll Favoured</li><li>Fellowship Rating starts at <strong>3</strong> (+1 from Balin)</li><li>Safe Haven → <strong>Moria — First Hall</strong></li><li>Journeys use the <strong>Moria</strong> event table (Dark Land, Ill-Favoured)</li><li>Unlocks <strong>Oracle tab</strong> + <strong>Eye of Mordor</strong> (Moria: Dark Land, Hunt 14)</li></ul>Band roster, Battles, and Moria oracle tables arrive in later phases. You can switch back any time.`
+    ? `<strong>Play the Moria campaign on your own?</strong><br><br>A second solo mode — no Game Master needed. You lead a <strong>Band</strong> of dwarf allies into Moria under Balin's expedition, with its own journey, battle and oracle tables.<br><br>New to solo play? Read <strong>📖 Ref → Playing Solo</strong> first.<br><br>Rules changes:<ul style="text-align:left;font-size:12px;padding-left:18px;margin:6px 0"><li>PE budget: → <strong>15</strong> (solo)</li><li><strong>+5 max Hope</strong> (support of your Band)</li><li>Patron is <strong>Balin</strong> — <em>Balin's Counsel</em>: spend Fellowship to make a combat/battle roll Favoured</li><li>Fellowship Rating starts at <strong>3</strong> (+1 from Balin)</li><li>Safe Haven → <strong>Moria — First Hall</strong></li><li>Journeys use the <strong>Moria</strong> event table (Dark Land, Ill-Favoured)</li><li>Unlocks <strong>Oracle tab</strong> + <strong>Eye of Mordor</strong> (Moria: Dark Land, Hunt 14)</li></ul>Band roster, Battles, and Moria oracle tables arrive in later phases. You can switch back any time.`
     : `<strong>Disable Moria Solo Mode?</strong><br><br>Revert to standard play. The +5 Hope band bonus is removed; journeys/oracle return to normal (or Strider, if that's still on).`;
   if (!await confirmStyled(msg, turningOn ? '⛏️ Moria Solo Mode' : 'Disable Moria Solo Mode')) return;
   char.moriaMode = turningOn;
@@ -1127,11 +1127,19 @@ function refreshStriderUI() {
   }
   // Mode toggle button labels.
   const btn = document.getElementById('strider-mode-btn');
-  if (btn) btn.textContent = char.striderMode ? '🗡️ Disable Strider Mode' : '🗡️ Enable Strider Mode (solo)';
+  if (btn) btn.textContent = char.striderMode ? '🗡️ Solo Play: Strider Mode — ON' : '🗡️ Solo Play: Strider Mode';
   const mbtn = document.getElementById('moria-mode-btn');
-  if (mbtn) mbtn.textContent = char.moriaMode ? '⛏️ Disable Moria Solo Mode' : '⛏️ Enable Moria Solo Mode';
+  if (mbtn) mbtn.textContent = char.moriaMode ? '⛏️ Solo Play: Moria campaign — ON' : '⛏️ Solo Play: Moria campaign';
   // GM Screen (P6): device-global toggle, independent of char mode. Keep its tab + label in sync.
   if (typeof refreshGmUI === 'function') refreshGmUI();
+}
+
+/* Menu shortcut: jump straight to the Reference tab (and render it). */
+function openReferenceTab() {
+  const t = document.querySelector('.tab[data-tab=reference]');
+  if (t) t.click();
+  const m = document.getElementById('menu-overlay');
+  if (m) m.classList.remove('show');
 }
 
 function toggleDarkMode() {

@@ -2937,7 +2937,36 @@ const REFERENCE = {
     ['Parry', 'Your defence TN — the number an adversary must beat to hit you (plus your shield).'],
     ['Load', 'Total weight carried; high Load drives Fatigue.'],
     ['Valour', 'Martial renown. Each rank grants Valour rolls and unlocks a Reward.'],
-    ['Wisdom', 'Spiritual insight. Each rank grants Wisdom rolls, unlocks a Virtue, and helps resist Shadow.']
+    ['Wisdom', 'Spiritual insight. Each rank grants Wisdom rolls, unlocks a Virtue, and helps resist Shadow.'],
+    ['Favoured', 'Roll the Feat die <em>twice</em> and keep the better result. Comes from a Favoured skill (★), some Virtues, and cultural blessings.'],
+    ['Ill-Favoured', 'Roll the Feat die twice and keep the <em>worse</em> result. If something Favours and something Ill-Favours the same roll, they cancel and you roll normally.'],
+    ['Inspired', 'A state, not a bonus by itself: while Inspired, spending 1 Hope gives <strong>+2d</strong> instead of +1d. Spend no Hope and Inspired does nothing.'],
+    ['Fellowship Focus', 'The one companion your hero is watching over. Supporting <em>them</em> is worth +2d instead of +1d.'],
+    ['Support', 'An ally spends 1 Hope on their sheet to give you +1d (+2d if you are their Fellowship Focus). Record it with the “Receive Support” buttons before you roll.'],
+    ['Standard of Living', 'How wealthy your hero lives. Sets how many Useful Items you may carry and rises as Treasure accumulates.'],
+    ['Adventuring / Fellowship phase', 'Play alternates: the <strong>Adventuring phase</strong> is the quest (journeys, fights, councils); the <strong>Fellowship phase</strong> is the downtime between adventures, where you heal, spend XP, and undertake long tasks.'],
+    ['Stance', 'Where your hero stands in a fight, chosen each combat. It trades safety against aggression: <strong>Forward</strong> attacks hardest but is easiest to hit, <strong>Open</strong> is neutral, <strong>Defensive</strong> is hardest to hit but weakens your attacks, <strong>Rearward</strong> is ranged-only. Each stance also unlocks its own Combat Task.'],
+    ['Resistance', 'How much a Council or a long task pushes back — the number of successes you must accumulate to win it (higher = harder).'],
+    ['Time Limit', 'How many attempts you get before a Council or Endeavour ends, win or lose.']
+  ],
+  solo: [
+    ['Playing with no Game Master', 'Normally a <em>Loremaster</em> describes the world and decides what happens. Playing solo, <strong>you do both jobs</strong> — you play your hero, and you ask the app’s <strong>Oracle</strong> whenever you genuinely don’t know what the world does. The Oracle’s job is to surprise you so the story isn’t just what you already planned.'],
+    ['Strider Mode', 'The official solo/no-Loremaster rules for one hero. Turn it on in ☰ Menu. It lowers your Target Numbers (18 − Rating instead of 20 − Rating, because nobody is helping you), and unlocks the Oracle, the Eye of Mordor, and the Chronicle.'],
+    ['Moria Solo Mode', 'A second, self-contained solo campaign — Balin’s expedition into Moria. Adds your <strong>Band</strong> of dwarf allies and large-scale <strong>Battles</strong>, on top of everything Strider Mode gives you.'],
+    ['The Oracle', 'Your stand-in for the Loremaster. Three tools: the <strong>Telling Table</strong> answers a yes/no question, the <strong>Lore Table</strong> throws you three inspiring words when you have no idea what happens, and <strong>Fortune / Ill-Fortune</strong> add a twist when your ordinary rolls come up with a Rune or an Eye.'],
+    ['Telling Table', 'Ask a closed question — “Is the gate guarded?” — pick how likely a “yes” feels, then roll. You get YES or NO, sometimes with a complication attached. Ask about the <em>world</em>, never about your own hero’s choices.'],
+    ['Lore Table', 'Rolls three words (an Action, an Aspect, and a Focus) such as “Withhold · Ancient · Enemy”. They are deliberately vague — read them against your situation and take the first idea that sparks. There is no wrong reading.'],
+    ['Eye of Mordor', 'A dread clock. <strong>Eye Awareness</strong> climbs as you use magic, gather Shadow, and roll badly. When it reaches your region’s <strong>Hunt threshold</strong>, the Enemy notices you and a <em>Revelation Episode</em> strikes — then it resets. It is the solo game’s way of applying pressure.'],
+    ['Chronicle', 'Your journal, and the real “save file” of a solo game. Play in <em>scenes</em>; write plainly what happens; rolls and oracle answers drop in automatically beside your prose. Export it as Markdown to keep the whole tale.'],
+    ['How a solo session runs', 'The loop, start to finish: <strong>1.</strong> Open a scene in the Chronicle and state where you are and what you want. <strong>2.</strong> Say what your hero does. <strong>3.</strong> If the world must answer something you don’t know, ask the <strong>Telling Table</strong> (yes/no) or the <strong>Lore Table</strong> (open-ended). <strong>4.</strong> If your hero attempts something that could fail, <strong>roll it</strong> on the Dice tab. <strong>5.</strong> Write down what happened, in your own words. <strong>6.</strong> Repeat until the scene ends — then open the next one. Journeys, councils and fights are just scenes with their own tab to run them in.'],
+    ['Your Band (Moria)', 'In the Moria campaign you don’t travel alone: a <strong>Band</strong> of dwarf allies goes with you. They are tracked as a group, not as individual sheets — their state is the five Dispositions plus each ally’s injury and fatigue.'],
+    ['Readiness', 'How prepared your Band is. It sets the Band’s Target Number: <strong>TN = 20 − Readiness</strong>, so higher Readiness makes every Band roll easier.'],
+    ['Dispositions', 'The five things your Band is good at — <em>Expertise, Manoeuvre, Rally, Vigilance, War</em>. Each is a dice pool: when the Band must act, you roll the Disposition that fits, against the Band’s TN.'],
+    ['Disposition Focus', 'The one Disposition your Shared Calling specialises in. Spending Hope on a roll of that Disposition is worth +2d instead of +1d.'],
+    ['Burden', 'How much the Band is carrying or suffering. Higher Burden subtracts dice from Fatigue Tests — it is the Band’s version of Load.'],
+    ['Hardened (ally)', 'An ally who has come through hardship and grown tougher. Hardened allies can receive a <strong>Kingly Gift</strong> — a famous item that also wards off one Eye result.'],
+    ['Clash', 'One exchange in a large Moria <strong>Battle</strong>. You pick a Leader Focus and a Band Stance, roll War or Manoeuvre, then spend your successes — cutting the enemy’s Resistance, gaining an Advantage, or clearing a Complication. The battle ends when enemy Resistance hits 0.'],
+    ['If you get stuck', 'Ask the Telling Table something small and concrete (“Does anyone come down the road?”). Or tap <strong>🎬 Scene</strong> in the Chronicle for a ready-made Where / Who / What / Mood prompt. Momentum beats planning — take the first answer and keep writing.']
   ],
   skills: {
     Awe: 'Intimidate; commanding presence (STR).', Athletics: 'Run, climb, jump, feats of body (STR).', Awareness: 'Notice danger and ambushes (STR).', Hunting: 'Track quarry and find food in the wild (STR).', Song: 'Lift hearts with music and verse (STR).', Craft: 'Make and repair things (STR).',
@@ -2955,6 +2984,7 @@ function renderReference() {
     ['Combat Tasks', REFERENCE.combatTasks],
     ['Dice & Target Numbers', REFERENCE.tn],
     ['Key Terms', REFERENCE.terms],
+    ['Playing Solo (no Game Master)', REFERENCE.solo],
     ['Skills (18)', Object.entries(REFERENCE.skills)]
   ];
   let html = '';
