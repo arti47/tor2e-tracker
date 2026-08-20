@@ -750,6 +750,38 @@ module.exports = {
     checks.push({ ok: seq4.fpNumbered, msg: 'Moria Fellowship Phase card is numbered 1-3 in play order' });
     checks.push({ ok: seq4.fpMilestoneSeparate, msg: 'Refresh FP is separated as a Fellowship Milestone, not a phase step' });
 
+    // ---- Sequence pass 5: pre-roll modifiers, and the journey escape hatch ----
+    const seq5 = await page.evaluate(() => {
+      const out = {};
+      Object.assign(char, { culture: 'Bardings', calling: 'Warden', strRating: 5, strTN: 15,
+        hrtRating: 4, hrtTN: 16, witRating: 3, witTN: 17, endMax: 25, endCur: 25, hopeMax: 12, hopeCur: 12, name: 'B' });
+      char.journey = JSON.parse(JSON.stringify(DEFAULT_CHARACTER.journey || {}));
+      saveCharacter(); render();
+      // Skill buttons FIRE the roll, so their modifiers must render above them.
+      const at = (card, id) => document.getElementById(card).innerHTML.indexOf('id="' + id + '"');
+      out.endeavour = at('se-active-card', 'se-roleplay-pick') < at('se-active-card', 'se-skill-grid');
+      out.council = at('council-active-card', 'c-roleplay-pick') < at('council-active-card', 'c-interaction-section')
+                 && at('council-active-card', 'c-support-btn') < at('council-active-card', 'c-interaction-section');
+      // The journey abort must stay reachable once the setup card hides.
+      document.querySelector('.tab[data-tab=journey]').click();
+      document.getElementById('j-origin').value = 'A';
+      document.getElementById('j-destination').value = 'B';
+      document.getElementById('j-totalHexes').value = '6';
+      startJourney();
+      const cb = document.getElementById('j-cancel-btn');
+      out.abortReachable = cb.offsetParent !== null;
+      out.abortInActiveCard = (cb.closest('.card') || {}).id === 'journey-progress-card';
+      // every subsystem keeps its abort inside the card that is visible while it runs
+      out.setupHidden = document.getElementById('journey-setup-card').style.display === 'none';
+      char.journey = JSON.parse(JSON.stringify(DEFAULT_CHARACTER.journey || {}));
+      saveCharacter(); render();
+      return out;
+    });
+    checks.push({ ok: seq5.endeavour, msg: 'Endeavour: roleplay bonus renders above the skill buttons that roll' });
+    checks.push({ ok: seq5.council, msg: 'Council: roleplay bonus + support render above the interaction skills' });
+    checks.push({ ok: seq5.abortReachable && seq5.abortInActiveCard && seq5.setupHidden,
+                  msg: 'journey abort stays reachable in the active card once setup hides' });
+
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length})` });
     await context.close();
     return { checks };

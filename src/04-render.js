@@ -1360,7 +1360,7 @@ function renderJourney() {
     setup.style.display = 'none';
     progress.style.display = 'block';
     log.style.display = 'block';
-    if (cancelBtn) cancelBtn.style.display = 'inline-block';
+    if (cancelBtn) cancelBtn.style.display = 'block';   // lives in the active card now, full-width
 
     const roleLabels = [];
     if (j.roles && j.roles.guide) roleLabels.push('Guide');

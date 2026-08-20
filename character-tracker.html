@@ -1025,7 +1025,7 @@
     </div>
     <div style="display:flex;gap:8px;margin-top:10px">
       <button class="add-row-btn" onclick="startJourney()" id="j-start-btn" style="flex:1">▶ Start Journey</button>
-      <button class="add-row-btn" onclick="endJourney()" id="j-cancel-btn" style="background:var(--btn-secondary-bg);display:none">✖ Cancel Journey</button>
+      
     </div>
   </div>
 
@@ -1062,6 +1062,7 @@
       <p style="margin:6px 0 0;font-size:11px;opacity:0.9">A Perilous Location forces one extra Journey Event per point of Peril, regardless of the hex path (Core Rules p.114).</p>
     </div>
     <button class="add-row-btn" onclick="arriveAtDestination()" style="width:100%;margin-top:8px;background:var(--gold)">🏁 Arrive at Destination</button>
+    <button class="add-row-btn" onclick="endJourney()" id="j-cancel-btn" style="width:100%;margin-top:6px;background:var(--btn-secondary-bg);color:white">✖ Abandon this journey</button>
   </div>
 
   <div class="card" id="journey-log-card" style="display:none">
@@ -1139,7 +1140,16 @@
     </div>
 
     <!-- Interaction phase -->
-    <div id="c-interaction-section" style="display:none;margin-bottom:14px">
+    <div class="seg-btns" id="c-roleplay-pick" style="margin-top:4px">
+          <button class="seg-btn active" data-val="0">None</button>
+          <button class="seg-btn" data-val="1">Relevant +1d</button>
+          <button class="seg-btn" data-val="2">Brilliant +2d</button>
+        </div>
+      <div style="margin-top:8px;display:flex;align-items:center;gap:8px">
+        <button class="add-row-btn" id="c-support-btn" onclick="toggleCouncilSupport()" style="flex:1;background:var(--btn-secondary-bg)">🤝 Companion Support (+1d next roll)</button>
+      </div>
+      <p class="hint" id="c-support-hint" style="text-align:left;margin-top:4px;display:none"></p>
+      <div id="c-interaction-section" style="display:none;margin-bottom:14px">
       <h4 style="margin:0 0 6px;color:var(--red-dark);font-size:13px">Step 2: Interaction</h4>
       <p class="hint" style="text-align:left;margin-bottom:8px">Each roll counts +1 toward Resistance on success; each ✦ icon adds 1 more. Audience attitude applied automatically.</p>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px">
@@ -1161,16 +1171,10 @@
       </div>
       <div style="padding:8px;background:var(--bg-deep);border-radius:6px;font-size:12px">
         <label style="font-size:11px;color:var(--red-dark);text-transform:uppercase;letter-spacing:0.5px;font-weight:600">Roleplay bonus (LM's call)</label>
-        <div class="seg-btns" id="c-roleplay-pick" style="margin-top:4px">
-          <button class="seg-btn active" data-val="0">None</button>
-          <button class="seg-btn" data-val="1">Relevant +1d</button>
-          <button class="seg-btn" data-val="2">Brilliant +2d</button>
-        </div>
+        
       </div>
-      <div style="margin-top:8px;display:flex;align-items:center;gap:8px">
-        <button class="add-row-btn" id="c-support-btn" onclick="toggleCouncilSupport()" style="flex:1;background:var(--btn-secondary-bg)">🤝 Companion Support (+1d next roll)</button>
-      </div>
-      <p class="hint" id="c-support-hint" style="text-align:left;margin-top:4px;display:none"></p>
+      
+      
     </div>
 
     <!-- End-of-council -->
@@ -1246,14 +1250,15 @@
     <div id="se-attempt-section" style="margin-bottom:14px">
       <h4 style="margin:0 0 6px;color:var(--red-dark);font-size:13px">Make Attempt</h4>
       <p class="hint" style="text-align:left;margin-bottom:8px">Pick any skill that applies. Each success contributes 1 + icons toward Resistance.</p>
-      <div id="se-skill-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;font-size:11px"></div>
-      <div style="padding:8px;background:var(--bg-deep);border-radius:6px;font-size:12px;margin-top:10px">
-        <label style="font-size:11px;color:var(--red-dark);text-transform:uppercase;letter-spacing:0.5px;font-weight:600">Roleplay bonus (LM's call)</label>
-        <div class="seg-btns" id="se-roleplay-pick" style="margin-top:4px">
+      <div class="seg-btns" id="se-roleplay-pick" style="margin-top:4px">
           <button class="seg-btn active" data-val="0">None</button>
           <button class="seg-btn" data-val="1">+1d</button>
           <button class="seg-btn" data-val="2">+2d</button>
         </div>
+      <div id="se-skill-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;font-size:11px"></div>
+      <div style="padding:8px;background:var(--bg-deep);border-radius:6px;font-size:12px;margin-top:10px">
+        <label style="font-size:11px;color:var(--red-dark);text-transform:uppercase;letter-spacing:0.5px;font-weight:600">Roleplay bonus (LM's call)</label>
+        
       </div>
     </div>
 
