@@ -490,6 +490,40 @@ module.exports = {
     checks.push({ ok: sweep.noTrap, msg: 'no overlay traps the user without a visible exit' });
     checks.push({ ok: sweep.termsResolve, msg: 'combat notation terms resolve in the (?) vocabulary' });
 
+    // ---- Dead-hint guard + Combat/GM hint parity ----
+    // _attachHint renders NOTHING for a term hintRow() can't resolve, so a typo (or a lookup that
+    // is case-sensitive when the markup isn't) silently removes the (?) with no error anywhere.
+    // This caught data-hint="Stance" resolving to nothing because STANCE_INFO is keyed lowercase.
+    const hints = await page.evaluate(() => {
+      char.striderMode = true; char.moriaMode = true;
+      localStorage.setItem('tor2e-gm', '1');
+      saveCharacter(); refreshStriderUI();
+      if (window.refreshGmUI) refreshGmUI();
+      render(); initHintButtons();
+      const all = [...document.querySelectorAll('[data-hint]')];
+      const dead = all.map(e => e.dataset.hint).filter(t => !hintRow(t));
+      const rendered = t => document.querySelectorAll('#panel-' + t + ' .hint-q').length;
+      return {
+        total: all.length,
+        dead,
+        // every data-hint element must actually carry a rendered (?) button
+        allRendered: all.every(e => !!e.querySelector('.hint-q')),
+        combat: rendered('combat'), gm: rendered('gm'),
+        thinTabs: ['character','skills','combat','journey','council','dice','oracle','band','battle','chronicle','build','gm']
+          .filter(t => rendered(t) === 0),
+        stanceResolves: !!hintRow('Stance') && !!hintRow('Forward') && !!hintRow('forward')
+      };
+    });
+    checks.push({ ok: hints.dead.length === 0, msg: `every data-hint resolves to real text (dead: ${hints.dead.join(', ') || 'none'})` });
+    checks.push({ ok: hints.allRendered, msg: 'every data-hint element renders a (?) button' });
+    checks.push({ ok: hints.stanceResolves, msg: 'stance lookup works for Stance/Forward/forward (case-insensitive)' });
+    checks.push({ ok: hints.combat >= 8, msg: `Combat tab has point-of-use hints (got ${hints.combat})` });
+    checks.push({ ok: hints.gm >= 4, msg: `GM tab has point-of-use hints (got ${hints.gm})` });
+    // Every jargon-carrying tab must have at least one (?); Reference IS the glossary, Gear is
+    // free text, so those two are exempt by design.
+    checks.push({ ok: hints.thinTabs.length === 0, msg: `no jargon tab left without a (?) (thin: ${hints.thinTabs.join(', ') || 'none'})` });
+    checks.push({ ok: hints.total >= 24, msg: `data-hint coverage held (got ${hints.total})` });
+
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length})` });
     await context.close();
     return { checks };

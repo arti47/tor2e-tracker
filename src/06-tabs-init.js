@@ -1566,7 +1566,12 @@ function hintRow(term) {
     const row = (g || []).find(t => t[0] === term);
     if (row) return row;
   }
-  if (typeof STANCE_INFO !== 'undefined' && STANCE_INFO[term]) return [term, STANCE_INFO[term]];
+  // STANCE_INFO is keyed lowercase ('forward'), but markup reads naturally ('Forward') — match both,
+  // otherwise _attachHint silently renders no (?) at all and the control looks unexplained.
+  if (typeof STANCE_INFO !== 'undefined') {
+    const k = String(term).toLowerCase();
+    if (STANCE_INFO[k]) return [term, STANCE_INFO[k]];
+  }
   return null;
 }
 function hintFor(term) {
