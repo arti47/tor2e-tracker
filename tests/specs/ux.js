@@ -632,6 +632,30 @@ module.exports = {
     checks.push({ ok: /icons/i.test(silent.noIcons), msg: 'special-success spend explains when no ✦ icons remain' });
     checks.push({ ok: /name/i.test(silent.npcNoName), msg: 'GM NPC ledger asks for a name instead of ignoring Add' });
 
+    // ---- Glossary hygiene: no duplicate entries, no term left leaning on undefined jargon ----
+    // Two passes independently added 'Stance' and 'Eye of Mordor', so the Reference tab rendered
+    // each twice with different wording, and hintRow() silently returned whichever came first.
+    const gloss = await page.evaluate(() => {
+      const groups = ['terms', 'tn', 'conditions', 'solo', 'combatTasks'];
+      const all = [];
+      groups.forEach(g => (REFERENCE[g] || []).forEach(([t, d]) => all.push({ t, d: String(d) })));
+      const seen = {};
+      all.forEach(x => { const k = x.t.toLowerCase(); seen[k] = (seen[k] || 0) + 1; });
+      return {
+        total: all.length,
+        dupes: Object.entries(seen).filter(([, v]) => v > 1).map(([k]) => k),
+        // the core creation/combat vocabulary other definitions lean on must itself be defined
+        coreDefined: ['Reward', 'Virtue', 'Success die', 'Piercing Blow', 'Resolve', 'Combat Task',
+                      'Eye Awareness', 'Revelation Episode'].filter(t => !hintRow(t)),
+        // no entry may be empty or a stub
+        stubs: all.filter(x => x.d.replace(/<[^>]+>/g, '').trim().length < 25).map(x => x.t)
+      };
+    });
+    checks.push({ ok: gloss.dupes.length === 0, msg: `no duplicate glossary terms (dupes: ${gloss.dupes.join(', ') || 'none'})` });
+    checks.push({ ok: gloss.coreDefined.length === 0, msg: `core vocabulary is defined (missing: ${gloss.coreDefined.join(', ') || 'none'})` });
+    checks.push({ ok: gloss.stubs.length === 0, msg: `no stub definitions (stubs: ${gloss.stubs.join(', ') || 'none'})` });
+    checks.push({ ok: gloss.total >= 90, msg: `glossary coverage held (${gloss.total} entries)` });
+
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length})` });
     await context.close();
     return { checks };
