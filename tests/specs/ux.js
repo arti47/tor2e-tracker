@@ -391,7 +391,8 @@ module.exports = {
       const b = titles('build');
       out.buildChecklistFirst = /progress/i.test(b[0]);
       out.buildNumbered = /^1 ·/.test(b[1]) && b.filter(t => /^[1-9] ·/.test(t)).length === 9;
-      out.lifepathOptional = b.some(t => /^optional ·/i.test(t));
+      // must read as optional AND name its relationship to step 1 (it overwrites steps 4-5 if run later)
+      out.lifepathOptional = b.some(t => /^optional/i.test(t) && /step 1/i.test(t));
       // the in-play Patron Quest roller moved off Build onto the Oracle tab
       out.pqMoved = !document.querySelector('#panel-build [onclick="rollPatronQuest()"]')
                  && !!document.querySelector('#panel-oracle [onclick="rollPatronQuest()"]');
@@ -420,7 +421,7 @@ module.exports = {
     });
     checks.push({ ok: seq2.buildChecklistFirst, msg: 'Build leads with the progress checklist' });
     checks.push({ ok: seq2.buildNumbered, msg: 'Build creation steps are numbered 1-9 in order' });
-    checks.push({ ok: seq2.lifepathOptional, msg: 'Lifepath is marked an optional side-path, not a step' });
+    checks.push({ ok: seq2.lifepathOptional, msg: 'Lifepath reads as optional and names itself an alternative to step 1' });
     checks.push({ ok: seq2.pqMoved, msg: 'Patron Quest moved off Build to the Oracle tab' });
     checks.push({ ok: seq2.advSteps, msg: 'Advancement is split earn → pools → spend → end phase' });
     checks.push({ ok: seq2.earnBeforeSpend, msg: 'Award XP sits above the Spend buttons' });
@@ -719,6 +720,35 @@ module.exports = {
     checks.push({ ok: seq3.gearEditableFirst, msg: 'Gear: opens on an editable card, read-only Useful Items last' });
     checks.push({ ok: seq3.dice, msg: 'Dice: quick-rolls → manual fold → modifiers → Roll → result → other triggers' });
     checks.push({ ok: seq3.combatPlayFirst, msg: 'Combat stays play-first (stance/encounter above one-time gear)' });
+
+    // ---- Sequence pass 4: within-card order (Encounter, Moria FP) ----
+    const seq4 = await page.evaluate(() => {
+      const out = {};
+      Object.assign(char, { culture: 'Bardings', strRating: 5, strTN: 15, parry: 15, endMax: 25, endCur: 25,
+        weapons: [{ name: 'Sword', dmg: 4, inj: 16, prof: 'Swords' }], profs: { Swords: 2 } });
+      char.moriaMode = true; saveCharacter(); refreshStriderUI(); render();
+      addFoeFromBestiary(0); render();
+      const enc = document.getElementById('encounter-card').innerHTML;
+      const at = k => enc.indexOf(k);
+      // Bring foes in first, close the fight last.
+      out.addBeforeFoes = at('openBestiary()') > -1 && at('openBestiary()') < at('_renderFoeCard') ;
+      out.addBeforeEnd = at('openBestiary()') < at('endEncounter()');
+      out.endLast = at('endEncounter()') > at('openBestiary()') && /End encounter/.test(enc);
+      out.roundStillTop = at('nextRound()') < at('openBestiary()');
+      // Moria Fellowship Phase card is numbered 1-3 in play order.
+      const band = document.getElementById('panel-band').innerText;
+      out.fpNumbered = /1 · How long do you rest\?/.test(band) &&
+                       /2 · Was the rest disturbed\?/.test(band) &&
+                       /3 · Spend the time/.test(band);
+      out.fpMilestoneSeparate = /Fellowship Milestone/.test(band);
+      char.encounter = JSON.parse(JSON.stringify(DEFAULT_CHARACTER.encounter));
+      char.moriaMode = false; saveCharacter(); refreshStriderUI(); render();
+      return out;
+    });
+    checks.push({ ok: seq4.addBeforeEnd && seq4.endLast, msg: 'Encounter: Add Adversary precedes foes, End encounter closes the card' });
+    checks.push({ ok: seq4.roundStillTop, msg: 'Encounter: round counter + Next round stay at the top' });
+    checks.push({ ok: seq4.fpNumbered, msg: 'Moria Fellowship Phase card is numbered 1-3 in play order' });
+    checks.push({ ok: seq4.fpMilestoneSeparate, msg: 'Refresh FP is separated as a Fellowship Milestone, not a phase step' });
 
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length})` });
     await context.close();

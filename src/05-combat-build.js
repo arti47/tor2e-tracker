@@ -1215,8 +1215,6 @@ function renderEncounter() {
   let html = sharedBanner + `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:8px">
       <strong style="font-size:14px">Round ${e.round}</strong>
       ${canGm ? `<button onclick="nextRound()" class="add-row-btn" style="font-size:11px;padding:3px 8px;background:var(--btn-secondary-bg);color:white">Next round ▸</button>` : ''}
-      <span style="flex:1"></span>
-      ${canGm ? `<button onclick="endEncounter()" class="add-row-btn" style="font-size:11px;padding:3px 8px;background:var(--btn-secondary-bg);color:white">End encounter</button>` : ''}
     </div>
     <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:12px;margin-bottom:6px">
       <span>Attack with:</span>
@@ -1237,9 +1235,11 @@ function renderEncounter() {
         <label><input type="checkbox" ${a.keen ? 'checked' : ''} onchange="setEncAdv('keen')"> Keen (PB 9+)</label>
       </div>`;
   }
+  // Sequence: bring foes in, fight them, then close the encounter.
+  if (canGm) html += `<button onclick="openBestiary()" class="add-row-btn" style="width:100%;margin-bottom:8px;background:var(--gold)">+ Add Adversary</button>`;
   if (encEngagedFoes().length > 1) html += `<button onclick="allFoesAttack()" class="add-row-btn" style="width:100%;margin-bottom:8px;background:var(--btn-alert-bg)">🗡️ All engaged foes attack</button>`;
   (e.foes || []).forEach(f => { html += _renderFoeCard(f, canGm); });
-  if (canGm) html += `<button onclick="openBestiary()" class="add-row-btn" style="width:100%;margin-top:4px;background:var(--gold)">+ Add Adversary</button>`;
+  if (canGm) html += `<button onclick="endEncounter()" class="add-row-btn" style="width:100%;margin-top:10px;background:var(--btn-secondary-bg);color:white">🏁 End encounter</button>`;
   card.innerHTML = html;
 }
 function _renderFoeCard(f, canGm = true) {

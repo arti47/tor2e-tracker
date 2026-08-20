@@ -311,8 +311,8 @@
   </div>
 
   <div class="card" id="lifepath-card" style="border-color:var(--gold);background:linear-gradient(180deg,var(--gold-paler) 0%,var(--pure-white) 100%);">
-    <h3 class="card-title" style="color:var(--gold);">optional · 🎲 Random Lifepath</h3>
-    <p class="hint" style="margin-bottom:10px">From the <em>Character Lifepaths</em> supplement. Rolls give you a backstory + suggested stats; a Major Event adds a twist.</p>
+    <h3 class="card-title" style="color:var(--gold);">Optional — instead of choosing in step 1 · 🎲 Random Lifepath</h3>
+    <p class="hint" style="margin-bottom:10px;text-align:left;line-height:1.5">From the <em>Character Lifepaths</em> supplement — an <strong>alternative to picking</strong>: it rolls your backstory, attributes, a culture-Favoured skill and two Distinctive Features for you, then a Major Event adds a twist.<br><strong>Use it here, before step 2</strong> — running it later overwrites what you chose in steps 4 and 5. (It always asks first.)</p>
 
     <div id="lifepath-disabled-hint" style="display:none;padding:10px;background:var(--bg-deep);border-radius:6px;font-size:12px;color:var(--text-muted);font-style:italic"></div>
 
@@ -1738,21 +1738,29 @@
 
   <div class="card" style="border-color:var(--green-soft)">
     <h3 class="card-title" data-hint="Moria Fellowship Phase">🌿 Fellowship Phase (Moria)</h3>
-    <p class="hint" style="text-align:left;line-height:1.5">Return to Balin's camp. Pick a <strong>duration</strong> to recover (no Yule in Moria); longer rests heal more but let Shadow gain ground (lower next Hunt Threshold).</p>
+    <p class="hint" style="text-align:left;line-height:1.5">Return to Balin's camp between missions. Work down in order — Moria has no Yule.</p>
+    <p class="hint" style="text-align:left;margin:8px 0 4px;color:var(--red-dark);font-weight:600;text-transform:uppercase;font-size:11px;letter-spacing:.5px">1 · How long do you rest?</p>
+    <p class="hint" style="text-align:left;margin:0 0 6px">Longer rests heal more but let the Shadow gain ground — each step lowers your next Hunt Threshold.</p>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px">
       <button class="add-row-btn" onclick="moriaFP('hurried')" style="font-size:11px">⏱️ Hurried<br><small>hours</small></button>
       <button class="add-row-btn" onclick="moriaFP('brief')" style="font-size:11px">📅 Brief<br><small>days · 1 undertaking</small></button>
       <button class="add-row-btn" onclick="moriaFP('extended')" style="font-size:11px;background:var(--btn-secondary-bg)">🗓️ Extended<br><small>weeks · 2 undertakings</small></button>
     </div>
+    <p class="hint" style="text-align:left;margin:10px 0 4px;color:var(--red-dark);font-weight:600;text-transform:uppercase;font-size:11px;letter-spacing:.5px">2 · Was the rest disturbed?</p>
+    <p class="hint" style="text-align:left;margin:0 0 6px">Roll once — an 👁 Eye means something interrupts the camp.</p>
     <div style="display:flex;gap:6px;flex-wrap:wrap">
       <button class="add-row-btn" onclick="rollFPInterruption('brief')" style="flex:1;min-width:120px;font-size:11px;background:var(--btn-secondary-bg)">🎲 FP Interruption</button>
-      <button class="add-row-btn" onclick="refreshFellowship()" style="flex:1;min-width:120px;font-size:11px">🤝 Refresh FP (Milestone)</button>
     </div>
-    <div style="border-top:1px dashed var(--border);margin:10px 0 6px"></div>
-    <p class="hint" style="text-align:left;margin:0 0 6px">Undertakings:</p>
+    <p class="hint" style="text-align:left;margin:10px 0 4px;color:var(--red-dark);font-weight:600;text-transform:uppercase;font-size:11px;letter-spacing:.5px">3 · Spend the time</p>
+    <p class="hint" style="text-align:left;margin:0 0 6px">Brief allows 1 undertaking, Extended allows 2. Hurried allows none.</p>
     <div style="display:flex;gap:6px;flex-wrap:wrap">
       <button class="add-row-btn" onclick="recruitAllies()" style="flex:1;min-width:120px;font-size:11px">➕ Recruit Allies</button>
       <button class="add-row-btn" onclick="reclaimSafeHavenUndertaking()" style="flex:1;min-width:120px;font-size:11px">🏛️ Reclaim Safe Haven</button>
+    </div>
+    <div style="border-top:1px dashed var(--border);margin:12px 0 6px"></div>
+    <p class="hint" style="text-align:left;margin:0 0 6px">Separate from the rest above — a <strong>Fellowship Milestone</strong> reward, not part of this phase:</p>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <button class="add-row-btn" onclick="refreshFellowship()" style="flex:1;min-width:120px;font-size:11px">🤝 Refresh FP (Milestone)</button>
     </div>
     <p class="hint" style="text-align:left;margin:8px 0 0;font-size:11px">Hardened status & Kingly Gifts: award via the Hardened checkbox on each ally above; a Famous item given to a Hardened ally acts as a second Gift (re-roll one Eye) — note it in the ally's name.</p>
   </div>
