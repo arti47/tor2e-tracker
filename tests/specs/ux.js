@@ -689,6 +689,37 @@ module.exports = {
     checks.push({ ok: solo.fpSolo && solo.fpGroup, msg: 'Gather Rumours points solo players at the Oracle, groups at the Loremaster' });
     checks.push({ ok: solo.unqualified.length === 0, msg: `glossary never assumes a Loremaster exists (bad: ${solo.unqualified.join(', ') || 'none'})` });
 
+    // ---- Sequence pass 3: Council / Gear / Dice read in the order you use them ----
+    const seq3 = await page.evaluate(() => {
+      const titles = t => [...document.querySelectorAll('#panel-' + t + ' .card .card-title')].map(e => e.innerText.trim());
+      const out = {};
+      // Council: the two subsystems are two clean runs; the archive sits last.
+      const c = titles('council').join('|');
+      out.council = c.indexOf('Council Log') < c.indexOf('Skill Endeavour') &&
+                    c.indexOf('Endeavour Log') < c.indexOf('Past Councils');
+      // Gear: opens on something editable, not the read-only summary.
+      const g = titles('gear');
+      out.gearEditableFirst = !/Useful Items/.test(g[0]) && /Useful Items/.test(g[g.length - 1]);
+      // Dice: manual path is self-contained — controls, then modifiers, then Roll, then the result,
+      // with the other roll triggers (Combat Tasks, Shadow Tests) below it.
+      const html = document.getElementById('panel-dice').innerHTML;
+      const at = k => html.indexOf(k);
+      out.dice = at('id="quick-skills"') < at('id="dice-manual"') &&
+                 at('id="dice-manual"') < at('id="hope-spend-btn"') &&
+                 at('id="hope-spend-btn"') < at('rollDice()') &&
+                 at('rollDice()') < at('id="roll-result"') &&
+                 at('id="roll-result"') < at('id="combat-tasks-card"') &&
+                 at('id="combat-tasks-card"') < at('id="shadow-test-card"');
+      // Combat stays play-first by decision: stance and encounter above the one-time gear setup.
+      const cb = titles('combat').join('|');
+      out.combatPlayFirst = cb.indexOf('Stance') < cb.indexOf('War Gear');
+      return out;
+    });
+    checks.push({ ok: seq3.council, msg: 'Council: both subsystems run in order, Past Councils archived last' });
+    checks.push({ ok: seq3.gearEditableFirst, msg: 'Gear: opens on an editable card, read-only Useful Items last' });
+    checks.push({ ok: seq3.dice, msg: 'Dice: quick-rolls → manual fold → modifiers → Roll → result → other triggers' });
+    checks.push({ ok: seq3.combatPlayFirst, msg: 'Combat stays play-first (stance/encounter above one-time gear)' });
+
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length})` });
     await context.close();
     return { checks };

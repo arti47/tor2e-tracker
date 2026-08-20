@@ -1188,18 +1188,6 @@
     <div id="c-roll-log" style="font-size:12px;line-height:1.5;max-height:300px;overflow-y:auto;-webkit-overflow-scrolling:touch"></div>
   </div>
 
-  <div class="card" id="council-history-card" style="display:none">
-    <h3 class="card-title">Past Councils <span id="c-history-count" style="font-size:11px;color:var(--text-muted);font-weight:400"></span></h3>
-    <div id="c-history-list" style="font-size:12px;line-height:1.5;max-height:260px;overflow-y:auto;-webkit-overflow-scrolling:touch"></div>
-    <button class="add-row-btn" onclick="clearCouncilHistory()" style="width:100%;margin-top:8px;background:var(--btn-secondary-bg);font-size:12px">Clear Council History</button>
-  </div>
-
-  <!-- Visual divider between Council and Skill Endeavour -->
-  <div style="text-align:center;color:var(--gold);font-size:11px;text-transform:uppercase;letter-spacing:2px;font-weight:600;margin:24px 0 12px;position:relative">
-    <span style="background:var(--bg);padding:0 12px;position:relative;z-index:1">Skill Endeavour</span>
-    <div style="position:absolute;top:50%;left:0;right:0;border-top:1px solid var(--border);z-index:0"></div>
-  </div>
-
   <div class="card" id="se-setup-card">
     <h3 class="card-title" id="endeavour-setup-title">Skill Endeavour Setup</h3>
     <p class="hint" style="text-align:left;margin-bottom:10px;line-height:1.5">A Skill Endeavour is a complicated task that requires multiple rolls — searching a wide area, fortifying a steading, deciphering a riddle. Players accumulate successes equal to Resistance within the Time Limit.</p>
@@ -1283,15 +1271,22 @@
     <div id="se-roll-log" style="font-size:12px;line-height:1.5;max-height:300px;overflow-y:auto;-webkit-overflow-scrolling:touch"></div>
   </div>
 
+  <div class="card" id="council-history-card" style="display:none">
+    <h3 class="card-title">Past Councils <span id="c-history-count" style="font-size:11px;color:var(--text-muted);font-weight:400"></span></h3>
+    <div id="c-history-list" style="font-size:12px;line-height:1.5;max-height:260px;overflow-y:auto;-webkit-overflow-scrolling:touch"></div>
+    <button class="add-row-btn" onclick="clearCouncilHistory()" style="width:100%;margin-top:8px;background:var(--btn-secondary-bg);font-size:12px">Clear Council History</button>
+  </div>
+
+  <!-- Visual divider between Council and Skill Endeavour -->
+  <div style="text-align:center;color:var(--gold);font-size:11px;text-transform:uppercase;letter-spacing:2px;font-weight:600;margin:24px 0 12px;position:relative">
+    <span style="background:var(--bg);padding:0 12px;position:relative;z-index:1">Skill Endeavour</span>
+    <div style="position:absolute;top:50%;left:0;right:0;border-top:1px solid var(--border);z-index:0"></div>
+  </div>
+
 </section>
 
 <!-- ============ GEAR ============ -->
 <section class="panel" id="panel-gear">
-  <div class="card">
-    <h3 class="card-title">Useful Items 🔒</h3>
-    <p class="hint" style="text-align:left;margin:0 0 8px 0">Set via <strong>Build tab → Useful Items</strong>. Each grants +1d on its skill (auto-applied when quick-rolling).</p>
-    <div id="useful-items-display"></div>
-  </div>
   <div class="card">
     <h3 class="card-title">Travelling Gear</h3>
     <p class="hint" style="text-align:left;margin:0 0 8px 0">Free text — winter: boots, jacket, fur-lined cloak, woollen trousers, blankets; summer: light clothes and cloak. No Load.</p>
@@ -1314,6 +1309,11 @@
   <div class="card">
     <h3 class="card-title">Notes</h3>
     <textarea class="full" data-field="notes" style="min-height:200px" placeholder="Session notes, NPCs, rumours..."></textarea>
+  </div>
+  <div class="card">
+    <h3 class="card-title">Useful Items 🔒</h3>
+    <p class="hint" style="text-align:left;margin:0 0 8px 0">Set via <strong>Build tab → Useful Items</strong>. Each grants +1d on its skill (auto-applied when quick-rolling).</p>
+    <div id="useful-items-display"></div>
   </div>
 </section>
 
@@ -1385,6 +1385,40 @@
     </details>
 
 
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px">
+      <button class="seg-btn" id="hope-spend-btn" onclick="toggleHopeSpend()" style="border-radius:6px;">
+        ✨ Spend 1 Hope (+1d)
+      </button>
+      <button class="seg-btn" id="magical-btn" onclick="toggleMagical()" style="border-radius:6px;">
+        ★ Magical Success (1 Hope)
+      </button>
+    </div>
+    <button class="seg-btn" id="keen-btn" onclick="toggleKeen()" style="border-radius:6px;width:100%;margin-top:8px;display:none">
+      🗡️ Keen weapon (Piercing Blow on 9+)
+    </button>
+    <button class="seg-btn" id="brave-btn" onclick="toggleBrave()" style="border-radius:6px;width:100%;margin-top:8px;display:none">
+      🌲 Brave at a Pinch — Inspired <small style="opacity:0.75;font-weight:400">(next Hope spend = +2d)</small>
+    </button>
+    <button class="seg-btn" id="invoke-df-btn" onclick="toggleInvokeDF()" style="border-radius:6px;width:100%;margin-top:8px">
+      ✨ Invoke Distinctive Feature — Inspired <small style="opacity:0.75;font-weight:400">(next Hope spend = +2d)</small>
+    </button>
+    <button class="seg-btn" id="dragon-slayer-btn" onclick="toggleDragonSlayer()" style="border-radius:6px;width:100%;margin-top:8px;display:none">
+      🐉 Dragon-Slayer — foe is Might 2+ <small style="opacity:0.75;font-weight:400">(attack Favoured)</small>
+    </button>
+    <button class="seg-btn" id="dark-business-btn" onclick="toggleDarkBusiness()" style="border-radius:6px;width:100%;margin-top:8px;display:none">
+      🌑 Dark for Dark Business — dark/underground <small style="opacity:0.75;font-weight:400">(Inspired)</small>
+    </button>
+    <p class="hint" id="hope-cost-hint" style="display:none;color:var(--gold);font-weight:600">Hope will be deducted on roll</p>
+
+
+    <button class="roll-btn" onclick="rollDice()" style="margin-top:10px">🎲 Roll Dice</button>
+
+    <div class="roll-result" id="roll-result" role="status" aria-live="polite" style="margin-top:12px; display:none">
+      <div class="result-dice" id="result-dice"></div>
+      <div class="result-total" id="result-total">—</div>
+      <div class="result-summary" id="result-summary"></div>
+      <div id="pierce-action" style="margin-top:8px;text-align:center"></div>
+
     <div id="combat-tasks-card" style="margin-top:12px;display:none;padding:10px;background:var(--bg-deep);border:1px solid var(--border);border-radius:6px">
       <label style="font-size:12px;color:var(--red-dark);text-transform:uppercase;letter-spacing:0.5px;font-weight:600">Combat Tasks <span style="font-size:10px;color:var(--text-faint);text-transform:none;letter-spacing:0;font-weight:400">— main action, gated by stance</span></label>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px" id="combat-tasks-grid">
@@ -1436,39 +1470,6 @@
       <p class="hint" style="margin:6px 0 0 0;text-align:left;font-size:11px;line-height:1.4">Success: reduce incoming Shadow gain by <strong>1 + 1 per ✦ icon</strong>. Then adjust Shadow with the − button on Character tab. Misdeeds cannot be tested.</p>
     </div>
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px">
-      <button class="seg-btn" id="hope-spend-btn" onclick="toggleHopeSpend()" style="border-radius:6px;">
-        ✨ Spend 1 Hope (+1d)
-      </button>
-      <button class="seg-btn" id="magical-btn" onclick="toggleMagical()" style="border-radius:6px;">
-        ★ Magical Success (1 Hope)
-      </button>
-    </div>
-    <button class="seg-btn" id="keen-btn" onclick="toggleKeen()" style="border-radius:6px;width:100%;margin-top:8px;display:none">
-      🗡️ Keen weapon (Piercing Blow on 9+)
-    </button>
-    <button class="seg-btn" id="brave-btn" onclick="toggleBrave()" style="border-radius:6px;width:100%;margin-top:8px;display:none">
-      🌲 Brave at a Pinch — Inspired <small style="opacity:0.75;font-weight:400">(next Hope spend = +2d)</small>
-    </button>
-    <button class="seg-btn" id="invoke-df-btn" onclick="toggleInvokeDF()" style="border-radius:6px;width:100%;margin-top:8px">
-      ✨ Invoke Distinctive Feature — Inspired <small style="opacity:0.75;font-weight:400">(next Hope spend = +2d)</small>
-    </button>
-    <button class="seg-btn" id="dragon-slayer-btn" onclick="toggleDragonSlayer()" style="border-radius:6px;width:100%;margin-top:8px;display:none">
-      🐉 Dragon-Slayer — foe is Might 2+ <small style="opacity:0.75;font-weight:400">(attack Favoured)</small>
-    </button>
-    <button class="seg-btn" id="dark-business-btn" onclick="toggleDarkBusiness()" style="border-radius:6px;width:100%;margin-top:8px;display:none">
-      🌑 Dark for Dark Business — dark/underground <small style="opacity:0.75;font-weight:400">(Inspired)</small>
-    </button>
-    <p class="hint" id="hope-cost-hint" style="display:none;color:var(--gold);font-weight:600">Hope will be deducted on roll</p>
-
-
-    <button class="roll-btn" onclick="rollDice()" style="margin-top:10px">🎲 Roll Dice</button>
-
-    <div class="roll-result" id="roll-result" role="status" aria-live="polite" style="margin-top:12px; display:none">
-      <div class="result-dice" id="result-dice"></div>
-      <div class="result-total" id="result-total">—</div>
-      <div class="result-summary" id="result-summary"></div>
-      <div id="pierce-action" style="margin-top:8px;text-align:center"></div>
       <div id="strider-special-success" style="display:none;margin-top:8px;padding:8px;background:var(--gold-soft);border:1px solid var(--gold);border-radius:6px">
         <div style="font-size:11px;color:var(--red-dark);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">🗡️ Special Success — spend ✦ icons (Strider Mode)</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:11px"></div>
