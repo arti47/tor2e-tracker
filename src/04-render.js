@@ -1693,7 +1693,10 @@ function renderClashSpend() {
 }
 function clashSpend(type) {
   const b = char.battle;
-  if ((b._pendingSpend || 0) <= 0) return;
+  if ((b._pendingSpend || 0) <= 0) {
+    alertStyled('Nothing left to spend. Successes to spend come from a <strong>Clash roll</strong> — make one first, then choose what to spend them on.', '⚠️ No successes pending');
+    return;
+  }
   let cost = 1, log = '';
   if (type === 'foe') { b.foeResistance = Math.max(0, b.foeResistance - 1); log = '−1 Foe Resistance'; }
   else if (type === 'obj') { b.objectiveRes = Math.max(0, b.objectiveRes - 1); log = '−1 Objective Resistance'; }
@@ -2751,7 +2754,10 @@ function openHoardRoller() {
 
 function fpHoardSetupHint() {
   const tierBtn = document.querySelector('#hoard-tier-pick .seg-btn.active');
-  if (!tierBtn) return;
+  if (!tierBtn) {
+    alertStyled('Choose a hoard size first — <strong>Lesser</strong>, <strong>Greater</strong> or <strong>Marvellous</strong> — using the buttons above. It sets how many dice are rolled for treasure and for magical finds.', '⚠️ Pick a hoard size');
+    return;
+  }
   const tier = HOARD_TIERS[tierBtn.dataset.val];
   document.getElementById('hoard-tier-hint').textContent = `${tier.label} · Treasure: roll ${tier.sDice} Success die${tier.sDice>1?'s':''} × party size · Magical: roll ${tier.fDice} Feat dice`;
 }
@@ -3102,7 +3108,11 @@ async function unlockDormantQuality(itemIdx) {
 
   const method = await promptStyled(`🔓 Unlock dormant quality on "${item.name}":\n\n  ${q.name}\n  ${q.description}\n\nHow are you unlocking it?\n\n  1. Via new VALOUR rank (instead of taking a Reward this rank-up — Core Rules p.163)\n  2. Via VISITING THE TREASURY undertaking (trade in 1 Reward from war gear at your folk's treasury — pp.121, 165)\n\nEnter 1 or 2 to confirm, or Cancel to abort.`, '');
 
-  if (method !== '1' && method !== '2') return;
+  if (method === null) return;                       // Cancel — the user meant to back out, say nothing
+  if (method !== '1' && method !== '2') {
+    await alertStyled('Enter <strong>1</strong> or <strong>2</strong> to choose how the quality is unlocked — nothing was changed.', '⚠️ Unrecognised choice');
+    return;
+  }
 
   q.active = true;
   const methodLabel = method === '1' ? 'new Valour rank' : 'Visiting the Treasury';

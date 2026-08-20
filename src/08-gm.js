@@ -188,7 +188,11 @@ function gmNpcs() { try { return JSON.parse(localStorage.getItem(GM_NPC_KEY)) ||
 function gmSaveNpcs(list) { try { localStorage.setItem(GM_NPC_KEY, JSON.stringify(list)); } catch (e) {} }
 function gmAddNpc() {
   const val = id => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
-  const name = val('gm-npc-name'); if (!name) return;
+  const name = val('gm-npc-name');
+  if (!name) {
+    alertStyled('Give the NPC a <strong>name</strong> first — the other fields are optional.', '⚠️ Name needed');
+    return;
+  }
   const list = gmNpcs();
   list.push({ id: 'npc-' + Date.now().toString(36), name, role: val('gm-npc-role'), features: val('gm-npc-features'), notes: val('gm-npc-notes') });
   gmSaveNpcs(list);
@@ -387,7 +391,10 @@ let _gmLastCard = null;
 function gmDrawActionCard() {
   const key = document.getElementById('gm-deck-select')?.value || 'standard';
   const deck = COMBAT_ACTION_DECKS[key] || [];
-  if (!deck.length) return;
+  if (!deck.length) {
+    alertStyled('That deck has no cards. Pick a different foe type from the dropdown above.', '⚠️ Empty deck');
+    return;
+  }
   let card = deck[Math.floor(Math.random() * deck.length)], tries = 0;
   while (_gmLastCard && card.title === _gmLastCard && deck.length > 1 && tries++ < 10) card = deck[Math.floor(Math.random() * deck.length)];
   _gmLastCard = card.title;

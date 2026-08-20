@@ -70,7 +70,10 @@ function applySpecialSuccess(id) {
   const panel = document.getElementById('strider-special-success');
   if (!panel) return;
   let left = parseInt(panel.dataset.iconsLeft) || 0;
-  if (left <= 0) return;
+  if (left <= 0) {
+    alertStyled('No ✦ success icons left to spend on this roll. Icons come from 6s on your Success dice — roll again to earn more.', '⚠️ No icons left');
+    return;
+  }
   left -= 1;
   const spend = SPECIAL_SUCCESS_SPENDS.find(s => s.id === id);
   if (!spend) return;
@@ -1964,9 +1967,17 @@ function adjPE(kind, name, delta) {
 
   if (delta > 0) {
     const newRank = cur + 1;
-    if (newRank > cap) return;
+    if (newRank > cap) {
+      alertStyled('During character creation a ' + (kind === 'skill' ? 'Skill' : 'Combat Proficiency') +
+        ' can be raised no higher than <strong>' + cap + '</strong>. <strong>' + escapeHtml(name) + '</strong> is already there.<br><br>' +
+        'You can push it further later in play, by spending experience during a Fellowship Phase.', '⚠️ Creation cap reached');
+      return;
+    }
     const cost = costs[newRank];
-    if (cost === 0) return;
+    if (cost === 0) {
+      alertStyled('<strong>' + escapeHtml(name) + '</strong> cannot be raised any further at character creation.', '⚠️ Not available yet');
+      return;
+    }
     if (spent + cost > getPEBudget()) {
       alert(`Need ${cost} PE; only ${getPEBudget() - spent} remaining.`);
       return;
@@ -1979,7 +1990,10 @@ function adjPE(kind, name, delta) {
     }
     char.peSpent = spent + cost;
   } else {
-    if (cur <= base) return;
+    if (cur <= base) {
+      alertStyled('<strong>' + escapeHtml(name) + '</strong> is already at the rank your <strong>Heroic Culture</strong> grants for free — you cannot go below it.<br><br>Previous Experience only buys ranks <em>above</em> that starting point.', '⚠️ Culture minimum');
+      return;
+    }
     const refund = costs[cur];
     if (kind === 'skill') char.skills[name].rating = cur - 1;
     else char.profs[name] = cur - 1;
@@ -2227,6 +2241,11 @@ function toggleCallingFavoured(name) {
   const idx = char.callingFavoured.indexOf(name);
   if (idx >= 0) char.callingFavoured.splice(idx, 1);
   else if (char.callingFavoured.length < 2) char.callingFavoured.push(name);
+  else {
+    // Silently refusing the third pick left a new player tapping a dead button with no idea why.
+    alertStyled('Your <strong>Calling</strong> grants <strong>2</strong> Favoured skills and you have already chosen both.<br><br>Tap one of your current picks to un-choose it first, then pick this one.', '⚠️ Already picked 2');
+    return;
+  }
   refreshFavoured();
   saveCharacter();
   render();
@@ -2237,6 +2256,10 @@ function toggleMasteryFavoured(name) {
   const idx = char.masteryFavoured.indexOf(name);
   if (idx >= 0) char.masteryFavoured.splice(idx, 1);
   else if (char.masteryFavoured.length < 2) char.masteryFavoured.push(name);
+  else {
+    alertStyled('The <strong>Mastery</strong> virtue grants <strong>2</strong> extra Favoured skills and you have already chosen both.<br><br>Tap one of your current picks to un-choose it first.', '⚠️ Already picked 2');
+    return;
+  }
   refreshFavoured();
   saveCharacter();
   render();

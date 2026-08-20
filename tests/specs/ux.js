@@ -593,6 +593,45 @@ module.exports = {
     checks.push({ ok: build.diceCount === 3 && build.allLabelled, msg: 'every rendered die is labelled Feat/Success' });
     checks.push({ ok: build.featCarriesValue && build.titlesToo, msg: 'die labels carry the rolled value (title + aria-label)' });
 
+    // ---- No silent refusals: a tapped button must never do nothing without saying why ----
+    const silent = await page.evaluate(async () => {
+      const out = {};
+      let said = '';
+      const oal = window.alertStyled;
+      window.alertStyled = async (m, t) => { said = String(t || m); };
+
+      // Previous Experience picker (Build step 3) — the creation step everyone touches.
+      Object.assign(char, { culture: 'Bardings', skills: { Athletics: { rating: 4, favoured: false } },
+        skillsBaseline: { Athletics: 1 }, peSpent: 0 });
+      saveCharacter();
+      said = ''; adjPE('skill', 'Athletics', 1);  out.peCap = said;
+      char.skills.Athletics.rating = 1;
+      said = ''; adjPE('skill', 'Athletics', -1); out.peFloor = said;
+
+      // Favoured pickers (Build step 4) refuse a third pick — they used to do it silently.
+      char.callingFavoured = ['Awe', 'Athletics'];
+      said = ''; toggleCallingFavoured('Insight'); out.favLimit = said;
+      out.favUnchanged = char.callingFavoured.length === 2;
+      char.masteryFavoured = ['Awe', 'Athletics'];
+      said = ''; toggleMasteryFavoured('Insight'); out.masteryLimit = said;
+
+      // Special-success spends with no icons banked.
+      char.striderMode = true; saveCharacter();
+      said = ''; applySpecialSuccess('insight'); out.noIcons = said;
+
+      // GM NPC ledger with an empty name field.
+      said = ''; if (typeof gmAddNpc === 'function') gmAddNpc(); out.npcNoName = said;
+
+      window.alertStyled = oal;
+      return out;
+    });
+    checks.push({ ok: /cap/i.test(silent.peCap), msg: 'PE picker explains the creation cap instead of ignoring the tap' });
+    checks.push({ ok: /minimum|culture/i.test(silent.peFloor), msg: 'PE picker explains the culture minimum' });
+    checks.push({ ok: /picked/i.test(silent.favLimit) && silent.favUnchanged, msg: 'Calling favoured picker explains the 2-pick limit' });
+    checks.push({ ok: /picked/i.test(silent.masteryLimit), msg: 'Mastery favoured picker explains the 2-pick limit' });
+    checks.push({ ok: /icons/i.test(silent.noIcons), msg: 'special-success spend explains when no ✦ icons remain' });
+    checks.push({ ok: /name/i.test(silent.npcNoName), msg: 'GM NPC ledger asks for a name instead of ignoring Add' });
+
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length})` });
     await context.close();
     return { checks };
