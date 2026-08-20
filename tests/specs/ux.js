@@ -319,6 +319,69 @@ module.exports = {
     checks.push({ ok: onboard.menuGroups >= 6, msg: `menu is grouped into sections (got ${onboard.menuGroups})` });
     checks.push({ ok: onboard.soloLabel, msg: 'solo toggle is labelled in plain language (Solo Play)' });
 
+    // ---- Sequence-of-play ordering (2026-08-20) ----
+    const seq = await page.evaluate(async () => {
+      const out = {};
+      char.striderMode = true; char.moriaMode = true; saveCharacter(); refreshStriderUI(); render();
+      const titles = t => [...document.querySelectorAll('#panel-' + t + ' .card .card-title')].map(e => e.innerText.trim());
+
+      // Band reads in play order: recruit -> plan -> state -> act, numbered on screen.
+      const band = titles('band');
+      out.bandOrder = /^1 · Allies/.test(band[0]) && /^2 ·/.test(band[1]) && /^3 ·/.test(band[2]) && /^4 · Dispositions/.test(band[3]);
+
+      // Oracle: the two you reach for lead; reactive tables sit below the generators.
+      const orc = titles('oracle').join('|');
+      out.oracleOrder = orc.indexOf('Telling') < orc.indexOf('Chamber') && orc.indexOf('Chamber') < orc.indexOf('Fortune Table');
+
+      // Chronicle: write first, clock demoted, date still visible up top.
+      const chr = titles('chronicle');
+      out.clockLast = /Tale of Years/.test(chr[chr.length - 1]);
+      out.dateTop = /\d/.test(document.getElementById('ch-date-top').textContent || '');
+
+      // Character: the Eye sits beside Hope, not under Advancement; header pill live in solo.
+      const ch = titles('character');
+      // card titles are CSS-uppercased, so match case-insensitively
+      out.eyeAfterHope = ch.findIndex(t => /eye of mordor/i.test(t)) === ch.findIndex(t => /^hope/i.test(t)) + 1;
+      out.eyePill = document.getElementById('eye-pill').style.display !== 'none'
+                    && /^👁 \d+\/\d+/.test(document.getElementById('eye-pill').textContent);
+
+      // One XP scheme live at a time; one Fellowship Phase route at a time.
+      char.experienceMode = 'session'; refreshXpMode();
+      const sOn = document.getElementById('xp-session-btn').style.display !== 'none'
+               && document.getElementById('xp-milestone-btn').style.display === 'none';
+      char.experienceMode = 'milestone'; refreshXpMode();
+      const mOn = document.getElementById('xp-milestone-btn').style.display !== 'none'
+               && document.getElementById('xp-session-btn').style.display === 'none';
+      out.xpExclusive = sOn && mOn;
+      refreshFpEntry();
+      out.fpMoria = document.getElementById('fp-wizard-btn').style.display === 'none'
+                 && document.getElementById('fp-moria-note').style.display !== 'none';
+      char.moriaMode = false; refreshFpEntry();
+      out.fpCore = document.getElementById('fp-wizard-btn').style.display !== 'none';
+
+      // Guards offer the trip rather than dead-ending.
+      char.moriaMode = true; char.band.allies = [];
+      let modalText = '';
+      const orig = window.showModal;
+      window.showModal = async (o) => { modalText = o.message; return null; };
+      await enduranceTest();
+      window.showModal = orig;
+      out.guardOffersJump = /Band/.test(modalText) && /1 · Allies/.test(modalText);
+      // eye pill hides outside solo
+      char.striderMode = false; char.moriaMode = false; refreshEyeOfMordor();
+      out.eyePillHidden = document.getElementById('eye-pill').style.display === 'none';
+      return out;
+    });
+    checks.push({ ok: seq.bandOrder, msg: 'Band tab reads in play order, numbered 1-4' });
+    checks.push({ ok: seq.oracleOrder, msg: 'Oracle: active tables lead, reactive tables demoted below generators' });
+    checks.push({ ok: seq.clockLast && seq.dateTop, msg: 'Chronicle: write first, clock last, date stamped at top' });
+    checks.push({ ok: seq.eyeAfterHope, msg: 'Eye of Mordor card sits directly after Hope' });
+    checks.push({ ok: seq.eyePill, msg: 'Eye header pill shows EA/threshold in solo' });
+    checks.push({ ok: seq.eyePillHidden, msg: 'Eye header pill hides outside solo modes' });
+    checks.push({ ok: seq.xpExclusive, msg: 'only one XP scheme is live at a time' });
+    checks.push({ ok: seq.fpMoria && seq.fpCore, msg: 'Fellowship Phase: Moria hides the core wizard, non-Moria restores it' });
+    checks.push({ ok: seq.guardOffersJump, msg: 'sequence guard names the step and offers to go there' });
+
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length})` });
     await context.close();
     return { checks };

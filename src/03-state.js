@@ -1291,6 +1291,10 @@ function renderChronicleClock() {
   document.getElementById('ch-phase').value = journal.clock.phase;
   const readout = document.getElementById('ch-date-readout');
   if (readout) readout.textContent = dateLabel(journal.clock);
+  // The clock card now sits at the bottom of the tab (play sequence: write first), so mirror the
+  // date into a one-line stamp at the top — the date stays visible without leading with an editor.
+  const top = document.getElementById('ch-date-top');
+  if (top) top.textContent = '📅 ' + dateLabel(journal.clock);
 }
 function dateLabel(d) {
   if (!d) return '';

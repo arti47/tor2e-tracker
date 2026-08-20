@@ -57,6 +57,8 @@ function render() {
   renderMagicalItems();
   refreshStriderUI();
   refreshEyeOfMordor();
+  if (typeof refreshXpMode === 'function') refreshXpMode();     // one XP scheme live at a time
+  if (typeof refreshFpEntry === 'function') refreshFpEntry();   // Moria FP vs the core wizard
   renderOracleHistory();
   refreshRetiredPill();
   renderFocusOptions();
@@ -1521,7 +1523,7 @@ function rollBattlefield() {
 }
 async function beginBattle() {
   const b = char.battle;
-  if (!(char.band.allies || []).length) { alert('Generate your Band on the Band tab before a battle.'); return; }
+  if (!(char.band.allies || []).length) return requireStep('A Battle is fought by your <strong>Band</strong>, and yours is still empty — there is no one to send into the Clash.<br><br>Roll up a Band first (Band tab, card <strong>1 · Allies</strong>).', 'band', 'band-allies-card', '⚠️ No Band yet');
   const might = parseInt(document.getElementById('b-might').value) || 0;
   const resistance = parseInt(document.getElementById('b-resistance').value) || 1;
   const af = ARCHFOE_MODS[_setupArchfoe] || ARCHFOE_MODS.none;
@@ -2099,8 +2101,8 @@ function _worsenFatigue(a) {
   return a.fatigue;
 }
 
-function enduranceTest() {
-  if (!(char.band.allies || []).length) { alert('No allies in the Band yet — generate some first.'); return; }
+async function enduranceTest() {
+  if (!(char.band.allies || []).length) return requireStep('An Endurance Test asks which ally takes the hit — your Band is still empty.<br><br>Roll up a Band on the <strong>Band</strong> tab first (card <strong>1 · Allies</strong>).', 'band', 'band-allies-card', '⚠️ No Band yet');
   const threat = _selectedThreat();
   const tn = bandTN() + (DAMAGE_THREAT[threat] || 0);
   const r = bandRoll(parseInt(char.band.dispositions.rally) || 0, 'normal', tn);
@@ -2112,8 +2114,8 @@ function enduranceTest() {
   renderBand();
 }
 
-function fatigueTest() {
-  if (!(char.band.allies || []).length) { alert('No allies in the Band yet — generate some first.'); return; }
+async function fatigueTest() {
+  if (!(char.band.allies || []).length) return requireStep('A Fatigue Test wears down an ally — your Band is still empty.<br><br>Roll up a Band on the <strong>Band</strong> tab first (card <strong>1 · Allies</strong>).', 'band', 'band-allies-card', '⚠️ No Band yet');
   const pts = parseInt(document.getElementById('band-fatigue-pts').value) || 0;
   const tn = bandTN() + pts;
   const burdenMod = BURDEN_DICE[char.band.burden] || 0;  // +1 light, −1 heavy, −2 over

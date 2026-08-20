@@ -1002,11 +1002,82 @@ function setHuntRegion(region) {
   refreshEyeOfMordor();
 }
 
+/* Sequence guard: a prerequisite is missing, so say so AND offer the trip. Replaces bare alert()s
+   that named a destination the player then had to find themselves. */
+async function requireStep(message, tabId, cardId, title) {
+  const go = await showModal({
+    title: title || '⚠️ Do this first',
+    message,
+    buttons: [
+      { label: 'Take me there →', value: 'go' },
+      { label: 'Stay here', value: null, style: 'background:var(--btn-secondary-bg);color:white;border:1px solid var(--btn-secondary-bg);border-radius:5px;padding:10px;font-size:14px;cursor:pointer' }
+    ]
+  });
+  if (go === 'go') {
+    const t = document.querySelector('.tab[data-tab=' + tabId + ']');
+    if (t) t.click();
+    if (cardId) setTimeout(() => { const c = document.getElementById(cardId); if (c) c.scrollIntoView({ block: 'center' }); }, 60);
+  }
+  return false;
+}
+
+/* ---------- SEQUENCE-OF-PLAY GATING (2026-08-20) ----------
+   Three places offered two live buttons for one decision, so a player could pick the wrong route or
+   double-apply: the XP scheme (session XOR milestone), and the Fellowship Phase (core wizard vs the
+   Moria variant, which has no Yule). Mode/choice now decides which single control is shown. */
+
+/* XP scheme: session XP and Milestone XP are alternatives, not a menu. Show the one this hero uses
+   plus a switch link; ask once on first use if nothing has been chosen yet. */
+function refreshXpMode() {
+  const sBtn = document.getElementById('xp-session-btn');
+  const mBtn = document.getElementById('xp-milestone-btn');
+  const note = document.getElementById('xp-mode-note');
+  if (!sBtn || !mBtn || !note) return;
+  const mode = char.experienceMode === 'milestone' ? 'milestone' : 'session';
+  sBtn.style.display = mode === 'session' ? '' : 'none';
+  mBtn.style.display = mode === 'milestone' ? '' : 'none';
+  mBtn.textContent = '🏆 Award Milestone XP';
+  note.style.display = '';
+  note.innerHTML = (mode === 'session'
+      ? 'Earning XP per session (RAW). '
+      : 'Earning XP per milestone (Strider Mode alternative). ')
+    + '<a href="#" onclick="switchXpMode();return false" style="color:var(--gold)">switch</a>';
+}
+async function switchXpMode() {
+  const to = char.experienceMode === 'milestone' ? 'session' : 'milestone';
+  const msg = to === 'milestone'
+    ? 'Switch to <strong>Milestone XP</strong>?<br><br>The Strider Mode alternative: instead of a flat +3 SP / +3 AP per session, you award XP when your hero achieves specific milestones (completing a journey, facing a Noteworthy Encounter, and so on).'
+    : 'Switch to <strong>Session XP</strong>?<br><br>The standard rule: +3 Skill Points and +3 Adventure Points at the end of each play session.';
+  if (!await confirmStyled(msg, '🏆 Experience scheme')) return;
+  char.experienceMode = to;
+  saveCharacter();
+  refreshXpMode();
+}
+
+/* Fellowship Phase: Moria has no Yule cycle, so in Moria mode the core 4-step wizard is replaced by
+   a pointer to the Band tab's Hurried / Brief / Extended card. One live route at a time. */
+function refreshFpEntry() {
+  const btn = document.getElementById('fp-wizard-btn');
+  const note = document.getElementById('fp-moria-note');
+  if (!btn || !note) return;
+  if (isMoria()) {
+    btn.style.display = 'none';
+    note.style.display = '';
+    note.innerHTML = 'Moria expeditions use their own recovery (Hurried / Brief / Extended — no Yule). '
+      + '<a href="#" onclick="document.querySelector(\'.tab[data-tab=band]\').click();return false" style="color:var(--gold)">Open it on the Band tab →</a>';
+  } else {
+    btn.style.display = '';
+    note.style.display = 'none';
+  }
+}
+
 function refreshEyeOfMordor() {
   const card = document.getElementById('eye-of-mordor-card');
   if (!card) return;
   card.style.display = isSolo() ? 'block' : 'none';
-  if (!isSolo()) return;
+  // NB: hide the header pill on the way out too — the early return below skips updateEyePill(),
+  // which would otherwise leave a stale 👁 pill on screen after leaving solo mode.
+  if (!isSolo()) { updateEyePill(0, 0); return; }
   const ea = parseInt(char.eyeAwareness) || 0;
   const region = char.huntRegion || 'wild';
   const huntMod = parseInt(char.huntMod) || 0;  // Moria mission modifiers (prev mission + FP duration)
@@ -1018,6 +1089,22 @@ function refreshEyeOfMordor() {
   if (regionPick) regionPick.value = region;
   const banner = document.getElementById('eye-revelation-banner');
   if (banner) banner.style.display = ea >= threshold ? 'block' : 'none';
+  updateEyePill(ea, threshold);
+}
+
+/* Header pill: the Eye is the solo game's standing pressure clock, so keep it on screen from every
+   tab rather than only on the Character card. Hidden outside solo modes. Tap = jump to the card. */
+function updateEyePill(ea, threshold) {
+  const pill = document.getElementById('eye-pill');
+  if (!pill) return;
+  if (!isSolo()) { pill.style.display = 'none'; return; }
+  pill.style.display = '';
+  const hit = ea >= threshold;
+  pill.textContent = '👁 ' + ea + '/' + threshold + (hit ? ' ⚠' : '');
+  pill.title = hit
+    ? 'Eye Awareness ' + ea + ' has reached the Hunt threshold ' + threshold + ' — roll a Revelation Episode. Tap to open.'
+    : 'Eye Awareness ' + ea + ' of ' + threshold + ' (Hunt threshold). Tap to open.';
+  pill.style.opacity = hit ? '1' : '.85';
 }
 
 async function rollRevelationEpisode() {
