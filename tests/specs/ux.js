@@ -656,6 +656,39 @@ module.exports = {
     checks.push({ ok: gloss.stubs.length === 0, msg: `no stub definitions (stubs: ${gloss.stubs.join(', ') || 'none'})` });
     checks.push({ ok: gloss.total >= 90, msg: `glossary coverage held (${gloss.total} entries)` });
 
+    // ---- Solo players have no Loremaster and no Company; the copy must not assume otherwise ----
+    const solo = await page.evaluate(() => {
+      const out = {};
+      const council = () => document.querySelector('#panel-council .hint').innerText;
+      char.striderMode = false; saveCharacter(); refreshStriderUI();
+      const group = council();
+      char.striderMode = true; saveCharacter(); refreshStriderUI();
+      const s = council();
+      char.striderMode = false; saveCharacter(); refreshStriderUI();
+      out.swaps = group !== s && /Company/.test(group) && !/Company/.test(s);
+      out.lossless = council() === group;          // toggling back restores the group wording
+      // the Gather Rumours undertaking points a solo player at the Oracle, not a Loremaster
+      char.striderMode = true; saveCharacter();
+      const u = FP_UNDERTAKINGS.find(x => x.id === 'gather-rumours');
+      out.fpSolo = /Oracle/.test(soloWord(u.desc, u.descSolo || u.desc));
+      char.striderMode = false; saveCharacter();
+      out.fpGroup = /Loremaster/.test(soloWord(u.desc, u.descSolo || u.desc));
+      // no solo-visible glossary entry may leave "the Loremaster" unexplained as someone else
+      const bad = [];
+      ['terms', 'tn', 'conditions', 'solo'].forEach(g => (REFERENCE[g] || []).forEach(([t, d]) => {
+        const txt = String(d);
+        // A mention is fine when the entry also explains the role to a soloist ("stand-in for the
+        // Loremaster", "you in solo play"). It is only a defect when it assumes someone else is there.
+        if (/Loremaster/.test(txt) && !/solo|you do|you in solo|stand-in for the Loremaster|with no Loremaster/i.test(txt)) bad.push(t);
+      }));
+      out.unqualified = bad;
+      return out;
+    });
+    checks.push({ ok: solo.swaps, msg: 'group-play wording swaps to solo wording when solo mode is on' });
+    checks.push({ ok: solo.lossless, msg: 'toggling solo off restores the original group wording' });
+    checks.push({ ok: solo.fpSolo && solo.fpGroup, msg: 'Gather Rumours points solo players at the Oracle, groups at the Loremaster' });
+    checks.push({ ok: solo.unqualified.length === 0, msg: `glossary never assumes a Loremaster exists (bad: ${solo.unqualified.join(', ') || 'none'})` });
+
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length})` });
     await context.close();
     return { checks };

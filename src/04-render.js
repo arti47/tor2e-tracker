@@ -301,6 +301,7 @@ function renderCombatTasks() {
 const FP_UNDERTAKINGS = [
   { id: 'gather-rumours', name: 'Gather Rumours',
     desc: 'Receive a rumour from the Loremaster — story about a person, place, coming event, or specific inquiry related to current adventuring circumstances.',
+    descSolo: 'Pick up a rumour — about a person, place, or coming event. With no Loremaster, ask the <strong>Oracle</strong> (Telling for a yes/no, Lore for open-ended) and write down what you hear.',
     freeCalling: 'Warden', yuleOnly: false, narrative: true },
   { id: 'meet-patron', name: 'Meet Patron',
     desc: 'Meet your Patron if available at this location. Ask for help, accept a task, learn the Blessings of a magical item.',
@@ -539,7 +540,7 @@ function fpRenderStep4() {
         ${isFree ? '<span style="background:var(--gold);color:white;padding:1px 6px;border-radius:8px;font-size:10px">FREE — ' + calling + '</span>' : ''}
         ${u.yuleOnly ? '<span style="background:var(--brown-soft);color:white;padding:1px 6px;border-radius:8px;font-size:10px">YULE</span>' : ''}
       </div>
-      <p class="hint" style="text-align:left;margin:4px 0 0 0">${u.desc}</p>
+      <p class="hint" style="text-align:left;margin:4px 0 0 0">${soloWord(u.desc, u.descSolo || u.desc)}</p>
     `;
     list.appendChild(row);
   });

@@ -1175,6 +1175,7 @@ function rollOrcBand() {
 }
 
 function refreshStriderUI() {
+  applySoloWording();   // swap Loremaster/Company phrasing for the solo equivalent
   const solo = isSolo();
   // Shared solo surfaces — visible in EITHER Strider or Moria mode.
   const oracleTab = document.querySelector('.tab[data-tab="oracle"]');
@@ -1236,6 +1237,21 @@ function refreshStriderUI() {
   if (mbtn) mbtn.textContent = char.moriaMode ? '⛏️ Solo Play: Moria campaign — ON' : '⛏️ Solo Play: Moria campaign';
   // GM Screen (P6): device-global toggle, independent of char mode. Keep its tab + label in sync.
   if (typeof refreshGmUI === 'function') refreshGmUI();
+}
+
+/* Solo players have no Loremaster and no Company, but a lot of RAW-derived copy assumes both.
+   soloWord() swaps the group phrasing for the solo equivalent so the text matches the game the
+   player is actually running. Group play is unchanged. */
+function soloWord(groupText, soloText) {
+  return (typeof isSolo === 'function' && isSolo()) ? soloText : groupText;
+}
+/* Re-write any element carrying data-solo-text="<solo wording>" — its original (group) wording is
+   stashed on first run so toggling solo mode back and forth is lossless. */
+function applySoloWording() {
+  document.querySelectorAll('[data-solo-text]').forEach(el => {
+    if (el.dataset.groupText === undefined) el.dataset.groupText = el.innerHTML;
+    el.innerHTML = soloWord(el.dataset.groupText, el.dataset.soloText);
+  });
 }
 
 /* Menu shortcut: jump straight to the Reference tab (and render it). */
