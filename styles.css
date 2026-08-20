@@ -696,3 +696,23 @@
 /* Tab intro cards (D) — a quieter card than the rest; it explains, it doesn't compete. */
 .tab-intro{background:var(--bg);border-style:dashed}
 .tab-intro .hint{color:var(--ink-soft,var(--ink))}
+
+/* Advancement sub-steps (sequence pass): earn → pools → spend → end-of-phase. */
+.adv-step{
+  font-size:10px;text-transform:uppercase;letter-spacing:.7px;font-weight:700;
+  color:var(--red-dark);margin:14px 0 6px;padding-bottom:3px;
+  border-bottom:1px solid var(--border);
+}
+.adv-step:first-of-type{margin-top:4px}
+
+/* Dice tab: quick-rolls lead, manual dice controls fold away (sequence pass).
+   Open by default on wide screens; the summary stays tappable at any size. */
+.dice-manual{margin-top:12px;border:1px solid var(--border);border-radius:6px;background:var(--bg)}
+.dice-manual > summary{
+  cursor:pointer;padding:8px 10px;font-size:12px;font-weight:600;
+  color:var(--red-dark);text-transform:uppercase;letter-spacing:.5px;list-style:none;
+}
+.dice-manual > summary::-webkit-details-marker{display:none}
+.dice-manual > summary::after{content:' ▸';float:right}
+.dice-manual[open] > summary::after{content:' ▾'}
+.dice-manual > .dice-controls{padding:0 10px 10px}

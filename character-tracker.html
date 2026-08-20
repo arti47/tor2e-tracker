@@ -159,6 +159,7 @@
     <p class="hint" style="text-align:left">Every hero on this device, with quick hand-out controls — deal or heal Endurance, toggle conditions, add a Shadow point. Writes go through each hero's normal save path (and sync to the cloud if enabled). In a campaign, the live Fellowship, sheet peek, and broadcast appear below.</p>
   </div>
   <div id="gm-campaign-body"></div>
+  <div id="gm-party-body"></div>
   <div class="card">
     <h3 class="card-title" data-hint="Shadow / Scars">🌑 Group Shadow Test</h3>
     <p class="hint" style="text-align:left">Rolls one test for every hero at once — Dread (Valour vs Heart TN), Greed / Sorcery (Wisdom vs Wits TN). Each hero's own Weary + Despair apply. Tap a failure's button to hand out the Shadow (capped, persisted).</p>
@@ -172,7 +173,6 @@
     </div>
     <div id="gm-shadow-results" aria-live="polite"></div>
   </div>
-  <div id="gm-party-body"></div>
   <div class="card">
     <h3 class="card-title">⚔️ Encounter</h3>
     <p class="hint" id="gm-enc-line" style="text-align:left">No active encounter.</p>
@@ -231,8 +231,20 @@
 <!-- ============ BUILD ============ -->
 <section class="panel" id="panel-build">
 
+  <div class="card">
+    <h3 class="card-title">📋 Your progress — what's left</h3>
+    <p class="hint" style="text-align:left; line-height:1.7">
+      The Build tab automates most of character creation. <strong>What's still on you:</strong><br>
+      • Fill in <strong>Name</strong>, <strong>Age</strong>, and <strong>Safe Haven</strong> on the Character tab<br>
+      • Go to the <strong>Combat tab</strong> and equip <strong>War Gear</strong> (1 weapon per Combat Prof rank — see the count hint above the table)<br>
+      • Pick body armour, helm, and shield via the pickers if your Standard of Living allows<br>
+      • Add <strong>Useful Items</strong> and <strong>Travelling Gear</strong> on the Gear tab (free text — number of items based on Standard of Living: Frugal 1, Common 2, Prosperous 3, Rich 4)<br>
+      • Note your Calling's <strong>Distinctive Feature</strong> detail (e.g. Champion picks an Enemy-Lore subtype: Orcs/Spiders/etc.)
+    </p>
+  </div>
+
   <div class="card" style="border-color: var(--gold); background: linear-gradient(180deg, var(--gold-paler) 0%, var(--pure-white) 100%);">
-    <h3 class="card-title" style="color: var(--gold);">Quick Build</h3>
+    <h3 class="card-title" style="color: var(--gold);">1 · Quick Build</h3>
     <p class="hint" style="margin-bottom:10px">Auto-fill attributes, skills & gear from culture/calling defaults. Then switch to the Character tab to fine-tune.</p>
 
     <div class="field">
@@ -303,11 +315,10 @@
     </div>
     <div id="patron-info" style="display:none; padding:8px; background:var(--bg); border-radius:6px; font-size:12px; margin-bottom:8px;"></div>
     <button class="add-row-btn" id="apply-patron-btn" onclick="applyPatron()" style="display:none; width:100%;">Apply Patron</button>
-    <button class="add-row-btn" onclick="rollPatronQuest()" style="background:var(--btn-secondary-bg);width:100%;margin-top:6px;font-size:12px">📜 Roll Patron Quest (Strider Mode supplement)</button>
   </div>
 
   <div class="card" id="lifepath-card" style="border-color:var(--gold);background:linear-gradient(180deg,var(--gold-paler) 0%,var(--pure-white) 100%);">
-    <h3 class="card-title" style="color:var(--gold);">🎲 Random Lifepath</h3>
+    <h3 class="card-title" style="color:var(--gold);">optional · 🎲 Random Lifepath</h3>
     <p class="hint" style="margin-bottom:10px">From the <em>Character Lifepaths</em> supplement. Rolls give you a backstory + suggested stats; a Major Event adds a twist.</p>
 
     <div id="lifepath-disabled-hint" style="display:none;padding:10px;background:var(--bg-deep);border-radius:6px;font-size:12px;color:var(--text-muted);font-style:italic"></div>
@@ -332,13 +343,13 @@
   </div>
 
   <div class="card" id="combat-profs-card" style="display:none">
-    <h3 class="card-title">Combat Proficiencies</h3>
+    <h3 class="card-title">2 · Combat Proficiencies</h3>
     <p class="hint" style="margin-bottom:8px">Your Culture grants <strong>one prof at rank 2</strong> (pick from 2 options) and a <strong>+1 to any prof</strong>. PE upgrades go on top of these baselines.</p>
     <div id="combat-profs-picker"></div>
   </div>
 
   <div class="card" id="pe-card" style="display:none">
-    <h3 class="card-title" data-hint="Previous Experience">Previous Experience (10 pts)</h3>
+    <h3 class="card-title" data-hint="Previous Experience">3 · Previous Experience (10 pts)</h3>
     <p class="hint" style="margin-bottom:8px">Spend up to 10 pts raising Skills (cap ◆◆◆◆) and Combat Proficiencies (cap ◆◆◆) above your Culture's baseline. <em>Costs differ from in-game XP.</em></p>
     <div id="pe-budget" style="text-align:center;padding:10px;background:var(--bg-deep);border-radius:6px;margin-bottom:10px;font-weight:700;font-size:14px;color:var(--red-dark)"></div>
     <div style="text-align:center;margin-bottom:10px">
@@ -348,13 +359,13 @@
   </div>
 
   <div class="card" id="favoured-card" style="display:none">
-    <h3 class="card-title" data-hint="Favoured">Favoured Skills</h3>
+    <h3 class="card-title" data-hint="Favoured">4 · Favoured Skills</h3>
     <p class="hint" style="margin-bottom:8px">Pick 1 from Culture · 2 from Calling · 2 more if you take the Mastery virtue.</p>
     <div id="favoured-content"></div>
   </div>
 
   <div class="card" id="features-card" style="display:none">
-    <h3 class="card-title" data-hint="Distinctive Feature">Distinctive Features</h3>
+    <h3 class="card-title" data-hint="Distinctive Feature">5 · Distinctive Features</h3>
     <p class="hint" style="margin-bottom:8px">Pick 2 from your culture's 8. Your calling's feature is auto-added.</p>
     <div id="features-checklist"></div>
     <div id="features-summary" style="margin-top:10px;padding:8px;background:var(--bg);border-radius:6px;font-size:12px;display:none"></div>
@@ -362,14 +373,14 @@
   </div>
 
   <div class="card" id="useful-items-card">
-    <h3 class="card-title">Useful Items</h3>
+    <h3 class="card-title">6 · Useful Items</h3>
     <p class="hint" style="margin-bottom:8px">Number allowed by Standard of Living: Poor 0 · Frugal 1 · Common 2 · Prosperous 3 · Rich 4. Each grants <strong>+1d</strong> on its skill when used (auto-applied in dice roller).</p>
     <div id="useful-items-budget" style="text-align:center;padding:8px;background:var(--bg-deep);border-radius:6px;margin-bottom:10px;font-weight:700;color:var(--red-dark)"></div>
     <div id="useful-items-list"></div>
   </div>
 
   <div class="card" style="border-color:var(--gold);background:linear-gradient(180deg,var(--gold-paler) 0%,var(--pure-white) 100%);">
-    <h3 class="card-title" style="color:var(--gold);">Starting Gear</h3>
+    <h3 class="card-title" style="color:var(--gold);">7 · Starting Gear</h3>
     <p class="hint" style="margin-bottom:10px;text-align:left">
       Before picking your Starting Reward, equip your weapons, armour, helm, and shield on the <strong>Combat tab</strong>.
       Per rules you get <strong>1 weapon per Combat Proficiency rank</strong> (the count hint shows your allotment), plus armour/helm/shield as your Standard of Living allows.
@@ -379,27 +390,15 @@
   </div>
 
   <div class="card" id="rewards-card">
-    <h3 class="card-title">Starting Reward</h3>
+    <h3 class="card-title">8 · Starting Reward</h3>
     <p class="hint" style="margin-bottom:8px">Pick 1 Reward to apply to a piece of gear during character creation. <em>Equip gear on Combat tab first if you haven't.</em></p>
     <div id="rewards-list"></div>
   </div>
 
   <div class="card" id="virtues-card">
-    <h3 class="card-title">Starting Virtue</h3>
+    <h3 class="card-title">9 · Starting Virtue</h3>
     <p class="hint" style="margin-bottom:8px">Pick 1 Virtue. Cultural virtues become available after a culture is applied. Mechanical effects (Confidence +2 Hope, Hardiness +2 End, etc.) auto-apply.</p>
     <div id="virtues-list"></div>
-  </div>
-
-  <div class="card">
-    <h3 class="card-title">Manual Steps Remaining</h3>
-    <p class="hint" style="text-align:left; line-height:1.7">
-      The Build tab automates most of character creation. <strong>What's still on you:</strong><br>
-      • Fill in <strong>Name</strong>, <strong>Age</strong>, and <strong>Safe Haven</strong> on the Character tab<br>
-      • Go to the <strong>Combat tab</strong> and equip <strong>War Gear</strong> (1 weapon per Combat Prof rank — see the count hint above the table)<br>
-      • Pick body armour, helm, and shield via the pickers if your Standard of Living allows<br>
-      • Add <strong>Useful Items</strong> and <strong>Travelling Gear</strong> on the Gear tab (free text — number of items based on Standard of Living: Frugal 1, Common 2, Prosperous 3, Rich 4)<br>
-      • Note your Calling's <strong>Distinctive Feature</strong> detail (e.g. Champion picks an Enemy-Lore subtype: Orcs/Spiders/etc.)
-    </p>
   </div>
 
 </section>
@@ -653,34 +652,17 @@
 
   <div class="card">
     <h3 class="card-title">Advancement</h3>
-    <div class="row-3" style="margin-bottom:10px">
-      <div class="counter">
-        <div class="counter-label">Valour</div>
-        <div class="counter-value" id="valour-v">1</div>
-        <div class="counter-buttons">
-          <button onclick="adj('valour',-1)">−</button>
-          <button onclick="adj('valour',1)">+</button>
-        </div>
+    <div class="adv-step">① Earn<span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-muted)"> — at the end of a session</span></div>
+    <div style="margin-top:14px;padding:10px;background:var(--bg-deep);border:1px solid var(--border);border-radius:6px">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <strong style="flex:1;color:var(--red-dark);font-size:13px">📜 End Session</strong>
+        <small style="color:var(--text-muted);font-size:11px">RAW p.55: +3 SP + 3 AP per session</small>
       </div>
-      <div class="counter">
-        <div class="counter-label">Wisdom</div>
-        <div class="counter-value" id="wisdom-v">1</div>
-        <div class="counter-buttons">
-          <button onclick="adj('wisdom',-1)">−</button>
-          <button onclick="adj('wisdom',1)">+</button>
-        </div>
-      </div>
-      <div class="counter">
-        <div class="counter-label">Fellowship Pts</div>
-        <div class="counter-value" id="fellow-v">0</div>
-        <div class="counter-buttons">
-          <button onclick="adj('fellowship',-1)">−</button>
-          <button onclick="adj('fellowship',1)">+</button>
-        </div>
-        <div class="hint" style="margin:4px 0 0 0">Rating 🔒 <span id="fellow-rating-v">0</span></div>
-        <button onclick="spendFPforHope()" id="fp-to-hope-btn" style="background:var(--gold);color:white;border:none;border-radius:4px;padding:4px 6px;font-size:10px;margin-top:4px;width:100%;cursor:pointer">🤝 FP→+1 Hope</button>
-      </div>
+      <button onclick="awardSessionXP()" id="xp-session-btn" class="add-row-btn" style="background:var(--red);width:100%;margin-top:6px">Award Session XP (+3 SP / +3 AP)</button>
+      <button onclick="openMilestonePicker()" id="xp-milestone-btn" class="add-row-btn" style="background:var(--btn-secondary-bg);width:100%;margin-top:4px;font-size:11px">🏆 Award Milestone XP (Strider Mode alternative)</button>
+      <div id="xp-mode-note" class="hint" style="margin:4px 0 0 0;display:none"></div>
     </div>
+    <div class="adv-step">② Your pools<span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-muted)"> — what you have to spend</span></div>
     <div class="row-3">
       <div class="counter">
         <div class="counter-label">Skill Pts</div>
@@ -709,6 +691,37 @@
         </div>
       </div>
     </div>
+    <div class="adv-step">③ Spend &amp; rank up<span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-muted)"> — during a Fellowship Phase</span></div>
+    <div class="row-3" style="margin-bottom:10px">
+      <div class="counter">
+        <div class="counter-label">Valour</div>
+        <div class="counter-value" id="valour-v">1</div>
+        <div class="counter-buttons">
+          <button onclick="adj('valour',-1)">−</button>
+          <button onclick="adj('valour',1)">+</button>
+        </div>
+      </div>
+      <div class="counter">
+        <div class="counter-label">Wisdom</div>
+        <div class="counter-value" id="wisdom-v">1</div>
+        <div class="counter-buttons">
+          <button onclick="adj('wisdom',-1)">−</button>
+          <button onclick="adj('wisdom',1)">+</button>
+        </div>
+      </div>
+      <div class="counter">
+        <div class="counter-label">Fellowship Pts</div>
+        <div class="counter-value" id="fellow-v">0</div>
+        <div class="counter-buttons">
+          <button onclick="adj('fellowship',-1)">−</button>
+          <button onclick="adj('fellowship',1)">+</button>
+        </div>
+        <div class="hint" style="margin:4px 0 0 0">Rating 🔒 <span id="fellow-rating-v">0</span></div>
+        <button onclick="spendFPforHope()" id="fp-to-hope-btn" style="background:var(--gold);color:white;border:none;border-radius:4px;padding:4px 6px;font-size:10px;margin-top:4px;width:100%;cursor:pointer">🤝 FP→+1 Hope</button>
+      </div>
+    </div>
+    
+    
     <div class="field" id="focus-row" style="margin-top:12px">
       <label data-hint="Fellowship Focus">Fellowship Focus</label>
       <select data-field="fellowshipFocus" id="focus-pick">
@@ -719,15 +732,8 @@
     <div id="focus-strider-hint" style="display:none;margin-top:12px;padding:8px;background:var(--gold-soft);border:1px solid var(--gold);border-radius:6px;font-size:12px;color:var(--ink);line-height:1.4">
       🗡️ <strong>Strider Mode:</strong> no Fellowship Focus — you are not travelling with a Company. The Support action and Focus-doubled Hope spend do not apply.
     </div>
-    <div style="margin-top:14px;padding:10px;background:var(--bg-deep);border:1px solid var(--border);border-radius:6px">
-      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-        <strong style="flex:1;color:var(--red-dark);font-size:13px">📜 End Session</strong>
-        <small style="color:var(--text-muted);font-size:11px">RAW p.55: +3 SP + 3 AP per session</small>
-      </div>
-      <button onclick="awardSessionXP()" id="xp-session-btn" class="add-row-btn" style="background:var(--red);width:100%;margin-top:6px">Award Session XP (+3 SP / +3 AP)</button>
-      <button onclick="openMilestonePicker()" id="xp-milestone-btn" class="add-row-btn" style="background:var(--btn-secondary-bg);width:100%;margin-top:4px;font-size:11px">🏆 Award Milestone XP (Strider Mode alternative)</button>
-      <div id="xp-mode-note" class="hint" style="margin:4px 0 0 0;display:none"></div>
-    </div>
+
+    <div class="adv-step">④ End the Adventuring Phase<span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-muted)"> — rest, recover, grow</span></div>
     <div style="margin-top:10px;padding:10px;background:linear-gradient(180deg,var(--gold-paler) 0%,var(--gold-soft) 100%);border:1px solid var(--gold);border-radius:6px">
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
         <strong style="flex:1;color:var(--red-dark);font-size:13px">🌿 End Adventuring Phase</strong>
@@ -738,7 +744,6 @@
       <p class="hint" style="text-align:left;margin:6px 0 0 0;color:var(--text-muted)">4-step wizard: phase type → spiritual recovery → updates (XP) → undertakings. Completed phases: <span id="fp-phases-completed">0</span>.</p>
     </div>
   </div>
-
   <div class="card">
     <h3 class="card-title">Distinctive Features & Flaws</h3>
     <div style="margin-bottom:10px">
@@ -815,7 +820,7 @@
 <!-- ============ COMBAT ============ -->
 <section class="panel" id="panel-combat">
 
-  <div class="card tab-intro"><p class="hint" style="text-align:left;line-height:1.55;margin:0"><strong>Everything for a fight.</strong> Pick a <strong>Stance</strong> first — it trades safety for aggression and changes your dice. Add foes under <strong>Encounter</strong> to run the whole fight here (attack, take hits, track wounds). <strong>War Gear</strong>, armour and shield below feed your damage and your Parry automatically.</p></div>
+  <div class="card tab-intro"><p class="hint" style="text-align:left;line-height:1.55;margin:0"><strong>Everything for a fight.</strong> Pick a <strong>Stance</strong> first — it trades safety for aggression and changes your dice. Add foes under <strong>Encounter</strong> to run the whole fight here (attack, take hits, track wounds). <strong>War Gear</strong>, armour and shield below feed your damage and your Parry automatically. <em>First time here?</em> Scroll down and equip a weapon and armour once — the cards above then work every fight without touching them again.</p></div>
 
   <div class="card">
     <h3 class="card-title" data-hint="Stance">Stance</h3>
@@ -1325,6 +1330,16 @@
   <div class="card">
     <h3 class="card-title">Dice Roller</h3>
 
+
+
+    <p class="hint" style="text-align:left;margin:0 0 8px 0">The easy way: tap a skill below and the dice, Target Number and Favoured state are all set for you — then tap <strong>🎲 Roll Dice</strong>.</p>
+    <div style="margin-top:12px">
+      <label style="font-size:12px;color:var(--red-dark);text-transform:uppercase;letter-spacing:0.5px;">Quick Roll from Skill</label>
+      <div class="quick-skills" id="quick-skills"></div>
+    </div>
+
+    <details id="dice-manual" class="dice-manual">
+      <summary>⚙️ Set the dice by hand</summary>
     <div class="dice-controls">
       <div class="control-group">
         <label data-hint="Success icons (✦)">Success Dice</label>
@@ -1374,6 +1389,8 @@
         </div>
       </div>
     </div>
+    </details>
+
 
     <div id="combat-tasks-card" style="margin-top:12px;display:none;padding:10px;background:var(--bg-deep);border:1px solid var(--border);border-radius:6px">
       <label style="font-size:12px;color:var(--red-dark);text-transform:uppercase;letter-spacing:0.5px;font-weight:600">Combat Tasks <span style="font-size:10px;color:var(--text-faint);text-transform:none;letter-spacing:0;font-weight:400">— main action, gated by stance</span></label>
@@ -1451,10 +1468,6 @@
     </button>
     <p class="hint" id="hope-cost-hint" style="display:none;color:var(--gold);font-weight:600">Hope will be deducted on roll</p>
 
-    <div style="margin-top:12px">
-      <label style="font-size:12px;color:var(--red-dark);text-transform:uppercase;letter-spacing:0.5px;">Quick Roll from Skill</label>
-      <div class="quick-skills" id="quick-skills"></div>
-    </div>
 
     <button class="roll-btn" onclick="rollDice()" style="margin-top:10px">🎲 Roll Dice</button>
 
@@ -1545,6 +1558,12 @@
     </div>
     <button class="add-row-btn" onclick="rollLoreTable()" style="width:100%;margin-top:10px;background:var(--gold)">🎲 Roll the Lore Table</button>
     <div id="oracle-lore-result" style="margin-top:10px;padding:10px;background:var(--bg-deep);border-radius:6px;font-size:13px;line-height:1.5;display:none"></div>
+  </div>
+
+  <div class="card">
+    <h3 class="card-title">📜 Patron Quest</h3>
+    <p class="hint" style="text-align:left">Rolls a mission from your Patron's own six-entry table (Strider Mode supplement). Set a Patron on the Build tab first. Use it when you need a reason to set out.</p>
+    <button class="roll-btn" onclick="rollPatronQuest()" style="width:100%">📜 Roll a Patron Quest</button>
   </div>
 
   <!-- Moria-only generators -->

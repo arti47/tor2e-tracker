@@ -382,6 +382,52 @@ module.exports = {
     checks.push({ ok: seq.fpMoria && seq.fpCore, msg: 'Fellowship Phase: Moria hides the core wizard, non-Moria restores it' });
     checks.push({ ok: seq.guardOffersJump, msg: 'sequence guard names the step and offers to go there' });
 
+    // ---- Sequence pass 2: the non-solo tabs (2026-08-20) ----
+    const seq2 = await page.evaluate(() => {
+      const out = {};
+      const titles = t => [...document.querySelectorAll('#panel-' + t + ' .card .card-title')].map(e => e.innerText.trim());
+
+      // Build is the creation sequence: checklist leads, then numbered steps 1..9.
+      const b = titles('build');
+      out.buildChecklistFirst = /progress/i.test(b[0]);
+      out.buildNumbered = /^1 ·/.test(b[1]) && b.filter(t => /^[1-9] ·/.test(t)).length === 9;
+      out.lifepathOptional = b.some(t => /^optional ·/i.test(t));
+      // the in-play Patron Quest roller moved off Build onto the Oracle tab
+      out.pqMoved = !document.querySelector('#panel-build [onclick="rollPatronQuest()"]')
+                 && !!document.querySelector('#panel-oracle [onclick="rollPatronQuest()"]');
+
+      // Advancement reads earn -> pools -> spend -> end of phase.
+      const card = [...document.querySelectorAll('#panel-character .card')]
+        .find(c => /Advancement/i.test((c.querySelector('.card-title') || {}).innerText || ''));
+      const steps = [...card.querySelectorAll('.adv-step')].map(e => e.innerText);
+      out.advSteps = steps.length === 4 && /earn/i.test(steps[0]) && /pools/i.test(steps[1])
+                  && /spend/i.test(steps[2]) && /adventuring phase/i.test(steps[3]);
+      const html = card.innerHTML;
+      out.earnBeforeSpend = html.indexOf('xp-session-btn') < html.indexOf("openSpendXP('skill')");
+
+      // Dice: quick-roll grid leads, manual controls fold behind a <details>.
+      const dice = document.getElementById('panel-dice').innerHTML;
+      out.quickBeforeManual = dice.indexOf('quick-skills') < dice.indexOf('dice-manual');
+      const dm = document.getElementById('dice-manual');
+      out.manualFolds = dm && dm.tagName === 'DETAILS' && !!dm.querySelector('.dice-controls');
+      // the manual controls must still be reachable + wired
+      out.manualIntact = !!dm.querySelector('#success-count') && !!dm.querySelector('#fav-pick') && !!dm.querySelector('#tn-pick');
+
+      // GM: party dashboard above the occasional group test.
+      const gm = document.getElementById('panel-gm').innerHTML;
+      out.gmPartyFirst = gm.indexOf('gm-party-body') < gm.indexOf('Group Shadow Test');
+      return out;
+    });
+    checks.push({ ok: seq2.buildChecklistFirst, msg: 'Build leads with the progress checklist' });
+    checks.push({ ok: seq2.buildNumbered, msg: 'Build creation steps are numbered 1-9 in order' });
+    checks.push({ ok: seq2.lifepathOptional, msg: 'Lifepath is marked an optional side-path, not a step' });
+    checks.push({ ok: seq2.pqMoved, msg: 'Patron Quest moved off Build to the Oracle tab' });
+    checks.push({ ok: seq2.advSteps, msg: 'Advancement is split earn → pools → spend → end phase' });
+    checks.push({ ok: seq2.earnBeforeSpend, msg: 'Award XP sits above the Spend buttons' });
+    checks.push({ ok: seq2.quickBeforeManual, msg: 'Dice tab leads with quick-rolls, manual controls below' });
+    checks.push({ ok: seq2.manualFolds && seq2.manualIntact, msg: 'manual dice controls fold away but stay intact' });
+    checks.push({ ok: seq2.gmPartyFirst, msg: 'GM tab leads with the party dashboard' });
+
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length})` });
     await context.close();
     return { checks };

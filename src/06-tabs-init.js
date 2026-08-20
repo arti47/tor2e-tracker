@@ -1683,6 +1683,15 @@ document.addEventListener('DOMContentLoaded', () => {
   initCollapsibleCards();   // U3: tap a card title to collapse (remembered per device)
   initHintButtons();        // U7/B: (?) hints app-wide (text-matched labels + data-hint)
   renderNewcomerBanner();   // A: 'start here' card while the active hero is still blank
+  // Dice tab: the manual dice controls fold away behind the quick-roll grid. Remember the
+  // player's choice, but default OPEN for anyone who already knows the app (no hidden controls
+  // for existing users) and CLOSED for a hero that hasn't been built yet.
+  const dm = document.getElementById('dice-manual');
+  if (dm) {
+    const pref = localStorage.getItem('tor2e-dicemanual');
+    dm.open = pref === null ? !newcomerNeedsHelp() : pref === '1';
+    dm.addEventListener('toggle', () => { try { localStorage.setItem('tor2e-dicemanual', dm.open ? '1' : '0'); } catch (e) {} });
+  }
   if (typeof snapshotHero === 'function') snapshotHero(activeCharId, 'load');   // U12: one auto-backup per load
   importFromHash();   // offer to import a character if the URL carries a shared payload
   maybeOfferTutorial();   // one-time first-run offer of the guided tutorial
