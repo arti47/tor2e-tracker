@@ -869,7 +869,10 @@ async function _applyWoundFromFail() {
 async function rollProtection() {
   const tn = parseInt(document.getElementById('prot-injury-tn').value);
   let protDice = parseInt(document.getElementById('prot-dice').value);
-  if (!tn) { alert('Enter the weapon Injury TN first'); return; }
+  if (!tn) {
+    await alertStyled('Fill in the <strong>Injury TN</strong> box above first — it is the <em>Injury</em> number of the weapon that just hit you, which you can read off the adversary\'s stat line (e.g. “sword 2d (5/16)” → Injury <strong>16</strong>).<br><br>Your Protection roll has to beat it to avoid a Wound.', '⚠️ Injury number needed');
+    return;
+  }
 
   const R = _protectionRoll(tn, isNaN(protDice) ? null : protDice);
   const { feat, dice, total, outcome, isAutoSuccess, isAutoFail, closeFittingBonus, furiousFav, stoneHardFav, skinCoatBonus } = R;
@@ -882,11 +885,13 @@ async function rollProtection() {
   const fd = document.createElement('div');
   fd.className = 'feat-die' + (feat.special === 'eye' ? ' eye' : '') + (feat.special === 'rune' ? ' rune' : '');
   fd.textContent = feat.label;
+  _labelFeatDie(fd, feat.special);
   diceDiv.appendChild(fd);
   dice.forEach(d => {
     const e = document.createElement('div');
     e.className = 'success-die' + (d.icon ? ' icon' : '') + (d.wearied ? ' dim' : '');
     e.textContent = d.value;
+    _labelSuccessDie(e, d.value, !!d.icon);
     diceDiv.appendChild(e);
   });
   document.getElementById('prot-total').textContent = isAutoSuccess ? '★' : (isAutoFail ? '✗' : total);
@@ -3060,4 +3065,48 @@ function renderReference() {
     });
   });
   body.innerHTML = html || '<div class="hint">No match.</div>';
+}
+
+/* ---------- BUILD PROGRESS CHECKLIST ----------
+   Was a static list of reminders titled "what's left" — it claimed to track progress and didn't.
+   This walks the actual character and ticks what is genuinely done, so the Build tab's first card
+   tells a newcomer where they are instead of restating the same paragraph forever. */
+function _buildSteps() {
+  const c = char || {};
+  const sol = String(c.standard || '').toLowerCase();
+  const itemCap = { poor: 0, frugal: 1, common: 2, prosperous: 3, rich: 4, 'very rich': 4 }[sol];
+  const weapons = (c.weapons || []).filter(w => w && w.name);
+  return [
+    { done: !!c.culture,                       label: 'Pick a <strong>Heroic Culture</strong>', where: 'step 1 below' },
+    { done: !!c.culture && !!(c.strRating && c.hrtRating && c.witRating), label: 'Choose an <strong>Attribute set</strong>', where: 'step 1 below' },   // a blank hero already carries placeholder ratings — only counts once a culture is applied
+    { done: !!c.calling,                       label: 'Pick a <strong>Calling</strong>', where: 'step 1 below' },
+    { done: (c.favouredSkills || []).length > 0 || Object.values(c.skills || {}).length > 0, label: 'Mark your <strong>Favoured skills</strong>', where: 'step 4 below' },
+    { done: String(c.features || '').trim().length > 0, label: 'Choose <strong>Distinctive Features</strong>', where: 'step 5 below' },
+    { done: weapons.length > 0,                label: 'Equip <strong>War Gear</strong> — at least one weapon', where: 'Combat tab', tab: 'combat' },
+    { done: !!c.armourProt || !!c.shieldTotal, label: 'Pick <strong>armour or a shield</strong>', where: 'Combat tab', tab: 'combat' },
+    { done: String(c.name || '').trim().length > 0, label: 'Give your hero a <strong>Name</strong>', where: 'Character tab', tab: 'character' },
+    { done: !!c.age,                           label: 'Set an <strong>Age</strong>', where: 'Character tab', tab: 'character' },
+    { done: String(c.safeHaven || '').trim().length > 0, label: 'Name a <strong>Safe Haven</strong> — where your hero rests', where: 'Character tab', tab: 'character' },
+    { done: itemCap === 0 || (c.usefulItems || []).length > 0, label: 'Choose <strong>Useful Items</strong>' + (itemCap != null ? ' (your Standard of Living allows ' + itemCap + ')' : ''), where: 'step 6 below' }
+  ];
+}
+function renderBuildChecklist() {
+  const host = document.getElementById('build-checklist'); if (!host) return;
+  const steps = _buildSteps();
+  const done = steps.filter(s => s.done).length;
+  const pct = Math.round((done / steps.length) * 100);
+  const rows = steps.map(s => {
+    const jump = s.tab ? ` <a href="#" onclick="document.querySelector('.tab[data-tab=${s.tab}]').click();return false" style="color:var(--gold)">${escapeHtml(s.where)} →</a>`
+                       : ` <span style="color:var(--text-faint)">${escapeHtml(s.where)}</span>`;
+    return `<div style="margin:0 0 5px;font-size:13px;line-height:1.5;${s.done ? 'opacity:.55' : ''}">` +
+           `<span style="color:${s.done ? 'var(--success-text,green)' : 'var(--text-faint)'};font-weight:700">${s.done ? '✓' : '○'}</span> ` +
+           `${s.done ? '<s>' + s.label + '</s>' : s.label}${s.done ? '' : jump}</div>`;
+  }).join('');
+  host.innerHTML =
+    `<p class="hint" style="text-align:left;margin:0 0 8px 0">The Build tab does most of character creation for you. This ticks itself off as you go — ` +
+    `<strong>${done} of ${steps.length}</strong> done.</p>` +
+    `<div style="height:6px;background:var(--bg-deep);border-radius:3px;overflow:hidden;margin:0 0 10px">` +
+    `<div style="height:100%;width:${pct}%;background:var(--gold);transition:width .2s"></div></div>` +
+    rows +
+    (done === steps.length ? '<p class="hint" style="text-align:left;margin:8px 0 0 0;color:var(--success-text,green)"><strong>Your hero is ready.</strong> Go and play — the Dice tab is where most of it happens.</p>' : '');
 }

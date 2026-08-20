@@ -731,6 +731,7 @@ function rollDice(skillLabel) {
     const d = document.createElement('div');
     d.className = 'feat-die' + (r.special === 'eye' ? ' eye' : '') + (r.special === 'rune' ? ' rune' : '');
     d.textContent = r.label;
+    _labelFeatDie(d, r.special);
     if (r !== chosenFeat) d.style.opacity = '0.4';
     diceDiv.appendChild(d);
   });
@@ -739,6 +740,7 @@ function rollDice(skillLabel) {
     const d = document.createElement('div');
     d.className = 'success-die' + (s.icon ? ' icon' : '') + (s.wearied ? ' dim' : '');
     d.textContent = s.value;
+    _labelSuccessDie(d, s.value, !!s.icon);
     diceDiv.appendChild(d);
   });
 

@@ -57,6 +57,7 @@ function render() {
   renderMagicalItems();
   refreshStriderUI();
   refreshEyeOfMordor();
+  if (typeof renderBuildChecklist === 'function') renderBuildChecklist();  // live creation progress
   if (typeof refreshXpMode === 'function') refreshXpMode();     // one XP scheme live at a time
   if (typeof refreshFpEntry === 'function') refreshFpEntry();   // Moria FP vs the core wizard
   renderOracleHistory();
@@ -1962,11 +1963,11 @@ function _renderBandRoll(r, tn, label, diceId, totalId, sumId, resultId) {
   const dd = document.getElementById(diceId); dd.innerHTML = '';
   const fd = document.createElement('div');
   fd.className = 'feat-die' + (r.feat.special === 'eye' ? ' eye' : '') + (r.feat.special === 'rune' ? ' rune' : '');
-  fd.textContent = r.feat.label; dd.appendChild(fd);
+  fd.textContent = r.feat.label; _labelFeatDie(fd, r.feat.special); dd.appendChild(fd);
   r.dice.forEach(d => {
     const e = document.createElement('div');
     e.className = 'success-die' + (d.icon ? ' icon' : '') + (d.wearied ? ' dim' : '');
-    e.textContent = d.value; dd.appendChild(e);
+    e.textContent = d.value; _labelSuccessDie(e, d.value, !!d.icon); dd.appendChild(e);
   });
   document.getElementById(totalId).textContent = r.feat.special === 'rune' ? '★' : (r.feat.special === 'eye' ? '✗' : r.total);
   let s = `<strong>${label}</strong> vs Readiness TN ${tn} — `;

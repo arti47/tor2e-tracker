@@ -62,6 +62,23 @@ function cycleTheme() {
   applyTheme();
 }
 
+
+/* Dice results render as three bare coloured boxes. The Feat die is visually distinct but nothing
+   NAMES it, so a new player can't tell which die is which — and a screen reader reads only digits.
+   Label every die at the point it is built. */
+function _labelFeatDie(el, special) {
+  if (!el) return;
+  const t = special === 'eye' ? 'Feat die: the Eye of Sauron — counts as 0, and an automatic failure while Miserable'
+          : special === 'rune' ? 'Feat die: the Gandalf rune — an automatic success'
+          : 'Feat die (d12): ' + (el.textContent || '');
+  el.setAttribute('title', t); el.setAttribute('aria-label', t);
+}
+function _labelSuccessDie(el, value, isIcon) {
+  if (!el) return;
+  const t = 'Success die: ' + value + (isIcon ? ' — a ✦ success icon' : '');
+  el.setAttribute('title', t); el.setAttribute('aria-label', t);
+}
+
 // Styled modal — returns a Promise that resolves with the chosen button's value
 // (or the input string if input was shown, or null on dismissal).
 // Use for high-impact prompts; native confirm/alert/prompt still acceptable for low-stakes.

@@ -561,6 +561,38 @@ module.exports = {
     checks.push({ ok: tut2.cleared, msg: 'exiting the tutorial clears the persisted sandbox' });
     checks.push({ ok: tut2.back === 'RealHero', msg: 'discarding the practice hero restores the real one' });
 
+    // ---- Build progress is real, and dice say what they are ----
+    const build = await page.evaluate(() => {
+      const out = {};
+      const txt = () => document.getElementById('build-checklist').innerText;
+      // blank hero: nothing ticked (DEFAULT_CHARACTER carries placeholder ratings, which must NOT count)
+      char = JSON.parse(JSON.stringify(DEFAULT_CHARACTER)); saveCharacter(); render();
+      out.blankTicks = (txt().match(/✓/g) || []).length;
+      out.blankShowsTotal = /0 of \d+ done/.test(txt());
+      out.hasJumpLinks = /Combat tab|Character tab/.test(txt());
+      // fully built hero: everything ticked + the done message
+      Object.assign(char, { culture: 'Bardings', calling: 'Warden', strRating: 5, hrtRating: 4, witRating: 3,
+        name: 'Beran', age: 32, safeHaven: 'Lake-town', features: 'Bold', standard: 'Common',
+        weapons: [{ name: 'Sword', dmg: 4 }], armourProt: 2, usefulItems: ['Rope'], skills: { Athletics: 2 } });
+      saveCharacter(); render();
+      const t = txt();
+      out.allTicked = /(\d+) of \1 done/.test(t.replace(/(\d+) of (\d+) done/, (m,a,bb) => a===bb ? '9 of 9 done' : m)) || /11 of 11 done/.test(t);
+      out.readyMsg = /hero is ready/i.test(t);
+      // dice must name themselves (a newcomer sees three coloured boxes otherwise)
+      diceState.success = 2; rollDice('Athletics');
+      const dice = [...document.querySelectorAll('#result-dice > div')];
+      out.diceCount = dice.length;
+      out.allLabelled = dice.every(d => /^(Feat|Success) die/.test(d.getAttribute('aria-label') || ''));
+      out.featCarriesValue = /Feat die.*\d|Eye of Sauron|Gandalf rune/.test(dice[0].getAttribute('aria-label') || '');
+      out.titlesToo = dice.every(d => !!d.getAttribute('title'));
+      return out;
+    });
+    checks.push({ ok: build.blankTicks === 0 && build.blankShowsTotal, msg: 'build checklist ticks nothing on a blank hero' });
+    checks.push({ ok: build.hasJumpLinks, msg: 'build checklist links to the tabs that satisfy each item' });
+    checks.push({ ok: build.allTicked && build.readyMsg, msg: 'build checklist completes and says the hero is ready' });
+    checks.push({ ok: build.diceCount === 3 && build.allLabelled, msg: 'every rendered die is labelled Feat/Success' });
+    checks.push({ ok: build.featCarriesValue && build.titlesToo, msg: 'die labels carry the rolled value (title + aria-label)' });
+
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length})` });
     await context.close();
     return { checks };
