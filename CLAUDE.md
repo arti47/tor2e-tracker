@@ -11,7 +11,7 @@ An HTML5 character sheet + play tracker for **The One Ring 2nd Edition** RPG —
 > current whenever work lands (and prune it — it must stay one screen).
 
 ### Current state
-- **All roadmap phases COMPLETE (incl. the full loremaster port):** P0 adversaries · P1 test harness (`npm test`, **206/206 green**, 6 specs) · P2 module split (`src/01…08` + `styles.css`) · P3 cloud-owned heroes · P4 live campaigns/party · P5 shared GM-driven encounter · P6 Loremaster screen (role-gated GM tab, peek, broadcast) · P7 security rules (**deployed + live-verified 2026-07-02**) · P8 accessibility. Plus the full UX batch (U3, U4, U5/6/7/8, U9–U15 — all shipped; "group rolls" deliberately skipped).
+- **All roadmap phases COMPLETE (incl. the full loremaster port):** P0 adversaries · P1 test harness (`npm test`, **213/213 green**, 7 specs) · P2 module split (`src/01…08` + `styles.css`) · P3 cloud-owned heroes · P4 live campaigns/party · P5 shared GM-driven encounter · P6 Loremaster screen (role-gated GM tab, peek, broadcast) · P7 security rules (**deployed + live-verified 2026-07-02**) · P8 accessibility. Plus the full UX batch (U3, U4, U5/6/7/8, U9–U15 — all shipped; "group rolls" deliberately skipped).
 - **Cloud is LIVE**: real Firebase config committed (`FIREBASE_ENABLED=true`); rules deployed; broadcast / in-campaign push / peek all verified against the real project 2026-07-02.
 - **SW cache `tor2e-v119`** · git repo (origin = github.com/arti47/tor2e-tracker, branch main) · shells (`character-tracker.html` = `index.html`) in sync.
 - **Dice-tab QoL (2026-07-02):** quick-roll grid moved to sit directly above the 🎲 Roll button (result renders right below → tap-to-result with no hunting) + the result `scrollIntoView`s on every roll (`behavior:'auto'` on purpose — `'smooth'` never completes in some headless/older-Safari engines); roll history gets a per-row **×** delete (`deleteRollAt`, index via `history.indexOf`) and a **🗑 Clear** button (`clearRollHistory`, confirmed). +2 ux-spec checks.
@@ -150,6 +150,10 @@ An HTML5 character sheet + play tracker for **The One Ring 2nd Edition** RPG —
   - **Four probe artifacts, not defects** — recorded so a later pass doesn't chase them: (1) `.filled` / `.checked` *are* styled, as compound selectors (`.pip.filled`), which a bare `.class` grep misses; (2) `.moria-only` and `.counter-buttons-btn` legitimately have no CSS — the first is JS-driven visibility, the second sits on buttons carrying full inline styles; (3) `dataset.groupText` / `iconsLeft` / `hinted` are assigned at runtime and `data-prof` is built as `data-${type}`, so none appear as literal `data-` attributes in source; (4) an overlay-closer probe **must filter to visible buttons** — matching the FP wizard's hidden "← Back" made a working closer look broken.
   - +3 ux-spec checks: handler existence, visible-closer coverage, and the `fpState` guard.
 
+- **Reachability is now a committed spec, not an audit ritual (2026-08-20, harness 213/213):** the detectors used across passes 1–4 lived in throwaway scratchpad scripts and had to be re-derived each time — which is why "check until there are no errors" needed a human in the loop. They are now **`tests/specs/reachability.js`**, so `npm test` *is* the audit: it passes, or it names exactly what is orphaned, unwired or missing. Seven static checks (no browser): orphan functions · unreferenced content constants · blocking guards with no jump · `requireStep` targets resolving to a real tab + card · every PRECACHE / manifest icon / shell asset existing on disk · `querySelector('#id')` targets existing · **the two shells staying byte-identical** (catches a forgotten `cp character-tracker.html index.html`).
+  - **Verified it actually fails:** injecting an unreferenced function made it report `✖ no orphan functions (neverCalledAnywhere)` and exit non-zero; removing it went green again. A spec that only ever passes is worthless.
+  - **On "run until no errors":** a retry loop (`until npm test; do :; done`) is the wrong tool — these failures are deterministic, so a real one would spin forever. `tests/run.js` already exits `1` on any failure and `0` when clean, which is what a pre-commit hook or CI gate needs. The loop that matters is *fix → re-run*, and the spec now tells you what to fix.
+
 ### The dev workflow (every change)
 1. Edit **`src/*.js`** (JS) or **`character-tracker.html`** (markup) or `styles.css`.
 2. If the HTML changed: `cp character-tracker.html index.html`.
@@ -245,7 +249,7 @@ npm install && npm test                     # harness must be green (npm install
 As of last verification:
 - **Layout (since P2, 2026-06-29)**: thin `character-tracker.html` shell (mirrored to `index.html`) loading `styles.css` + `src/vendor-qrcode.js` + `src/01-core.js`…`src/08-gm.js` in order — **classic scripts, no build step, still works over `file://`**. `firebase-config.js` (real keys, `FIREBASE_ENABLED=true`) + Firebase compat CDN scripts power the optional-but-live cloud layer (`src/07-sync.js`); the app degrades gracefully to fully-local when offline.
 - **`sw.js` `CACHE_VERSION`**: `tor2e-v119` (bump on every deploy). `PRECACHE` lists all 8 `src/*.js` + `vendor-qrcode.js` + `styles.css` + `firebase-config.js` + shells + PWA assets — **add any new file there**. SW strategy: HTML/navigations network-first; static assets cache-first; auto-activate.
-- **Test harness**: `npm test` → 6 specs / **206 checks** (smoke 23, adversaries 11, ux 125, spillage 20, a11y 7, gm 20). A fresh clone needs `npm install` first (`playwright-core` is the only devDependency; `tests/browser.js` glob-resolves a cached Chromium, `CHROMIUM_BIN` overrides). Cloud paths are no-ops in tests (SDK blocked) — verify live features via preview against the real project.
+- **Test harness**: `npm test` → 7 specs / **213 checks** (smoke 23, adversaries 11, ux 125, spillage 20, a11y 7, gm 20, **reachability 7**). A fresh clone needs `npm install` first (`playwright-core` is the only devDependency; `tests/browser.js` glob-resolves a cached Chromium, `CHROMIUM_BIN` overrides). Cloud paths are no-ops in tests (SDK blocked) — verify live features via preview against the real project.
 - **Cloud (P3–P7)**: heroes mirror to `characters/{id}` (owner-only, rules-enforced); campaigns at `campaigns/{cid}` (join codes, live vitals party, presence, shared encounter, loremaster broadcast). `database.rules.json` **deployed + live-verified 2026-07-02**.
 - **Solo modes**: Strider + Moria complete (see their sections below).
 - **localStorage keys**: a **multi-character roster** (added 2026-05-31):
@@ -1231,7 +1235,7 @@ tor2e-tracker/
 ├── manifest.json · icon-192.png · icon-512.png · icon.svg   # PWA install assets
 ├── tests/
 │   ├── run.js · serve.js · browser.js
-│   └── specs/{smoke,adversaries,ux,spillage,a11y,gm}.js
+│   └── specs/{smoke,adversaries,ux,spillage,a11y,gm,reachability}.js
 ├── package.json                # dev-only: `npm test`, playwright-core (node_modules gitignored)
 ├── CLAUDE.md · README.md · LICENSE
 ```
