@@ -162,6 +162,13 @@ An HTML5 character sheet + play tracker for **The One Ring 2nd Edition** RPG —
 - **CI + a portable audit prompt (2026-08-20):** `.github/workflows/test.yml` runs `npm test` on every push to `main` and every PR (Node 20, `npx playwright install --with-deps chromium` for the harness). Since `tests/run.js` exits non-zero on any failure, a red build now blocks a broken deploy — worth having before the Netlify item ships.
   - **`docs/reachability-audit.prompt.md`** generalises this session's audit into a prompt reusable on *other* projects. It carries the eight defect classes, the deliverable format (spec wired to the runner, each check naming its offenders, exemptions documented inline), and — most importantly — the **"prove the spec fails"** clause and the **false-positive trap list** (runtime-assigned ids, templated names, compound CSS selectors, offset-parent inside an inactive tab, hidden closers). Those traps cost real investigation here and are language-agnostic.
 
+- **Coverage-audit prompt (2026-08-24):** `docs/coverage-audit.prompt.md` is the **inverse** of the reachability prompt and neither substitutes for the other — reachability walks *code → user* and catches shipped code nobody can reach; coverage walks *source document → code* and catches a documented feature never implemented. A reachability suite stays green on an app missing half its rulebook, because an unimplemented feature leaves no artefact to detect.
+  - **The trap the prompt leads with:** never generate the feature list by scanning the codebase. A checklist derived from the code maps onto the code perfectly and passes forever while proving nothing. It must come from the source document; unreachable sections are marked `unknown`, never inferred from the implementation.
+  - Entry shape: `id` · `source` (page/section citation) · `summary` in the document's terms · `marker` (the artefact that would disappear with the feature) · `status` (`implemented`/`partial`/`deliberately-omitted`/`unknown`) · `note`, required for anything not implemented. Marker choice is the whole game: too coarse (a file) never fails, too brittle (a line number) fails on unrelated edits and gets muted.
+  - Same **prove-it-fails** clause as the reachability prompt — rename a marker, watch the spec name that feature and exit non-zero.
+  - **Stated limit, in the prompt and meant to be copied into the coverage file:** this proves a *mapping* exists, not that behaviour is correct. `XP_COST_TO_REACH` existing says nothing about its values being right — cf. GOTCHA 1.
+  - **Status here: not yet built for this project.** CLAUDE.md's Core Rules coverage matrix (line ~758) is still a hand-written 2026-05-23 snapshot with prose percentages that nothing re-derives. Building the real thing needs the rulebook PDFs, which are local/iCloud only (see **File Layout**), or sections fed in via NotebookLM.
+
 ### The dev workflow (every change)
 1. Edit **`src/*.js`** (JS) or **`character-tracker.html`** (markup) or `styles.css`.
 2. If the HTML changed: `cp character-tracker.html index.html`.
@@ -1246,7 +1253,8 @@ tor2e-tracker/
 │   └── specs/{smoke,adversaries,ux,spillage,a11y,gm,reachability}.js
 ├── package.json                # dev-only: `npm test`, playwright-core (node_modules gitignored)
 ├── .github/workflows/test.yml  # CI: runs `npm test` on push to main + every PR
-├── docs/reachability-audit.prompt.md   # portable prompt — reproduces this audit in any project
+├── docs/reachability-audit.prompt.md   # portable prompt — shipped code the user can't reach
+├── docs/coverage-audit.prompt.md       # portable prompt — source-document features never implemented
 ├── CLAUDE.md · README.md · LICENSE
 ```
 
