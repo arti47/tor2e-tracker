@@ -857,6 +857,52 @@ module.exports = {
     checks.push({ ok: reach2.braveGated, msg: 'Brave at a Pinch appears only with the virtue AND a condition' });
     checks.push({ ok: reach2.campaignExplains && reach2.linkExplains, msg: 'cloud entry points explain themselves when Sync is unavailable' });
 
+    // ---- Reachability pass 3: wiring, gear-gated rewards, mode-gated markup ----
+    const reach3 = await page.evaluate(() => {
+      const out = {};
+      // Every data-field input must map to a real schema key, or it silently writes nowhere.
+      out.unboundFields = [...document.querySelectorAll('[data-field]')]
+        .map(f => f.dataset.field).filter(k => !(k in char));
+      out.fieldCount = document.querySelectorAll('[data-field]').length;
+
+      // All 18 skills and 4 proficiencies must render their pip rows.
+      render();
+      out.skillPips = document.querySelectorAll('#panel-skills [data-skill]').length;
+      out.profPips = document.querySelectorAll('#panel-skills [data-prof]').length;
+
+      // Every culture must have cultural virtues to unlock at Wisdom 2+.
+      out.culturesWithoutVirtues = Object.keys(CULTURES).filter(k => !(CULTURAL_VIRTUES[k] || []).length);
+
+      // .moria-only markup must reveal in Moria and hide outside it.
+      char.culture = 'Bardings'; char.moriaMode = true; saveCharacter(); refreshStriderUI(); render();
+      const mo = [...document.querySelectorAll('.moria-only')];
+      out.moriaTotal = mo.length;
+      out.moriaShown = mo.every(e => e.style.display !== 'none');
+      char.moriaMode = false; saveCharacter(); refreshStriderUI(); render();
+      out.moriaHidden = [...document.querySelectorAll('.moria-only')].every(e => e.style.display === 'none');
+
+      // Every mode-gated tab must become reachable under the right mode.
+      char.striderMode = true; char.moriaMode = true; localStorage.setItem('tor2e-gm', '1');
+      saveCharacter(); refreshStriderUI(); if (window.refreshGmUI) refreshGmUI();
+      out.tabsStillHidden = ['oracle', 'chronicle', 'band', 'battle', 'gm']
+        .filter(t => document.querySelector('.tab[data-tab=' + t + ']').style.display === 'none');
+      char.striderMode = false; char.moriaMode = false; localStorage.removeItem('tor2e-gm');
+      saveCharacter(); refreshStriderUI(); if (window.refreshGmUI) refreshGmUI();
+
+      // Every Reward must find a gear target once the matching gear is equipped.
+      char.weapons = [{ name: 'Sword', dmg: 4, inj: 16, prof: 'Swords' }];
+      char.armourProt = 2; char.helmProt = 1; char.shieldBase = 1; char.shieldTotal = 1;
+      saveCharacter(); render();
+      out.rewardsWithNoTarget = REWARDS.filter(r => getCompatibleTargets(r.name).length === 0).map(r => r.name);
+      return out;
+    });
+    checks.push({ ok: reach3.unboundFields.length === 0, msg: `every data-field maps to a schema key (${reach3.fieldCount} fields)` });
+    checks.push({ ok: reach3.skillPips === 18 * 7 && reach3.profPips === 4 * 6, msg: `all 18 skills + 4 profs render pips (${reach3.skillPips}/${reach3.profPips})` });
+    checks.push({ ok: reach3.culturesWithoutVirtues.length === 0, msg: 'every culture has cultural virtues to unlock' });
+    checks.push({ ok: reach3.moriaTotal > 0 && reach3.moriaShown && reach3.moriaHidden, msg: 'moria-only markup reveals in Moria and hides outside it' });
+    checks.push({ ok: reach3.tabsStillHidden.length === 0, msg: 'every mode-gated tab becomes reachable under its mode' });
+    checks.push({ ok: reach3.rewardsWithNoTarget.length === 0, msg: 'every Reward finds a target once its gear is equipped' });
+
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length})` });
     await context.close();
     return { checks };

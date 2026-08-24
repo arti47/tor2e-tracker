@@ -242,7 +242,8 @@ function rollCombatTask(btn) {
   const stanceReq = btn.dataset.stanceReq;
   const labels = { forward: 'Forward', open: 'Open', defensive: 'Defensive', rearward: 'Rearward' };
   if (char.stance !== stanceReq) {
-    alert(`This task requires ${labels[stanceReq]} stance.\nCurrent stance: ${char.stance ? labels[char.stance] : 'none'}.\n\nSet your stance on the Combat tab first.`);
+    requireStep(`Each Combat Task belongs to one <strong>Stance</strong> — this one needs <strong>${labels[stanceReq]}</strong>, and you are currently in <strong>${char.stance ? labels[char.stance] : 'no stance'}</strong>.<br><br>Set your stance on the Combat tab, then come back and tap the task again.`,
+      'combat', null, '⚠️ Wrong stance for this task');
     return;
   }
   const skillName = btn.dataset.skill;
@@ -1709,7 +1710,7 @@ function renderLifepathCard() {
 
 function rollBackstory() {
   if (!char.culture || !LIFEPATHS[char.culture]) {
-    alert('Pick a Core Rules culture first. (Wilderland supplement cultures don\'t have lifepaths.)');
+    alertStyled('Lifepaths only exist for the six <strong>Core Rules</strong> cultures — the <em>Peoples of Wilderland</em> supplement doesn\'t include them.<br><br>Pick a Core Rules culture in <strong>step 1</strong> above, or build this hero by choosing rather than rolling.', '⚠️ No lifepath for this culture');
     return;
   }
   const die = Math.floor(Math.random() * 6) + 1;
@@ -2049,7 +2050,8 @@ function promptApplyReward(rewardName, source) {
   if (!r) return;
   const targets = getCompatibleTargets(rewardName);
   if (targets.length === 0) {
-    alert(`Reward "${rewardName}" needs ${r.type} equipped first.\n\nEquip the gear on the Combat tab, then re-pick this Reward.`);
+    requireStep(`<strong>${escapeHtml(rewardName)}</strong> is an upgrade applied to a piece of gear — and you have no <strong>${escapeHtml(r.type)}</strong> equipped for it to improve.<br><br>Equip that gear on the <strong>Combat</strong> tab, then pick this Reward again.`,
+      'combat', 'war-gear-card', '⚠️ Nothing to apply it to');
     return false;
   }
   pendingReward = { name: rewardName, source, rewardObj: r };

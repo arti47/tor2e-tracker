@@ -1271,12 +1271,6 @@ function openReferenceTab() {
   if (m) m.classList.remove('show');
 }
 
-function toggleDarkMode() {
-  const isDark = document.body.classList.contains('dark');
-  localStorage.setItem(THEME_KEY, isDark ? 'light' : 'dark');
-  applyTheme();
-}
-
 /* ---------- COMPACT MODE ---------- */
 const COMPACT_KEY = 'tor2e-compact';   // '1' = compact, unset = normal spacing
 function applyCompact() {
@@ -1356,7 +1350,6 @@ function undoLast() {
     });
   }
 })();
-const HISTORY_KEY = 'tor2e-rolls-v1';
 
 const SKILLS = {
   str: ['Awe', 'Athletics', 'Awareness', 'Hunting', 'Song', 'Craft'],

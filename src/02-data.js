@@ -2967,7 +2967,6 @@ const PE_BUDGET_STRIDER = 15;  // Strider/Moria solo: solo heroes start with ext
 // --- Solo-mode helpers. Precedence: Moria > Strider > normal on shared surfaces. ---
 function isMoria()   { return !!char.moriaMode; }
 function isSolo()    { return !!char.moriaMode || !!char.striderMode; }  // PE budget, no Focus, no journey roles
-function oracleSet() { return char.moriaMode ? 'moria' : (char.striderMode ? 'strider' : null); }
 // Both Dwarf cultures share Redoubtable (halve armour Load) + the no-great-weapon/shield restriction.
 function isDwarfCulture(c) { c = c || char.culture; return c === "Dwarves of Durin's Folk" || c === 'Dwarves of Nogrod and Belegost'; }
 // Use this getter everywhere PE_BUDGET was referenced; reads mode at call time.
