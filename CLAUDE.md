@@ -154,6 +154,9 @@ An HTML5 character sheet + play tracker for **The One Ring 2nd Edition** RPG —
   - **Verified it actually fails:** injecting an unreferenced function made it report `✖ no orphan functions (neverCalledAnywhere)` and exit non-zero; removing it went green again. A spec that only ever passes is worthless.
   - **On "run until no errors":** a retry loop (`until npm test; do :; done`) is the wrong tool — these failures are deterministic, so a real one would spin forever. `tests/run.js` already exits `1` on any failure and `0` when clean, which is what a pre-commit hook or CI gate needs. The loop that matters is *fix → re-run*, and the spec now tells you what to fix.
 
+- **CI + a portable audit prompt (2026-08-20):** `.github/workflows/test.yml` runs `npm test` on every push to `main` and every PR (Node 20, `npx playwright install --with-deps chromium` for the harness). Since `tests/run.js` exits non-zero on any failure, a red build now blocks a broken deploy — worth having before the Netlify item ships.
+  - **`docs/reachability-audit.prompt.md`** generalises this session's audit into a prompt reusable on *other* projects. It carries the eight defect classes, the deliverable format (spec wired to the runner, each check naming its offenders, exemptions documented inline), and — most importantly — the **"prove the spec fails"** clause and the **false-positive trap list** (runtime-assigned ids, templated names, compound CSS selectors, offset-parent inside an inactive tab, hidden closers). Those traps cost real investigation here and are language-agnostic.
+
 ### The dev workflow (every change)
 1. Edit **`src/*.js`** (JS) or **`character-tracker.html`** (markup) or `styles.css`.
 2. If the HTML changed: `cp character-tracker.html index.html`.
@@ -1237,6 +1240,8 @@ tor2e-tracker/
 │   ├── run.js · serve.js · browser.js
 │   └── specs/{smoke,adversaries,ux,spillage,a11y,gm,reachability}.js
 ├── package.json                # dev-only: `npm test`, playwright-core (node_modules gitignored)
+├── .github/workflows/test.yml  # CI: runs `npm test` on push to main + every PR
+├── docs/reachability-audit.prompt.md   # portable prompt — reproduces this audit in any project
 ├── CLAUDE.md · README.md · LICENSE
 ```
 
