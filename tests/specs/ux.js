@@ -808,6 +808,55 @@ module.exports = {
     checks.push({ ok: reach.restores, msg: 'leaving solo restores the Focus picker' });
     checks.push({ ok: reach.tabCount === 14 && reach.allPanelsExist, msg: `every declared tab has a panel (${reach.tabCount} tabs)` });
 
+    // ---- Reachability pass 2: content, conditional features, and graceful cloud degradation ----
+    const reach2 = await page.evaluate(async () => {
+      const out = {};
+      const opts = id => [...(document.getElementById(id) || { options: [] }).options]
+        .map(o => o.text.trim()).filter(t => t && !t.startsWith('—'));
+      // Every piece of game content must be offered by some picker.
+      out.culturesMissing = Object.keys(CULTURES).filter(x => !opts('culture-pick').includes(x));
+      out.callingsMissing = Object.keys(CALLINGS).filter(x => !opts('calling-pick').includes(x));
+      const all = allBestiary().map(x => x.name);
+      out.bestiaryMissing = [...BESTIARY.map(x => x.name), ...ADVERSARY_DB.map(x => x.name)].filter(n => !all.includes(n));
+      out.bestiaryCount = all.length;
+
+      // Virtue-gated dice toggles must appear for an owner and stay hidden otherwise.
+      // NB: ownership lives in char.virtuesList (array of {name}), NOT the char.virtues text field.
+      Object.assign(char, { culture: 'Bardings', calling: 'Warden', strRating: 5, strTN: 15,
+        hrtRating: 4, hrtTN: 16, witRating: 3, witTN: 17, endMax: 25, endCur: 25, hopeMax: 12, hopeCur: 12 });
+      const disp = id => (document.getElementById(id) || {}).style?.display;
+      char.virtuesList = [{ name: 'Dragon-Slayer' }, { name: 'Dark for Dark Business' }];
+      char.weary = false; saveCharacter(); render();
+      const on = disp('dragon-slayer-btn') === 'block' && disp('dark-business-btn') === 'block';
+      char.virtuesList = []; saveCharacter(); render();
+      const off = disp('dragon-slayer-btn') === 'none' && disp('dark-business-btn') === 'none';
+      out.virtueToggles = on && off;
+      char.virtuesList = [{ name: 'Brave at a Pinch' }]; char.weary = true; saveCharacter(); render();
+      const braveOn = disp('brave-btn') === 'block';
+      char.weary = false; saveCharacter(); render();
+      out.braveGated = braveOn && disp('brave-btn') === 'none';
+      char.virtuesList = []; saveCharacter(); render();
+
+      // Cloud-only entry points must explain themselves rather than dead-ending when Sync is off.
+      let said = ''; const oal = window.alertStyled;
+      window.alertStyled = async (m, t) => { said = String(t || m); };
+      openCampaign();
+      const ov = document.getElementById('campaign-overlay');
+      out.campaignExplains = ov.classList.contains('show') && /Cloud sync is not active/i.test(ov.innerText);
+      ov.classList.remove('show');
+      said = ''; await Sync.linkGoogle();
+      out.linkExplains = /Cloud sync is not active/i.test(said);
+      window.alertStyled = oal;
+      return out;
+    });
+    checks.push({ ok: reach2.culturesMissing.length === 0 && reach2.callingsMissing.length === 0,
+                  msg: `every culture and calling is offered by a picker (missing: ${[...reach2.culturesMissing, ...reach2.callingsMissing].join(', ') || 'none'})` });
+    checks.push({ ok: reach2.bestiaryMissing.length === 0 && reach2.bestiaryCount >= 56,
+                  msg: `every adversary reaches the picker (${reach2.bestiaryCount} unified)` });
+    checks.push({ ok: reach2.virtueToggles, msg: 'virtue-gated dice toggles show for owners, hide otherwise' });
+    checks.push({ ok: reach2.braveGated, msg: 'Brave at a Pinch appears only with the virtue AND a condition' });
+    checks.push({ ok: reach2.campaignExplains && reach2.linkExplains, msg: 'cloud entry points explain themselves when Sync is unavailable' });
+
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length})` });
     await context.close();
     return { checks };

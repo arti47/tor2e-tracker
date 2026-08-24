@@ -11,9 +11,9 @@ An HTML5 character sheet + play tracker for **The One Ring 2nd Edition** RPG —
 > current whenever work lands (and prune it — it must stay one screen).
 
 ### Current state
-- **All roadmap phases COMPLETE (incl. the full loremaster port):** P0 adversaries · P1 test harness (`npm test`, **192/192 green**, 6 specs) · P2 module split (`src/01…08` + `styles.css`) · P3 cloud-owned heroes · P4 live campaigns/party · P5 shared GM-driven encounter · P6 Loremaster screen (role-gated GM tab, peek, broadcast) · P7 security rules (**deployed + live-verified 2026-07-02**) · P8 accessibility. Plus the full UX batch (U3, U4, U5/6/7/8, U9–U15 — all shipped; "group rolls" deliberately skipped).
+- **All roadmap phases COMPLETE (incl. the full loremaster port):** P0 adversaries · P1 test harness (`npm test`, **197/197 green**, 6 specs) · P2 module split (`src/01…08` + `styles.css`) · P3 cloud-owned heroes · P4 live campaigns/party · P5 shared GM-driven encounter · P6 Loremaster screen (role-gated GM tab, peek, broadcast) · P7 security rules (**deployed + live-verified 2026-07-02**) · P8 accessibility. Plus the full UX batch (U3, U4, U5/6/7/8, U9–U15 — all shipped; "group rolls" deliberately skipped).
 - **Cloud is LIVE**: real Firebase config committed (`FIREBASE_ENABLED=true`); rules deployed; broadcast / in-campaign push / peek all verified against the real project 2026-07-02.
-- **SW cache `tor2e-v116`** · git repo (origin = github.com/arti47/tor2e-tracker, branch main) · shells (`character-tracker.html` = `index.html`) in sync.
+- **SW cache `tor2e-v117`** · git repo (origin = github.com/arti47/tor2e-tracker, branch main) · shells (`character-tracker.html` = `index.html`) in sync.
 - **Dice-tab QoL (2026-07-02):** quick-roll grid moved to sit directly above the 🎲 Roll button (result renders right below → tap-to-result with no hunting) + the result `scrollIntoView`s on every roll (`behavior:'auto'` on purpose — `'smooth'` never completes in some headless/older-Safari engines); roll history gets a per-row **×** delete (`deleteRollAt`, index via `history.indexOf`) and a **🗑 Clear** button (`clearRollHistory`, confirmed). +2 ux-spec checks.
 - **Dice/Oracle QoL 2 (2026-07-02, SW v101, harness 104/104):** the roll-result summary now **leads with the skill/prof name** (quick rolls pass it as `rollDice(skillLabel)`; e.g. "Valour · vs TN 15 — SUCCESS"); **Oracle History** gets per-row **×** (`deleteOracleRollAt` — direct index, newest-first) + **🗑 Clear** (`clearOracleHistory`, confirmed; device-global history). +2 ux-spec checks. *(Preview-verification note: the local `http.server` + SW combo can poison the HTTP cache so even a new SW precaches stale JS — when the preview serves old code, switch the preview port = fresh origin.)*
 
@@ -126,6 +126,16 @@ An HTML5 character sheet + play tracker for **The One Ring 2nd Edition** RPG —
   - **Method note:** an `offsetParent !== null` visibility probe gives false negatives for anything inside `#panel-character` when another tab is active — check `style.display` instead, or activate the tab first. Cost one round of spurious spec failures.
   - +4 ux-spec checks: the Focus picker's group/solo/restore states, and that all 14 declared tabs have a panel.
 
+- **Reachability pass 2 (2026-08-20, SW v117, harness 197/197): NO new defects found.** Five classes never checked before, all clean — the value here is the regression guards, not fixes:
+  - **Game content**: all 11 cultures, 11 callings, 6 patrons, **56 unified adversaries** and 13 pregens are offered by a picker. Nothing ported is stranded.
+  - **Data tables**: 118 of 119 top-level content constants are referenced; the one orphan is `HISTORY_KEY`, a storage key superseded by the per-hero `tor2e-rolls-<id>` prefix.
+  - **Schema**: 58 of 59 `DEFAULT_CHARACTER` fields are read or written by UI; the exception is `schemaVersion`, which is a migration stamp by design.
+  - **Overlays**: all 23 have a code path that opens them.
+  - **Conditional features**: the four virtue/reward-gated dice toggles (Dragon-Slayer, Dark for Dark Business, Brave at a Pinch, Keen) each appear exactly when owned and hide otherwise.
+  - **Cloud degradation**: with the SDK absent, the campaign overlay opens and states *"Cloud sync is not active — serve the app over http(s) with Firebase configured"*, and `linkGoogle()` says the same. No dead controls.
+  - **Two apparent findings were my own probe errors, not defects** — worth recording so the next pass doesn't chase them: virtue ownership lives in **`char.virtuesList`** (array of `{name}`), *not* the `char.virtues` text field, and several overlay/element openers assign through a local variable (`ov.classList.add('show')`, `el.id = '…'`), so grepping near the literal id string gives false negatives.
+  - +5 ux-spec checks lock content-to-picker coverage, the conditional toggles, and the cloud fallback messages.
+
 ### The dev workflow (every change)
 1. Edit **`src/*.js`** (JS) or **`character-tracker.html`** (markup) or `styles.css`.
 2. If the HTML changed: `cp character-tracker.html index.html`.
@@ -220,8 +230,8 @@ npm install && npm test                     # harness must be green (npm install
 
 As of last verification:
 - **Layout (since P2, 2026-06-29)**: thin `character-tracker.html` shell (mirrored to `index.html`) loading `styles.css` + `src/vendor-qrcode.js` + `src/01-core.js`…`src/08-gm.js` in order — **classic scripts, no build step, still works over `file://`**. `firebase-config.js` (real keys, `FIREBASE_ENABLED=true`) + Firebase compat CDN scripts power the optional-but-live cloud layer (`src/07-sync.js`); the app degrades gracefully to fully-local when offline.
-- **`sw.js` `CACHE_VERSION`**: `tor2e-v116` (bump on every deploy). `PRECACHE` lists all 8 `src/*.js` + `vendor-qrcode.js` + `styles.css` + `firebase-config.js` + shells + PWA assets — **add any new file there**. SW strategy: HTML/navigations network-first; static assets cache-first; auto-activate.
-- **Test harness**: `npm test` → 6 specs / **192 checks** (smoke 23, adversaries 11, ux 111, spillage 20, a11y 7, gm 20). A fresh clone needs `npm install` first (`playwright-core` is the only devDependency; `tests/browser.js` glob-resolves a cached Chromium, `CHROMIUM_BIN` overrides). Cloud paths are no-ops in tests (SDK blocked) — verify live features via preview against the real project.
+- **`sw.js` `CACHE_VERSION`**: `tor2e-v117` (bump on every deploy). `PRECACHE` lists all 8 `src/*.js` + `vendor-qrcode.js` + `styles.css` + `firebase-config.js` + shells + PWA assets — **add any new file there**. SW strategy: HTML/navigations network-first; static assets cache-first; auto-activate.
+- **Test harness**: `npm test` → 6 specs / **197 checks** (smoke 23, adversaries 11, ux 116, spillage 20, a11y 7, gm 20). A fresh clone needs `npm install` first (`playwright-core` is the only devDependency; `tests/browser.js` glob-resolves a cached Chromium, `CHROMIUM_BIN` overrides). Cloud paths are no-ops in tests (SDK blocked) — verify live features via preview against the real project.
 - **Cloud (P3–P7)**: heroes mirror to `characters/{id}` (owner-only, rules-enforced); campaigns at `campaigns/{cid}` (join codes, live vitals party, presence, shared encounter, loremaster broadcast). `database.rules.json` **deployed + live-verified 2026-07-02**.
 - **Solo modes**: Strider + Moria complete (see their sections below).
 - **localStorage keys**: a **multi-character roster** (added 2026-05-31):
