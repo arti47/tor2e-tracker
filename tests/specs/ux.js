@@ -782,6 +782,32 @@ module.exports = {
     checks.push({ ok: seq5.abortReachable && seq5.abortInActiveCard && seq5.setupHidden,
                   msg: 'journey abort stays reachable in the active card once setup hides' });
 
+    // ---- Reachability: shipped UI must actually be reachable ----
+    const reach = await page.evaluate(() => {
+      const out = {};
+      // Fellowship Focus is group-play only. Both elements shipped in the markup but NOTHING
+      // referenced them, so the documented solo suppression never fired.
+      // NB: check style.display, not offsetParent — these live inside #panel-character, which is
+      // itself hidden whenever another tab is active, so offsetParent would be null regardless.
+      document.querySelector('.tab[data-tab=character]').click();
+      const vis = id => { const e = document.getElementById(id); return !!e && e.style.display !== 'none'; };
+      char.striderMode = false; saveCharacter(); refreshStriderUI();
+      out.groupShowsPicker = vis('focus-row') && vis('focus-hint') && !vis('focus-strider-hint');
+      char.striderMode = true; saveCharacter(); refreshStriderUI();
+      out.soloHidesPicker = !vis('focus-row') && !vis('focus-hint') && vis('focus-strider-hint');
+      char.striderMode = false; saveCharacter(); refreshStriderUI();
+      out.restores = vis('focus-row') && !vis('focus-strider-hint');
+      // Every declared tab must be activatable (no tab that can never be shown).
+      const tabs = [...document.querySelectorAll('.tab')].map(t => t.dataset.tab);
+      out.tabCount = tabs.length;
+      out.allPanelsExist = tabs.every(t => !!document.getElementById('panel-' + t));
+      return out;
+    });
+    checks.push({ ok: reach.groupShowsPicker, msg: 'group play shows the Fellowship Focus picker' });
+    checks.push({ ok: reach.soloHidesPicker, msg: 'solo hides the Focus picker and shows the explanatory note' });
+    checks.push({ ok: reach.restores, msg: 'leaving solo restores the Focus picker' });
+    checks.push({ ok: reach.tabCount === 14 && reach.allPanelsExist, msg: `every declared tab has a panel (${reach.tabCount} tabs)` });
+
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length})` });
     await context.close();
     return { checks };

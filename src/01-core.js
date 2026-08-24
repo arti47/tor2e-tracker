@@ -1177,6 +1177,15 @@ function rollOrcBand() {
 function refreshStriderUI() {
   applySoloWording();   // swap Loremaster/Company phrasing for the solo equivalent
   const solo = isSolo();
+  // Fellowship Focus is a group-play concept — a soloist has no Company to focus on. Hide the
+  // picker and its Support hint, and surface the explanatory note in their place.
+  // (Both elements shipped in the markup but nothing referenced them, so this never fired.)
+  const focusRow = document.getElementById('focus-row');
+  const focusHint = document.getElementById('focus-hint');
+  const focusSolo = document.getElementById('focus-strider-hint');
+  if (focusRow)  focusRow.style.display  = solo ? 'none' : '';
+  if (focusHint) focusHint.style.display = solo ? 'none' : '';
+  if (focusSolo) focusSolo.style.display = solo ? 'block' : 'none';
   // Shared solo surfaces — visible in EITHER Strider or Moria mode.
   const oracleTab = document.querySelector('.tab[data-tab="oracle"]');
   if (oracleTab) oracleTab.style.display = solo ? '' : 'none';
