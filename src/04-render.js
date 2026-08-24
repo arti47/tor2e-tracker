@@ -400,6 +400,8 @@ function fpRenderStep() {
 }
 
 async function fpNextStep() {
+  // fpState is null until openFPWizard() runs. Guard so a stray call can never throw.
+  if (!fpState) return openFPWizard();
   if (fpState.step === 1 && !fpState.phaseType) {
     alertStyled('Choose the phase type first — <strong>Ordinary</strong> (the usual rest between adventures) or <strong>Yule</strong> (the midwinter feast, which recovers more and ages your hero a year). The two buttons are at the top of this step.', '⚠️ Pick a phase type');
     return;
@@ -412,6 +414,7 @@ async function fpNextStep() {
 }
 
 function fpPrevStep() {
+  if (!fpState) return;
   fpState.step = Math.max(1, fpState.step - 1);
   fpRenderStep();
 }

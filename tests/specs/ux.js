@@ -903,6 +903,58 @@ module.exports = {
     checks.push({ ok: reach3.tabsStillHidden.length === 0, msg: 'every mode-gated tab becomes reachable under its mode' });
     checks.push({ ok: reach3.rewardsWithNoTarget.length === 0, msg: 'every Reward finds a target once its gear is equipped' });
 
+    // ---- Reachability pass 4: handler existence, overlay closers, asset wiring ----
+    const reach4 = await page.evaluate(async () => {
+      const out = {};
+      Object.assign(char, { culture: 'Bardings', calling: 'Warden', strRating: 5, strTN: 15,
+        hrtRating: 4, hrtTN: 16, witRating: 3, witTN: 17, endMax: 25, endCur: 20, hopeMax: 12, hopeCur: 6,
+        name: 'B', skills: { Athletics: { rating: 3, favoured: true } }, profs: { Swords: 2 } });
+      char.striderMode = true; char.moriaMode = true; localStorage.setItem('tor2e-gm', '1');
+      saveCharacter(); refreshStriderUI(); if (window.refreshGmUI) refreshGmUI(); render();
+
+      // Every inline handler must name a function that exists — a missing one throws on click.
+      const missing = new Set();
+      document.querySelectorAll('[onclick],[onchange]').forEach(e => {
+        const code = (e.getAttribute('onclick') || '') + ';' + (e.getAttribute('onchange') || '');
+        (code.match(/([A-Za-z_$][\w$]*)\s*\(/g) || []).forEach(m => {
+          const fn = m.replace(/\s*\($/, '');
+          if (['if','for','while','switch','return','function','catch','typeof','new'].includes(fn)) return;
+          if (typeof window[fn] === 'function') return;
+          if (/^(document|window|Sync|JSON|Math|parseInt|String|Number|Array|Object|console|localStorage)$/.test(fn)) return;
+          if (new RegExp('\\.' + fn + '\\s*\\(').test(code)) return;   // method call, not a global
+          missing.add(fn);
+        });
+      });
+      out.missingHandlers = [...missing];
+
+      // Every overlay must close via a VISIBLE control (hidden ones don't count).
+      const bad = [];
+      for (const ov of document.querySelectorAll('.menu-overlay')) {
+        if (ov.id === 'styled-modal-overlay') continue;
+        ov.classList.add('show');
+        const cl = [...ov.querySelectorAll('button')].filter(x => x.offsetParent !== null)
+          .find(x => /close|cancel|skip|done|back|×/i.test(x.textContent || ''));
+        if (!cl) { bad.push(ov.id + ':no-visible-closer'); ov.classList.remove('show'); continue; }
+        try { cl.click(); } catch (e) { bad.push(ov.id + ':threw'); }
+        await new Promise(r => setTimeout(r, 15));
+        if (ov.classList.contains('show')) { bad.push(ov.id + ':stayed-open'); ov.classList.remove('show'); }
+      }
+      out.badClosers = bad;
+
+      // fpState is null before openFPWizard(); the step controls must not throw on a stray call.
+      fpState = null;
+      let threw = false;
+      try { fpPrevStep(); await fpNextStep(); } catch (e) { threw = true; }
+      out.fpGuarded = !threw;
+      fpClose();
+      char.striderMode = false; char.moriaMode = false; localStorage.removeItem('tor2e-gm');
+      saveCharacter(); refreshStriderUI();
+      return out;
+    });
+    checks.push({ ok: reach4.missingHandlers.length === 0, msg: `every inline handler resolves to a real function (missing: ${reach4.missingHandlers.join(', ') || 'none'})` });
+    checks.push({ ok: reach4.badClosers.length === 0, msg: `every overlay closes via a visible control (bad: ${reach4.badClosers.join(', ') || 'none'})` });
+    checks.push({ ok: reach4.fpGuarded, msg: 'FP wizard step controls are guarded against a null fpState' });
+
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length})` });
     await context.close();
     return { checks };
