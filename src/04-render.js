@@ -58,6 +58,7 @@ function render() {
   refreshStriderUI();
   refreshEyeOfMordor();
   if (typeof renderSaga === 'function') renderSaga();                      // campaign arc: start/sustain/end
+  if (typeof renderAdventureLoop === 'function') renderAdventureLoop();   // which subsystem fires, and when
   if (typeof renderBuildChecklist === 'function') renderBuildChecklist();  // live creation progress
   if (typeof refreshXpMode === 'function') refreshXpMode();     // one XP scheme live at a time
   if (typeof refreshFpEntry === 'function') refreshFpEntry();   // Moria FP vs the core wizard
@@ -3192,6 +3193,7 @@ function sagaState() {
     char.saga = { started: false, premise: '', sessions: 0, adventures: 0, lastFpSession: 0, ended: false, endedHow: '' };
   }
   if (char.saga.lastFpSession === undefined) char.saga.lastFpSession = 0;
+  if (!char.saga.step) char.saga.step = 'haven';
   return char.saga;
 }
 
@@ -3384,4 +3386,74 @@ function renderSaga() {
         '<br><br>Stopping well is part of playing well — a story that ends is better than one that fades.</p>' +
         B('sagaEnd()', '🏁 Bring your saga to a close', 'background:var(--btn-alert-bg);color:white')
       : '');
+}
+
+/* ---------- THE ADVENTURE LOOP — which subsystem fires, and when ----------
+   The saga card gives the campaign arc (begin → sessions → end). This gives the layer under it:
+   the shape of ONE adventure, and therefore when the Journey / Council / Combat / Fellowship tabs
+   are actually meant to come into play. That question — "after creating a character, where does
+   the journey come in?" — had no answer anywhere in the app. */
+
+const ADVENTURE_STEPS = [
+  { id: 'haven', n: 1, name: 'At a Safe Haven',
+    what: 'You start somewhere safe — a town, a hall, a homestead. Here you learn <em>why</em> you are about to leave: a patron\'s errand, a rumour, a threat to someone you care about.',
+    doNow: 'Write the reason down in your Chronicle, and decide where it takes you.',
+    tab: 'chronicle', tabLabel: 'Chronicle',
+    next: 'haven → journey', nextLabel: '▶ We set out — begin the journey' },
+  { id: 'journey', n: 2, name: 'On the road',
+    what: 'Getting there is <strong>the Journey subsystem</strong>, not a scene you narrate away. Set the origin, destination and distance, then repeat: <strong>Marching Test</strong> to cover ground, <strong>Resolve Event</strong> when the road throws something at you.',
+    doNow: 'Open the Journey tab, fill in where you are going, and tap ▶ Start Journey.',
+    tab: 'journey', tabLabel: 'Journey',
+    next: 'journey → location', nextLabel: '▶ We have arrived' },
+  { id: 'location', n: 3, name: 'At the place you travelled to',
+    what: 'This is where the adventure actually happens: search the ruin, meet the people, find the thing. Talking your way through something formal — a plea, a bargain, a warning — is a <strong>Council</strong>. Everything else is ordinary skill rolls on the Dice tab.',
+    doNow: 'Play out scenes in the Chronicle. Use the Dice tab for anything that could fail; the Council tab when the stakes are social and the outcome is in doubt.',
+    tab: 'chronicle', tabLabel: 'Chronicle',
+    next: 'location → home', nextLabel: '▶ Our business here is done' },
+  { id: 'home', n: 4, name: 'The road home',
+    what: 'Another Journey, back the way you came or onward to the next place. Same subsystem, and the Shadow you picked up travels with you.',
+    doNow: 'Journey tab again — new origin and destination.',
+    tab: 'journey', tabLabel: 'Journey',
+    next: 'home → fellowship', nextLabel: '▶ We are safe again' },
+  { id: 'fellowship', n: 5, name: 'Fellowship Phase',
+    what: 'After <strong>two or three sessions</strong> of the above, the adventure closes and your hero rests — a week to a whole season. This is the <em>only</em> time Hope comes back properly and experience is spent.',
+    doNow: 'Open the Fellowship Phase wizard from the Advancement card, or the Moria rest card on the Band tab.',
+    tab: 'character', tabLabel: 'Character',
+    next: 'fellowship → haven', nextLabel: '▶ Begin the next adventure' }
+];
+
+function advStep() { return ADVENTURE_STEPS.find(x => x.id === sagaState().step) || ADVENTURE_STEPS[0]; }
+
+async function advGoTo(stepId) {
+  const s = sagaState();
+  if (stepId === 'haven' && s.step === 'fellowship') s.adventures = (parseInt(s.adventures) || 0) + 1;
+  s.step = stepId;
+  saveCharacter(); render();
+  const st = advStep();
+  await alertStyled(
+    `<strong>${st.n} · ${st.name}</strong><br><br>${st.what}<br><br><strong>Do now:</strong> ${st.doNow}`,
+    '🧭 ' + st.name);
+}
+
+function renderAdventureLoop() {
+  const host = document.getElementById('adventure-loop'); if (!host) return;
+  const s = sagaState();
+  if (!s.started || s.ended) { host.style.display = 'none'; host.innerHTML = ''; return; }
+  host.style.display = 'block';
+  const cur = advStep();
+  const dots = ADVENTURE_STEPS.map(x =>
+    `<span style="font-size:11px;padding:2px 7px;border-radius:9px;margin:0 3px 4px 0;display:inline-block;` +
+    (x.id === cur.id
+      ? 'background:var(--gold);color:var(--ink);font-weight:700'
+      : 'background:var(--bg-deep);color:var(--text-muted);cursor:pointer') + '"' +
+    (x.id === cur.id ? '' : ` onclick="advGoTo('${x.id}')"`) + `>${x.n} ${escapeHtml(x.name)}</span>`).join('');
+  host.innerHTML =
+    '<h3 class="card-title" data-hint="The adventure loop">🧭 Where you are in the adventure</h3>' +
+    `<div style="margin:0 0 8px">${dots}</div>` +
+    `<p class="hint" style="text-align:left;line-height:1.55;margin:0 0 6px"><strong>${cur.n} · ${escapeHtml(cur.name)}</strong><br>${cur.what}</p>` +
+    `<p class="hint" style="text-align:left;line-height:1.5;margin:0 0 8px"><strong>Do now:</strong> ${cur.doNow}</p>` +
+    `<button class="add-row-btn" style="width:100%;margin-bottom:6px" onclick="document.querySelector('.tab[data-tab=${cur.tab}]').click()">→ Open the ${escapeHtml(cur.tabLabel)} tab</button>` +
+    `<button class="add-row-btn" style="width:100%;background:var(--gold);color:var(--ink)" onclick="advGoTo('${cur.next.split(' → ')[1] === 'haven' ? 'haven' : cur.next.split(' → ')[1]}')">${escapeHtml(cur.nextLabel)}</button>` +
+    '<p class="hint" style="text-align:left;line-height:1.5;margin:10px 0 0;border-top:1px dashed var(--border);padding-top:8px">' +
+    '<strong>Combat is not a step.</strong> A fight can break out at any point above — on the road, in the ruin, at the gate. When one starts, go to the <strong>Combat</strong> tab, run it, then come back to where you were. Councils work the same way.</p>';
 }

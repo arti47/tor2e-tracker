@@ -1097,6 +1097,51 @@ module.exports = {
     checks.push({ ok: ['free','border','wild','shadow','dark'].every(r => hunt.picker.includes(r)),
                   msg: `region picker offers all five regions (${hunt.picker.join('/')})` });
 
+    // ---- The adventure loop: which subsystem fires, and when ----
+    // "After creating a character, I don't know where the journey comes in, when to explore, when
+    // combat, when fellowship." The saga card gives the campaign arc; this gives one adventure.
+    const loop = await page.evaluate(async () => {
+      const out = {};
+      Object.assign(char, { culture: 'Bardings', calling: 'Warden', strRating: 5, strTN: 15,
+        hrtRating: 4, hrtTN: 16, witRating: 3, witTN: 17, endMax: 25, endCur: 25,
+        hopeMax: 12, hopeCur: 12, name: 'Beran' });
+      char.saga = { started: true, premise: 'p', sessions: 1, adventures: 1, lastFpSession: 0,
+                    step: 'haven', ended: false, endedHow: '' };
+      saveCharacter(); render();
+      const oa = window.alertStyled; window.alertStyled = async () => {};
+      const txt = () => document.getElementById('adventure-loop').innerText;
+      out.hiddenBeforeStart = (() => {
+        char.saga.started = false; render();
+        const h = document.getElementById('adventure-loop').style.display === 'none';
+        char.saga.started = true; render(); return h;
+      })();
+      out.fiveSteps = ADVENTURE_STEPS.length === 5;
+      // every step names a real tab
+      out.tabsResolve = ADVENTURE_STEPS.every(x => !!document.getElementById('panel-' + x.tab));
+      // the loop advances and remembers where you are
+      out.startsAtHaven = /1 · At a Safe Haven/.test(txt());
+      await advGoTo('journey');
+      out.movesToJourney = char.saga.step === 'journey' && /2 · On the road/.test(txt());
+      out.namesJourneySubsystem = /Journey/.test(txt()) && /Marching Test/.test(txt());
+      await advGoTo('location');
+      out.locationMentionsCouncil = /Council/.test(txt());
+      // a full circuit counts an adventure
+      const before = char.saga.adventures;
+      await advGoTo('home'); await advGoTo('fellowship'); await advGoTo('haven');
+      out.countsAdventure = char.saga.adventures === before + 1;
+      // the key misconception, stated explicitly
+      out.combatIsNotAStep = /Combat is not a step/i.test(txt());
+      out.glossary = !!hintRow('The adventure loop');
+      window.alertStyled = oa;
+      return out;
+    });
+    checks.push({ ok: loop.fiveSteps && loop.tabsResolve, msg: 'adventure loop has 5 steps, each pointing at a real tab' });
+    checks.push({ ok: loop.hiddenBeforeStart, msg: 'adventure loop stays hidden until a saga is begun' });
+    checks.push({ ok: loop.startsAtHaven && loop.movesToJourney, msg: 'the loop advances and remembers the current step' });
+    checks.push({ ok: loop.namesJourneySubsystem && loop.locationMentionsCouncil, msg: 'each step names the subsystem it uses (Journey, Council)' });
+    checks.push({ ok: loop.countsAdventure, msg: 'a full circuit counts one completed adventure' });
+    checks.push({ ok: loop.combatIsNotAStep && loop.glossary, msg: 'the loop states that combat interrupts rather than being a step' });
+
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length})` });
     await context.close();
     return { checks };
