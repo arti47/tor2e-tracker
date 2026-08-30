@@ -1086,6 +1086,17 @@ module.exports = {
     checks.push({ ok: eye.markedOptional, msg: 'the Fortune/Ill-Fortune offer is marked optional' });
     checks.push({ ok: eye.loreGuidance, msg: 'Lore Table explains re-rolling and adjacent rows' });
 
+    // Hunt thresholds — five regions, verified with the owner 2026-08-24. The app previously had
+    // three and labelled 14 "Dark", which is really the Shadow-lands value.
+    const hunt = await page.evaluate(() => ({
+      table: JSON.stringify(HUNT_THRESHOLDS),
+      picker: [...document.getElementById('eye-region-pick').options].map(o => o.value)
+    }));
+    checks.push({ ok: hunt.table === JSON.stringify({ free: 20, border: 18, wild: 16, shadow: 14, dark: 12 }),
+                  msg: `Hunt thresholds are the five-region table (${hunt.table})` });
+    checks.push({ ok: ['free','border','wild','shadow','dark'].every(r => hunt.picker.includes(r)),
+                  msg: `region picker offers all five regions (${hunt.picker.join('/')})` });
+
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length})` });
     await context.close();
     return { checks };

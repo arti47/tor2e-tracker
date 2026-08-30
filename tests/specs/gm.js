@@ -78,12 +78,12 @@ module.exports = {
       const rows = document.getElementById('gm-eye-body').querySelectorAll('div[style*="space-between"]').length;
       gmEye(id, 2); const up = char.eyeAwareness;      // 2
       gmEye(id, -5); const floored = char.eyeAwareness; // 0, not negative
-      const shownHunt = /Hunt 14/.test(document.getElementById('gm-eye-body').innerHTML); // dark = 14
+      const shownHunt = /Hunt 12/.test(document.getElementById('gm-eye-body').innerHTML); // Dark lands = 12
       char.eyeAwareness = 0; saveCharacter();
       return { rows, up, floored, shownHunt };
     });
     checks.push({ ok: eye.rows >= 1 && eye.up === 2 && eye.floored === 0, msg: `Eye manager renders + gmEye adjusts/floors (${eye.up}→${eye.floored})` });
-    checks.push({ ok: eye.shownHunt, msg: 'Eye row shows the Hunt threshold (dark=14)' });
+    checks.push({ ok: eye.shownHunt, msg: 'Eye row shows the Hunt threshold (Dark lands = 12)' });
 
     // NPC ledger — lore refs always present; add/filter/delete a custom NPC (device-global).
     const npc = await page.evaluate(() => {

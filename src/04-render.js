@@ -2263,7 +2263,7 @@ function _compPreview() {
   const readiness = 4 + readinessBonus(hardened, bandSize);
   const ea = calcStartingEyeAwareness() + (EA_SIZE_MOD[m.size] || 0);
   const huntMod = (HUNT_MOD_PREV[m.prevOutcome] || 0) + (HUNT_MOD_FP[m.fpDuration] || 0);
-  const hunt = HUNT_THRESHOLDS.dark + huntMod;  // Moria = Dark Land (14)
+  const hunt = HUNT_THRESHOLDS.dark + huntMod;  // Moria = Dark Land (12)
   return { base, burden, readiness, ea, huntMod, hunt, hardened, bandSize };
 }
 

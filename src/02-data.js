@@ -3314,7 +3314,7 @@ const DEFAULT_CHARACTER = {
   },
   // Eye of Mordor (optional per Core Rules; required for Strider Mode).
   eyeAwareness: 0,
-  huntRegion: 'wild',           // 'border' | 'wild' | 'dark' — sets Hunt Threshold (18/16/14)
+  huntRegion: 'wild',           // 'free'|'border'|'wild'|'shadow'|'dark' — Hunt Threshold 20/18/16/14/12
   experienceMode: 'session',    // 'session' (default RAW) | 'milestone' (alternative)
   // Magical Treasure (Core Rules pp.158-167)
   // Each item: { type: 'Marvellous Artefact' | 'Wondrous Item' | 'Famous Weapon' | 'Famous Armour',

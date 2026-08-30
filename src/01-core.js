@@ -233,7 +233,7 @@ async function toggleMoriaMode() {
     }
     if ((parseInt(char.fellowshipRating) || 0) < 3) char.fellowshipRating = 3;
     if (!String(char.safeHaven || '').trim()) char.safeHaven = 'Moria — First Hall';
-    char.huntRegion = 'dark';  // Moria is a Dark Land (Hunt Threshold 14)
+    char.huntRegion = 'dark';  // Moria is a Dark Land → Hunt Threshold 12 (was 14 under the old 3-region table)
     if (!char.eyeAwareness) char.eyeAwareness = 0;
   } else {
     // Revert the Hope bonus.
@@ -980,7 +980,10 @@ function rollFortuneTable(ill) {
 }
 
 /* ---------- EYE OF MORDOR ---------- */
-const HUNT_THRESHOLDS = { border: 18, wild: 16, dark: 14 };
+// Hunt thresholds by region (Strider Mode). Verified with the owner 2026-08-24: FIVE regions.
+// The app previously carried only three and labelled 14 as "Dark", which is actually the
+// Shadow-lands value — Dark lands are 12. See CLAUDE.md for the Moria consequence.
+const HUNT_THRESHOLDS = { free: 20, border: 18, wild: 16, shadow: 14, dark: 12 };
 const REVELATION_EPISODE_TABLE = [
   { roll: 'eye', name: 'Conflict brews between allies', desc: 'Tensions flare — an ally turns against you or another in your circle.' },
   { roll: 1, name: 'Safe Haven in peril', desc: 'Internal strife or an external threat puts your Safe Haven in danger.' },
