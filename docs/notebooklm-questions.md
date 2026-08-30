@@ -70,3 +70,57 @@ Ask these one chapter at a time; paste each answer back and it becomes coverage 
 - **C10–C11** → author `docs/coverage.json` and wire the coverage spec.
 
 Paste answers verbatim, including the "not addressed" ones — a documented gap is as useful as a rule.
+
+---
+
+# Round 2 — asked 2026-08-24
+
+Round 1 (saga arc, Telling Table, Focus, Revelation) is answered and applied. These are next,
+ordered by what they unblock.
+
+## Ask NotebookLM (qualitative — safe from the numeric-table trap)
+
+12. **Experience Milestones — the list.** *In **Strider Mode**, list every Experience Milestone by
+    name, exactly as the book gives them. Quote the list and cite the page. Do not paraphrase or
+    reorder. If the book presents them in a table, say so and transcribe the row labels only —
+    I will read the point values off the PDF myself.*
+    → **Most urgent.** The app's `XP_MILESTONES` has ten entries and, unlike `MORIA_EXP_MILESTONES`
+    (cited p.211), **no page citation** — so it may be invented. Solo play now defaults to this
+    scheme, so if the list is wrong, every solo hero advances wrongly.
+
+13. **What raises Eye Awareness.** *In **Strider Mode**, list every event that increases or
+    decreases a hero's Eye Awareness. Quote each trigger and cite the page. If the book does not
+    define a trigger for something, say so rather than inferring one.*
+    → The app auto-adjusts EA in five places: a Feat-die Eye or Rune outside combat, a Magical
+    Success, any Shadow gain, and ±  on the Fortune / Ill-Fortune tables. If those triggers are
+    invented, every solo campaign is mis-paced.
+
+14. **Lore Table — how to read it.** *In **Strider Mode**, how is a player meant to interpret the
+    Lore Table's Action / Aspect / Focus results? Quote any guidance on interpreting, re-rolling,
+    or combining the words.*
+    → Exactly the gap the Telling Table had: the app renders the table but says nothing about how
+    to use the output.
+
+15. **Fortune and Ill-Fortune — when.** *In **Strider Mode**, exactly when are the Fortune and
+    Ill-Fortune tables rolled? Quote the trigger conditions and cite the page.*
+    → The app auto-prompts on a Rune with a success, and an Eye with a failure. Unverified.
+
+16. **Special Successes.** *In **Strider Mode**, list the ways a solo player may spend ✦ success
+    icons. Quote the list and cite the page.*
+    → The app offers six spends (Gain Insight, Go Quietly, Make Haste, Widen Influence, Build
+    Advantage, Cancel a Failure). Unverified.
+
+17. **Skirmish stance.** *Does **Strider Mode** add a Skirmish stance? Quote its full rules text.*
+    → The app adds it as a fifth stance with a Gain Ground combat task.
+
+## Read off the PDF yourself (numbers — do NOT trust the notebook)
+
+Per GOTCHA 2. Render the page and read the figure; the notebook invents clean progressions.
+
+- **P1. Hunt thresholds** by region — open item 1b. Round 1 gave Free 20 / Border 18 / Wild 16 /
+  Shadow 14 / Dark 12 against the app's `{border:18, wild:16, dark:14}`. **Blocking.**
+- **P2. Milestone point values** — the sp/ap for each row of Q12's list.
+- **P3. Strider Mode Target Number formula** — the app uses **18 − Rating** in solo vs 20 − Rating
+  normally. This changes literally every roll, so it is worth eyeballing directly.
+- **P4. Previous Experience budget in solo** — the app uses **15** vs the standard 10.
+- **P5. Minimum Fellowship Rating in solo** — the app forces **3**.
