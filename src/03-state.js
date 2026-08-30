@@ -122,8 +122,9 @@ function migrateCharacter(raw) {
       if (typeof merged.eyeAwareness !== 'number') merged.eyeAwareness = 0;
       if (typeof merged.huntRegion !== 'string') merged.huntRegion = 'wild';
       if (typeof merged.experienceMode !== 'string') merged.experienceMode = 'session';
+      if (merged.saga && typeof merged.saga === 'object' && merged.saga.lastFpSession === undefined) merged.saga.lastFpSession = 0;
       if (!merged.saga || typeof merged.saga !== 'object') {
-        merged.saga = { started: false, premise: '', sessions: 0, adventures: 0, ended: false, endedHow: '' };
+        merged.saga = { started: false, premise: '', sessions: 0, adventures: 0, lastFpSession: 0, ended: false, endedHow: '' };
       }
       if (!merged.fpSpend || typeof merged.fpSpend !== 'object') {
         merged.fpSpend = { skills: {}, profs: {}, valour: 0, wisdom: 0 };

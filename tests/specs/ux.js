@@ -985,12 +985,20 @@ module.exports = {
       out.premiseKept = /road east/.test(char.saga.premise);
       out.sceneOpened = journal.entries.some(e => /road east/.test(e.text || ''));
 
-      // Sustaining: sessions count, and ending one banks the session's XP.
-      const spBefore = parseInt(char.skillPts) || 0;
+      // Sustaining: sessions count. Strider Mode advises AGAINST session-based XP for solo play
+      // (sessions vary from minutes to hours), so a solo hero on Milestones must NOT be auto-awarded.
       await sagaStartSession();
       out.sessionCounted = char.saga.sessions === 1;
+      char.experienceMode = 'milestone';
+      const spSolo = parseInt(char.skillPts) || 0;
       await sagaEndSession();
-      out.xpBanked = (parseInt(char.skillPts) || 0) > spBefore;
+      out.soloNoSessionXp = (parseInt(char.skillPts) || 0) === spSolo;
+      // Out of solo, on the session scheme, it still banks as the Core Rules intend.
+      char.striderMode = false; char.experienceMode = 'session'; saveCharacter(); refreshStriderUI();
+      const spGroup = parseInt(char.skillPts) || 0;
+      await sagaEndSession();
+      out.groupBanksXp = (parseInt(char.skillPts) || 0) > spGroup;
+      char.striderMode = true; saveCharacter(); refreshStriderUI();
 
       // Ending is offered only once the hero has actually travelled far enough to earn it.
       char.valour = 0; char.wisdom = 0; char.scars = 0; saveCharacter(); render();
@@ -1010,7 +1018,9 @@ module.exports = {
     });
     checks.push({ ok: saga.offersStart && saga.guardsNoHero, msg: 'saga card offers a start, and refuses without a hero' });
     checks.push({ ok: saga.started && saga.premiseKept && saga.sceneOpened, msg: 'beginning a saga sets a premise and opens the first scene' });
-    checks.push({ ok: saga.sessionCounted && saga.xpBanked, msg: 'sessions are counted and ending one banks the XP' });
+    checks.push({ ok: saga.sessionCounted, msg: 'saga counts play sessions' });
+    checks.push({ ok: saga.soloNoSessionXp, msg: 'solo play does NOT auto-award session XP (Strider Mode uses Milestones)' });
+    checks.push({ ok: saga.groupBanksXp, msg: 'group play on the session scheme still banks session XP' });
     checks.push({ ok: saga.endHiddenEarly && saga.endOfferedLate, msg: 'an ending is offered only once the hero has travelled far enough' });
     checks.push({ ok: saga.ended && saga.reopenable, msg: 'a saga can be ended and reopened without data loss' });
     checks.push({ ok: saga.refCovers, msg: 'Reference explains starting, sustaining and ending a campaign' });

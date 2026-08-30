@@ -630,6 +630,9 @@ function refreshFPSummary() {
 }
 
 async function fpComplete() {
+  // Reset the Adventuring-Phase session counter that drives the saga card's pacing prompt
+  // ("two or three sessions, then a Fellowship Phase" — Core Rules).
+  try { const sg = sagaState(); sg.lastFpSession = parseInt(sg.sessions) || 0; } catch (e) {}
   if (fpState.selectedUndertakings.length === 0) {
     if (!await confirmStyled('No undertakings selected. Complete phase anyway?')) return;
   }
@@ -3179,8 +3182,9 @@ async function spendFPforHope() {
 
 function sagaState() {
   if (!char.saga || typeof char.saga !== 'object') {
-    char.saga = { started: false, premise: '', sessions: 0, adventures: 0, ended: false, endedHow: '' };
+    char.saga = { started: false, premise: '', sessions: 0, adventures: 0, lastFpSession: 0, ended: false, endedHow: '' };
   }
+  if (char.saga.lastFpSession === undefined) char.saga.lastFpSession = 0;
   return char.saga;
 }
 
@@ -3190,9 +3194,22 @@ function sagaEndSignals() {
   const s = sagaState(), out = [];
   const val = parseInt(char.valour) || 0, wis = parseInt(char.wisdom) || 0;
   if (char.retired) out.push('Your hero has already succumbed — the story has ended itself.');
+  // Core Rules: a hero ending the Adventuring Phase with Shadow equal to their maximum Hope
+  // "can be considered to have left the Company and are retired from the game." Scars count
+  // as Shadow for every trigger (p.137), so they are included here.
+  const shadowTotal = (parseInt(char.shadow) || 0) + (parseInt(char.scars) || 0);
+  const hopeMax = parseInt(char.hopeMax) || 0;
+  if (hopeMax && shadowTotal >= hopeMax) {
+    out.push(`Shadow ${shadowTotal} has reached your maximum Hope (${hopeMax}) — by the rules your hero may leave the Company and retire.`);
+  }
+  // Moria states its own finish line, and the app already tracks Hardened allies.
+  if (typeof isMoria === 'function' && isMoria()) {
+    const hardened = ((char.band && char.band.allies) || []).filter(a => a && a.hardened).length;
+    out.push(hardened >= 12
+      ? `You have <strong>${hardened} Hardened Allies</strong> — the Band is complete. Undertake one final great mission into the depths, and that is your ending.`
+      : `Moria ends when you have built a Band of <strong>twelve Hardened Allies</strong> and made a final great mission into the depths. You have ${hardened}.`);
+  }
   if (val >= 5 || wis >= 5) out.push(`Valour ${val} / Wisdom ${wis} — your hero is near the height of what they can become.`);
-  if ((parseInt(char.fpCount) || s.adventures) >= 5) out.push('You have completed several Fellowship Phases — a natural resting point.');
-  if ((parseInt(char.scars) || 0) >= 3) out.push(`${char.scars} Shadow Scars — the road has marked your hero permanently.`);
   return out;
 }
 
@@ -3261,16 +3278,27 @@ async function sagaEndSession() {
       'End this play session?<br><br>You will be awarded the session\'s experience, and told whether a ' +
       '<strong>Fellowship Phase</strong> is due — the rest between adventures where your hero heals and grows.',
       '🌙 End session')) return;
-  if (typeof awardSessionXP === 'function' && char.experienceMode !== 'milestone') {
+  const solo = typeof isSolo === 'function' && isSolo();
+  // Strider Mode advises AGAINST session-based XP for solo play: sessions "might last for a few
+  // minutes or a few hours, which can make session-based rewards disconnected from events and
+  // achievements in your story" — it recommends Experience Milestones instead. So only award
+  // session XP when the hero is actually on that scheme.
+  if (typeof awardSessionXP === 'function' && char.experienceMode !== 'milestone' && !solo) {
     const orig = window.confirmStyled; window.confirmStyled = async () => true;
     try { await awardSessionXP(); } finally { window.confirmStyled = orig; }
   }
   saveCharacter(); render();
-  const due = (parseInt(char.skillPts) || 0) >= 6 || (parseInt(char.advPts) || 0) >= 6;
+  // Core Rules pacing: "an Adventuring Phase will last two or three sessions of play, followed by
+  // a Fellowship Phase". Prompt on that rhythm rather than on an XP threshold.
+  const sinceFp = (parseInt(s.sessions) || 0) - (parseInt(s.lastFpSession) || 0);
+  const due = sinceFp >= 2;
   await alertStyled(
     `<strong>Session ${s.sessions || 1} closed.</strong><br><br>` +
+    (solo && char.experienceMode === 'milestone'
+      ? 'Playing solo, award experience by <strong>Milestone</strong> rather than by session — sessions vary too much in length for session rewards to track what your hero actually achieved. Use <strong>🏆 Award Milestone XP</strong> on the Character tab when something notable happens.<br><br>'
+      : '') +
     (due
-      ? 'You have experience banked. When this stretch of adventuring reaches a natural pause, take a <strong>Fellowship Phase</strong> — that is when points are spent and Hope comes back.'
+      ? `That is ${sinceFp} sessions of adventuring. An Adventuring Phase normally runs <strong>two or three sessions</strong>, then a <strong>Fellowship Phase</strong> — a week to a season of rest, where Hope returns and experience is spent. This is a good moment for one.`
       : 'Pick up where you left off next time. Your Chronicle holds the thread.') +
     '<br><br>Next session, tap <strong>📖 Start session</strong> for a recap.',
     '🌙 Until next time');

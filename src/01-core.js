@@ -189,6 +189,11 @@ async function toggleStriderMode() {
     : `<strong>Disable Strider Mode?</strong><br><br>Revert to standard play. PE budget → 10, TN → 20 − Rating, Strider Distinctive Feature can be removed manually. Oracle tab + Skirmish stance + Eye of Mordor will hide.`;
   if (!await confirmStyled(msg, turningOn ? '🗡️ Strider Mode' : 'Disable Strider Mode')) return;
   char.striderMode = turningOn;
+  // Strider Mode explicitly steers solo play away from session-based XP ("your sessions might last
+  // for a few minutes or a few hours, which can make session-based rewards disconnected from events
+  // and achievements in your story") and toward Experience Milestones. Default to that on the way
+  // in; the player can still switch back via the Advancement card.
+  if (turningOn && !char._xpModeChosen) char.experienceMode = 'milestone';
   // Recalculate TNs based on new mode
   if (char.strRating) char.strTN = (char.striderMode ? 18 : 20) - parseInt(char.strRating);
   if (char.hrtRating) char.hrtTN = (char.striderMode ? 18 : 20) - parseInt(char.hrtRating);
@@ -1067,6 +1072,7 @@ async function switchXpMode() {
     : 'Switch to <strong>Session XP</strong>?<br><br>The standard rule: +3 Skill Points and +3 Adventure Points at the end of each play session.';
   if (!await confirmStyled(msg, '🏆 Experience scheme')) return;
   char.experienceMode = to;
+  char._xpModeChosen = true;   // an explicit choice is never overridden by a mode toggle
   saveCharacter();
   refreshXpMode();
 }
