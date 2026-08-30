@@ -3250,6 +3250,9 @@ const DEFAULT_CHARACTER = {
   // Past councils this device — persisted summaries for narrative continuity.
   councilHistory: [],        // [{topic, outcome, successesScored, resistance, attemptsUsed, when}]
   timeline: [],              // U15 — cross-session campaign log: [{ts, type, text}] (all play modes)
+  // The arc of a campaign, as distinct from the machinery of a single roll. Nothing in the app
+  // used to say how a game starts, continues between sessions, or ends — this tracks that.
+  saga: { started: false, premise: '', sessions: 0, adventures: 0, ended: false, endedHow: '' },
   // Skill Endeavour state — prolonged-task tracker (Core Rules p.131).
   skillEndeavour: {
     active: false,

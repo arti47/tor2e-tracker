@@ -57,6 +57,7 @@ function render() {
   renderMagicalItems();
   refreshStriderUI();
   refreshEyeOfMordor();
+  if (typeof renderSaga === 'function') renderSaga();                      // campaign arc: start/sustain/end
   if (typeof renderBuildChecklist === 'function') renderBuildChecklist();  // live creation progress
   if (typeof refreshXpMode === 'function') refreshXpMode();     // one XP scheme live at a time
   if (typeof refreshFpEntry === 'function') refreshFpEntry();   // Moria FP vs the core wizard
@@ -3168,4 +3169,184 @@ async function spendFPforHope() {
   char.hopeCur = Math.min(maxHope, curHope + 1);
   saveCharacter();
   render();
+}
+
+/* ---------- THE SAGA — starting, sustaining and ending a campaign ----------
+   Every other subsystem here answers "how does this control work". None of them answered
+   "how does a game begin, keep going between sessions, and finish". This does.
+   Deliberately action-shaped rather than prose: each state offers the button that does the
+   next thing, because fifteen passes of explanatory text did not close this gap. */
+
+function sagaState() {
+  if (!char.saga || typeof char.saga !== 'object') {
+    char.saga = { started: false, premise: '', sessions: 0, adventures: 0, ended: false, endedHow: '' };
+  }
+  return char.saga;
+}
+
+/* End-conditions worth offering. TOR2E ends a hero's story in a few honest ways; surface them
+   only once the character has actually travelled far enough for the offer to mean something. */
+function sagaEndSignals() {
+  const s = sagaState(), out = [];
+  const val = parseInt(char.valour) || 0, wis = parseInt(char.wisdom) || 0;
+  if (char.retired) out.push('Your hero has already succumbed — the story has ended itself.');
+  if (val >= 5 || wis >= 5) out.push(`Valour ${val} / Wisdom ${wis} — your hero is near the height of what they can become.`);
+  if ((parseInt(char.fpCount) || s.adventures) >= 5) out.push('You have completed several Fellowship Phases — a natural resting point.');
+  if ((parseInt(char.scars) || 0) >= 3) out.push(`${char.scars} Shadow Scars — the road has marked your hero permanently.`);
+  return out;
+}
+
+async function sagaBegin() {
+  const s = sagaState();
+  if (!char.culture) {
+    return requireStep('Build a hero before beginning a saga — a story needs someone to be about.<br><br>Pick a <strong>Culture</strong> and <strong>Calling</strong> on the Build tab, or load a ready-made hero from ☰ Menu → ✨ Pre-generated Heroes.',
+      'build', null, '⚠️ No hero yet');
+  }
+  // A premise comes from the Patron if there is one — that is what Patrons are FOR — otherwise
+  // the player writes their own reason to leave home.
+  let seed = '';
+  const quests = (typeof PATRON_QUESTS !== 'undefined' && char.patron) ? PATRON_QUESTS[char.patron] : null;
+  if (quests && quests.length) {
+    seed = quests[Math.floor(Math.random() * quests.length)];
+  }
+  const premise = await promptStyled(
+    'What sends your hero out?<br><br>' +
+    (seed ? `Your patron <strong>${escapeHtml(char.patron)}</strong> suggests:<br><em>${escapeHtml(seed)}</em><br><br>Keep it, or write your own.`
+          : 'One sentence is enough — a rumour, a debt, a summons, a threat to somewhere you love.'),
+    seed, '🗺️ Begin your saga', 'e.g. Word came that the road east is no longer safe…');
+  if (premise === null) return;
+  s.started = true;
+  s.premise = String(premise).trim() || seed || 'The road calls.';
+  s.sessions = 0; s.adventures = 1; s.ended = false; s.endedHow = '';
+  logTimeline('saga', 'Saga begins: ' + s.premise);
+  saveCharacter();
+  // In solo play, open the first scene so there is somewhere to write immediately.
+  // Open the first scene so there is somewhere to write immediately. ensureActiveScene()/pushBlock()
+  // are the real journal API — an earlier draft called a startScene() that does not exist.
+  if (typeof isSolo === 'function' && isSolo() && typeof pushBlock === 'function') {
+    try {
+      const sc = ensureActiveScene();
+      sc.title = 'The road begins';
+      pushBlock('prose', 'note', s.premise, 'manual');
+      saveJournal(); renderChronicle();
+    } catch (e) {}
+  }
+  render();
+  await alertStyled(
+    `<strong>Your saga has begun.</strong><br><em>${escapeHtml(s.premise)}</em><br><br>` +
+    'Do these three things, in order:<br><br>' +
+    '<strong>1.</strong> Decide where your hero is right now, and say what they do first.<br>' +
+    '<strong>2.</strong> When the world has to answer something you don\'t know, ask the <strong>Oracle</strong>. When your hero attempts something that could fail, <strong>roll it</strong>.<br>' +
+    '<strong>3.</strong> Write down what happened in the <strong>Chronicle</strong>, in your own words.<br><br>' +
+    'Repeat until the scene ends, then open the next one. That is the whole game.',
+    '🗺️ Session one');
+}
+
+async function sagaStartSession() {
+  const s = sagaState();
+  s.sessions = (parseInt(s.sessions) || 0) + 1;
+  saveCharacter(); render();
+  const last = (char.timeline || []).slice(-3).reverse().map(t => '• ' + escapeHtml(t.text)).join('<br>');
+  await alertStyled(
+    `<strong>Session ${s.sessions}.</strong><br><br>` +
+    (last ? `Last time:<br>${last}<br><br>` : '') +
+    `Your reason for being out here:<br><em>${escapeHtml(s.premise || '—')}</em><br><br>` +
+    'Open a scene, say where your hero is, and begin.',
+    '📖 Session start');
+}
+
+async function sagaEndSession() {
+  const s = sagaState();
+  if (!await confirmStyled(
+      'End this play session?<br><br>You will be awarded the session\'s experience, and told whether a ' +
+      '<strong>Fellowship Phase</strong> is due — the rest between adventures where your hero heals and grows.',
+      '🌙 End session')) return;
+  if (typeof awardSessionXP === 'function' && char.experienceMode !== 'milestone') {
+    const orig = window.confirmStyled; window.confirmStyled = async () => true;
+    try { await awardSessionXP(); } finally { window.confirmStyled = orig; }
+  }
+  saveCharacter(); render();
+  const due = (parseInt(char.skillPts) || 0) >= 6 || (parseInt(char.advPts) || 0) >= 6;
+  await alertStyled(
+    `<strong>Session ${s.sessions || 1} closed.</strong><br><br>` +
+    (due
+      ? 'You have experience banked. When this stretch of adventuring reaches a natural pause, take a <strong>Fellowship Phase</strong> — that is when points are spent and Hope comes back.'
+      : 'Pick up where you left off next time. Your Chronicle holds the thread.') +
+    '<br><br>Next session, tap <strong>📖 Start session</strong> for a recap.',
+    '🌙 Until next time');
+}
+
+async function sagaEnd() {
+  const s = sagaState();
+  const how = await promptStyled(
+    'How does your hero\'s story end?<br><br>' +
+    'There is no wrong answer. Common endings: they <em>retire</em> to the safe haven they fought for; ' +
+    'they <em>fall</em>, and the Chronicle becomes their memorial; they <em>pass on</em> — sailing West, ' +
+    'or going under the Mountain; or they simply <em>stop</em>, because the tale you wanted to tell is told.<br><br>' +
+    'Write the last line.',
+    '', '🏁 End your saga', 'e.g. He went home to Bree, and did not travel again.');
+  if (how === null) return;
+  s.ended = true;
+  s.endedHow = String(how).trim() || 'The tale is told.';
+  logTimeline('saga', 'Saga ends: ' + s.endedHow);
+  saveCharacter();
+  if (typeof isSolo === 'function' && isSolo() && typeof pushBlock === 'function') {
+    try {
+      journal.activeSceneId = null;            // force a fresh closing scene
+      const sc = ensureActiveScene();
+      sc.title = 'An ending';
+      pushBlock('prose', 'note', s.endedHow, 'manual');
+      saveJournal(); renderChronicle();
+    } catch (e) {}
+  }
+  render();
+  await alertStyled(
+    `<strong>${escapeHtml(char.name || 'Your hero')}'s tale is finished.</strong><br><em>${escapeHtml(s.endedHow)}</em><br><br>` +
+    'Export the Chronicle from that tab to keep it. Your hero stays in the roster — nothing is deleted — ' +
+    'and ☰ Menu → ➕ New Character begins the next one whenever you are ready.',
+    '🏁 The tale is told');
+}
+
+async function sagaReopen() {
+  if (!await confirmStyled('Continue this saga after all? The ending you wrote stays in the Chronicle.', '↩ Reopen')) return;
+  const s = sagaState(); s.ended = false; saveCharacter(); render();
+}
+
+function renderSaga() {
+  const host = document.getElementById('saga-card'); if (!host) return;
+  const s = sagaState();
+  const B = (fn, label, style) =>
+    `<button class="add-row-btn" style="width:100%;margin-top:6px;${style || ''}" onclick="${fn}">${label}</button>`;
+
+  if (!s.started) {
+    host.innerHTML =
+      '<h3 class="card-title" data-hint="Your saga">🗺️ Your saga — not yet begun</h3>' +
+      '<p class="hint" style="text-align:left;line-height:1.55;margin:0 0 8px">' +
+      'A hero sheet is not a game. A game needs a <strong>reason to leave home</strong>. ' +
+      'This sets one, opens your first scene, and tells you exactly what to do next.</p>' +
+      B('sagaBegin()', '▶ Begin your saga', 'background:var(--gold);color:var(--ink)');
+    return;
+  }
+  if (s.ended) {
+    host.innerHTML =
+      '<h3 class="card-title" data-hint="Your saga">🏁 Your saga — ended</h3>' +
+      `<p class="hint" style="text-align:left;line-height:1.55;margin:0 0 8px"><em>${escapeHtml(s.endedHow)}</em><br><br>` +
+      `${s.sessions || 0} session${s.sessions === 1 ? '' : 's'} · ${s.adventures || 0} adventure${s.adventures === 1 ? '' : 's'}.</p>` +
+      B('sagaReopen()', '↩ Actually, continue it', 'background:var(--btn-secondary-bg);color:white');
+    return;
+  }
+  const signals = sagaEndSignals();
+  host.innerHTML =
+    '<h3 class="card-title" data-hint="Your saga">🗺️ Your saga</h3>' +
+    `<p class="hint" style="text-align:left;line-height:1.55;margin:0 0 4px"><em>${escapeHtml(s.premise || '—')}</em></p>` +
+    `<p class="hint" style="text-align:left;margin:0 0 8px;color:var(--text-faint)">Session ${s.sessions || 0}</p>` +
+    B('sagaStartSession()', '📖 Start a session') +
+    B('sagaEndSession()', '🌙 End this session', 'background:var(--btn-secondary-bg);color:white') +
+    (signals.length
+      ? '<div style="border-top:1px dashed var(--border);margin:10px 0 6px"></div>' +
+        '<p class="hint" style="text-align:left;line-height:1.5;margin:0 0 6px">' +
+        '<strong>This could be an ending.</strong><br>' + signals.map(x => '• ' + escapeHtml(x)).join('<br>') +
+        '<br><br>Stopping well is part of playing well — a story that ends is better than one that fades.</p>' +
+        B('sagaEnd()', '🏁 Bring your saga to a close', 'background:var(--btn-alert-bg);color:white')
+      : '');
 }

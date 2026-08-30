@@ -955,6 +955,66 @@ module.exports = {
     checks.push({ ok: reach4.badClosers.length === 0, msg: `every overlay closes via a visible control (bad: ${reach4.badClosers.join(', ') || 'none'})` });
     checks.push({ ok: reach4.fpGuarded, msg: 'FP wizard step controls are guarded against a null fpState' });
 
+    // ---- The saga: starting, sustaining and ending a campaign ----
+    // Every other subsystem explains a control. This is the only thing that explains the GAME —
+    // the app owner could not work out how to start, continue or finish a campaign from it.
+    const saga = await page.evaluate(async () => {
+      const out = {};
+      const txt = () => document.getElementById('saga-card').innerText;
+      char = JSON.parse(JSON.stringify(DEFAULT_CHARACTER)); saveCharacter(); render();
+      out.offersStart = /not yet begun/i.test(txt()) && /Begin your saga/.test(txt());
+
+      // Beginning without a hero is refused with a route to Build.
+      let title = ''; const om = window.showModal;
+      window.showModal = async (x) => { title = String(x.title || ''); return null; };
+      await sagaBegin();
+      out.guardsNoHero = /No hero yet/i.test(title);
+      window.showModal = om;
+
+      // With a hero, beginning sets a premise and opens the first scene.
+      Object.assign(char, { culture: 'Bardings', calling: 'Warden', strRating: 5, strTN: 15,
+        hrtRating: 4, hrtTN: 16, witRating: 3, witTN: 17, endMax: 25, endCur: 25,
+        hopeMax: 12, hopeCur: 12, name: 'Beran' });
+      char.striderMode = true; saveCharacter(); refreshStriderUI(); render();
+      const op = window.promptStyled, oa = window.alertStyled, oc = window.confirmStyled;
+      window.promptStyled = async () => 'The road east is no longer safe.';
+      window.alertStyled = async () => {};
+      window.confirmStyled = async () => true;
+      await sagaBegin();
+      out.started = char.saga.started === true;
+      out.premiseKept = /road east/.test(char.saga.premise);
+      out.sceneOpened = journal.entries.some(e => /road east/.test(e.text || ''));
+
+      // Sustaining: sessions count, and ending one banks the session's XP.
+      const spBefore = parseInt(char.skillPts) || 0;
+      await sagaStartSession();
+      out.sessionCounted = char.saga.sessions === 1;
+      await sagaEndSession();
+      out.xpBanked = (parseInt(char.skillPts) || 0) > spBefore;
+
+      // Ending is offered only once the hero has actually travelled far enough to earn it.
+      char.valour = 0; char.wisdom = 0; char.scars = 0; saveCharacter(); render();
+      out.endHiddenEarly = !/Bring your saga to a close/.test(txt());
+      char.valour = 5; saveCharacter(); render();
+      out.endOfferedLate = /Bring your saga to a close/.test(txt());
+      await sagaEnd();
+      out.ended = char.saga.ended === true && /ended/i.test(txt());
+      await sagaReopen();
+      out.reopenable = char.saga.ended === false;
+
+      window.promptStyled = op; window.alertStyled = oa; window.confirmStyled = oc;
+      // The Reference tab must explain the arc, not just the controls.
+      out.refCovers = ['Your saga', 'Starting a campaign', 'Sustaining a campaign', 'Ending a campaign']
+        .every(t => !!hintRow(t));
+      return out;
+    });
+    checks.push({ ok: saga.offersStart && saga.guardsNoHero, msg: 'saga card offers a start, and refuses without a hero' });
+    checks.push({ ok: saga.started && saga.premiseKept && saga.sceneOpened, msg: 'beginning a saga sets a premise and opens the first scene' });
+    checks.push({ ok: saga.sessionCounted && saga.xpBanked, msg: 'sessions are counted and ending one banks the XP' });
+    checks.push({ ok: saga.endHiddenEarly && saga.endOfferedLate, msg: 'an ending is offered only once the hero has travelled far enough' });
+    checks.push({ ok: saga.ended && saga.reopenable, msg: 'a saga can be ended and reopened without data loss' });
+    checks.push({ ok: saga.refCovers, msg: 'Reference explains starting, sustaining and ending a campaign' });
+
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length})` });
     await context.close();
     return { checks };
