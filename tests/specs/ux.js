@@ -1025,6 +1025,27 @@ module.exports = {
     checks.push({ ok: saga.ended && saga.reopenable, msg: 'a saga can be ended and reopened without data loss' });
     checks.push({ ok: saga.refCovers, msg: 'Reference explains starting, sustaining and ending a campaign' });
 
+    // ---- Rulebook-verified solo guidance (NotebookLM answers, quoted + cited) ----
+    const raw = await page.evaluate(() => {
+      const out = {};
+      // Strider Mode: a solo hero "is not a member of a Company and therefore does not have a
+      // Fellowship Focus … ignore this aspect of character creation."
+      document.querySelector('.tab[data-tab=character]').click();
+      const vis = id => { const e = document.getElementById(id); return !!e && e.style.display !== 'none'; };
+      char.striderMode = true; saveCharacter(); refreshStriderUI();
+      out.focusGoneSolo = !vis('focus-row') && vis('focus-strider-hint');
+      char.striderMode = false; saveCharacter(); refreshStriderUI();
+      out.focusBackInGroup = vis('focus-row');
+      // Telling Table guidance must state the phrasing rule and point open questions at Lore.
+      const t = document.getElementById('panel-oracle').innerText;
+      out.tellingPhrasing = /yes.{0,30}(is|outcome).{0,40}(prefer|want)/i.test(t) && /Lore Table/.test(t);
+      out.tellingResolves = /closed/i.test((hintRow('Telling Table') || [])[1] || '');
+      return out;
+    });
+    checks.push({ ok: raw.focusGoneSolo && raw.focusBackInGroup, msg: 'solo removes Fellowship Focus per Strider Mode, group keeps it' });
+    checks.push({ ok: raw.tellingPhrasing, msg: 'Telling Table states the yes-is-favourable phrasing rule and defers open questions to Lore' });
+    checks.push({ ok: raw.tellingResolves, msg: 'Telling Table glossary entry carries the closed-question rule' });
+
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length})` });
     await context.close();
     return { checks };

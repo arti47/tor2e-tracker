@@ -1138,7 +1138,18 @@ async function rollRevelationEpisode() {
   if (r.special === 'eye') entry = REVELATION_EPISODE_TABLE[0];
   else if (r.special === 'rune') entry = REVELATION_EPISODE_TABLE[11];
   else entry = REVELATION_EPISODE_TABLE.find(e => e.roll === r.value) || REVELATION_EPISODE_TABLE[0];
-  await alertStyled(`<strong>Revelation Episode</strong> (Feat ${r.label})<br><br><strong>${entry.name}</strong><br><br>${entry.desc}<br><br><small>After resolving the episode, reset Eye Awareness to your starting value (use the ↺ button).</small>`, '👁️ Revelation Episode');
+  // RAW: "Once the Revelation episode is resolved, the Eye Awareness level resets and the tally
+  // begins again." Offer the reset here rather than telling the player to go and find a button.
+  const doReset = await showModal({
+    title: '👁️ Revelation Episode',
+    message: `<strong>Revelation Episode</strong> (Feat ${r.label})<br><br><strong>${entry.name}</strong><br><br>${entry.desc}` +
+             `<br><br>Play this out. Once it is resolved, Eye Awareness resets and the tally begins again.`,
+    buttons: [
+      { label: '↺ Resolved — reset the Eye', value: 'reset' },
+      { label: 'Not yet', value: null, style: 'background:var(--btn-secondary-bg);color:white;border:1px solid var(--btn-secondary-bg);border-radius:5px;padding:10px;font-size:14px;cursor:pointer' }
+    ]
+  });
+  if (doReset === 'reset' && typeof resetEyeAwarenessToStarting === 'function') resetEyeAwarenessToStarting();
 }
 
 // Moria Revelation Episode — pick a category (Success die 1-3 Dire / 4-5 Orc / 6 Terrors), then Feat die.
