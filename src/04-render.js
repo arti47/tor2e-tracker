@@ -633,6 +633,13 @@ async function fpComplete() {
   // Reset the Adventuring-Phase session counter that drives the saga card's pacing prompt
   // ("two or three sessions, then a Fellowship Phase" — Core Rules).
   try { const sg = sagaState(); sg.lastFpSession = parseInt(sg.sessions) || 0; } catch (e) {}
+  // RAW: Eye Awareness "is fully reset to its starting value at the beginning of each Adventuring
+  // phase" — which is what completing a Fellowship Phase begins. Was never implemented.
+  try {
+    if (typeof isSolo === 'function' && isSolo() && typeof resetEyeAwarenessToStarting === 'function') {
+      resetEyeAwarenessToStarting();
+    }
+  } catch (e) {}
   if (fpState.selectedUndertakings.length === 0) {
     if (!await confirmStyled('No undertakings selected. Complete phase anyway?')) return;
   }

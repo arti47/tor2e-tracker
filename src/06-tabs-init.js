@@ -844,11 +844,14 @@ function rollDice(skillLabel) {
     }
   }
 
-  // Solo modes (Strider / Moria): Eye-Awareness auto-increment hooks (per supplement).
-  // Raise EA by 1 on any Eye or Rune outside combat. Magical Success also raises EA by 1.
+  // Solo modes (Strider / Moria): Eye-Awareness auto-increment hooks.
+  // RAW: "Raise the Eye Awareness by 1 point whenever a die roll made by a player outside of
+  // combat produces an [Eye] icon, regardless of whether the roll resulted in a success or a
+  // failure." A RUNE does not raise it — it triggers the Fortune table, which can LOWER it by 1.
+  // (The old code added +1 on a Rune too, which both invented a gain and cancelled that loss.)
   if (isSolo() && !diceState.isAttack) {
     let eaDelta = 0;
-    if (chosenFeat.special === 'eye' || chosenFeat.special === 'rune') eaDelta += 1;
+    if (chosenFeat.special === 'eye') eaDelta += 1;
     if (diceState.magical) eaDelta += 1;
     if (eaDelta > 0) {
       char.eyeAwareness = (parseInt(char.eyeAwareness) || 0) + eaDelta;
@@ -875,15 +878,18 @@ function rollDice(skillLabel) {
     // Clear any prior auto-fortune action
     const existing = document.getElementById('strider-fortune-action');
     if (existing) existing.remove();
+    // RAW: the tables "offer prompts for narrative outcomes when a [Gandalf] rune or [Eye] icon is
+    // rolled on your Feat die" — no success/failure condition. They are optional, and meant "for
+    // worthy challenges and key actions", so this is an offer rather than an automatic roll.
     let fortuneType = null;
-    if (chosenFeat.special === 'rune' && outcome.startsWith('SUCCESS')) fortuneType = 'fortune';
-    else if (chosenFeat.special === 'eye' && !outcome.startsWith('SUCCESS')) fortuneType = 'illfortune';
+    if (chosenFeat.special === 'rune') fortuneType = 'fortune';
+    else if (chosenFeat.special === 'eye') fortuneType = 'illfortune';
     if (fortuneType) {
       const btn = document.createElement('div');
       btn.id = 'strider-fortune-action';
       btn.style.cssText = 'margin-top:8px;text-align:center';
       const isIll = fortuneType === 'illfortune';
-      btn.innerHTML = `<button onclick="rollAutoFortune('${fortuneType}')" style="background:${isIll?'var(--btn-alert-bg)':'var(--gold)'};color:white;border:none;border-radius:6px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer">${isIll?'🎲 Roll Ill-Fortune Table (Eye)':'🎲 Roll Fortune Table (Rune)'}</button>`;
+      btn.innerHTML = `<button onclick="rollAutoFortune('${fortuneType}')" style="background:${isIll?'var(--btn-alert-bg)':'var(--gold)'};color:white;border:none;border-radius:6px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer">${isIll?'🎲 Roll Ill-Fortune Table (Eye)':'🎲 Roll Fortune Table (Rune)'}</button><div class="hint" style="margin-top:4px">Optional — for a worthy challenge or a key action, not every routine roll.</div>`;
       summaryEl.parentElement.appendChild(btn);
     }
   }

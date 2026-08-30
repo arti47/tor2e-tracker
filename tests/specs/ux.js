@@ -1046,6 +1046,46 @@ module.exports = {
     checks.push({ ok: raw.tellingPhrasing, msg: 'Telling Table states the yes-is-favourable phrasing rule and defers open questions to Lore' });
     checks.push({ ok: raw.tellingResolves, msg: 'Telling Table glossary entry carries the closed-question rule' });
 
+    // ---- Eye Awareness + oracle triggers, verified against Strider Mode ----
+    const eye = await page.evaluate(() => {
+      const out = {};
+      Object.assign(char, { culture: 'Bardings', strRating: 5, strTN: 15, hrtRating: 4, hrtTN: 16,
+        witRating: 3, witTN: 17, endMax: 25, endCur: 25, hopeMax: 12, hopeCur: 12, name: 'B' });
+      char.striderMode = true; char.eyeAwareness = 5; char.huntRegion = 'wild';
+      saveCharacter(); refreshStriderUI(); render();
+
+      // RAW raises EA on an EYE outside combat. A RUNE must NOT raise it — a Rune instead offers
+      // the Fortune table, which can lower EA by 1.
+      const runEA = (special) => {
+        char.eyeAwareness = 5; saveCharacter();
+        const before = char.eyeAwareness;
+        const orf = window.rollFeatOnce;
+        window.rollFeatOnce = () => ({ value: special === 'eye' ? 0 : 11, label: special === 'eye' ? '👁' : 'ᚱ', special });
+        diceState.success = 1; diceState.isAttack = false; diceState.magical = false;
+        rollDice('Athletics');
+        window.rollFeatOnce = orf;
+        return (parseInt(char.eyeAwareness) || 0) - before;
+      };
+      out.eyeRaises = runEA('eye') === 1;
+      out.runeDoesNotRaise = runEA('rune') === 0;
+
+      // Both a Rune and an Eye offer their table, regardless of success or failure.
+      out.offersOnRune = (runEA('rune'), !!document.getElementById('strider-fortune-action'));
+      out.offersOnEye = (runEA('eye'), !!document.getElementById('strider-fortune-action'));
+      out.markedOptional = /Optional/i.test((document.getElementById('strider-fortune-action') || {}).innerText || '');
+
+      // Lore Table must say how to read a result and what to do when it doesn't fit.
+      const lore = document.getElementById('panel-oracle').innerText;
+      out.loreGuidance = /roll again/i.test(lore) && /adjacent rows|rows next to it/i.test(lore);
+      char.striderMode = false; saveCharacter(); refreshStriderUI();
+      return out;
+    });
+    checks.push({ ok: eye.eyeRaises, msg: 'an Eye outside combat raises Eye Awareness by 1' });
+    checks.push({ ok: eye.runeDoesNotRaise, msg: 'a Rune does NOT raise Eye Awareness (it offers the Fortune table instead)' });
+    checks.push({ ok: eye.offersOnRune && eye.offersOnEye, msg: 'Rune and Eye each offer their table regardless of outcome' });
+    checks.push({ ok: eye.markedOptional, msg: 'the Fortune/Ill-Fortune offer is marked optional' });
+    checks.push({ ok: eye.loreGuidance, msg: 'Lore Table explains re-rolling and adjacent rows' });
+
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length})` });
     await context.close();
     return { checks };

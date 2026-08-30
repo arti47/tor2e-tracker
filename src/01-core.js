@@ -643,6 +643,8 @@ const PATRON_QUESTS = {
 };
 
 // Strider Mode supplement: alternative XP-award scheme. Each milestone grants specified SP/AP.
+// Strider Mode Experience Milestones (Strider Mode p.15) — list verified against the book
+// 2026-08-24; the sp/ap values still want a look at the printed page (GOTCHA 2).
 const XP_MILESTONES = [
   { name: 'Accept a mission from a patron',         sp: 0, ap: 1 },
   { name: 'Achieve a notable personal goal',        sp: 1, ap: 1 },
