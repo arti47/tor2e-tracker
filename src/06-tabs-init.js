@@ -12,6 +12,7 @@ function bindTabs() {
       if (t.dataset.tab !== 'skills' && editMode) {
         toggleEditMode();
       }
+      if (t.dataset.tab === 'play' && typeof renderPlay === 'function') renderPlay();
       if (t.dataset.tab === 'chronicle') renderChronicle();
       if (t.dataset.tab === 'reference') renderReference();
       if (t.dataset.tab === 'gm' && typeof renderGm === 'function') renderGm();

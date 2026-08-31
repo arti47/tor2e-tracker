@@ -806,7 +806,7 @@ module.exports = {
     checks.push({ ok: reach.groupShowsPicker, msg: 'group play shows the Fellowship Focus picker' });
     checks.push({ ok: reach.soloHidesPicker, msg: 'solo hides the Focus picker and shows the explanatory note' });
     checks.push({ ok: reach.restores, msg: 'leaving solo restores the Focus picker' });
-    checks.push({ ok: reach.tabCount === 14 && reach.allPanelsExist, msg: `every declared tab has a panel (${reach.tabCount} tabs)` });
+    checks.push({ ok: reach.tabCount === 15 && reach.allPanelsExist, msg: `every declared tab has a panel (${reach.tabCount} tabs)` });
 
     // ---- Reachability pass 2: content, conditional features, and graceful cloud degradation ----
     const reach2 = await page.evaluate(async () => {
@@ -1141,6 +1141,58 @@ module.exports = {
     checks.push({ ok: loop.namesJourneySubsystem && loop.locationMentionsCouncil, msg: 'each step names the subsystem it uses (Journey, Council)' });
     checks.push({ ok: loop.countsAdventure, msg: 'a full circuit counts one completed adventure' });
     checks.push({ ok: loop.combatIsNotAStep && loop.glossary, msg: 'the loop states that combat interrupts rather than being a step' });
+
+    // ---- Play mode: the app runs the session, no other tab required ----
+    const play = await page.evaluate(async () => {
+      const out = {};
+      out.isFirstTab = [...document.querySelectorAll('.tab')][0].dataset.tab === 'play';
+      // With no hero, Play offers the two ways to get one rather than a dead screen.
+      char = JSON.parse(JSON.stringify(DEFAULT_CHARACTER)); saveCharacter(); renderPlay();
+      const blank = document.getElementById('play-body').innerText;
+      out.blankOffersHero = /ready-made hero/i.test(blank) && /make my own/i.test(blank);
+
+      Object.assign(char, { culture: 'Bardings', calling: 'Warden', strRating: 5, strTN: 15,
+        hrtRating: 4, hrtTN: 16, witRating: 3, witTN: 17, endMax: 25, endCur: 20, hopeMax: 12,
+        hopeCur: 9, name: 'Beran', safeHaven: 'Lake-town', skills: { Travel: { rating: 2 }, Scan: { rating: 2 } } });
+      char.striderMode = true; saveCharacter(); refreshStriderUI(); renderPlay();
+      out.unstartedOffersBegin = /Begin/.test(document.getElementById('play-body').innerText);
+
+      const op = window.promptStyled, om = window.showModal, oa = window.alertStyled, oc = window.confirmStyled;
+      window.promptStyled = async (m) => /Where are you going/.test(m) ? 'the watchtower' : 'A rumour of orcs.';
+      window.showModal = async (o) => /How far/.test(o.title || '') ? 2
+                                    : (/What do you do/.test(o.title || '') ? 'Scan'
+                                    : ((o.buttons && o.buttons[0] && o.buttons[0].value) || null));
+      window.alertStyled = async () => {}; window.confirmStyled = async () => true;
+
+      await sagaBegin(); renderPlay();
+      out.havenNamesPremise = /orcs/i.test(document.getElementById('play-body').innerText);
+      // a whole loop, driven only from this screen
+      await playSetOut();
+      out.journeyStarted = char.saga.step === 'journey' && char.journey.active && char.journey.totalHexes === 2;
+      const day0 = char.journey.daysElapsed;
+      await playTravel();
+      out.travelAdvances = char.journey.currentHex > 0 && char.journey.daysElapsed > day0;
+      await playTravel(); await playArrive();
+      out.arrived = char.saga.step === 'location';
+      await playAttempt();
+      const feed = document.getElementById('play-body').innerText;
+      out.attemptNarrates = /Search the place/.test(feed) && /(it works|it doesn)/.test(feed);
+      out.noEmDashScore = !/roll — vs/.test(feed);       // a Rune must read as a rune, not "—"
+      const before = char.saga.adventures;
+      playGoStep('home'); playGoStep('fellowship'); await playNextAdventure();
+      out.loops = char.saga.adventures === before + 1 && char.saga.step === 'haven';
+      // everything narrated is written to the Chronicle for the player
+      out.writesChronicle = (journal.entries || []).filter(e => e.source === 'play').length > 0;
+      window.promptStyled = op; window.showModal = om; window.alertStyled = oa; window.confirmStyled = oc;
+      return out;
+    });
+    checks.push({ ok: play.isFirstTab, msg: 'Play is the first tab, so the app opens on the game' });
+    checks.push({ ok: play.blankOffersHero, msg: 'Play with no hero offers both ways to get one' });
+    checks.push({ ok: play.unstartedOffersBegin && play.havenNamesPremise, msg: 'Play offers to begin, then shows the premise' });
+    checks.push({ ok: play.journeyStarted && play.travelAdvances && play.arrived, msg: 'a journey can be run entirely from Play' });
+    checks.push({ ok: play.attemptNarrates && play.noEmDashScore, msg: 'attempts roll and narrate in plain language' });
+    checks.push({ ok: play.loops, msg: 'a full adventure loops back to the haven and counts' });
+    checks.push({ ok: play.writesChronicle, msg: 'Play writes the session into the Chronicle automatically' });
 
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length})` });
     await context.close();

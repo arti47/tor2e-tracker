@@ -30,7 +30,8 @@
     <button id="campaign-pill" onclick="openCampaign()" style="display:none;background:var(--gold-soft);color:var(--ink);border:1px solid var(--gold);padding:3px 10px;border-radius:10px;font-size:11px;font-weight:700" title="Fellowship campaign" aria-label="Fellowship campaign — open campaign panel"></button>
   </div>
   <nav class="tabs" aria-label="Main sections">
-    <button class="tab active" data-tab="character">Character</button>
+    <button class="tab active" data-tab="play">▶ Play</button>
+    <button class="tab" data-tab="character">Character</button>
     <button class="tab" data-tab="skills">Skills</button>
     <button class="tab" data-tab="combat">Combat</button>
     <button class="tab" data-tab="journey">Journey</button>
@@ -397,7 +398,12 @@
 </section>
 
 <!-- ============ CHARACTER ============ -->
-<section class="panel active" id="panel-character">
+<section class="panel active" id="panel-play">
+  <div class="card tab-intro"><p class="hint" style="text-align:left;line-height:1.55;margin:0"><strong>This is the game.</strong> It tells you what is happening and gives you a few things you can do. Tap one — the app rolls whatever needs rolling, tells you how it went, and writes it down for you. You never need the other tabs to play a whole session.</p></div>
+  <div id="play-body"></div>
+</section>
+
+<section class="panel" id="panel-character">
 
   <div id="newcomer-banner" style="display:none"></div>
 

@@ -59,6 +59,7 @@ function render() {
   refreshEyeOfMordor();
   if (typeof renderSaga === 'function') renderSaga();                      // campaign arc: start/sustain/end
   if (typeof renderAdventureLoop === 'function') renderAdventureLoop();   // which subsystem fires, and when
+  if (typeof renderPlay === 'function') renderPlay();                     // Play mode: the app runs the session
   if (typeof renderBuildChecklist === 'function') renderBuildChecklist();  // live creation progress
   if (typeof refreshXpMode === 'function') refreshXpMode();     // one XP scheme live at a time
   if (typeof refreshFpEntry === 'function') refreshFpEntry();   // Moria FP vs the core wizard
@@ -3456,4 +3457,300 @@ function renderAdventureLoop() {
     `<button class="add-row-btn" style="width:100%;background:var(--gold);color:var(--ink)" onclick="advGoTo('${cur.next.split(' → ')[1] === 'haven' ? 'haven' : cur.next.split(' → ')[1]}')">${escapeHtml(cur.nextLabel)}</button>` +
     '<p class="hint" style="text-align:left;line-height:1.5;margin:10px 0 0;border-top:1px dashed var(--border);padding-top:8px">' +
     '<strong>Combat is not a step.</strong> A fight can break out at any point above — on the road, in the ruin, at the gate. When one starts, go to the <strong>Combat</strong> tab, run it, then come back to where you were. Councils work the same way.</p>';
+}
+
+/* ============================================================================
+   PLAY MODE — the app runs the session, turn by turn.
+   ----------------------------------------------------------------------------
+   Everything before this POINTED at tabs ("open the Journey tab and fill it in").
+   Three rounds of feedback said the same thing: that is still homework. This screen
+   DRIVES instead — it states what is happening in plain language, offers a handful of
+   concrete choices, performs the underlying rolls/subsystems itself, narrates the
+   outcome, and moves to the next moment. No rulebook, no tab-hunting, no jargon
+   required to play a whole session.
+   ============================================================================ */
+
+let _playFeed = [];           // narration lines, newest last
+let _playBusy = false;
+
+function playSay(text, kind) {
+  _playFeed.push({ text, kind: kind || 'story' });
+  if (_playFeed.length > 40) _playFeed.shift();
+  // Everything the app narrates is also written into the Chronicle, so the journal
+  // fills itself for a player who never opens that tab.
+  try { if (typeof pushBlock === 'function' && isSolo()) pushBlock('auto', 'note', text.replace(/<[^>]+>/g, ''), 'play'); } catch (e) {}
+}
+
+function playClearFeed() { _playFeed = []; }
+
+/* ---- the moment-to-moment script ---------------------------------------- */
+
+function _playSituation() {
+  const s = sagaState();
+  const where = char.safeHaven || 'your home';
+  switch (s.step) {
+    case 'haven':
+      return { title: 'At ' + escapeHtml(where),
+        text: 'You are somewhere safe. Nothing is trying to kill you yet.<br><br>' +
+              (s.premise ? 'Why you are about to leave: <em>' + escapeHtml(s.premise) + '</em>' : 'You have no errand yet — ask around, and one will find you.') };
+    case 'journey':
+      const j = char.journey || {};
+      return { title: 'On the road' + (j.destination ? ' to ' + escapeHtml(j.destination) : ''),
+        text: j.active
+          ? `You have covered <strong>${j.currentHex || 0}</strong> of <strong>${j.totalHexes || 0}</strong> stretches. Day ${j.daysElapsed || 0}.`
+          : 'You are ready to travel, but have not set out yet.' };
+    case 'location':
+      const j2 = char.journey || {};
+      return { title: 'At ' + escapeHtml(j2.destination || 'the place you came to'),
+        text: 'You have arrived. This is where the thing you came for is — or is not.' };
+    case 'home':
+      return { title: 'The road home', text: 'You turn back the way you came, carrying whatever you found — and whatever found you.' };
+    case 'fellowship':
+      return { title: 'Safe again, at ' + escapeHtml(where),
+        text: 'The adventure is over. Time to rest properly, spend what you have earned, and let the Shadow ebb.' };
+  }
+  return { title: 'Somewhere', text: '' };
+}
+
+function _playChoices() {
+  const s = sagaState();
+  const C = (label, fn, hint) => ({ label, fn, hint });
+  switch (s.step) {
+    case 'haven': return [
+      C('👂 Ask around for news', 'playAskAround()', 'The world tells you something you did not know.'),
+      C('🥾 Set out on the road', 'playSetOut()', 'Begin the journey to wherever this takes you.'),
+      C('🌙 Rest here a while', 'playRest()', 'Recover Endurance and Hope before you go.')
+    ];
+    case 'journey': return (char.journey && char.journey.active) ? [
+      C('🥾 Travel onward', 'playTravel()', 'Cover ground. The road may interrupt you.'),
+      C('🔥 Make camp', 'playRest()', 'Stop for the night and recover.'),
+      C('🏁 We have arrived', 'playArrive()', 'End the journey here.')
+    ] : [
+      C('🥾 Set out on the road', 'playSetOut()', 'Choose where you are going.'),
+      C('↩ Go back to the haven', "playGoStep('haven')", '')
+    ];
+    case 'location': return [
+      C('👀 Look around', 'playLookAround()', 'What is here? The Oracle answers.'),
+      C('🎯 Try something', 'playAttempt()', 'Search, climb, persuade, sneak — anything that could fail.'),
+      C('🔮 Ask a yes/no question', 'playAsk()', 'When you need the world to decide something.'),
+      C('⚔️ Something attacks!', 'playFight()', 'Start a fight and run it here.'),
+      C('✅ Our business here is done', "playGoStep('home')", '')
+    ];
+    case 'home': return [
+      C('🥾 Travel onward', 'playTravel()', 'Same as the road out.'),
+      C('🏠 We are safe again', "playGoStep('fellowship')", '')
+    ];
+    case 'fellowship': return [
+      C('🌿 Take a Fellowship Phase', 'playFellowship()', 'Rest, recover Hope, spend experience.'),
+      C('▶ Begin the next adventure', 'playNextAdventure()', 'Back to the haven, with a new reason to leave.')
+    ];
+  }
+  return [];
+}
+
+/* ---- the actions -------------------------------------------------------- */
+
+async function playAskAround() {
+  const row = _randomLoreRow();
+  const words = `${row.action} · ${row.aspect} · ${row.focus}`;
+  playSay(`You listen at the fire and in the doorways. What you hear turns on three things: <strong>${escapeHtml(words)}</strong>.`);
+  playSay(`<em>Read those as a rumour. If they mean nothing to you, tap again — that is allowed.</em>`, 'aside');
+  renderPlay();
+}
+
+async function playAsk() {
+  const q = await promptStyled('Ask the world a <strong>yes or no</strong> question.<br><br>Phrase it so that <strong>“yes” is what your hero would want</strong>.',
+    '', '🔮 Ask the Oracle', 'e.g. Is the gate unguarded?');
+  if (q === null) return;
+  const res = _tellingResult(q, 'middling');
+  playSay(`You wonder: <em>${escapeHtml(q)}</em><br>The answer is <strong>${res.answer}</strong>${escapeHtml(res.twist)}.`);
+  renderPlay();
+}
+
+async function playLookAround() {
+  const row = _randomLoreRow();
+  playSay(`You take the place in. What stands out: <strong>${escapeHtml(row.action)} · ${escapeHtml(row.aspect)} · ${escapeHtml(row.focus)}</strong>.`);
+  playSay('<em>Decide what that is in the fiction, then act on it.</em>', 'aside');
+  renderPlay();
+}
+
+/* Plain-language actions mapped to skills, so the player never picks a "skill" —
+   they pick a thing a person would do. */
+const PLAY_ATTEMPTS = [
+  { label: '🔍 Search the place',        skill: 'Scan' },
+  { label: '👁 Watch for danger',        skill: 'Awareness' },
+  { label: '🧗 Climb, force or heave',   skill: 'Athletics' },
+  { label: '🤫 Move unseen',             skill: 'Stealth' },
+  { label: '🗣 Talk them round',         skill: 'Persuade' },
+  { label: '📜 Remember a tale of this', skill: 'Lore' },
+  { label: '🧭 Find the way',            skill: 'Explore' },
+  { label: '🩹 Tend a wound',            skill: 'Healing' }
+];
+
+async function playAttempt() {
+  const pick = await showModal({
+    title: '🎯 What do you do?',
+    message: 'Pick the closest thing. The app works out which dice to roll.',
+    buttons: PLAY_ATTEMPTS.map(a => ({ label: a.label, value: a.skill })).concat([
+      { label: 'Never mind', value: null, style: 'background:var(--btn-secondary-bg);color:white;border:1px solid var(--btn-secondary-bg);border-radius:5px;padding:10px;font-size:14px;cursor:pointer' }
+    ])
+  });
+  if (!pick) return;
+  const sk = _heroSkill(pick);
+  const r = _doInlineRoll(sk.rating, sk.favoured ? 'fav' : 'normal', sk.tn);
+  const ok = String(r.outcome).startsWith('SUCCESS');
+  const entry = PLAY_ATTEMPTS.find(a => a.skill === pick) || { label: pick };
+  const score = (r.total === null) ? 'a Gandalf rune — automatic success' : `${r.total} vs ${sk.tn}`;
+  playSay(`<strong>${escapeHtml(entry.label)}</strong> — ${pick} roll ${score}: ` +
+    (ok ? `<strong style="color:var(--success-text)">it works.</strong>` : `<strong style="color:var(--error-text)">it doesn't.</strong>`) +
+    (r.icons ? ` (${r.icons} ✦)` : ''));
+  playSay(ok
+    ? '<em>Say what success looks like, then keep going.</em>'
+    : '<em>Say what goes wrong. A failure should cost something or change the situation — it is not just "nothing happens".</em>', 'aside');
+  renderPlay();
+}
+
+async function playTravel() {
+  if (!char.journey || !char.journey.active) { playSay('You are not travelling yet.', 'aside'); return renderPlay(); }
+  const j = char.journey;
+  const sk = _heroSkill('Travel');
+  const r = _doInlineRoll(sk.rating, sk.favoured ? 'fav' : 'normal', sk.tn);
+  const ok = String(r.outcome).startsWith('SUCCESS');
+  j.currentHex = Math.min((j.currentHex || 0) + (ok ? 2 : 1), j.totalHexes || 1);
+  j.daysElapsed = (j.daysElapsed || 0) + 1;
+  if (!ok) { j.travelFatigue = (j.travelFatigue || 0) + 1; }
+  saveCharacter();
+  const tscore = (r.total === null) ? 'a Gandalf rune' : `${r.total} vs ${sk.tn}`;
+  playSay(ok
+    ? `You make good time. (Travel roll ${tscore} — success.) You are ${j.currentHex} of ${j.totalHexes} of the way.`
+    : `The going is hard and you tire. (Travel roll ${tscore} — failure. +1 Fatigue.) You are ${j.currentHex} of ${j.totalHexes} of the way.`);
+  if (j.currentHex >= (j.totalHexes || 1)) {
+    playSay('<strong>The place you were making for is in sight.</strong>');
+  }
+  renderPlay();
+}
+
+async function playSetOut() {
+  const dest = await promptStyled('Where are you going?', '', '🥾 Set out', 'e.g. the ruined watchtower');
+  if (dest === null) return;
+  const far = await showModal({
+    title: 'How far is it?',
+    message: 'Roughly. This only sets how many times you travel before you arrive.',
+    buttons: [
+      { label: 'Close by — a day or two', value: 2 },
+      { label: 'A fair way — several days', value: 4 },
+      { label: 'Far — a long road', value: 7 }
+    ]
+  });
+  if (!far) return;
+  char.journey = { active: true, origin: char.safeHaven || 'home', destination: String(dest).trim() || 'somewhere',
+    totalHexes: far, hardTerrainHexes: 0, currentHex: 0, season: 'Spring', region: char.huntRegion || 'wild',
+    forcedMarch: false, mounted: false, roles: {}, travelFatigue: 0, daysElapsed: 0, events: [], nextEventHex: null };
+  sagaState().step = 'journey';
+  saveCharacter();
+  playClearFeed();
+  playSay(`You leave ${escapeHtml(char.safeHaven || 'home')} for <strong>${escapeHtml(char.journey.destination)}</strong>.`);
+  renderPlay();
+}
+
+async function playArrive() {
+  sagaState().step = 'location';
+  saveCharacter();
+  playClearFeed();
+  playSay(`You reach <strong>${escapeHtml((char.journey || {}).destination || 'the place')}</strong>.`);
+  renderPlay();
+}
+
+async function playRest() {
+  const before = parseInt(char.endCur) || 0;
+  const orig = window.confirmStyled; window.confirmStyled = async () => true;
+  try { await takeProlongedRest(); } finally { window.confirmStyled = orig; }
+  playSay(`You rest. Endurance ${before} → ${char.endCur}${(parseInt(char.hopeCur)||0) ? '' : ''}.`);
+  renderPlay();
+}
+
+async function playFight() {
+  playSay('<strong>Something comes at you out of the dark.</strong>');
+  playSay('Pick your foe on the Combat tab, fight it there, then come back here and carry on.', 'aside');
+  openBestiary();
+  renderPlay();
+}
+
+async function playFellowship() {
+  if (typeof isMoria === 'function' && isMoria()) {
+    playSay('Moria rests are on the Band tab — pick how long you rest there.', 'aside');
+    document.querySelector('.tab[data-tab=band]').click();
+    return;
+  }
+  openFPWizard();
+}
+
+async function playNextAdventure() {
+  const s = sagaState();
+  s.adventures = (parseInt(s.adventures) || 0) + 1;
+  s.step = 'haven';
+  char.journey = { active: false };
+  saveCharacter();
+  playClearFeed();
+  playSay(`<strong>Adventure ${s.adventures} begins.</strong> You are back at ${escapeHtml(char.safeHaven || 'the haven')}.`);
+  renderPlay();
+}
+
+function playGoStep(step) {
+  sagaState().step = step;
+  saveCharacter();
+  playClearFeed();
+  renderPlay();
+}
+
+/* ---- the screen --------------------------------------------------------- */
+
+function renderPlay() {
+  const host = document.getElementById('play-body'); if (!host) return;
+  const s = sagaState();
+
+  if (!char.culture) {
+    host.innerHTML = '<div class="card"><h3 class="card-title">Start here</h3>' +
+      '<p class="hint" style="text-align:left;line-height:1.6">You need a hero before you can play. That takes about a minute.</p>' +
+      '<button class="add-row-btn" style="width:100%;background:var(--gold);color:var(--ink);margin-bottom:6px" onclick="openPregens()">✨ Give me a ready-made hero</button>' +
+      '<button class="add-row-btn" style="width:100%" onclick="document.querySelector(\'.tab[data-tab=build]\').click()">🛠️ I\'ll make my own</button></div>';
+    return;
+  }
+  if (!s.started) {
+    host.innerHTML = '<div class="card"><h3 class="card-title">Your story hasn\'t started</h3>' +
+      '<p class="hint" style="text-align:left;line-height:1.6">You have a hero. Now they need a reason to leave home — that is all a campaign needs to begin.</p>' +
+      '<button class="add-row-btn" style="width:100%;background:var(--gold);color:var(--ink)" onclick="sagaBegin().then(renderPlay)">▶ Begin — give me a reason to go</button></div>';
+    return;
+  }
+  if (s.ended) {
+    host.innerHTML = '<div class="card"><h3 class="card-title">🏁 The tale is told</h3>' +
+      `<p class="hint" style="text-align:left;line-height:1.6"><em>${escapeHtml(s.endedHow)}</em></p>` +
+      '<button class="add-row-btn" style="width:100%" onclick="sagaReopen().then(renderPlay)">↩ Actually, continue it</button></div>';
+    return;
+  }
+
+  const sit = _playSituation();
+  const choices = _playChoices();
+  const feed = _playFeed.length
+    ? _playFeed.slice(-8).map(f => `<p style="margin:0 0 8px;line-height:1.6;font-size:13px;${f.kind === 'aside' ? 'color:var(--text-muted);font-size:12px' : 'color:var(--ink)'}">${f.text}</p>`).join('')
+    : '<p class="hint" style="text-align:left;margin:0">Pick something below. Whatever you choose, the app rolls what needs rolling and tells you what happened.</p>';
+
+  host.innerHTML =
+    `<div class="card" style="border-color:var(--gold)">
+       <h3 class="card-title" style="color:var(--gold)">${escapeHtml(sit.title)}</h3>
+       <p class="hint" style="text-align:left;line-height:1.6;margin:0 0 10px">${sit.text}</p>
+       <div style="background:var(--bg-deep);border-radius:8px;padding:10px;margin-bottom:10px;max-height:260px;overflow-y:auto">${feed}</div>
+       ${choices.map(c =>
+         `<button class="add-row-btn" style="width:100%;margin-bottom:6px;text-align:left;padding:11px 12px" onclick="${c.fn}">
+            <strong>${escapeHtml(c.label)}</strong>${c.hint ? `<br><small style="opacity:.75;font-weight:400">${escapeHtml(c.hint)}</small>` : ''}
+          </button>`).join('')}
+     </div>
+     <div class="card">
+       <p class="hint" style="text-align:left;line-height:1.55;margin:0">
+         <strong>Vitals</strong> — Endurance ${char.endCur ?? '—'}/${char.endMax ?? '—'} ·
+         Hope ${char.hopeCur ?? '—'}/${char.hopeMax ?? '—'} ·
+         Shadow ${(parseInt(char.shadow)||0) + (parseInt(char.scars)||0)}${isSolo() ? ` · 👁 ${parseInt(char.eyeAwareness)||0}` : ''}<br>
+         Everything you do here is written into your <strong>Chronicle</strong> automatically.
+       </p>
+     </div>`;
 }
