@@ -181,6 +181,43 @@ async function promptStyled(message, defaultValue, title, placeholder) {
   };
 })();
 
+/* ---------- ATTRIBUTE TARGET NUMBERS — one derivation, one place ----------
+   A hero's Attribute TN is `base − Rating`, where base is 20 normally and 18 in Strider
+   Mode, PLUS any standing adjustment: the Prowess virtue lowers one TN by 1, and a couple
+   of Lifepath Major Events raise one by 1. Those adjustments used to be applied as one-off
+   decrements to the stored TN, so ANY later recompute (toggling Strider Mode, re-picking an
+   attribute set, applying a lifepath) silently erased them — the sheet went on listing
+   "Prowess — Lower one Attribute TN by 1" while the hero rolled against the un-lowered
+   number. They are now tracked in `char.tnAdjust` and re-applied on every recompute. */
+
+/** Standing TN adjustment for one attribute ('str' | 'hrt' | 'wit'). */
+function tnAdjustFor(key) {
+  const t = char.tnAdjust;
+  if (t && typeof t === 'object') return parseInt(t[key]) || 0;
+  // Legacy heroes saved before tnAdjust existed: derive the Prowess −1 from prowessAttr.
+  return (char.prowessAttr === key) ? -1 : 0;
+}
+
+/** The TN an attribute Rating should produce right now, adjustments included. */
+function attrTN(key, rating) {
+  const base = (char.striderMode ? 18 : 20) - (parseInt(rating) || 0);
+  return Math.max(1, base + tnAdjustFor(key));
+}
+
+/** Re-derive all three Attribute TNs from their Ratings. Safe to call any time. */
+function recomputeAttrTNs() {
+  if (char.strRating !== '' && char.strRating != null) char.strTN = attrTN('str', char.strRating);
+  if (char.hrtRating !== '' && char.hrtRating != null) char.hrtTN = attrTN('hrt', char.hrtRating);
+  if (char.witRating !== '' && char.witRating != null) char.witTN = attrTN('wit', char.witRating);
+}
+
+/** Record a standing TN adjustment (negative lowers the TN) and re-derive. */
+function addTnAdjust(key, delta) {
+  if (!char.tnAdjust || typeof char.tnAdjust !== 'object') char.tnAdjust = { str: 0, hrt: 0, wit: 0 };
+  char.tnAdjust[key] = (parseInt(char.tnAdjust[key]) || 0) + delta;
+  recomputeAttrTNs();
+}
+
 async function toggleStriderMode() {
   document.getElementById('menu-overlay').classList.remove('show');  // close menu so the dialog + result are visible
   const turningOn = !char.striderMode;
@@ -194,10 +231,9 @@ async function toggleStriderMode() {
   // and achievements in your story") and toward Experience Milestones. Default to that on the way
   // in; the player can still switch back via the Advancement card.
   if (turningOn && !char._xpModeChosen) char.experienceMode = 'milestone';
-  // Recalculate TNs based on new mode
-  if (char.strRating) char.strTN = (char.striderMode ? 18 : 20) - parseInt(char.strRating);
-  if (char.hrtRating) char.hrtTN = (char.striderMode ? 18 : 20) - parseInt(char.hrtRating);
-  if (char.witRating) char.witTN = (char.striderMode ? 18 : 20) - parseInt(char.witRating);
+  // Recalculate TNs based on new mode — through the shared helper, so the Prowess
+  // virtue's −1 (and any lifepath TN adjustment) survives the switch.
+  recomputeAttrTNs();
   // Bump Fellowship to 3 on first activation if currently 0
   if (turningOn && (parseInt(char.fellowshipRating) || 0) < 3) char.fellowshipRating = 3;
   // Auto-add Strider distinctive feature
@@ -220,7 +256,7 @@ async function toggleMoriaMode() {
   document.getElementById('menu-overlay').classList.remove('show');  // close menu so the dialog + result are visible
   const turningOn = !char.moriaMode;
   const msg = turningOn
-    ? `<strong>Play the Moria campaign on your own?</strong><br><br>A second solo mode — no Game Master needed. You lead a <strong>Band</strong> of dwarf allies into Moria under Balin's expedition, with its own journey, battle and oracle tables.<br><br>New to solo play? Read <strong>📖 Ref → Playing Solo</strong> first.<br><br>Rules changes:<ul style="text-align:left;font-size:12px;padding-left:18px;margin:6px 0"><li>PE budget: → <strong>15</strong> (solo)</li><li><strong>+5 max Hope</strong> (support of your Band)</li><li>Patron is <strong>Balin</strong> — <em>Balin's Counsel</em>: spend Fellowship to make a combat/battle roll Favoured</li><li>Fellowship Rating starts at <strong>3</strong> (+1 from Balin)</li><li>Safe Haven → <strong>Moria — First Hall</strong></li><li>Journeys use the <strong>Moria</strong> event table (Dark Land, Ill-Favoured)</li><li>Unlocks <strong>Oracle tab</strong> + <strong>Eye of Mordor</strong> (Moria: Dark Land, Hunt 14)</li></ul>Band roster, Battles, and Moria oracle tables arrive in later phases. You can switch back any time.`
+    ? `<strong>Play the Moria campaign on your own?</strong><br><br>A second solo mode — no Game Master needed. You lead a <strong>Band</strong> of dwarf allies into Moria under Balin's expedition, with its own journey, battle and oracle tables.<br><br>New to solo play? Read <strong>📖 Ref → Playing Solo</strong> first.<br><br>Rules changes:<ul style="text-align:left;font-size:12px;padding-left:18px;margin:6px 0"><li>PE budget: → <strong>15</strong> (solo)</li><li><strong>+5 max Hope</strong> (support of your Band)</li><li>Patron becomes <strong>Balin</strong> — <em>Balin's Counsel</em>: spend Fellowship to make a combat/battle roll Favoured. Your current Patron is remembered and restored if you switch back.</li><li>Fellowship Rating starts at <strong>3</strong> (+1 from Balin)</li><li>Safe Haven → <strong>Moria — First Hall</strong> (likewise restored)</li><li>Journeys use the <strong>Moria</strong> event table (Dark Land, Ill-Favoured)</li><li>Unlocks <strong>Oracle tab</strong> + <strong>Eye of Mordor</strong> (Moria: Dark Land, Hunt 12)</li><li>Unlocks the <strong>Band</strong> and <strong>Battle</strong> tabs, and the Moria oracle tables (chambers, orc-bands, Moria Lore)</li></ul>You can switch back any time.`
     : `<strong>Disable Moria Solo Mode?</strong><br><br>Revert to standard play. The +5 Hope band bonus is removed; journeys/oracle return to normal (or Strider, if that's still on).`;
   if (!await confirmStyled(msg, turningOn ? '⛏️ Moria Solo Mode' : 'Disable Moria Solo Mode')) return;
   char.moriaMode = turningOn;
@@ -232,7 +268,13 @@ async function toggleMoriaMode() {
       char.hopeCur = (parseInt(char.hopeCur) || 0) + 5;
     }
     if ((parseInt(char.fellowshipRating) || 0) < 3) char.fellowshipRating = 3;
-    if (!String(char.safeHaven || '').trim()) char.safeHaven = 'Moria — First Hall';
+    // The dialog promises Balin as Patron and the First Hall as Safe Haven. Deliver both —
+    // stashing whatever was there so disabling the mode puts the hero back as they were.
+    if (char._moriaPrev === undefined || char._moriaPrev === null) {
+      char._moriaPrev = { patron: char.patron || '', safeHaven: char.safeHaven || '', huntRegion: char.huntRegion || '' };
+    }
+    char.patron = 'Balin';
+    char.safeHaven = 'Moria — First Hall';
     char.huntRegion = 'dark';  // Moria is a Dark Land → Hunt Threshold 12 (was 14 under the old 3-region table)
     if (!char.eyeAwareness) char.eyeAwareness = 0;
   } else {
@@ -242,6 +284,17 @@ async function toggleMoriaMode() {
       char.hopeMax = Math.max(0, (parseInt(char.hopeMax) || 0) - bonus);
       if ((parseInt(char.hopeCur) || 0) > char.hopeMax) char.hopeCur = char.hopeMax;
       char.moriaHopeBonus = 0;
+    }
+    // Put back the Patron / Haven / region Moria mode took over. Leaving huntRegion on
+    // 'dark' stranded ex-Moria heroes on a Dark Land's Hunt 12 for the rest of the campaign.
+    const prev = char._moriaPrev;
+    if (prev && typeof prev === 'object') {
+      if (char.patron === 'Balin') char.patron = prev.patron || '';
+      if (char.safeHaven === 'Moria — First Hall') char.safeHaven = prev.safeHaven || '';
+      if (char.huntRegion === 'dark') char.huntRegion = prev.huntRegion || 'wild';
+      char._moriaPrev = null;
+    } else if (char.huntRegion === 'dark') {
+      char.huntRegion = 'wild';
     }
   }
   saveCharacter();

@@ -308,15 +308,18 @@ const FP_UNDERTAKINGS = [
     freeCalling: 'Warden', yuleOnly: false, narrative: true },
   { id: 'meet-patron', name: 'Meet Patron',
     desc: 'Meet your Patron if available at this location. Ask for help, accept a task, learn the Blessings of a magical item.',
+    descSolo: 'Meet your Patron, if they are here. Ask for help, accept a task, or learn what a magical item really is. With no Loremaster, roll a <strong>Patron Quest</strong> on the Oracle tab for what they want.',
     freeCalling: 'Messenger', yuleOnly: false, narrative: true },
   { id: 'ponder-maps', name: 'Ponder Storied and Figured Maps',
     desc: 'Until next Fellowship Phase, +1 modifier to all Feat die rolls during the Event Resolution step of any Journey.',
     freeCalling: 'Scholar', yuleOnly: false, narrative: false },
   { id: 'strengthen-fellowship', name: 'Strengthen Fellowship',
     desc: 'Raise the Company\'s Fellowship Rating by +1 until next Fellowship Phase.',
+    descSolo: 'Raise your Fellowship Rating by +1 until the next Fellowship Phase — the ties that steady you when things go badly.',
     freeCalling: 'Captain', yuleOnly: false, narrative: false },
   { id: 'study-magical-items', name: 'Study Magical Items',
     desc: 'Learn all discoverable qualities/Blessings of every Marvellous Artefact and Wondrous Item the Company currently possesses.',
+    descSolo: 'Learn every discoverable quality and Blessing of the Marvellous Artefacts and Wondrous Items you carry.',
     freeCalling: 'Treasure Hunter', yuleOnly: false, narrative: true },
   { id: 'write-a-song', name: 'Write a Song',
     desc: 'Compose a Lay (Councils), Song of Victory (Combat), or Walking-song (Journeys). Sing during a venture (SONG roll) to ignore Weary for that venture. Each song used only once per Adventuring Phase.',
@@ -350,9 +353,8 @@ async function awardSessionXP() {
   alert(`✅ Awarded +3 SP + 3 AP.\n\nSpend during Fellowship Phase (cap: 1 rank/skill, 1 rank/prof, Valour XOR Wisdom).`);
 }
 
-function openFPWizard() {
-  // Fresh wizard state
-  fpState = {
+function _freshFPState() {
+  return {
     step: 1,
     phaseType: null,  // 'ordinary' | 'yule'
     shadowToRemove: 1,
@@ -361,16 +363,42 @@ function openFPWizard() {
     songInput: { type: 'Lay', title: '', lyrics: '' },
     heirInput: { treasure: 0, ap: 0 }
   };
-  // Enter Fellowship Phase spend mode — clear prior phase's spend tracker
+}
+
+/* The wizard's own step 3 tells you to "Close this wizard temporarily to spend XP, then
+   re-open to continue with Undertakings. (Phase state is preserved.)" — and it wasn't:
+   openFPWizard() rebuilt fpState from scratch every time, so following the instruction on
+   screen threw away your phase type and your applied Recovery and dropped you back on step 1.
+   Worse, because recoveryApplied reset while the Hope and Shadow changes had already landed,
+   Recovery could be applied twice in a single phase. The state now lives on the character
+   between openings, and the recovery guard is durable. */
+function openFPWizard(forceNew) {
+  const saved = char.fpWizardState;
+  if (!forceNew && saved && typeof saved === 'object' && saved.inProgress) {
+    fpState = Object.assign(_freshFPState(), saved);
+    delete fpState.inProgress;
+  } else {
+    fpState = _freshFPState();
+    // A genuinely new phase: clear the prior phase's per-rank spend tracker.
+    char.fpSpend = { skills: {}, profs: {}, valour: 0, wisdom: 0 };
+  }
   char.fpModeActive = true;
-  char.fpSpend = { skills: {}, profs: {}, valour: 0, wisdom: 0 };
+  char.fpWizardState = Object.assign({}, fpState, { inProgress: true });
   saveCharacter();
   document.getElementById('fp-wizard-overlay').classList.add('show');
   fpRenderStep();
 }
 
+/** Persist the in-flight phase so closing the wizard is a pause, not a reset. */
+function fpPersist() {
+  if (!fpState) return;
+  char.fpWizardState = Object.assign({}, fpState, { inProgress: true });
+  saveCharacter();
+}
+
 function fpClose() {
   document.getElementById('fp-wizard-overlay').classList.remove('show');
+  fpPersist();
   // Exit FP spend mode but keep the spend tracker visible for the player's reference.
   char.fpModeActive = false;
   saveCharacter();
@@ -378,6 +406,7 @@ function fpClose() {
 
 function fpSetPhaseType(t) {
   fpState.phaseType = t;
+  fpPersist();
   const status = document.getElementById('fp-type-status');
   status.textContent = t === 'yule' ? '❄️ Yule selected — all heroes age +1, Hope restored, +WITS bonus Skill Points' : 'Ordinary Phase selected';
   document.getElementById('fp-type-ord').style.opacity = t === 'ordinary' ? '1' : '0.5';
@@ -413,6 +442,7 @@ async function fpNextStep() {
     if (!await confirmStyled('You haven\'t tapped "Apply Recovery" yet. Skip Spiritual Recovery?')) return;
   }
   fpState.step = Math.min(4, fpState.step + 1);
+  fpPersist();
   fpRenderStep();
 }
 
@@ -422,16 +452,35 @@ function fpPrevStep() {
   fpRenderStep();
 }
 
+/** Hope recovered in a Fellowship Phase.
+    The Rangers' Cultural Blessing prints its own cost on the sheet — "Kings of Men … Weakness:
+    only ½ Heart Hope recovered during Fellowship Phase (not Yule)" — and the wizard used to
+    ignore it, awarding full Heart. Halved (rounded up), Yule exempt. */
+function fpHopeRecovery() {
+  const heart = parseInt(char.hrtRating) || 1;
+  const isYule = fpState && fpState.phaseType === 'yule';
+  const curHope = parseInt(char.hopeCur) || 0;
+  const maxHope = parseInt(char.hopeMax) || 0;
+  const halved = !isYule && /Rangers/i.test(String(char.culture || ''));
+  const base = isYule ? (maxHope - curHope) : (halved ? Math.ceil(heart / 2) : heart);
+  return { amount: Math.max(0, Math.min(base, maxHope - curHope)), halved, heart, isYule, curHope, maxHope };
+}
+
 function fpRenderStep2() {
   const heart = parseInt(char.hrtRating) || 1;
   const isYule = fpState.phaseType === 'yule';
   const curHope = parseInt(char.hopeCur) || 0;
   const maxHope = parseInt(char.hopeMax) || 0;
-  const hopeAmt = isYule ? (maxHope - curHope) : Math.min(heart, maxHope - curHope);
+  const hr = fpHopeRecovery();
+  const hopeAmt = hr.amount;
 
   const hopeDiv = document.getElementById('fp-hope-recovery');
   hopeDiv.innerHTML = `
-    <strong>Hope Recovery:</strong> ${isYule ? 'Full Hope restoration (Yule)' : `+HEART (${heart}) — capped at Max Hope`}<br>
+    <strong>Hope Recovery:</strong> ${isYule
+      ? 'Full Hope restoration (Yule)'
+      : (hr.halved
+          ? `+½ HEART (${Math.ceil(heart / 2)} of ${heart}) — <em>Kings of Men weakness: Rangers recover only half Heart in an ordinary Fellowship Phase</em>`
+          : `+HEART (${heart}) — capped at Max Hope`)}<br>
     Current: ${curHope} / ${maxHope} → will become <strong>${Math.min(maxHope, curHope + hopeAmt)}</strong> (+${hopeAmt})
   `;
 
@@ -475,7 +524,12 @@ function fpApplyRecovery() {
   const isYule = fpState.phaseType === 'yule';
   const curHope = parseInt(char.hopeCur) || 0;
   const maxHope = parseInt(char.hopeMax) || 0;
-  const hopeAmt = isYule ? (maxHope - curHope) : Math.min(heart, maxHope - curHope);
+  if (char.fpWizardState && char.fpWizardState.recoveryApplied) {
+    alertStyled('Spiritual Recovery has already been applied in this Fellowship Phase. Hope and Shadow only move once per phase.', '✅ Already applied');
+    return;
+  }
+  const hr = fpHopeRecovery();
+  const hopeAmt = hr.amount;
   char.hopeCur = Math.min(maxHope, curHope + hopeAmt);
 
   const shadowRm = parseInt(document.querySelector('input[name="fp-shadow-rm"]:checked')?.value) || 0;
@@ -490,7 +544,7 @@ function fpApplyRecovery() {
     char.shadow = Math.min(cap, char.shadow + taintGain);
   }
 
-  let summary = `+${hopeAmt} Hope (${curHope} → ${char.hopeCur})`;
+  let summary = `+${hopeAmt} Hope (${curHope} → ${char.hopeCur})${hr.halved ? ' — halved by the Kings of Men weakness' : ''}`;
   if (shadowRm > 0) summary += ` · −${shadowRm} Shadow`;
   if (taintGain > 0) summary += ` · +${taintGain} Shadow (Cursed Taint: ${taintedItems.map(i=>i.name).join(', ')})`;
   summary += ` (Shadow: ${shadowBefore} → ${char.shadow})`;
@@ -508,6 +562,7 @@ function fpApplyRecovery() {
   if (Array.isArray(char.songs)) char.songs.forEach(s => { s.used = false; });
 
   fpState.recoveryApplied = true;
+  fpPersist();
   saveCharacter();
   render();
   document.getElementById('fp-recovery-status').innerHTML = `✅ ${summary}`;
@@ -517,9 +572,19 @@ function fpRenderStep3() {
   const sp = parseInt(char.skillPts) || 0;
   const ap = parseInt(char.advPts) || 0;
   document.getElementById('fp-xp-summary').innerHTML = `
-    Skill Points: <strong>${sp}</strong> · Adventure Points: <strong>${ap}</strong><br>
-    <small style="color:var(--text-muted)">Tap Close, use Spend XP modals on Character tab, then re-open this wizard to continue.</small>
+    Skill Points: <strong>${sp}</strong> · Adventure Points: <strong>${ap}</strong>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px">
+      <button class="add-row-btn" style="font-size:12px" onclick="fpSpendFromWizard('skill')">Spend Skill Points</button>
+      <button class="add-row-btn" style="font-size:12px" onclick="fpSpendFromWizard('adv')">Spend Adventure Points</button>
+    </div>
   `;
+}
+
+/** Step 3 used to be a signpost to another tab. Open the Spend XP modal from here instead;
+    the wizard stays open underneath and the phase's per-rank caps still apply. */
+function fpSpendFromWizard(mode) {
+  fpPersist();
+  if (typeof openSpendXP === 'function') openSpendXP(mode);
 }
 
 function fpRenderStep4() {
@@ -632,6 +697,7 @@ function refreshFPSummary() {
 }
 
 async function fpComplete() {
+  char.fpWizardState = null;  // the phase is over — the next opening starts clean
   // Reset the Adventuring-Phase session counter that drives the saga card's pacing prompt
   // ("two or three sessions, then a Fellowship Phase" — Core Rules).
   try { const sg = sagaState(); sg.lastFpSession = parseInt(sg.sessions) || 0; } catch (e) {}
@@ -861,7 +927,7 @@ function renderSkillEndeavour() {
           msg.innerHTML = `⏳ Time limit reached. ${e.successesScored} / ${e.resistance} successes. Choose outcome:`;
           opts.innerHTML = `
             <button class="add-row-btn" onclick="finalizeSkillEndeavour('simple-failure')" style="width:100%;background:var(--btn-secondary-bg);margin-bottom:6px">Simple Failure (delay only)</button>
-            <button class="add-row-btn" onclick="finalizeSkillEndeavour('woe')" style="width:100%;background:var(--btn-warn-bg)">Success with Woe (achieve at a price — LM approval)</button>
+            <button class="add-row-btn" onclick="finalizeSkillEndeavour('woe')" style="width:100%;background:var(--btn-warn-bg)">Success with Woe (achieve at a price)</button>
           `;
         }
       }
@@ -1115,7 +1181,7 @@ function renderCouncil() {
         msg.innerHTML = `⏳ Time limit reached. ${c.successesScored} / ${c.resistance} successes. Choose outcome:`;
         opts.innerHTML = `
           <button class="add-row-btn" onclick="finalizeCouncil('failure')" style="width:100%;background:var(--btn-secondary-bg);margin-bottom:6px">Accept Failure (refused outright)</button>
-          <button class="add-row-btn" onclick="finalizeCouncil('woe')" style="width:100%;background:var(--btn-warn-bg)">Success with Woe (LM approval — achieve goal at a price)</button>
+          <button class="add-row-btn" onclick="finalizeCouncil('woe')" style="width:100%;background:var(--btn-warn-bg)">Success with Woe (achieve the goal at a price)</button>
         `;
       }
     } else if (c.outcome) {
@@ -1414,12 +1480,90 @@ function renderJourney() {
     }
 
     renderJourneyLog();
+    renderJourneyEventRoll();
   } else {
     setup.style.display = 'block';
     progress.style.display = 'none';
     log.style.display = 'none';
     if (cancelBtn) cancelBtn.style.display = 'none';
   }
+}
+
+/** The button the journey event asks for, with the effect it promises wired to it. */
+function renderJourneyEventRoll() {
+  const row = document.getElementById('j-event-roll-row');
+  if (!row) return;
+  const j = char.journey || {};
+  const pend = j.pendingEventRoll;
+  if (!j.active || !pend || !pend.skill) { row.style.display = 'none'; row.innerHTML = ''; return; }
+  const sk = _heroSkill(pend.skill);
+  const effect = JOURNEY_EVENT_ROLL_EFFECT[pend.eventKey];
+  row.style.display = 'block';
+  row.innerHTML =
+    `<div style="font-size:12px;font-weight:600;color:var(--red-dark);margin-bottom:4px">▶ ${escapeHtml(pend.eventName)} — roll ${escapeHtml(pend.skill)}</div>` +
+    `<p class="hint" style="text-align:left;margin:0 0 6px;font-size:11px;line-height:1.4">` +
+    `${escapeHtml(pend.skill)} ${'◆'.repeat(sk.rating)}${'◇'.repeat(Math.max(0, 6 - sk.rating))} vs TN ${sk.tn}` +
+    `${sk.favoured ? ' · ★ Favoured' : ''}${pend.hard ? ' · hard terrain −1d' : ''}` +
+    `${effect ? `<br>On a success: <strong>${escapeHtml(effect.label)}</strong>` : ''}</p>` +
+    `<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">` +
+    `<button class="add-row-btn" style="font-size:12px;background:var(--red)" onclick="rollJourneyEvent()">🎲 Roll ${escapeHtml(pend.skill)}</button>` +
+    `<button class="add-row-btn" style="font-size:12px;background:var(--btn-secondary-bg);color:white" onclick="skipJourneyEventRoll()">Skip this roll</button>` +
+    `</div>`;
+}
+
+/* What a successful event roll actually does. Only the mechanical ones are automated; the
+   rest are narrative and say so rather than pretending to apply something. */
+const _jDay  = (j, d) => { j.daysElapsed = Math.max(0, (parseInt(j.daysElapsed) || 0) + d); return (d < 0 ? '−' : '+') + Math.abs(d) + ' day (now day ' + j.daysElapsed + ')'; };
+const _jHope = () => { const before = parseInt(char.hopeCur) || 0, max = parseInt(char.hopeMax) || 0;
+  char.hopeCur = Math.min(max, before + 1); return char.hopeCur > before ? `+1 Hope (${before} → ${char.hopeCur})` : 'Hope already full'; };
+const JOURNEY_EVENT_ROLL_EFFECT = {
+  // Core Rules journey events
+  shortcut: { label: '−1 day off the journey',    apply: (j) => _jDay(j, -1) },
+  chance:   { label: 'a favourable encounter',    apply: () => 'the meeting goes well — play it out as a scene' },
+  joyful:   { label: '+1 Hope',                   apply: () => _jHope() },
+  mishap:   { label: 'no extra day, no extra Fatigue', apply: () => 'the mishap costs you nothing further' },
+  ill:      { label: 'no Shadow from this',       apply: () => 'you keep your head — no Shadow gained' },
+  despair:  { label: 'no Shadow from this',       apply: () => 'you hold on to your Hope — no Shadow gained' },
+  terrible: { label: 'you are not Wounded',       apply: () => 'you come through it unwounded' },
+  // Moria
+  rightWay:        { label: '−1 day off the journey', apply: (j) => _jDay(j, -1) },
+  dreadWonder:     { label: '+1 Hope',                apply: () => _jHope() },
+  branchingStairs: { label: 'no lost day',            apply: () => 'you pick the right stair — no day lost' },
+  longDark:        { label: 'no Shadow from this',    apply: () => 'the dark does not reach you — no Shadow gained' },
+  watchfulEyes:    { label: 'unseen — no Shadow, no Eye', apply: () => 'you pass unseen — no Shadow, and the Eye does not stir' },
+  deadlyDark:      { label: 'you are not Wounded',    apply: () => 'you come through it unwounded, and unnoticed' }
+};
+
+async function rollJourneyEvent() {
+  const j = char.journey;
+  const pend = j && j.pendingEventRoll;
+  if (!pend || !pend.skill) return;
+  const sk = _heroSkill(pend.skill);
+  const dice = Math.max(0, sk.rating - (pend.hard ? 1 : 0));
+  const r = _doInlineRoll(dice, sk.favoured ? 'fav' : 'normal', sk.tn);
+  let ok = String(r.outcome).startsWith('SUCCESS');
+  if (char.miserable && r.featSpecial === 'eye') ok = false;
+  const effect = JOURNEY_EVENT_ROLL_EFFECT[pend.eventKey];
+  let applied = '';
+  if (ok && effect) applied = effect.apply(j) || '';
+  const score = (r.total === null) ? 'a Gandalf rune — automatic success' : `${r.total} vs TN ${sk.tn}`;
+  j.events.push({
+    day: j.daysElapsed, hex: j.currentHex,
+    text: `▶ <strong>${escapeHtml(pend.skill)}</strong> roll for ${escapeHtml(pend.eventName)} — ${score}${r.icons ? `, ${r.icons} ✦` : ''}: ` +
+          (ok ? `<strong style="color:var(--success-text)">success</strong>${applied ? ' — ' + applied : ''}`
+              : `<strong style="color:var(--error-text)">failure</strong> — the event's effect stands.`)
+  });
+  j.pendingEventRoll = null;
+  saveCharacter();
+  renderJourney();
+  if (typeof journalAuto === 'function') journalAuto('ojc', 'roll', `${pend.skill} roll for ${pend.eventName}: ${ok ? 'success' : 'failure'}${applied ? ' — ' + applied.replace(/<[^>]+>/g, '') : ''}`);
+}
+
+function skipJourneyEventRoll() {
+  if (!char.journey) return;
+  char.journey.pendingEventRoll = null;
+  saveCharacter();
+  renderJourney();
 }
 
 function renderJourneyLog() {
@@ -1466,7 +1610,7 @@ async function rollMarchingTest() {
   applyMarchingTestResult(success, r.icons, `Feat ${r.featLabel}, total ${r.total ?? '★'}, ${r.icons} ✦, vs Heart TN ${tn}${char.miserable ? ' (Miserable)' : ''}`);
 }
 
-function applyMarchingTestResult(success, icons, detail) {
+function applyMarchingTestResult(success, icons, detail, quiet) {
   const j = char.journey;
   let hexesToNext;
   if (success) {
@@ -1492,7 +1636,7 @@ function applyMarchingTestResult(success, icons, detail) {
   });
   saveCharacter();
   renderJourney();
-  if (j.currentHex >= j.totalHexes) {
+  if (j.currentHex >= j.totalHexes && !quiet) {
     setTimeout(() => alert('You\'ve reached the destination hex. Resolve the final event, then tap "Arrive at Destination".'), 100);
   }
 }
@@ -1786,6 +1930,10 @@ function renderBattle() {
     document.querySelectorAll('#b-stance-pick .seg-btn').forEach(x => { x.classList.toggle('active', x.dataset.stance === b.bandStance); x.onclick = () => { b.bandStance = x.dataset.stance; saveCharacter(); renderBattle(); }; });
     const bg = document.getElementById('b-gift-pick'); if (bg) bg.innerHTML = _giftOptionsHTML('clash');
     renderBattleChips();
+    // `_pendingSpend` is saved on the character and survives a reload, but the panel that
+    // spends it used to be injected only by clashRoll/clashSpend — so backgrounding the app
+    // mid-round left successes you had rolled with no control to spend them.
+    renderClashSpend();
   }
   renderBattleLog();
 }
@@ -1868,7 +2016,7 @@ async function recruitAllies() {
   let n;
   if (cur < 4) n = 4 - cur; else n = Math.max(1, parseInt(char.valour) || 1);
   if (!await confirmStyled(`Recruit Allies undertaking:<br><br>${cur < 4 ? `Your Band is below 4 — gain ${n} to reach 4.` : `Gain ${n} ally(ies) — one per Valour rank (Valour ${char.valour || 1}).`}<br><br>Proceed?`)) return;
-  for (let i = 0; i < n; i++) char.band.allies.push(_rollAlly());
+  for (let i = 0; i < n; i++) char.band.allies.push(_rollUniqueAlly());
   saveCharacter(); render();
   alert(`Recruited ${n} new all${n === 1 ? 'y' : 'ies'}. Your Band now numbers ${char.band.allies.length}.`);
 }
@@ -2186,12 +2334,34 @@ function _rollAlly() {
   return { id: 'a' + Date.now() + Math.floor(Math.random() * 1000), name, gift: g.n, giftDesc: g.d, quirk: q, hardened: false, injury: '', fatigue: '', outOfAction: false, kinglyGift: null, giftWasted: false };
 }
 function generateAlly() {
-  char.band.allies.push(_rollAlly());
+  char.band.allies.push(_rollUniqueAlly());
   saveCharacter(); renderBand();
 }
 function addStartingBand() {
-  while (char.band.allies.length < 6) char.band.allies.push(_rollAlly());
+  // _rollAlly draws a name at random, so a starting Band of six routinely arrived with the
+  // same dwarf in it twice. Re-roll a clashing name a few times before giving up and
+  // disambiguating, so the roster stays readable.
+  while (char.band.allies.length < 6) char.band.allies.push(_rollUniqueAlly());
   saveCharacter(); renderBand();
+}
+
+/** An ally whose name isn't already in the Band. */
+function _rollUniqueAlly() {
+  const taken = new Set((char.band.allies || []).map(a => String(a.name || '').toLowerCase()));
+  let a = null;
+  for (let i = 0; i < 12; i++) {
+    a = _rollAlly();
+    if (!taken.has(String(a.name || '').toLowerCase())) return a;
+  }
+  // Every name in the table is spoken for — tell them apart rather than shipping twins.
+  let n = 2;
+  const base = String(a.name || 'Ally');
+  while (taken.has((base + ' the ' + _ordinalWord(n)).toLowerCase())) n++;
+  a.name = base + ' the ' + _ordinalWord(n);
+  return a;
+}
+function _ordinalWord(n) {
+  return ['', '', 'Younger', 'Third', 'Fourth', 'Fifth', 'Sixth', 'Seventh', 'Eighth'][n] || ('#' + n);
 }
 async function removeAlly(id) {
   if (!await confirmStyled('Remove this ally from the Band?')) return;
@@ -2277,7 +2447,9 @@ function renderMissionPreview() {
   el.innerHTML = `<strong>Preview →</strong> Roster: <strong>${rosterNote}</strong> on mission<br>`
     + `Dispositions: Exp ${d.expertise} · Man ${d.manoeuvre} · Rally ${d.rally} · Vig ${d.vigilance} · War ${d.war}<br>`
     + `Burden: <strong>${p.burden}</strong> · Readiness: <strong>${p.readiness}</strong> (TN ${20 - p.readiness}) <small>[${p.hardened}/${p.bandSize} hardened]</small><br>`
-    + `Eye Awareness: <strong>${p.ea}</strong> · Hunt Threshold: <strong>${p.hunt}</strong> <small>(14 ${p.huntMod >= 0 ? '+' : ''}${p.huntMod})</small>`;
+    // The base was hard-coded to 14 while HUNT_THRESHOLDS.dark is 12, so the preview read
+    // "Hunt Threshold: 12 (14 +0)" — a number next to its own contradiction.
+    + `Eye Awareness: <strong>${p.ea}</strong> · Hunt Threshold: <strong>${p.hunt}</strong> <small>(${HUNT_THRESHOLDS[char.huntRegion] || HUNT_THRESHOLDS.dark} ${p.huntMod >= 0 ? '+' : ''}${p.huntMod})</small>`;
 }
 
 function applyMissionSetup() {
@@ -2426,8 +2598,8 @@ function resolveJourneyEvent(isPeril) {
   if (moria) {
     // Moria is a Dark Land → Ill-Favoured, unless a foothold makes this leg a Border region.
     featFav = (j.region === 'Border') ? 'normal' : 'ill';
-  } else if (j.region === 'Border') featFav = 'fav';
-  else if (j.region === 'Dark') featFav = 'ill';
+  } else if (j.region === 'Free' || j.region === 'Border') featFav = 'fav';
+  else if (j.region === 'Shadow' || j.region === 'Dark') featFav = 'ill';
   const r = _doInlineRoll(0, featFav, null);
 
   // Ponder Storied & Figured Maps undertaking: +1 to Feat result on Journey Events (Core Rules p.121).
@@ -2457,7 +2629,7 @@ function resolveJourneyEvent(isPeril) {
   } else if (r.featSpecial === 'rune') {
     event = { key: 'joyful', name: 'Joyful Sight ᚱ', fatigue: 0, effect: 'If the skill roll succeeds: every hero recovers <strong>+1 Hope</strong>' };
   } else if (f === 1) {
-    event = { key: 'despair', name: 'Despair', fatigue: 2, effect: 'If the skill roll fails: <strong>everyone</strong> in the Company gains +1 Shadow (Dread)' };
+    event = { key: 'despair', name: 'Despair', fatigue: 2, effect: 'If the skill roll fails: <strong>every hero present</strong> gains +1 Shadow (Dread)' };
   } else if (f >= 2 && f <= 3) {
     event = { key: 'ill', name: 'Ill Choices', fatigue: 2, effect: 'If the skill roll fails: <strong>target</strong> gains +1 Shadow (Dread)' };
   } else if (solo ? (f >= 4 && f <= 7) : (f >= 4 && f <= 9)) {
@@ -2467,7 +2639,7 @@ function resolveJourneyEvent(isPeril) {
   } else if (solo && f === 10) {
     event = { key: 'chance', name: 'Chance-meeting', fatigue: 1, effect: 'If the skill roll succeeds: no Fatigue, favourable encounter' };
   } else if (!solo && f === 10) {
-    event = { key: 'shortcut', name: 'Short Cut / Chance-meeting', fatigue: 1, effect: 'If the skill roll succeeds: −1 day to journey OR favourable encounter (LM picks)' };
+    event = { key: 'shortcut', name: 'Short Cut / Chance-meeting', fatigue: 1, effect: 'If the skill roll succeeds: −1 day to journey OR a favourable encounter — your choice' };
   } else {
     event = { key: 'unknown', name: 'Event ('+f+')', fatigue: 1, effect: 'GM adjudicates' };
   }
@@ -2529,6 +2701,13 @@ function resolveJourneyEvent(isPeril) {
   } else {
     j.nextEventHex = null;
   }
+  // The event has just told the player to roll something. Arm the control that does it —
+  // every other subsystem in the app (Council, Endeavour, Battle, Encounter) rolls its own
+  // skill in place, and the journey log was the one place that asked and then offered nothing.
+  const mine = solo || !!(j.roles && j.roles[roleKey]);
+  j.pendingEventRoll = (targetSkill && mine)
+    ? { skill: targetSkill, eventKey: event.key, eventName: event.name, hard: j.hardTerrainHexes > 0 }
+    : null;
   saveCharacter();
   renderJourney();
   if (typeof journalAuto === 'function') journalAuto('ojc', 'oracle', `${isPeril ? '[Peril] ' : ''}Journey event — ${event.name}${event.effect ? ' (' + event.effect.replace(/<[^>]+>/g, '') + ')' : ''}`);
@@ -2624,7 +2803,7 @@ async function takeShortRest() {
   }
   // Frequency: one Short Rest per day (Core Rules p.71). Allow an explicit override.
   if (char.shortRestUsedToday) {
-    if (!await confirmStyled(`You have already taken a Short Rest on Day ${char.dayCount || 1}.<br><br>RAW allows one Short Rest per day. Take another anyway? (LM's call.)`, '☀️ Already Rested Today')) return;
+    if (!await confirmStyled(`You have already taken a Short Rest on Day ${char.dayCount || 1}.<br><br>RAW allows one Short Rest per day. Take another anyway?`, '☀️ Already Rested Today')) return;
   }
   const recovered = Math.min(str, max - cur);
   if (!await confirmStyled(`Recover <strong>+${recovered}</strong> Endurance (your STRENGTH ${str}).<br>End: ${cur} → ${cur + recovered} / ${max}<br><br><small>At least 1 hour of inactivity. Marks your Short Rest for Day ${char.dayCount || 1}.</small>`, '☀️ Short Rest')) return;
@@ -2789,7 +2968,7 @@ function rollHoard() {
   if (!tierBtn) return;
   const tierKey = tierBtn.dataset.val;
   const tier = HOARD_TIERS[tierKey];
-  const partySize = parseInt(document.getElementById('hoard-party-size').value) || 4;
+  const partySize = parseInt(document.getElementById('hoard-party-size').value) || (isSolo() ? 1 : 4);
   const tainted = document.getElementById('hoard-tainted').checked;
 
   // Treasure dice
@@ -3176,7 +3355,7 @@ async function spendFPforHope() {
     alert('Hope is already at maximum.');
     return;
   }
-  if (!await confirmStyled(`Spend 1 Fellowship point to gain +1 Hope?\n\nFP: ${fp} → ${fp - 1}\nHope: ${curHope} → ${curHope + 1} / ${maxHope}\n\n(Per RAW: only when the Company is resting — players agree on the distribution.)`)) return;
+  if (!await confirmStyled(`Spend 1 Fellowship point to gain +1 Hope?\n\nFP: ${fp} → ${fp - 1}\nHope: ${curHope} → ${curHope + 1} / ${maxHope}\n\n(Per RAW: only during a resting scene.)`)) return;
   char.fellowship = fp - 1;
   char.hopeCur = Math.min(maxHope, curHope + 1);
   saveCharacter();
@@ -3223,6 +3402,12 @@ function sagaEndSignals() {
   return out;
 }
 
+/** A suggested errand from the hero's Patron, if they have one. '' otherwise. */
+function _patronQuestSeed() {
+  const quests = (typeof PATRON_QUESTS !== 'undefined' && char.patron) ? PATRON_QUESTS[char.patron] : null;
+  return (quests && quests.length) ? quests[Math.floor(Math.random() * quests.length)] : '';
+}
+
 async function sagaBegin() {
   const s = sagaState();
   if (!char.culture) {
@@ -3231,11 +3416,7 @@ async function sagaBegin() {
   }
   // A premise comes from the Patron if there is one — that is what Patrons are FOR — otherwise
   // the player writes their own reason to leave home.
-  let seed = '';
-  const quests = (typeof PATRON_QUESTS !== 'undefined' && char.patron) ? PATRON_QUESTS[char.patron] : null;
-  if (quests && quests.length) {
-    seed = quests[Math.floor(Math.random() * quests.length)];
-  }
+  const seed = _patronQuestSeed();
   const premise = await promptStyled(
     'What sends your hero out?<br><br>' +
     (seed ? `Your patron <strong>${escapeHtml(char.patron)}</strong> suggests:<br><em>${escapeHtml(seed)}</em><br><br>Keep it, or write your own.`
@@ -3273,7 +3454,9 @@ async function sagaStartSession() {
   const s = sagaState();
   s.sessions = (parseInt(s.sessions) || 0) + 1;
   saveCharacter(); render();
-  const last = (char.timeline || []).slice(-3).reverse().map(t => '• ' + escapeHtml(t.text)).join('<br>');
+  // char.timeline is stored NEWEST-FIRST, so the three most recent events are the first
+  // three. The old slice(-3).reverse() recapped the three OLDEST events in the campaign.
+  const last = (char.timeline || []).slice(0, 3).map(t => '• ' + escapeHtml(t.text)).join('<br>');
   await alertStyled(
     `<strong>Session ${s.sessions}.</strong><br><br>` +
     (last ? `Last time:<br>${last}<br><br>` : '') +
@@ -3380,13 +3563,18 @@ function renderSaga() {
     `<p class="hint" style="text-align:left;margin:0 0 8px;color:var(--text-faint)">Session ${s.sessions || 0}</p>` +
     B('sagaStartSession()', '📖 Start a session') +
     B('sagaEndSession()', '🌙 End this session', 'background:var(--btn-secondary-bg);color:white') +
+    '<div style="border-top:1px dashed var(--border);margin:10px 0 6px"></div>' +
     (signals.length
-      ? '<div style="border-top:1px dashed var(--border);margin:10px 0 6px"></div>' +
-        '<p class="hint" style="text-align:left;line-height:1.5;margin:0 0 6px">' +
+      ? '<p class="hint" style="text-align:left;line-height:1.5;margin:0 0 6px">' +
         '<strong>This could be an ending.</strong><br>' + signals.map(x => '• ' + escapeHtml(x)).join('<br>') +
-        '<br><br>Stopping well is part of playing well — a story that ends is better than one that fades.</p>' +
-        B('sagaEnd()', '🏁 Bring your saga to a close', 'background:var(--btn-alert-bg);color:white')
-      : '');
+        '<br><br>Stopping well is part of playing well — a story that ends is better than one that fades.</p>'
+      // The ending control used to render ONLY when the app judged an ending earned, while
+      // its own dialog offered "or they simply stop, because the tale you wanted to tell is
+      // told". Deciding a story is finished is the player's call, not the tracker's.
+      : '<p class="hint" style="text-align:left;line-height:1.5;margin:0 0 6px">' +
+        'No ending has been forced on you yet — but you can close the tale whenever you decide it is told.</p>') +
+    B('sagaEnd()', '🏁 Bring your saga to a close',
+      signals.length ? 'background:var(--btn-alert-bg);color:white' : 'background:var(--btn-secondary-bg);color:white');
 }
 
 /* ---------- THE ADVENTURE LOOP — which subsystem fires, and when ----------
@@ -3498,7 +3686,9 @@ function _playSituation() {
       return { title: 'On the road' + (j.destination ? ' to ' + escapeHtml(j.destination) : ''),
         text: j.active
           ? `You have covered <strong>${j.currentHex || 0}</strong> of <strong>${j.totalHexes || 0}</strong> stretches. Day ${j.daysElapsed || 0}.`
-          : 'You are ready to travel, but have not set out yet.' };
+          : (j.destination
+              ? 'The road is behind you — you finished this journey on the Journey tab. Tap <strong>We have arrived</strong> to carry on.'
+              : 'You are ready to travel, but have not set out yet.') };
     case 'location':
       const j2 = char.journey || {};
       return { title: 'At ' + escapeHtml(j2.destination || 'the place you came to'),
@@ -3513,6 +3703,19 @@ function _playSituation() {
 }
 
 function _playChoices() {
+  const C = (label, fn, hint) => ({ label, fn, hint });
+  // At 0 Endurance nothing else is the right move. Lead with the things that fix it.
+  const lead = [];
+  if ((parseInt(char.endCur) || 0) <= 0) {
+    lead.push(C('🌙 Rest until you can stand', 'playRest()', 'A Prolonged Rest — the way out of Dying.'));
+    if (char.wounded) lead.push(C('🩹 Tend the wound', 'playFirstAid()', 'A HEALING roll against your injury.'));
+  } else if (char.wounded) {
+    lead.push(C('🩹 Tend the wound', 'playFirstAid()', 'A HEALING roll — a Wound will not rest off.'));
+  }
+  return lead.concat(_playStepChoices());
+}
+
+function _playStepChoices() {
   const s = sagaState();
   const C = (label, fn, hint) => ({ label, fn, hint });
   switch (s.step) {
@@ -3521,14 +3724,26 @@ function _playChoices() {
       C('🥾 Set out on the road', 'playSetOut()', 'Begin the journey to wherever this takes you.'),
       C('🌙 Rest here a while', 'playRest()', 'Recover Endurance and Hope before you go.')
     ];
-    case 'journey': return (char.journey && char.journey.active) ? [
-      C('🥾 Travel onward', 'playTravel()', 'Cover ground. The road may interrupt you.'),
-      C('🔥 Make camp', 'playRest()', 'Stop for the night and recover.'),
-      C('🏁 We have arrived', 'playArrive()', 'End the journey here.')
-    ] : [
-      C('🥾 Set out on the road', 'playSetOut()', 'Choose where you are going.'),
-      C('↩ Go back to the haven', "playGoStep('haven')", '')
-    ];
+    case 'journey': {
+      const jc = char.journey || {};
+      if (jc.active) return [
+        C('🥾 Travel onward', 'playTravel()', 'Cover ground. The road may interrupt you.'),
+        C('🔥 Make camp', 'playRest()', 'Stop for the night and recover.'),
+        C('🏁 We have arrived', 'playArrive()', 'End the journey here.')
+      ];
+      // A journey finished on the Journey tab clears `active`. Without this branch the Play
+      // tab offered only "Set out" and "Go back", and step 3 was unreachable from the very
+      // surface that promises you never need another tab.
+      if (jc.destination) return [
+        C('🏁 We have arrived', 'playArrive()', 'You finished the road on the Journey tab — carry on from here.'),
+        C('🥾 Set out somewhere else', 'playSetOut()', 'Pick a different destination.'),
+        C('↩ Go back to the haven', "playGoStep('haven')", '')
+      ];
+      return [
+        C('🥾 Set out on the road', 'playSetOut()', 'Choose where you are going.'),
+        C('↩ Go back to the haven', "playGoStep('haven')", '')
+      ];
+    }
     case 'location': return [
       C('👀 Look around', 'playLookAround()', 'What is here? The Oracle answers.'),
       C('🎯 Try something', 'playAttempt()', 'Search, climb, persuade, sneak — anything that could fail.'),
@@ -3536,9 +3751,15 @@ function _playChoices() {
       C('⚔️ Something attacks!', 'playFight()', 'Start a fight and run it here.'),
       C('✅ Our business here is done', "playGoStep('home')", '')
     ];
-    case 'home': return [
-      C('🥾 Travel onward', 'playTravel()', 'Same as the road out.'),
-      C('🏠 We are safe again', "playGoStep('fellowship')", '')
+    case 'home': return (char.journey && char.journey.active) ? [
+      C('🥾 Travel onward', 'playTravel()', 'Cover ground on the way back.'),
+      C('🔥 Make camp', 'playRest()', 'Stop for the night and recover.'),
+      C('🏠 We are safe again', "playGoStep('fellowship')", 'You are home.')
+    ] : [
+      // Arriving cleared the outbound journey, so "Travel onward" had nothing to travel and
+      // answered "You are not travelling yet" every time. Set out for home instead.
+      C('🥾 Set out for home', 'playSetOutHome()', 'Begin the road back.'),
+      C('🏠 We are safe again', "playGoStep('fellowship')", 'Skip the return road.')
     ];
     case 'fellowship': return [
       C('🌿 Take a Fellowship Phase', 'playFellowship()', 'Rest, recover Hope, spend experience.'),
@@ -3611,19 +3832,28 @@ async function playAttempt() {
 }
 
 async function playTravel() {
-  if (!char.journey || !char.journey.active) { playSay('You are not travelling yet.', 'aside'); return renderPlay(); }
+  if (!char.journey || !char.journey.active) {
+    playSay('You are not travelling yet — tap <strong>Set out</strong> first and say where you are going.', 'aside');
+    return renderPlay();
+  }
   const j = char.journey;
+  const before = j.currentHex || 0, beforeDay = j.daysElapsed || 0;
   const sk = _heroSkill('Travel');
   const r = _doInlineRoll(sk.rating, sk.favoured ? 'fav' : 'normal', sk.tn);
-  const ok = String(r.outcome).startsWith('SUCCESS');
-  j.currentHex = Math.min((j.currentHex || 0) + (ok ? 2 : 1), j.totalHexes || 1);
-  j.daysElapsed = (j.daysElapsed || 0) + 1;
-  if (!ok) { j.travelFatigue = (j.travelFatigue || 0) + 1; }
-  saveCharacter();
-  const tscore = (r.total === null) ? 'a Gandalf rune' : `${r.total} vs ${sk.tn}`;
+  let ok = String(r.outcome).startsWith('SUCCESS');
+  if (char.miserable && r.featSpecial === 'eye') ok = false;
+  // Advance through the Journey tab's own Marching Test rule rather than a second,
+  // incompatible one. Play used to move 2 hexes a press while a Marching Test moved
+  // 3 + icons, so the same journey was two different lengths depending which tab you
+  // were standing on — and one test could swallow a whole Play-tab road.
+  applyMarchingTestResult(ok, r.icons, `Feat ${r.featLabel}, total ${r.total ?? '★'}, ${r.icons} ✦, vs Heart TN ${sk.tn}`, true);
+  const gained = (j.currentHex || 0) - before, days = (j.daysElapsed || 0) - beforeDay;
+  const tscore = (r.total === null) ? 'a Gandalf rune — automatic success' : `${r.total} vs ${sk.tn}`;
+  const dayWord = `${days} day${days === 1 ? '' : 's'}`;
   playSay(ok
-    ? `You make good time. (Travel roll ${tscore} — success.) You are ${j.currentHex} of ${j.totalHexes} of the way.`
-    : `The going is hard and you tire. (Travel roll ${tscore} — failure. +1 Fatigue.) You are ${j.currentHex} of ${j.totalHexes} of the way.`);
+    ? `You make good time. (Travel roll ${tscore} — success.) ${gained} stretch${gained === 1 ? '' : 'es'} in ${dayWord}; you are ${j.currentHex} of ${j.totalHexes} of the way.`
+    : `The going is hard and slow. (Travel roll ${tscore} — failure.) ${gained} stretch${gained === 1 ? '' : 'es'} in ${dayWord}; you are ${j.currentHex} of ${j.totalHexes} of the way.`);
+  if (j.travelFatigue) playSay(`<em>Travel Fatigue so far: ${j.travelFatigue}. It lands on you when you arrive.</em>`, 'aside');
   if (j.currentHex >= (j.totalHexes || 1)) {
     playSay('<strong>The place you were making for is in sight.</strong>');
   }
@@ -3637,9 +3867,9 @@ async function playSetOut() {
     title: 'How far is it?',
     message: 'Roughly. This only sets how many times you travel before you arrive.',
     buttons: [
-      { label: 'Close by — a day or two', value: 2 },
-      { label: 'A fair way — several days', value: 4 },
-      { label: 'Far — a long road', value: 7 }
+      { label: 'Close by — a stretch of road', value: 4 },
+      { label: 'A fair way — several days', value: 9 },
+      { label: 'Far — a long road', value: 18 }
     ]
   });
   if (!far) return;
@@ -3654,10 +3884,64 @@ async function playSetOut() {
 }
 
 async function playArrive() {
+  const dest = (char.journey || {}).destination || 'the place';
+  const fatBefore = parseInt(char.fatigue) || 0;
+  if (char.journey && char.journey.active) {
+    // Run the real arrival — mount Vigour, the arrival TRAVEL roll, lingering Fatigue —
+    // rather than a second, lesser version of it. Answer its own confirm yes, and decline
+    // the "jump to the Chronicle" offer: in Play mode you stay here.
+    const orig = window.confirmStyled;
+    let call = 0;
+    window.confirmStyled = async () => (++call === 1);
+    const origAlert = window.alert; window.alert = () => {};
+    try { await arriveAtDestination(); } finally { window.confirmStyled = orig; window.alert = origAlert; }
+  }
   sagaState().step = 'location';
   saveCharacter();
   playClearFeed();
-  playSay(`You reach <strong>${escapeHtml((char.journey || {}).destination || 'the place')}</strong>.`);
+  playSay(`You reach <strong>${escapeHtml(dest)}</strong>.`);
+  const fatGained = (parseInt(char.fatigue) || 0) - fatBefore;
+  if (fatGained > 0) playSay(`The road has left its mark: <strong>+${fatGained} Fatigue</strong>. A Prolonged Rest in a Safe Haven clears 1 at a time.`, 'aside');
+  renderPlay();
+}
+
+/** The road back. Same journey machinery, pointed the other way. */
+async function playSetOutHome() {
+  const home = char.safeHaven || 'home';
+  const from = (char.journey && char.journey.destination) || 'where you were';
+  const far = await showModal({
+    title: 'How far is the road back?',
+    message: `From ${escapeHtml(from)} to ${escapeHtml(home)}.`,
+    buttons: [
+      { label: 'The way we came', value: 'same' },
+      { label: 'Close by — a stretch of road', value: 4 },
+      { label: 'A fair way — several days', value: 9 },
+      { label: 'Far — a long road', value: 18 }
+    ]
+  });
+  if (!far) return;
+  const hexes = (far === 'same') ? (parseInt((char.journey || {}).totalHexes) || 9) : far;
+  char.journey = { active: true, origin: from, destination: home,
+    totalHexes: hexes, hardTerrainHexes: 0, currentHex: 0, season: (char.journey || {}).season || 'Spring',
+    region: char.huntRegion || 'wild', forcedMarch: false, mounted: false, roles: {},
+    travelFatigue: 0, daysElapsed: 0, events: [], nextEventHex: null };
+  saveCharacter();
+  playClearFeed();
+  playSay(`You turn back for <strong>${escapeHtml(home)}</strong>.`);
+  renderPlay();
+}
+
+/** A HEALING roll against the current injury, run from the Play tab. */
+async function playFirstAid() {
+  if (!char.wounded) { playSay('You are not Wounded — there is nothing to treat.', 'aside'); return renderPlay(); }
+  if (typeof rollFirstAid === 'function') {
+    const origAlert = window.alert; const said = [];
+    window.alert = (m) => said.push(String(m));
+    try { await rollFirstAid(); } finally { window.alert = origAlert; }
+    playSay(said.length ? escapeHtml(said.join(' ')) : 'You tend the wound as best you can.');
+  } else {
+    playSay('Treat the wound on the Character tab — the First Aid row sits under the Injury field.', 'aside');
+  }
   renderPlay();
 }
 
@@ -3687,12 +3971,27 @@ async function playFellowship() {
 
 async function playNextAdventure() {
   const s = sagaState();
+  // The button promises "Back to the haven, with a new reason to leave" — so ask for one.
+  // Without this the Play tab went on restating the old, already-resolved premise as the
+  // hero's motive for the next adventure.
+  const seed = _patronQuestSeed();
+  const reason = await promptStyled(
+    'What sends your hero out this time?<br><br>One line is enough — an errand, a rumour, a threat to someone they care about. ' +
+    (seed ? `Your Patron suggests: <em>${escapeHtml(seed)}</em>` : 'Leave it blank to keep the old reason.'),
+    seed || '', '▶ The next adventure', 'e.g. word came that the road east is closed');
+  if (reason === null) return;  // cancelled — stay where you are
+  const newPremise = String(reason).trim();
+  if (newPremise) s.premise = newPremise;
   s.adventures = (parseInt(s.adventures) || 0) + 1;
   s.step = 'haven';
   char.journey = { active: false };
   saveCharacter();
   playClearFeed();
   playSay(`<strong>Adventure ${s.adventures} begins.</strong> You are back at ${escapeHtml(char.safeHaven || 'the haven')}.`);
+  if (newPremise) playSay(`Why you are leaving again: <em>${escapeHtml(newPremise)}</em>`);
+  if (typeof pushBlock === 'function' && isSolo()) {
+    try { ensureActiveScene(); pushBlock('auto', 'milestone', `Adventure ${s.adventures} begins${newPremise ? ': ' + newPremise : ''}`, 'play'); } catch (e) {}
+  }
   renderPlay();
 }
 
@@ -3704,6 +4003,33 @@ function playGoStep(step) {
 }
 
 /* ---- the screen --------------------------------------------------------- */
+
+/* The Play tab used to print "Endurance 0/26" and offer the same five choices it offered at
+   full health — nothing on the surface built to run a session for a newcomer ever said what
+   being Dying meant, or that it was urgent. These two helpers say it, in front of everything
+   else, and the choice list puts recovery first. */
+function _playStateTags() {
+  const t = [];
+  if ((parseInt(char.endCur) || 0) <= 0) t.push('DYING');
+  if (char.wounded) t.push('WOUNDED');
+  if (char.weary) t.push('WEARY');
+  if (char.miserable) t.push('MISERABLE');
+  return t.length ? ' · <strong style="color:var(--error-text)">' + t.join(' · ') + '</strong>' : '';
+}
+
+function _playConditionBanner() {
+  const dying = (parseInt(char.endCur) || 0) <= 0;
+  const notes = [];
+  if (dying) notes.push('<strong>You are Dying.</strong> Endurance has hit 0. You are not dead — you are down: you cannot act, cannot defend yourself, and cannot spend Hope, and any further harm can kill you. Get Endurance above 0 before anything else.');
+  if (char.wounded) notes.push('<strong>You are Wounded.</strong> A Wound does not heal with an ordinary rest — it needs treatment and time. Wounded <em>and</em> at 0 Endurance is how heroes actually die.');
+  if (!dying && char.miserable) notes.push('<strong>You are Miserable.</strong> Shadow has caught up with you: an 👁 on the Feat die now fails the roll automatically.');
+  if (!dying && !char.miserable && char.weary) notes.push('<strong>You are Weary.</strong> Success dice showing 1–3 count as nothing until you rest.');
+  if (!notes.length) return '';
+  return `<div class="card" style="border-color:var(--red);background:var(--red-soft)">
+    <h3 class="card-title" style="color:var(--red-dark);margin-bottom:6px"${dying ? ' data-hint="Dying"' : ''}>${dying ? '💀 You are Dying' : '⚠️ Take care'}</h3>
+    <p class="hint" style="text-align:left;line-height:1.6;margin:0">${notes.join('<br><br>')}</p>
+  </div>`;
+}
 
 function renderPlay() {
   const host = document.getElementById('play-body'); if (!host) return;
@@ -3736,6 +4062,7 @@ function renderPlay() {
     : '<p class="hint" style="text-align:left;margin:0">Pick something below. Whatever you choose, the app rolls what needs rolling and tells you what happened.</p>';
 
   host.innerHTML =
+    _playConditionBanner() +
     `<div class="card" style="border-color:var(--gold)">
        <h3 class="card-title" style="color:var(--gold)">${escapeHtml(sit.title)}</h3>
        <p class="hint" style="text-align:left;line-height:1.6;margin:0 0 10px">${sit.text}</p>
@@ -3749,7 +4076,7 @@ function renderPlay() {
        <p class="hint" style="text-align:left;line-height:1.55;margin:0">
          <strong>Vitals</strong> — Endurance ${char.endCur ?? '—'}/${char.endMax ?? '—'} ·
          Hope ${char.hopeCur ?? '—'}/${char.hopeMax ?? '—'} ·
-         Shadow ${(parseInt(char.shadow)||0) + (parseInt(char.scars)||0)}${isSolo() ? ` · 👁 ${parseInt(char.eyeAwareness)||0}` : ''}<br>
+         Shadow ${(parseInt(char.shadow)||0) + (parseInt(char.scars)||0)}${isSolo() ? ` · 👁 ${parseInt(char.eyeAwareness)||0}` : ''}${_playStateTags()}<br>
          Everything you do here is written into your <strong>Chronicle</strong> automatically.
        </p>
      </div>`;

@@ -1495,9 +1495,9 @@ function bindInputs() {
         char.parry = parseInt(char.witRating) + char.parryBonus + (parseInt(char.parryBonusVirtue) || 0);
       }
       // Auto-update TN when rating changes
-      if (k === 'strRating' && char.strRating !== '') char.strTN = (char.striderMode ? 18 : 20) - parseInt(char.strRating);
-      if (k === 'hrtRating' && char.hrtRating !== '') char.hrtTN = (char.striderMode ? 18 : 20) - parseInt(char.hrtRating);
-      if (k === 'witRating' && char.witRating !== '') char.witTN = (char.striderMode ? 18 : 20) - parseInt(char.witRating);
+      if (k === 'strRating' && char.strRating !== '') char.strTN = attrTN('str', char.strRating);
+      if (k === 'hrtRating' && char.hrtRating !== '') char.hrtTN = attrTN('hrt', char.hrtRating);
+      if (k === 'witRating' && char.witRating !== '') char.witTN = attrTN('wit', char.witRating);
 
       saveCharacter();
       if (k.endsWith('Prot') || k.endsWith('Total')) renderProtectionParry();
@@ -1727,9 +1727,8 @@ async function applyBackstory(die) {
   if (!lp) return;
   if (!await confirmStyled(`Apply "${lp.name}" lifepath?\n\nThis overwrites:\n• Attributes (Str ${lp.attrs.str} / Hrt ${lp.attrs.hrt} / Wit ${lp.attrs.wit})\n• Culture Favoured (${lp.favouredSkill})\n• Distinctive Features (${lp.features.join(', ')})\n• History (backstory text added)`)) return;
 
-  char.strRating = lp.attrs.str; char.strTN = (char.striderMode ? 18 : 20) - lp.attrs.str;
-  char.hrtRating = lp.attrs.hrt; char.hrtTN = (char.striderMode ? 18 : 20) - lp.attrs.hrt;
-  char.witRating = lp.attrs.wit; char.witTN = (char.striderMode ? 18 : 20) - lp.attrs.wit;
+  char.strRating = lp.attrs.str; char.hrtRating = lp.attrs.hrt; char.witRating = lp.attrs.wit;
+  recomputeAttrTNs();
 
   const c = CULTURES[char.culture];
   if (c.endBonus) {
@@ -1794,9 +1793,9 @@ async function applyMajorEvent(die) {
       const idx = Math.max(0, Math.min(tiers.length - 1, (cur < 0 ? 2 : cur) + delta));
       char.standard = tiers[idx];
     }
-    else if (e === 'witTN+1') char.witTN = (parseInt(char.witTN) || 0) + 1;
-    else if (e === 'hrtTN+1') char.hrtTN = (parseInt(char.hrtTN) || 0) + 1;
-    else if (e === 'strTN+1') char.strTN = (parseInt(char.strTN) || 0) + 1;
+    else if (e === 'witTN+1') addTnAdjust('wit', 1);
+    else if (e === 'hrtTN+1') addTnAdjust('hrt', 1);
+    else if (e === 'strTN+1') addTnAdjust('str', 1);
     else if (e === 'attrTN-1') {
       const which = await promptStyled('Lower which Attribute TN by 1? Type "str", "hrt", or "wit":', 'str');
       if (which && ['str','hrt','wit'].includes(which.toLowerCase())) {
@@ -2659,7 +2658,7 @@ function applyVirtueEffect(v, sign) {
       // Revert previously-chosen TN
       const attr = char.prowessAttr;
       if (attr) {
-        char[attr + 'TN'] = (parseInt(char[attr + 'TN']) || 0) + 1;
+        addTnAdjust(attr, 1);
         char.prowessAttr = '';
       }
     }
@@ -2674,7 +2673,7 @@ function pickKingsOfMen(attr) {
   }
   char.kingsOfMenAttr = attr;
   char[attr + 'Rating'] = (parseInt(char[attr + 'Rating']) || 0) + 1;
-  char[attr + 'TN'] = (char.striderMode ? 18 : 20) - char[attr + 'Rating'];
+  char[attr + 'TN'] = attrTN(attr, char[attr + 'Rating']);
 
   // Re-derive End / Hope / Parry Max from new ratings
   if (char.endBonus) {
@@ -2703,7 +2702,7 @@ function pickProwess(attr) {
     return;
   }
   char.prowessAttr = attr;
-  char[attr + 'TN'] = Math.max(1, (parseInt(char[attr + 'TN']) || 0) - 1);
+  addTnAdjust(attr, -1);  // standing adjustment — survives every later TN recompute
   document.getElementById('prowess-overlay').classList.remove('show');
   saveCharacter();
   render();
@@ -2839,9 +2838,8 @@ async function applyCulture() {
   char.standard = c.standard;
   char.age = c.age;
 
-  char.strRating = attrs[0]; char.strTN = (char.striderMode ? 18 : 20) - attrs[0];
-  char.hrtRating = attrs[1]; char.hrtTN = (char.striderMode ? 18 : 20) - attrs[1];
-  char.witRating = attrs[2]; char.witTN = (char.striderMode ? 18 : 20) - attrs[2];
+  char.strRating = attrs[0]; char.hrtRating = attrs[1]; char.witRating = attrs[2];
+  recomputeAttrTNs();
 
   char.endBonus = c.endBonus;
   char.hopeBonus = c.hopeBonus;
@@ -2973,6 +2971,7 @@ const REFERENCE = {
   ],
   terms: [
     ['Endurance', 'Your stamina/health pool. Reduced by damage and Load; restored by rest. At 0 you are Dying.'],
+    ['Dying', 'Endurance has hit 0. You are not dead — you are down and out of the fight: you cannot act, cannot defend yourself, and cannot spend Hope. You stay that way until someone helps you or the fight ends. Any further damage while Dying, or a failed Protection roll, can kill you outright. Get Endurance above 0 as fast as you can: a companion\'s HEALING roll, a Short Rest once you are safe, or a Prolonged Rest. If you are also Wounded, the Wound must be treated too — being Wounded and at 0 Endurance is how heroes actually die.'],
     ['Hope', 'Spend 1 to add +1d to a roll (doubled to +2d if Inspired). Restored in the Fellowship Phase and from Fellowship points.'],
     ['Shadow / Scars', 'Corruption. Shadow + permanent Scars ≥ Hope → Miserable; reaching that point again can trigger a Bout of Madness.'],
     ['Fatigue', 'Weariness from Load and travel. When Fatigue ≥ Endurance you become Weary.'],

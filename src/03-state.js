@@ -400,6 +400,17 @@ function _pregenToChar(p) {
   c.helmRewards = (p.helmRewards || []).slice();
   c.shieldRewards = (p.shieldRewards || []).slice();
   c.prowessAttr = p.prowessAttr || '';
+  // Standing Attribute-TN adjustments (Prowess −1, Lifepath Major Event +1). Heroes saved
+  // before this existed had the Prowess −1 baked straight into the stored TN, so back-fill
+  // it from prowessAttr — the stored TN is already correct, and recomputing now reproduces it.
+  if (p.tnAdjust && typeof p.tnAdjust === 'object') {
+    c.tnAdjust = { str: parseInt(p.tnAdjust.str) || 0, hrt: parseInt(p.tnAdjust.hrt) || 0, wit: parseInt(p.tnAdjust.wit) || 0 };
+  } else {
+    c.tnAdjust = { str: 0, hrt: 0, wit: 0 };
+    if (c.prowessAttr && c.tnAdjust[c.prowessAttr] !== undefined) c.tnAdjust[c.prowessAttr] = -1;
+  }
+  // In-flight Fellowship Phase wizard state, so closing the wizard pauses rather than resets.
+  c.fpWizardState = (p.fpWizardState && typeof p.fpWizardState === 'object') ? p.fpWizardState : null;
   c.fellowshipRating = p.patron ? 1 : 0;
   return c;
 }

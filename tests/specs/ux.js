@@ -760,8 +760,19 @@ module.exports = {
       // Skill buttons FIRE the roll, so their modifiers must render above them.
       const at = (card, id) => document.getElementById(card).innerHTML.indexOf('id="' + id + '"');
       out.endeavour = at('se-active-card', 'se-roleplay-pick') < at('se-active-card', 'se-skill-grid');
-      out.council = at('council-active-card', 'c-roleplay-pick') < at('council-active-card', 'c-interaction-section')
-                 && at('council-active-card', 'c-support-btn') < at('council-active-card', 'c-interaction-section');
+      // The modifiers belong to the Interaction phase and must render INSIDE it, above the
+      // skill buttons — not outside it, where they showed three bare None/+1d/+2d buttons
+      // during the Introduction (which does not read them) and left their caption orphaned
+      // below the grid attached to an empty box.
+      const sec = document.getElementById('c-interaction-section').innerHTML;
+      out.council = sec.indexOf('id="c-roleplay-pick"') >= 0
+                 && sec.indexOf('id="c-support-btn"') >= 0
+                 && sec.indexOf('id="c-roleplay-pick"') < sec.indexOf("rollCouncilAttempt('Enhearten')")
+                 && sec.indexOf('id="c-support-btn"') < sec.indexOf("rollCouncilAttempt('Enhearten')")
+                 // and nothing may be left behind outside it
+                 && !/Roleplay bonus[^<]*<\/label>\s*<\/div>/.test(document.getElementById('council-active-card').innerHTML);
+      out.endeavourInside = document.getElementById('se-attempt-section').innerHTML
+                              .indexOf('id="se-roleplay-pick"') >= 0;
       // The journey abort must stay reachable once the setup card hides.
       document.querySelector('.tab[data-tab=journey]').click();
       document.getElementById('j-origin').value = 'A';
@@ -778,7 +789,8 @@ module.exports = {
       return out;
     });
     checks.push({ ok: seq5.endeavour, msg: 'Endeavour: roleplay bonus renders above the skill buttons that roll' });
-    checks.push({ ok: seq5.council, msg: 'Council: roleplay bonus + support render above the interaction skills' });
+    checks.push({ ok: seq5.council, msg: 'Council: roleplay bonus + support render inside the Interaction phase, above its skills' });
+    checks.push({ ok: seq5.endeavourInside, msg: 'Endeavour: roleplay bonus renders with its caption, above the skill grid' });
     checks.push({ ok: seq5.abortReachable && seq5.abortInActiveCard && seq5.setupHidden,
                   msg: 'journey abort stays reachable in the active card once setup hides' });
 
@@ -1000,11 +1012,13 @@ module.exports = {
       out.groupBanksXp = (parseInt(char.skillPts) || 0) > spGroup;
       char.striderMode = true; saveCharacter(); refreshStriderUI();
 
-      // Ending is offered only once the hero has actually travelled far enough to earn it.
+      // Deciding a story is finished is the PLAYER's call, so the control is always there.
+      // The app only adds its own opinion — "This could be an ending" — once one is earned.
       char.valour = 0; char.wisdom = 0; char.scars = 0; saveCharacter(); render();
-      out.endHiddenEarly = !/Bring your saga to a close/.test(txt());
+      out.endAlwaysOffered = /Bring your saga to a close/.test(txt());
+      out.noSignalEarly = !/This could be an ending/.test(txt());
       char.valour = 5; saveCharacter(); render();
-      out.endOfferedLate = /Bring your saga to a close/.test(txt());
+      out.signalWhenEarned = /This could be an ending/.test(txt()) && /Bring your saga to a close/.test(txt());
       await sagaEnd();
       out.ended = char.saga.ended === true && /ended/i.test(txt());
       await sagaReopen();
@@ -1021,7 +1035,8 @@ module.exports = {
     checks.push({ ok: saga.sessionCounted, msg: 'saga counts play sessions' });
     checks.push({ ok: saga.soloNoSessionXp, msg: 'solo play does NOT auto-award session XP (Strider Mode uses Milestones)' });
     checks.push({ ok: saga.groupBanksXp, msg: 'group play on the session scheme still banks session XP' });
-    checks.push({ ok: saga.endHiddenEarly && saga.endOfferedLate, msg: 'an ending is offered only once the hero has travelled far enough' });
+    checks.push({ ok: saga.endAlwaysOffered && saga.noSignalEarly, msg: 'you can always choose to end your saga; the app volunteers no signal until one is earned' });
+    checks.push({ ok: saga.signalWhenEarned, msg: 'an earned ending is flagged as such alongside the control' });
     checks.push({ ok: saga.ended && saga.reopenable, msg: 'a saga can be ended and reopened without data loss' });
     checks.push({ ok: saga.refCovers, msg: 'Reference explains starting, sustaining and ending a campaign' });
 
@@ -1159,8 +1174,7 @@ module.exports = {
 
       const op = window.promptStyled, om = window.showModal, oa = window.alertStyled, oc = window.confirmStyled;
       window.promptStyled = async (m) => /Where are you going/.test(m) ? 'the watchtower' : 'A rumour of orcs.';
-      window.showModal = async (o) => /How far/.test(o.title || '') ? 2
-                                    : (/What do you do/.test(o.title || '') ? 'Scan'
+      window.showModal = async (o) => (/What do you do/.test(o.title || '') ? 'Scan'
                                     : ((o.buttons && o.buttons[0] && o.buttons[0].value) || null));
       window.alertStyled = async () => {}; window.confirmStyled = async () => true;
 
@@ -1168,12 +1182,15 @@ module.exports = {
       out.havenNamesPremise = /orcs/i.test(document.getElementById('play-body').innerText);
       // a whole loop, driven only from this screen
       await playSetOut();
-      out.journeyStarted = char.saga.step === 'journey' && char.journey.active && char.journey.totalHexes === 2;
+      out.journeyStarted = char.saga.step === 'journey' && char.journey.active && char.journey.totalHexes > 0;
       const day0 = char.journey.daysElapsed;
       await playTravel();
       out.travelAdvances = char.journey.currentHex > 0 && char.journey.daysElapsed > day0;
-      await playTravel(); await playArrive();
+      while (char.journey.active && char.journey.currentHex < char.journey.totalHexes) await playTravel();
+      await playArrive();
       out.arrived = char.saga.step === 'location';
+      // Arriving must CLOSE the journey, or every later step thinks the outbound road is live.
+      out.arrivalClosesJourney = char.journey.active === false;
       await playAttempt();
       const feed = document.getElementById('play-body').innerText;
       out.attemptNarrates = /Search the place/.test(feed) && /(it works|it doesn)/.test(feed);
@@ -1193,6 +1210,194 @@ module.exports = {
     checks.push({ ok: play.attemptNarrates && play.noEmDashScore, msg: 'attempts roll and narrate in plain language' });
     checks.push({ ok: play.loops, msg: 'a full adventure loops back to the haven and counts' });
     checks.push({ ok: play.writesChronicle, msg: 'Play writes the session into the Chronicle automatically' });
+
+
+    /* ---- The 2026-09-12 playtest findings -------------------------------------
+       Sixteen issues a PLAYED session hit that no structural spec could see. Each check
+       below fails if its fix is reverted. Fixtures are built by driving the app, never by
+       hand-assembling state — a hand-built fixture can prove a function works while the
+       path to it stays impossible, which is exactly how these hid behind a green suite. */
+    const pt = await page.evaluate(async () => {
+      const out = {};
+      const op = window.promptStyled, om = window.showModal, oa = window.alertStyled,
+            oc = window.confirmStyled, oal = window.alert;
+      window.alertStyled = async () => {}; window.confirmStyled = async () => true;
+      window.alert = () => {};
+
+      // ---- 3: Strider Mode must not silently delete the Prowess virtue's −1 TN.
+      char = JSON.parse(JSON.stringify(DEFAULT_CHARACTER));
+      Object.assign(char, { culture: 'Bardings', witRating: 3, strRating: 5, hrtRating: 4 });
+      char.striderMode = false; recomputeAttrTNs();
+      const witBefore = char.witTN;                       // 20 − 3 = 17
+      pickProwess('wit');
+      out.prowessApplies = char.witTN === witBefore - 1;
+      await toggleStriderMode();                          // → 18 − 3 = 15, minus Prowess = 14
+      out.prowessSurvivesStriderOn = char.witTN === 15 - 1;
+      await toggleStriderMode();
+      out.prowessSurvivesStriderOff = char.witTN === witBefore - 1;
+      // Every path that re-derives a TN (rating edit, attribute set, lifepath) funnels through
+      // recomputeAttrTNs — so if the adjustment survives that, it survives all of them.
+      char.witRating = 4; recomputeAttrTNs();
+      out.prowessSurvivesRecompute = char.witTN === (20 - 4) - 1;
+      char.witRating = 3; recomputeAttrTNs();
+
+      // ---- 14: the Rangers' printed weakness — half Heart Hope in an ordinary phase.
+      char.culture = 'Rangers of the North'; char.hrtRating = 5; char.hopeMax = 20; char.hopeCur = 0;
+      openFPWizard(true); fpSetPhaseType('ordinary');
+      out.rangersHalved = fpHopeRecovery().amount === 3 && fpHopeRecovery().halved === true;
+      fpSetPhaseType('yule');
+      out.yuleExempt = fpHopeRecovery().halved === false;
+      char.culture = 'Bardings';
+      fpSetPhaseType('ordinary');
+      out.othersUnhalved = fpHopeRecovery().amount === 5 && fpHopeRecovery().halved === false;
+
+      // ---- 6: the wizard says phase state is preserved. It must be.
+      char.hopeCur = 0; char.shadow = 4;
+      fpState.step = 2; fpApplyRecovery();
+      const shadowAfterOnce = char.shadow;
+      fpClose(); openFPWizard();                          // follow the on-screen instruction
+      out.fpStateKept = fpState.phaseType === 'ordinary' && fpState.recoveryApplied === true;
+      fpApplyRecovery();                                  // a second Recovery must be refused
+      out.noDoubleRecovery = char.shadow === shadowAfterOnce;
+      fpState.step = 3; fpRenderStep();
+      out.fpStep3HasSpend = /fpSpendFromWizard/.test(document.getElementById('fp-step-3').innerHTML);
+      fpClose();
+
+      // ---- 10: Shadow Tests / Combat Tasks are roll TRIGGERS, not parts of a result.
+      document.querySelector('.tab[data-tab=dice]').click();
+      document.getElementById('roll-result').style.display = 'none';   // a freshly loaded Dice tab
+      const box = id => document.getElementById(id).getBoundingClientRect();
+      out.shadowTestsReachable = box('shadow-test-card').height > 0;
+      out.shadowTestOutsideResult = !document.getElementById('roll-result').contains(document.getElementById('shadow-test-card'));
+      out.combatTasksOutsideResult = !document.getElementById('roll-result').contains(document.getElementById('combat-tasks-card'));
+
+      // ---- 12: the Hunt-threshold hint must match HUNT_THRESHOLDS.
+      const huntHint = document.getElementById('panel-character').innerHTML;
+      out.huntHintCurrent = /Free 20/.test(huntHint) && /Dark 12/.test(huntHint) && !/Dark 14/.test(huntHint);
+
+      // ---- 4: Dying must be explained where it happens.
+      out.dyingDefined = ((hintRow('Dying') || [])[1] || '').length > 40;
+      out.dyingHinted = !!document.querySelector('[data-hint="Dying"]');
+
+      // ---- 9: "Last time" must recap the most recent events, not the first ever.
+      // Four entries, so a wrong slice direction actually shows: newest-first storage means
+      // the recap must name the first three and never the last.
+      char.timeline = [{ text: 'newest' }, { text: 'second' }, { text: 'third' }, { text: 'oldest' }];
+      let recap = '';
+      window.alertStyled = async (m) => { recap = m; };
+      char.saga = Object.assign(sagaState(), { started: true, premise: 'p' });
+      await sagaStartSession();
+      out.recapNewestFirst = /newest/.test(recap) && /second/.test(recap) && !/oldest/.test(recap);
+      window.alertStyled = async () => {};
+
+      // ---- 7: pending Clash successes must survive a re-render.
+      char.moriaMode = true; char.band = char.band || {};
+      char.battle = Object.assign({}, char.battle, { active: true, round: 1, foeResistance: 5,
+        foeMight: 1, advantages: [], complications: [], objectiveResMax: 0, objectiveRes: 0,
+        archfoe: 'none', log: [], _pendingSpend: 2 });
+      saveCharacter(); renderBattle();
+      out.clashSpendSurvives = document.getElementById('b-spend').innerHTML.indexOf('clashSpend(') >= 0;
+      char.battle.active = false; char.moriaMode = false;
+
+      window.promptStyled = op; window.showModal = om; window.alertStyled = oa;
+      window.confirmStyled = oc; window.alert = oal;
+      return out;
+    });
+    checks.push({ ok: pt.prowessApplies && pt.prowessSurvivesStriderOn && pt.prowessSurvivesStriderOff && pt.prowessSurvivesRecompute,
+                  msg: 'Prowess −1 TN survives a Strider toggle and an attribute re-pick' });
+    checks.push({ ok: pt.rangersHalved && pt.yuleExempt && pt.othersUnhalved,
+                  msg: 'Rangers recover half Heart Hope in an ordinary Fellowship Phase, full at Yule' });
+    checks.push({ ok: pt.fpStateKept, msg: 'closing the FP wizard pauses the phase instead of resetting it' });
+    checks.push({ ok: pt.noDoubleRecovery, msg: 'Spiritual Recovery cannot be applied twice in one phase' });
+    checks.push({ ok: pt.fpStep3HasSpend, msg: 'FP step 3 can spend XP without leaving the wizard' });
+    checks.push({ ok: pt.shadowTestsReachable && pt.shadowTestOutsideResult && pt.combatTasksOutsideResult,
+                  msg: 'Shadow Tests and Combat Tasks are reachable on a Dice tab with no roll yet' });
+    checks.push({ ok: pt.huntHintCurrent, msg: 'the Hunt-threshold hint lists all five regions with current numbers' });
+    checks.push({ ok: pt.dyingDefined && pt.dyingHinted, msg: 'Dying is defined in the glossary and hinted where it shows' });
+    checks.push({ ok: pt.recapNewestFirst, msg: '"Last time" recaps the most recent events, not the oldest' });
+    checks.push({ ok: pt.clashSpendSurvives, msg: 'pending Clash successes stay spendable after a re-render' });
+
+    // ---- 1, 2, 11, 13, 5, 16: routes between surfaces that both already worked.
+    const pt2 = await page.evaluate(async () => {
+      const out = {};
+      const op = window.promptStyled, om = window.showModal, oa = window.alertStyled,
+            oc = window.confirmStyled, oal = window.alert;
+      window.alertStyled = async () => {}; window.confirmStyled = async () => true; window.alert = () => {};
+
+      char = JSON.parse(JSON.stringify(DEFAULT_CHARACTER));
+      Object.assign(char, { culture: 'Bardings', calling: 'Warden', strRating: 5, strTN: 15,
+        hrtRating: 4, hrtTN: 16, witRating: 3, witTN: 17, endMax: 25, endCur: 25, hopeMax: 12,
+        hopeCur: 12, name: 'B', safeHaven: 'Lake-town', skills: { Travel: { rating: 2 }, Awareness: { rating: 2 } } });
+      char.striderMode = true; saveCharacter(); refreshStriderUI();
+      char.saga = Object.assign(sagaState(), { started: true, premise: 'p', step: 'journey' });
+
+      // 1 — a journey finished on the JOURNEY tab must not strand the Play tab.
+      document.querySelector('.tab[data-tab=journey]').click();
+      document.getElementById('j-origin').value = 'Lake-town';
+      document.getElementById('j-destination').value = 'the watchtower';
+      document.getElementById('j-totalHexes').value = '4';
+      startJourney();
+      char.journey.currentHex = char.journey.totalHexes;
+      await arriveAtDestination();                       // clears journey.active
+      renderPlay();
+      // Assert the CONTROL, not the prose. An earlier version of this check matched the
+      // situation text, which mentions the button — so it passed with the button removed.
+      out.playRecoversAfterJourneyTab =
+        !!document.querySelector('#play-body button[onclick="playArrive()"]');
+
+      // 11 — "the road home" must have a working action, not one that always refuses.
+      char.saga.step = 'home'; renderPlay();
+      const homeText = document.getElementById('play-body').innerText;
+      out.homeOffersSetOut = /Set out for home/.test(homeText);
+      window.showModal = async (o) => ((o.buttons && o.buttons[0] && o.buttons[0].value) || null);
+      await playSetOutHome();
+      out.homeJourneyRuns = char.journey.active === true && char.journey.destination === 'Lake-town';
+
+      // 5 — Play and Journey must move a journey by the same rule.
+      const hexBefore = char.journey.currentHex;
+      await playTravel();
+      const moved = char.journey.currentHex - hexBefore;
+      out.sameUnits = moved >= 1 && moved <= 6;          // 3 + icons on a success, 1–2 on a failure
+      out.travelLogged = (char.journey.events || []).some(e => /Marching Test/.test(e.text));
+
+      // 2 — a journey event that names a skill must bring its own roll.
+      char.journey.nextEventHex = char.journey.currentHex;
+      resolveJourneyEvent();
+      const armed = !!(char.journey.pendingEventRoll && char.journey.pendingEventRoll.skill);
+      out.eventArmsRoll = armed;
+      if (armed) {
+        renderJourney();
+        out.eventRollControl = /rollJourneyEvent\(\)/.test(document.getElementById('j-event-roll-row').innerHTML);
+        const n = (char.journey.events || []).length;
+        await rollJourneyEvent();
+        out.eventRollResolves = (char.journey.events || []).length > n && !char.journey.pendingEventRoll;
+      }
+
+      // 13 — the Moria dialog promises Balin; enabling must deliver him, reversibly.
+      char.patron = 'Gilraen'; char.safeHaven = 'Bree'; char.huntRegion = 'wild'; saveCharacter();
+      await toggleMoriaMode();
+      out.moriaGivesBalin = char.patron === 'Balin' && /First Hall/.test(char.safeHaven) && char.huntRegion === 'dark';
+      await toggleMoriaMode();
+      out.moriaRestores = char.patron === 'Gilraen' && char.safeHaven === 'Bree' && char.huntRegion === 'wild';
+
+      // 16 — a Band of six must not contain the same dwarf twice.
+      char.moriaMode = true; char.band = { readiness: 2, dispositions: {}, allies: [] };
+      addStartingBand();
+      const names = char.band.allies.map(a => a.name);
+      out.alliesUnique = new Set(names).size === names.length && names.length === 6;
+      char.moriaMode = false;
+
+      window.promptStyled = op; window.showModal = om; window.alertStyled = oa;
+      window.confirmStyled = oc; window.alert = oal;
+      return out;
+    });
+    checks.push({ ok: pt2.playRecoversAfterJourneyTab, msg: 'Play offers "We have arrived" after a journey finished on the Journey tab' });
+    checks.push({ ok: pt2.homeOffersSetOut && pt2.homeJourneyRuns, msg: 'the road home can actually be travelled' });
+    checks.push({ ok: pt2.sameUnits && pt2.travelLogged, msg: 'Play and Journey advance a journey by the same rule' });
+    checks.push({ ok: pt2.eventArmsRoll && pt2.eventRollControl && pt2.eventRollResolves,
+                  msg: 'a journey event that names a skill supplies the roll and applies its effect' });
+    checks.push({ ok: pt2.moriaGivesBalin && pt2.moriaRestores, msg: 'Moria mode grants the Balin/haven it promises, and restores on the way out' });
+    checks.push({ ok: pt2.alliesUnique, msg: 'a starting Band of six has six different allies' });
 
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length})` });
     await context.close();

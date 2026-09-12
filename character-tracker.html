@@ -506,7 +506,7 @@
         <div class="hint" style="margin:0;font-size:10px">auto</div>
       </div>
       <div class="counter">
-        <div class="counter-label">Current <span id="weary-pill" style="display:none;background:var(--btn-warn-bg);color:white;padding:1px 6px;border-radius:8px;font-size:9px;margin-left:4px;animation:pulse 1.4s infinite">WEARY</span><span id="dying-badge" style="display:none;background:var(--btn-alert-bg);color:white;padding:1px 6px;border-radius:8px;font-size:9px;margin-left:4px;animation:pulse 1.2s infinite">DYING</span></div>
+        <div class="counter-label">Current <span id="weary-pill" style="display:none;background:var(--btn-warn-bg);color:white;padding:1px 6px;border-radius:8px;font-size:9px;margin-left:4px;animation:pulse 1.4s infinite">WEARY</span><span id="dying-badge" data-hint="Dying" style="display:none;background:var(--btn-alert-bg);color:white;padding:1px 6px;border-radius:8px;font-size:9px;margin-left:4px;animation:pulse 1.2s infinite">DYING</span></div>
         <div class="counter-value" id="end-cur-v" role="status" aria-live="polite" aria-label="Current Endurance">0</div>
         <div class="counter-buttons">
           <button onclick="adj('endCur',-1)">−</button>
@@ -624,7 +624,7 @@
       <div class="counter">
         <div class="counter-label">Hunt Threshold</div>
         <div class="counter-value" id="eye-threshold-v">16</div>
-        <div class="hint" style="margin:0;font-size:10px">Border 18 / Wild 16 / Dark 14</div>
+        <div class="hint" style="margin:0;font-size:10px">Free 20 / Border 18 / Wild 16 / Shadow 14 / Dark 12</div>
       </div>
     </div>
     <div style="margin-top:8px">
@@ -1007,9 +1007,11 @@
       </div>
       <div class="field" style="margin:0">
         <label style="flex:0 0 60px">Region</label>
-        <select id="j-region" title="Border = Favoured event Feat die · Wild = normal · Dark = Ill-favoured">
+        <select id="j-region" title="Free/Border = Favoured event Feat die · Wild = normal · Shadow/Dark = Ill-favoured">
+          <option value="Free">Free Land</option>
           <option value="Border">Border Land</option>
           <option value="Wild" selected>Wild Land</option>
+          <option value="Shadow">Shadow Land</option>
           <option value="Dark">Dark Land</option>
         </select>
       </div>
@@ -1066,6 +1068,9 @@
       <button class="add-row-btn" onclick="rollMarchingTest()" style="background:var(--red)">🚶 Marching Test (Guide TRAVEL)</button>
       <button class="add-row-btn" onclick="resolveJourneyEvent()" id="j-resolve-event-btn" style="background:var(--btn-secondary-bg)" disabled>🎲 Resolve Event Now</button>
     </div>
+    <!-- An event that names a skill now brings its own roll with it. Previously the log said
+         "▶ Roll Awareness." and the whole card contained no control to do it with. -->
+    <div id="j-event-roll-row" style="display:none;margin-top:8px;padding:8px;background:var(--gold-soft);border:1px solid var(--gold);border-radius:6px"></div>
     <div id="j-peril-row" style="display:none;margin-top:8px;padding:8px;background:var(--btn-alert-bg);border-radius:6px;color:white">
       <div style="display:flex;align-items:center;gap:8px">
         <span style="flex:1;font-size:13px;font-weight:600">⚠️ Perilous Location: <span id="j-peril-remaining">0</span> peril event(s) remaining</span>
@@ -1152,18 +1157,22 @@
     </div>
 
     <!-- Interaction phase -->
-    <div class="seg-btns" id="c-roleplay-pick" style="margin-top:4px">
+      <div id="c-interaction-section" style="display:none;margin-bottom:14px">
+      <h4 style="margin:0 0 6px;color:var(--red-dark);font-size:13px">Step 2: Interaction</h4>
+      <p class="hint" style="text-align:left;margin-bottom:8px">Each roll counts +1 toward Resistance on success; each ✦ icon adds 1 more. Audience attitude applied automatically.</p>
+      <!-- Set your modifiers BEFORE the skill buttons: each one fires the roll immediately. -->
+      <div style="padding:8px;background:var(--bg-deep);border-radius:6px;font-size:12px;margin-bottom:8px">
+        <label style="font-size:11px;color:var(--red-dark);text-transform:uppercase;letter-spacing:0.5px;font-weight:600" data-hint="Roleplay bonus">Roleplay bonus — applies to your next roll</label>
+        <div class="seg-btns" id="c-roleplay-pick" style="margin-top:4px">
           <button class="seg-btn active" data-val="0">None</button>
           <button class="seg-btn" data-val="1">Relevant +1d</button>
           <button class="seg-btn" data-val="2">Brilliant +2d</button>
         </div>
-      <div style="margin-top:8px;display:flex;align-items:center;gap:8px">
-        <button class="add-row-btn" id="c-support-btn" onclick="toggleCouncilSupport()" style="flex:1;background:var(--btn-secondary-bg)">🤝 Companion Support (+1d next roll)</button>
+        <div style="margin-top:8px;display:flex;align-items:center;gap:8px">
+          <button class="add-row-btn" id="c-support-btn" onclick="toggleCouncilSupport()" style="flex:1;background:var(--btn-secondary-bg)" data-solo-text="🤝 Support (+1d next roll)">🤝 Companion Support (+1d next roll)</button>
+        </div>
+        <p class="hint" id="c-support-hint" style="text-align:left;margin-top:4px;display:none"></p>
       </div>
-      <p class="hint" id="c-support-hint" style="text-align:left;margin-top:4px;display:none"></p>
-      <div id="c-interaction-section" style="display:none;margin-bottom:14px">
-      <h4 style="margin:0 0 6px;color:var(--red-dark);font-size:13px">Step 2: Interaction</h4>
-      <p class="hint" style="text-align:left;margin-bottom:8px">Each roll counts +1 toward Resistance on success; each ✦ icon adds 1 more. Audience attitude applied automatically.</p>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px">
         <button class="quick-skill" onclick="rollCouncilAttempt('Enhearten')" style="text-align:center;padding:8px 4px">
           <strong>📣 ENHEARTEN</strong><br><span style="font-size:10px;color:var(--text-muted)">Crowds &amp; downcast leaders</span>
@@ -1181,12 +1190,6 @@
           <strong>🎵 SONG</strong><br><span style="font-size:10px;color:var(--text-muted)">Good tune as diplomatic device</span>
         </button>
       </div>
-      <div style="padding:8px;background:var(--bg-deep);border-radius:6px;font-size:12px">
-        <label style="font-size:11px;color:var(--red-dark);text-transform:uppercase;letter-spacing:0.5px;font-weight:600">Roleplay bonus (LM's call)</label>
-        
-      </div>
-      
-      
     </div>
 
     <!-- End-of-council -->
@@ -1262,16 +1265,16 @@
     <div id="se-attempt-section" style="margin-bottom:14px">
       <h4 style="margin:0 0 6px;color:var(--red-dark);font-size:13px">Make Attempt</h4>
       <p class="hint" style="text-align:left;margin-bottom:8px">Pick any skill that applies. Each success contributes 1 + icons toward Resistance.</p>
-      <div class="seg-btns" id="se-roleplay-pick" style="margin-top:4px">
+      <!-- Modifiers first: the skill grid below fires the roll the moment you tap it. -->
+      <div style="padding:8px;background:var(--bg-deep);border-radius:6px;font-size:12px;margin-bottom:8px">
+        <label style="font-size:11px;color:var(--red-dark);text-transform:uppercase;letter-spacing:0.5px;font-weight:600" data-hint="Roleplay bonus">Roleplay bonus — applies to your next roll</label>
+        <div class="seg-btns" id="se-roleplay-pick" style="margin-top:4px">
           <button class="seg-btn active" data-val="0">None</button>
           <button class="seg-btn" data-val="1">+1d</button>
           <button class="seg-btn" data-val="2">+2d</button>
         </div>
-      <div id="se-skill-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;font-size:11px"></div>
-      <div style="padding:8px;background:var(--bg-deep);border-radius:6px;font-size:12px;margin-top:10px">
-        <label style="font-size:11px;color:var(--red-dark);text-transform:uppercase;letter-spacing:0.5px;font-weight:600">Roleplay bonus (LM's call)</label>
-        
       </div>
+      <div id="se-skill-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;font-size:11px"></div>
     </div>
 
     <div id="se-end-section" style="display:none">
@@ -1436,6 +1439,12 @@
       <div class="result-summary" id="result-summary"></div>
       <div id="pierce-action" style="margin-top:8px;text-align:center"></div>
 
+      <div id="strider-special-success" style="display:none;margin-top:8px;padding:8px;background:var(--gold-soft);border:1px solid var(--gold);border-radius:6px">
+        <div style="font-size:11px;color:var(--red-dark);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">🗡️ Special Success — spend ✦ icons (Strider Mode)</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:11px"></div>
+      </div>
+    </div>
+
     <div id="combat-tasks-card" style="margin-top:12px;display:none;padding:10px;background:var(--bg-deep);border:1px solid var(--border);border-radius:6px">
       <label style="font-size:12px;color:var(--red-dark);text-transform:uppercase;letter-spacing:0.5px;font-weight:600">Combat Tasks <span style="font-size:10px;color:var(--text-faint);text-transform:none;letter-spacing:0;font-weight:400">— main action, gated by stance</span></label>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px" id="combat-tasks-grid">
@@ -1485,12 +1494,6 @@
         </button>
       </div>
       <p class="hint" style="margin:6px 0 0 0;text-align:left;font-size:11px;line-height:1.4">Success: reduce incoming Shadow gain by <strong>1 + 1 per ✦ icon</strong>. Then adjust Shadow with the − button on Character tab. Misdeeds cannot be tested.</p>
-    </div>
-
-      <div id="strider-special-success" style="display:none;margin-top:8px;padding:8px;background:var(--gold-soft);border:1px solid var(--gold);border-radius:6px">
-        <div style="font-size:11px;color:var(--red-dark);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">🗡️ Special Success — spend ✦ icons (Strider Mode)</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:11px"></div>
-      </div>
     </div>
   </div>
 
@@ -2263,7 +2266,7 @@
         <div style="font-size:12px;color:var(--red-dark);font-weight:600;margin-bottom:4px">Current Pools</div>
         <div id="fp-xp-summary" style="font-size:13px"></div>
       </div>
-      <p class="hint" style="text-align:left;color:var(--text-muted)">Close this wizard temporarily to spend XP, then re-open to continue with Undertakings. (Phase state is preserved.)</p>
+      <p class="hint" style="text-align:left;color:var(--text-muted)">Spend from right here — the wizard stays open underneath. If you do close it, your phase type, Recovery and undertakings are kept, and re-opening puts you back on this step.</p>
     </div>
 
     <!-- Step 4: Undertakings -->
