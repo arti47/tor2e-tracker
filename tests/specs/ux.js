@@ -1415,6 +1415,210 @@ module.exports = {
     checks.push({ ok: pt2.moriaGivesBalin && pt2.moriaRestores, msg: 'Moria mode grants the Balin/haven it promises, and restores on the way out' });
     checks.push({ ok: pt2.alliesUnique, msg: 'a starting Band of six has six different allies' });
 
+    // ---- RUN-2 playtest findings. GOTCHA 20: assert the OUTCOME a player sees — is the control
+    // hit-testable, did the number on screen change, can the flow run twice — not the mechanism.
+    const pt3 = await page.evaluate(async () => {
+      const out = {};
+      const op = window.promptStyled, om = window.showModal, oa = window.alertStyled,
+            oc = window.confirmStyled, oal = window.alert;
+      window.alertStyled = async () => {}; window.confirmStyled = async () => true; window.alert = () => {};
+
+      const freshHero = () => {
+        char = JSON.parse(JSON.stringify(DEFAULT_CHARACTER));
+        Object.assign(char, { culture: 'Bardings', calling: 'Warden', strRating: 5, strTN: 15,
+          hrtRating: 4, hrtTN: 16, witRating: 3, witTN: 17, endMax: 25, endCur: 25, parry: 3,
+          hopeMax: 10, hopeCur: 10, name: 'B', safeHaven: 'Lake-town',
+          skills: { Travel: { rating: 2 }, Awareness: { rating: 2 } },
+          profs: { Swords: 3, Bows: 2, Axes: 0, Spears: 0 } });
+        saveCharacter();
+      };
+
+      // 9 — a Bout of Madness you lost must stay claimable, and Harden Will must not be a
+      // dead button at exactly the threshold where it is the way out.
+      freshHero();
+      // Lose the prompt the way a player does: it fires on a timer, and the app is closed or
+      // tapped away before it is answered. Nothing here sets boutDue by hand.
+      char.shadow = 10; char.scars = 0; char._boutPrompted = false; char.boutDue = false;
+      char.shadowPath = 'Path of Despair'; char.flaws = '';
+      saveCharacter();
+      window.promptStyled = () => new Promise(() => {});    // never answered
+      await checkAutoTriggers();
+      await new Promise(r => setTimeout(r, 250));           // let the bout's own timer fire
+      render();
+      const boutHost = document.getElementById('bout-due');
+      out.boutClaimVisible = !!boutHost && boutHost.style.display !== 'none'
+        && !!boutHost.querySelector('button[onclick="triggerBoutNow()"]');
+      const hw = document.getElementById('harden-will-btn');
+      out.hardenWillClickable = !!hw && hw.disabled === false;   // hit-testable, so its guard can speak
+      // …and it clears once the Shadow is gone, rather than nagging forever.
+      char.shadow = 0; saveCharacter(); await checkAutoTriggers(); render();
+      out.boutClaimClears = !char.boutDue && document.getElementById('bout-due').style.display === 'none';
+
+      // 10 — a melee weapon must not actually attack from Rearward. Assert the foe's Endurance.
+      freshHero();
+      char.weapons = [{ name: 'Long Sword', dmg: 5, inj: 16, load: 3, prof: 'Swords' }];
+      char.stance = 'rearward';
+      char.encounter = JSON.parse(JSON.stringify(DEFAULT_CHARACTER.encounter));
+      char.encounter.active = true;
+      char.encounter.foes = [{ id: 'f1', name: 'Orc', endMax: 20, endCur: 20, parry: 3, armour: 1,
+        might: 0, hateMax: 2, hateCur: 2, atkTN: 14, attacks: [{ name: 'sword', dice: 2, dmg: 4, inj: 14 }],
+        fell: '', engaged: true, wounded: false, slain: false }];
+      saveCharacter();
+      window.confirmStyled = async () => false;           // decline the offered stance change
+      // Force every roll that DOES happen to land, so "the foe took no damage" can only mean
+      // "no attack was made" — not "the dice missed".
+      const realInline0 = window._doInlineRoll;
+      window._doInlineRoll = () => ({ total: 99, outcome: 'SUCCESS', icons: 0, featValue: 5, featSpecial: null, isAutoSuccess: false });
+      await heroAttackFoe('f1');
+      out.rearwardMeleeBlocked = char.encounter.foes[0].endCur === 20;
+      window.confirmStyled = async () => true;
+      // and a ranged weapon from the same stance still works
+      char.weapons = [{ name: 'Bow', dmg: 4, inj: 14, load: 1, prof: 'Bows' }];
+      saveCharacter();
+      await heroAttackFoe('f1');
+      out.rearwardRangedAllowed = char.encounter.foes[0].endCur < 20;
+      window._doInlineRoll = realInline0;
+
+      // 11 — the escape roll must be made against the foe's Parry, like every other attack,
+      // not five points easier on another tab.
+      freshHero();
+      char.weapons = [{ name: 'Long Sword', dmg: 5, inj: 16, load: 3, prof: 'Swords' }];
+      char.encounter = JSON.parse(JSON.stringify(DEFAULT_CHARACTER.encounter));
+      char.encounter.active = true;
+      char.encounter.foes = [{ id: 'f1', name: 'Orc', endMax: 20, endCur: 20, parry: 5, armour: 1,
+        might: 0, hateMax: 2, hateCur: 2, atkTN: 14, attacks: [{ name: 'sword', dice: 2, dmg: 4, inj: 14 }],
+        fell: '', engaged: true, wounded: false, slain: false }];
+      saveCharacter();
+      const realInline = window._doInlineRoll; let seenTn = null;
+      window._doInlineRoll = (d, f, tn) => { seenTn = tn; return realInline(d, f, tn); };
+      window.showModal = async () => 'defensive';
+      await flyYouFools();
+      window._doInlineRoll = realInline;
+      out.escapeUsesFoeParry = seenTn === (parseInt(char.strTN) || 0) + 5;
+      out.escapeSetsDefensive = char.stance === 'defensive';
+
+      // 12 — what Play writes into the Chronicle must read as prose, not markup leftovers.
+      const plain = _playPlainText('You reach the <strong>steading&#39;s</strong> gate.<br>It is shut.');
+      out.chronicleProse = plain === "You reach the steading's gate. It is shut."
+        && plain.indexOf('&#') === -1;
+
+      // 13 — a rank-up bought through Spend XP must appear in the Campaign Timeline.
+      freshHero();
+      char.advPts = 40; char.valour = 1; char.timeline = [];
+      saveCharacter();
+      openSpendXP('adv'); renderSpendXP();
+      const valourRow = Array.from(document.querySelectorAll('#spend-xp-list > div'))
+        .find(d => /Valour/.test(d.textContent) && d.querySelector('button'));
+      const valourBtn = valourRow && valourRow.querySelector('button');
+      out.valourRowFound = !!valourBtn && !valourBtn.disabled;
+      if (valourBtn && !valourBtn.disabled) valourBtn.click();
+      out.rankUpLogged = (char.timeline || []).some(t => /Valour raised to 2/.test(t.text || ''));
+      if (typeof closeSpendXP === 'function') closeSpendXP();
+      document.querySelectorAll('.menu-overlay.show').forEach(o => o.classList.remove('show'));
+
+      // 16 — Moria's Brief phase must halve a Ranger's Hope like the core wizard does.
+      freshHero();
+      char.culture = 'Rangers of the North'; char.hrtRating = 6; char.hopeMax = 14; char.hopeCur = 2;
+      char.moriaMode = true; char.band = { readiness: 2, dispositions: {}, allies: [] };
+      char.shadow = 0; saveCharacter();
+      await moriaFP('brief');
+      out.moriaRangersHalved = char.hopeCur === 5;          // 2 + ceil(6/2)
+      char.moriaMode = false; saveCharacter();
+
+      // minor — the PE card must state the budget the app will actually give you.
+      freshHero();
+      char.striderMode = true; char.skillsBaseline = { Travel: 1 }; saveCharacter();
+      renderPECard();
+      out.peCardSaysSoloBudget = document.querySelector('#pe-card .pe-budget-n').textContent === String(getPEBudget())
+        && getPEBudget() === 15;
+      char.striderMode = false; saveCharacter();
+
+      // minor — the Play tab must be able to ask an unlikely question.
+      let bands = [];
+      window.promptStyled = async () => 'Is the gate unguarded?';
+      window.showModal = async (o) => { bands = (o.buttons || []).map(b => b.value); return 'doubtful'; };
+      await playAsk();
+      out.askOffersOdds = bands.indexOf('doubtful') >= 0 && bands.indexOf('certain') >= 0
+        && bands.length >= 4;
+
+      // minor — the Play vitals must show a condition the rules have imposed.
+      freshHero();
+      char.endCur = 3; char.load = 10; char.fatigue = 0; char.weary = false; saveCharacter();
+      out.playShowsAutoWeary = /WEARY/.test(_playStateTags());
+
+      // minor — days must pass on the road, not only in bed.
+      freshHero();
+      char.dayCount = 1; char.wounded = true; char.injuryDays = 9; char.firstAidUsed = true;
+      char.journey = { active: true, origin: 'a', destination: 'b', totalHexes: 9, hardTerrainHexes: 0,
+        currentHex: 0, season: 'Spring', region: 'wild', forcedMarch: false, mounted: false,
+        roles: {}, travelFatigue: 0, daysElapsed: 0, events: [], nextEventHex: null };
+      saveCharacter();
+      applyMarchingTestResult(true, 1, '', true);
+      out.roadAdvancesTheCalendar = (parseInt(char.dayCount) || 1) > 1
+        && (parseInt(char.injuryDays) || 0) < 9 && char.firstAidUsed === false;
+      char.journey = { active: false }; char.wounded = false; saveCharacter();
+
+      // minor — the share link must carry the hero, not the play record.
+      freshHero();
+      char.timeline = new Array(40).fill(0).map((_, i) => ({ ts: i, type: 'x', text: 'entry ' + i }));
+      char.journey = { active: true, origin: 'a', destination: 'b', totalHexes: 9, currentHex: 3,
+        events: new Array(40).fill(0).map((_, i) => ({ day: i, hex: i, text: 'event ' + i })) };
+      saveCharacter();
+      const d = characterDelta(char);
+      out.shareDropsPlayLog = d.timeline === undefined && (d.journey.events || []).length === 0
+        && d.name === 'B' && d.culture === 'Bardings';
+      out.shareLinkShort = encodeShare(d).length < 1200;
+      char.journey = { active: false }; char.timeline = []; saveCharacter();
+
+      // 16b — the Moria Revelation must offer the Eye reset in the dialog, as Strider's does,
+      // rather than telling the player to go and find a button.
+      freshHero();
+      char.moriaMode = true; char.eyeAwareness = 12; saveCharacter();
+      let revButtons = [];
+      window.showModal = async (o) => { revButtons = (o.buttons || []).map(b => b.label); return 'reset'; };
+      await rollMoriaRevelation('dire');
+      out.moriaRevelationResets = revButtons.some(l => /reset the Eye/i.test(l))
+        && (parseInt(char.eyeAwareness) || 0) < 12;
+      char.moriaMode = false; saveCharacter();
+
+      // minor — the Play loop must open a Chronicle scene at a break, not pile a campaign
+      // into one undifferentiated scene.
+      freshHero();
+      char.striderMode = true; saveCharacter(); refreshStriderUI();
+      const scenesBefore = (journal.scenes || []).length;
+      window.promptStyled = async () => 'the ruined watchtower';
+      window.showModal = async () => 4;
+      await playSetOut();
+      out.playOpensScene = (journal.scenes || []).length > scenesBefore
+        && /watchtower/i.test((journalActiveScene() || {}).title || '');
+      char.journey = { active: false }; char.striderMode = false; saveCharacter(); refreshStriderUI();
+
+      // minor — a name that ends in a quote takes a bare apostrophe.
+      out.possessiveHandlesQuote = possessive("Duinhir 'Eaglenose'") === "Duinhir 'Eaglenose'\u2019"
+        && possessive('Beran') === 'Beran\u2019s';
+
+      window.promptStyled = op; window.showModal = om; window.alertStyled = oa;
+      window.confirmStyled = oc; window.alert = oal;
+      return out;
+    });
+    checks.push({ ok: pt3.boutClaimVisible && pt3.hardenWillClickable && pt3.boutClaimClears,
+                  msg: `an unanswered Bout of Madness stays claimable, and Harden Will can still be pressed (visible=${pt3.boutClaimVisible} clickable=${pt3.hardenWillClickable} clears=${pt3.boutClaimClears})` });
+    checks.push({ ok: pt3.rearwardMeleeBlocked && pt3.rearwardRangedAllowed,
+                  msg: 'a melee weapon cannot attack from Rearward, a ranged one still can' });
+    checks.push({ ok: pt3.escapeUsesFoeParry && pt3.escapeSetsDefensive,
+                  msg: '"Fly, You Fools!" rolls the escape against the foe\'s Parry, in place' });
+    checks.push({ ok: pt3.chronicleProse, msg: 'the Play tab writes plain prose into the Chronicle' });
+    checks.push({ ok: pt3.valourRowFound && pt3.rankUpLogged, msg: 'a rank-up bought with Spend XP reaches the Campaign Timeline' });
+    checks.push({ ok: pt3.moriaRangersHalved, msg: 'a Moria Fellowship Phase halves a Ranger\'s Hope recovery' });
+    checks.push({ ok: pt3.peCardSaysSoloBudget, msg: 'the Previous Experience card states the budget solo play grants' });
+    checks.push({ ok: pt3.askOffersOdds, msg: 'the Play tab can set the Telling Table odds, not only Middling' });
+    checks.push({ ok: pt3.playShowsAutoWeary, msg: 'the Play vitals show an auto-applied condition' });
+    checks.push({ ok: pt3.roadAdvancesTheCalendar, msg: 'days spent travelling advance the day count and injury days' });
+    checks.push({ ok: pt3.shareDropsPlayLog && pt3.shareLinkShort, msg: 'a share link carries the hero without the play log' });
+    checks.push({ ok: pt3.possessiveHandlesQuote, msg: 'a possessive on a name ending in a quote reads correctly' });
+    checks.push({ ok: pt3.moriaRevelationResets, msg: 'the Moria Revelation offers the Eye reset in the dialog' });
+    checks.push({ ok: pt3.playOpensScene, msg: 'the Play loop opens a new Chronicle scene at a break' });
+
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length})` });
     await context.close();
     return { checks };
