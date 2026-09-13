@@ -61,6 +61,7 @@ function render() {
   if (typeof renderAdventureLoop === 'function') renderAdventureLoop();   // which subsystem fires, and when
   if (typeof renderPlay === 'function') renderPlay();                     // Play mode: the app runs the session
   if (typeof renderBuildChecklist === 'function') renderBuildChecklist();  // live creation progress
+  if (typeof renderOwedPicks === 'function') renderOwedPicks();           // unclaimed Reward/Virtue from a rank-up
   if (typeof refreshXpMode === 'function') refreshXpMode();     // one XP scheme live at a time
   if (typeof refreshFpEntry === 'function') refreshFpEntry();   // Moria FP vs the core wizard
   renderOracleHistory();
@@ -389,7 +390,12 @@ function openFPWizard(forceNew) {
   fpRenderStep();
 }
 
-/** Persist the in-flight phase so closing the wizard is a pause, not a reset. */
+/** Persist the in-flight phase so closing the wizard is a pause, not a reset.
+    Does nothing once the phase has been COMPLETED — `fpComplete()` clears both `fpState` and
+    `char.fpWizardState`, and it finishes by calling `fpClose()`. Without this guard that close
+    wrote the just-finished phase straight back with `recoveryApplied: true`, so the NEXT
+    Fellowship Phase opened mid-flight and refused Spiritual Recovery forever. A hero could take
+    exactly one phase in their whole life. */
 function fpPersist() {
   if (!fpState) return;
   char.fpWizardState = Object.assign({}, fpState, { inProgress: true });
@@ -525,7 +531,7 @@ function fpApplyRecovery() {
   const curHope = parseInt(char.hopeCur) || 0;
   const maxHope = parseInt(char.hopeMax) || 0;
   if (char.fpWizardState && char.fpWizardState.recoveryApplied) {
-    alertStyled('Spiritual Recovery has already been applied in this Fellowship Phase. Hope and Shadow only move once per phase.', '✅ Already applied');
+    alertStyled('Spiritual Recovery has already been applied in this Fellowship Phase — Hope and Shadow only move once per phase.<br><br>Finish this phase with <strong>Complete Phase</strong> on step 4; the next Fellowship Phase starts fresh.', '✅ Already applied');
     return;
   }
   const hr = fpHopeRecovery();
@@ -697,7 +703,6 @@ function refreshFPSummary() {
 }
 
 async function fpComplete() {
-  char.fpWizardState = null;  // the phase is over — the next opening starts clean
   // Reset the Adventuring-Phase session counter that drives the saga card's pacing prompt
   // ("two or three sessions, then a Fellowship Phase" — Core Rules).
   try { const sg = sagaState(); sg.lastFpSession = parseInt(sg.sessions) || 0; } catch (e) {}
@@ -806,6 +811,11 @@ async function fpComplete() {
   saveCharacter();
   render();
   if (typeof journalAuto === 'function') journalAuto('advancement', 'milestone', `${fpState.phaseType === 'yule' ? 'Yule ' : ''}Fellowship Phase completed (#${char.phasesCompleted}).`);
+  // The phase is OVER. Drop the in-flight state before closing, and drop `fpState` too so the
+  // `fpClose()` below cannot resurrect it — the next opening must start from a clean step 1.
+  fpState = null;
+  char.fpWizardState = null;
+  saveCharacter();
   fpClose();
   if (log.length > 0) alert('Fellowship Phase complete!\n\n' + log.map(l => l.replace(/✅|⚠️|📝/g, '')).join('\n'));
 }

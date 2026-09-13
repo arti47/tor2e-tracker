@@ -411,6 +411,9 @@ function _pregenToChar(p) {
   }
   // In-flight Fellowship Phase wizard state, so closing the wizard pauses rather than resets.
   c.fpWizardState = (p.fpWizardState && typeof p.fpWizardState === 'object') ? p.fpWizardState : null;
+  // Rewards/Virtues earned by a rank-up but not yet chosen (both pickers offer "Skip for now").
+  c.pendingRewards = parseInt(p.pendingRewards) || 0;
+  c.pendingVirtues = parseInt(p.pendingVirtues) || 0;
   c.fellowshipRating = p.patron ? 1 : 0;
   return c;
 }

@@ -551,6 +551,13 @@
   .menu-overlay.show { display: flex; }
   /* The styled confirm/prompt/alert modal must sit above any other overlay that triggers it. */
   #styled-modal-overlay { z-index: 320; }
+  /* The Fellowship Phase wizard deliberately stays open UNDER a picker it launched
+     (Spend XP, and the Reward/Virtue pickers a rank-up opens from there). Both shared
+     z-index 200 and the wizard came later in the document, so it painted on top and
+     hit-testing found the wizard at every point — 0 of the Spend XP modal's 19 buttons
+     were clickable while the card promised "the wizard stays open underneath". */
+  #spend-xp-overlay, #new-reward-overlay, #new-virtue-overlay,
+  #apply-reward-overlay, #prowess-overlay, #kings-overlay { z-index: 240; }
   .menu {
     background: var(--bg);
     border: 2px solid var(--red);

@@ -2378,12 +2378,16 @@ function renderSpendXP(mode) {
     makeRow('Valour', char.valour || 1, 6, (cost) => {
       char.advPts = ap - cost;
       char.valour = (char.valour || 1) + 1;
+      // Owed until actually chosen. Both pickers carry a "Skip for now" button and nothing
+      // reopened them, so a rank-up you dismissed cost the AP and gave nothing back.
+      char.pendingRewards = (parseInt(char.pendingRewards) || 0) + 1;
       saveCharacter(); render();
       openNewReward();
     }, 'valour');
     makeRow('Wisdom', char.wisdom || 1, 6, (cost) => {
       char.advPts = ap - cost;
       char.wisdom = (char.wisdom || 1) + 1;
+      char.pendingVirtues = (parseInt(char.pendingVirtues) || 0) + 1;
       saveCharacter(); render();
       openNewVirtue();
     }, 'wisdom');
@@ -2391,6 +2395,25 @@ function renderSpendXP(mode) {
 }
 
 /* ---------- NEW REWARD / VIRTUE PROMPTS ---------- */
+
+/** A rank-up owes you a Reward or a Virtue. Both pickers offer "Skip for now", and until this
+    existed nothing anywhere could reopen them — the rank was paid for and the payoff vanished.
+    `renderOwedPicks()` puts a standing claim button in the Advancement card until you take it. */
+function renderOwedPicks() {
+  const host = document.getElementById('owed-picks');
+  if (!host) return;
+  const r = parseInt(char.pendingRewards) || 0;
+  const v = parseInt(char.pendingVirtues) || 0;
+  if (r + v <= 0) { host.style.display = 'none'; host.innerHTML = ''; return; }
+  host.style.display = 'block';
+  host.innerHTML =
+    '<p class="hint" style="text-align:left;margin:0 0 6px;line-height:1.5">' +
+    `<strong>You have earned ${r ? `${r} Reward${r > 1 ? 's' : ''}` : ''}${r && v ? ' and ' : ''}` +
+    `${v ? `${v} Virtue${v > 1 ? 's' : ''}` : ''}</strong> that ${r + v > 1 ? 'have' : 'has'} not been chosen yet. ` +
+    'Ranks of Valour grant a Reward; ranks of Wisdom grant a Virtue.</p>' +
+    (r ? `<button class="add-row-btn" style="width:100%;background:var(--gold);color:var(--ink);margin-bottom:4px" onclick="openNewReward()">🎁 Choose your Reward${r > 1 ? ` (${r} owed)` : ''}</button>` : '') +
+    (v ? `<button class="add-row-btn" style="width:100%;background:var(--gold);color:var(--ink)" onclick="openNewVirtue()">✨ Choose your Virtue${v > 1 ? ` (${v} owed)` : ''}</button>` : '');
+}
 function openNewReward() {
   const list = document.getElementById('new-reward-list');
   list.innerHTML = '';
@@ -2407,6 +2430,8 @@ function closeNewReward() { document.getElementById('new-reward-overlay').classL
 
 function pickNewReward(name) {
   closeNewReward();
+  char.pendingRewards = Math.max(0, (parseInt(char.pendingRewards) || 0) - 1);
+  saveCharacter();
   promptApplyReward(name, 'new');
 }
 
@@ -2452,6 +2477,7 @@ function pickNewVirtue(name) {
     });
   }
   syncVirtuesText();
+  char.pendingVirtues = Math.max(0, (parseInt(char.pendingVirtues) || 0) - 1);
   saveCharacter();
   render();
   closeNewVirtue();
