@@ -3201,7 +3201,7 @@ const DEFAULT_CHARACTER = {
   rewardsList: [], virtuesList: [],
   cultureFavoured: '', callingFavoured: [], masteryFavoured: [],
   armourRewards: [], helmRewards: [], shieldRewards: [],
-  fellowshipRating: 0, prowessAttr: '', tnAdjust: { str: 0, hrt: 0, wit: 0 }, fpWizardState: null, pendingRewards: 0, pendingVirtues: 0,
+  fellowshipRating: 0, prowessAttr: '', tnAdjust: { str: 0, hrt: 0, wit: 0 }, fpWizardState: null, pendingRewards: 0, pendingVirtues: 0, parryAdjust: 0,
   peSpent: 0, skillsBaseline: {}, profsBaseline: {}, safeHaven: '',
   usefulItems: [], enemyLore: '', kingsOfMenAttr: '',
   primaryProfChoice: '', secondaryProfChoice: '',

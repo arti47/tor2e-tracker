@@ -211,11 +211,61 @@ function recomputeAttrTNs() {
   if (char.witRating !== '' && char.witRating != null) char.witTN = attrTN('wit', char.witRating);
 }
 
+/** Standing Parry adjustment (Lifepath Major Events raise or lower it by 1).
+    Same trap as the Attribute TNs: `applyMajorEvent` wrote `char.parry -= 1` directly, and the
+    very next `renderDerivedStats()` recomputed Parry from `wit + parryBonus + parryBonusVirtue`
+    and wiped it. Tracked here so every recompute re-applies it. */
+function parryAdjust() { return parseInt(char.parryAdjust) || 0; }
+
+/** The Parry a hero's Wits Rating should produce right now, adjustments included. */
+function derivedParry() {
+  const wit = parseInt(char.witRating) || 0;
+  const pb = parseInt(char.parryBonus) || 0;
+  return Math.max(0, wit + pb + (parseInt(char.parryBonusVirtue) || 0) + parryAdjust());
+}
+
+/** Record a standing Parry adjustment and re-derive. */
+function addParryAdjust(delta) {
+  char.parryAdjust = parryAdjust() + delta;
+  if (char.witRating !== '' && char.witRating != null) char.parry = derivedParry();
+}
+
 /** Record a standing TN adjustment (negative lowers the TN) and re-derive. */
 function addTnAdjust(key, delta) {
   if (!char.tnAdjust || typeof char.tnAdjust !== 'object') char.tnAdjust = { str: 0, hrt: 0, wit: 0 };
   char.tnAdjust[key] = (parseInt(char.tnAdjust[key]) || 0) + delta;
   recomputeAttrTNs();
+}
+
+/* ---------- PATRON NAME RESOLUTION ----------
+   The official pre-generated sheets spell the Ranger patron "Gilraen, daughter of Dírhael"
+   (í with an acute); the PATRONS and PATRON_QUESTS tables were keyed "Dirhael". Five of the
+   thirteen pregens therefore carried a Patron the app could not find: Roll a Patron Quest
+   refused with "No Patron", `sagaBegin()` could not seed a premise from it, and the Fellowship
+   Phase's Meet Patron undertaking pointed at that refusal. Moria likewise wrote 'Balin' against
+   a table keyed 'Balin, son of Fundin'.
+   Match on a folded form — diacritics stripped, case- and punctuation-insensitive — and accept a
+   bare first name ("Balin") as naming the one patron whose full name starts with it. */
+function _foldName(x) {
+  return String(x || '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')   // Dírhael → Dirhael
+    .toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+/** The PATRONS/PATRON_QUESTS key that `name` refers to, or '' if none does. */
+function patronKey(name) {
+  const want = _foldName(name);
+  if (!want) return '';
+  const keys = (typeof PATRONS !== 'undefined') ? Object.keys(PATRONS) : [];
+  for (const k of keys) if (_foldName(k) === want) return k;          // exact, folded
+  for (const k of keys) if (_foldName(k).startsWith(want + ' ')) return k;  // "Balin" → "Balin, son of Fundin"
+  return '';
+}
+
+/** The patron record for whatever `char.patron` says, or null. */
+function patronFor(name) {
+  const k = patronKey(name);
+  return k ? PATRONS[k] : null;
 }
 
 async function toggleStriderMode() {
@@ -273,7 +323,7 @@ async function toggleMoriaMode() {
     if (char._moriaPrev === undefined || char._moriaPrev === null) {
       char._moriaPrev = { patron: char.patron || '', safeHaven: char.safeHaven || '', huntRegion: char.huntRegion || '' };
     }
-    char.patron = 'Balin';
+    char.patron = 'Balin, son of Fundin';   // the table's own key — 'Balin' matched nothing
     char.safeHaven = 'Moria — First Hall';
     char.huntRegion = 'dark';  // Moria is a Dark Land → Hunt Threshold 12 (was 14 under the old 3-region table)
     if (!char.eyeAwareness) char.eyeAwareness = 0;
@@ -289,7 +339,7 @@ async function toggleMoriaMode() {
     // 'dark' stranded ex-Moria heroes on a Dark Land's Hunt 12 for the rest of the campaign.
     const prev = char._moriaPrev;
     if (prev && typeof prev === 'object') {
-      if (char.patron === 'Balin') char.patron = prev.patron || '';
+      if (char.patron === 'Balin, son of Fundin' || char.patron === 'Balin') char.patron = prev.patron || '';
       if (char.safeHaven === 'Moria — First Hall') char.safeHaven = prev.safeHaven || '';
       if (char.huntRegion === 'dark') char.huntRegion = prev.huntRegion || 'wild';
       char._moriaPrev = null;
@@ -757,11 +807,12 @@ async function openMilestonePicker() {
 
 async function rollPatronQuest() {
   const patron = char.patron;
-  if (!patron || !PATRON_QUESTS[patron]) {
+  const pk = (typeof patronKey === 'function') ? patronKey(patron) : patron;
+  if (!pk || !PATRON_QUESTS[pk]) {
     await alertStyled('Set your Patron on the Build tab first (Strider Mode supplement quests are available for the 6 Core Rules patrons).', 'No Patron');
     return;
   }
-  const quests = PATRON_QUESTS[patron];
+  const quests = PATRON_QUESTS[pk];
   const die = Math.floor(Math.random() * 6) + 1;
   const quest = quests[die - 1];
   await alertStyled(`<strong>Patron Quest from ${patron}</strong> (Success die: ${die})<br><br>${quest}<br><br><small>Treat the open questions as inspiration: imagine the Patron's full briefing, or use the Oracle (Telling / Lore) to flesh out details.</small>`, '📜 Patron Quest');

@@ -514,8 +514,9 @@ function renderWeapons() {
   tbody.innerHTML = '';
   if (!char.weapons) char.weapons = [];
   char.weapons.forEach((w, i) => {
+    _ensureGripData(w);
     const ro = w.picked ? 'readonly' : '';
-    const versatile = w.picked && w.inj1h && w.inj2h;
+    const versatile = !!(w.inj1h && w.inj2h);
     const gripBtn = versatile
       ? `<button onclick="toggleWeaponGrip(${i})" title="Switch between 1-handed (lower Injury, can use shield) and 2-handed (higher Injury, no shield Parry bonus)" style="background:${w.grip==='2h'?'var(--red)':'var(--bg-deep)'};color:${w.grip==='2h'?'white':'var(--ink)'};border:1px solid var(--border);border-radius:4px;font-size:10px;font-weight:600;padding:2px 6px;margin-top:2px;cursor:pointer;width:100%">${w.grip || '1h'}</button>`
       : '';
@@ -1496,7 +1497,7 @@ function bindInputs() {
         if (char.shadow > newMax) char.shadow = newMax;
       }
       if (k === 'witRating' && char.parryBonus && char.witRating !== '') {
-        char.parry = parseInt(char.witRating) + char.parryBonus + (parseInt(char.parryBonusVirtue) || 0);
+        char.parry = derivedParry();
       }
       // Auto-update TN when rating changes
       if (k === 'strRating' && char.strRating !== '') char.strTN = attrTN('str', char.strRating);
@@ -1744,7 +1745,7 @@ async function applyBackstory(die) {
     char.hopeCur = char.hopeMax;
   }
   if (c.parryBonus) {
-    char.parry = lp.attrs.wit + c.parryBonus + (parseInt(char.parryBonusVirtue) || 0);
+    char.parry = derivedParry();
   }
 
   char.cultureFavoured = lp.favouredSkill;
@@ -1820,8 +1821,8 @@ async function applyMajorEvent(die) {
       char.endMax = (parseInt(char.endMax) || 0) + 2;
       char.endCur = (parseInt(char.endCur) || 0) + 2;
     }
-    else if (e === 'parry+1') char.parry = (parseInt(char.parry) || 0) + 1;
-    else if (e === 'parry-1') char.parry = Math.max(0, (parseInt(char.parry) || 0) - 1);
+    else if (e === 'parry+1') addParryAdjust(1);    // standing — survives every recompute
+    else if (e === 'parry-1') addParryAdjust(-1);
     else if (e === 'hope+2') {
       char.hopeMax = (parseInt(char.hopeMax) || 0) + 2;
       char.hopeCur = (parseInt(char.hopeCur) || 0) + 2;
@@ -2398,6 +2399,22 @@ function renderSpendXP(mode) {
   }
 }
 
+/** Back-fill the 1h/2h Injury split on a weapon that did not come through `pickWeapon`.
+    The split was only ever written by the picker, so every one of the 13 pre-generated heroes
+    carried e.g. a Long Sword whose own Notes read "Injury 18 when used 2-handed" and no control
+    to do it with — the grip button was gated on data only the picker produced. The catalogue
+    knows which weapons are versatile; match by name and fill it in. */
+function _ensureGripData(w) {
+  if (!w || !w.name || (w.inj1h && w.inj2h)) return;
+  const cat = (typeof WEAPONS !== 'undefined') ? WEAPONS.find(x => x.name === w.name) : null;
+  if (!cat || !String(cat.inj).includes('/')) return;
+  const parts = String(cat.inj).split('/');
+  w.inj1h = parts[0].trim();
+  w.inj2h = parts[1].trim();
+  if (!w.grip) w.grip = (String(w.inj).trim() === w.inj2h) ? '2h' : '1h';
+  if (!w.inj) w.inj = w.grip === '2h' ? w.inj2h : w.inj1h;
+}
+
 /* ---------- NEW REWARD / VIRTUE PROMPTS ---------- */
 
 /** A rank-up owes you a Reward or a Virtue. Both pickers offer "Skip for now", and until this
@@ -2717,7 +2734,7 @@ function pickKingsOfMen(attr) {
     if (wasAtMax) char.hopeCur = char.hopeMax;
   }
   if (char.parryBonus) {
-    char.parry = char.witRating + char.parryBonus + (parseInt(char.parryBonusVirtue) || 0);
+    char.parry = derivedParry();
   }
   document.getElementById('kings-overlay').classList.remove('show');
   saveCharacter();

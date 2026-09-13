@@ -1860,8 +1860,13 @@
       <div class="result-dice" id="b-clash-dice"></div>
       <div class="result-total" id="b-clash-total">—</div>
       <div class="result-summary" id="b-clash-summary"></div>
-      <div id="b-spend" style="margin-top:8px"></div>
     </div>
+    <!-- Successes you have ROLLED but not yet spent outlive the result panel: they are saved on
+         the character and survive a reload. #b-spend used to live inside #b-clash-result, which
+         is display:none until a Clash is rolled — so after a reload the spend buttons rendered
+         and were invisible, and the next Clash overwrote the banked success. Same container trap
+         as the Shadow Tests inside #roll-result; same fix — it lives outside now. -->
+    <div id="b-spend" style="margin-top:8px"></div>
     <div style="display:flex;gap:8px;margin-top:10px">
       <button class="add-row-btn" onclick="addAdvantagePrompt()" style="flex:1;font-size:11px">+ Advantage</button>
       <button class="add-row-btn" onclick="addComplicationPrompt()" style="flex:1;font-size:11px;background:var(--btn-secondary-bg)">+ Complication</button>
@@ -2136,7 +2141,7 @@
       </div>
       <div class="field" style="margin-top:10px">
         <label style="flex:0 0 110px">Party Size</label>
-        <input id="hoard-party-size" type="number" min="1" max="10" value="4">
+        <input id="hoard-party-size" type="number" min="1" max="10">
       </div>
       <div style="margin-top:10px;padding:8px;background:var(--red-soft);border:1px solid var(--red);border-radius:6px">
         <label style="font-size:13px"><input type="checkbox" id="hoard-tainted"> <strong>Tainted Hoard</strong> — magical finds trigger Greed Shadow Test (+1/+2/+3 Shadow on take)</label>

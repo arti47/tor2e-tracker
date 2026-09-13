@@ -111,7 +111,7 @@ function renderDerivedStats() {
 
   // Defensive recompute for parry when culture is applied
   if (pb > 0 && wit > 0) {
-    const computed = wit + pb + (parseInt(char.parryBonusVirtue) || 0);
+    const computed = derivedParry();   // includes char.parryAdjust — see addParryAdjust()
     if (char.parry !== computed) char.parry = computed;
   }
 
@@ -3012,6 +3012,11 @@ function openHoardRoller() {
   document.getElementById('hoard-roller-overlay').classList.add('show');
   document.getElementById('hoard-setup').style.display = 'block';
   document.getElementById('hoard-result').style.display = 'none';
+  // Default the split to the party you actually have. The markup used to ship value="4", which
+  // made the `|| (isSolo() ? 1 : 4)` fallback below unreachable — a lone hero silently took a
+  // quarter share. The field stays editable either way.
+  const ps = document.getElementById('hoard-party-size');
+  if (ps && !ps.value) ps.value = (typeof isSolo === 'function' && isSolo()) ? 1 : 4;
   fpHoardSetupHint();
 }
 
@@ -3471,7 +3476,8 @@ function sagaEndSignals() {
 
 /** A suggested errand from the hero's Patron, if they have one. '' otherwise. */
 function _patronQuestSeed() {
-  const quests = (typeof PATRON_QUESTS !== 'undefined' && char.patron) ? PATRON_QUESTS[char.patron] : null;
+  const pk = (typeof patronKey === 'function') ? patronKey(char.patron) : char.patron;
+  const quests = (typeof PATRON_QUESTS !== 'undefined' && pk) ? PATRON_QUESTS[pk] : null;
   return (quests && quests.length) ? quests[Math.floor(Math.random() * quests.length)] : '';
 }
 
