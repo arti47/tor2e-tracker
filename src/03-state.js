@@ -810,12 +810,23 @@ function renderTimeline() {
 /* ---------- SHARE VIA LINK / QR ---------- */
 // Trim a character down to only the fields that differ from the default schema — keeps the
 // shared payload as small as possible.
+/** Play records, not the hero: these are what made a played hero's share link 15,000 characters
+    (well past the 1,200 the QR gate allows) — the journey's whole event log, the campaign
+    timeline, past councils, an in-progress fight. Someone receiving your hero wants the hero. */
+const SHARE_OMIT = ['timeline', 'councilHistory', 'encounter', 'rollStats'];
+
 function characterDelta(c) {
   const d = {};
   for (const k in c) {
     if (k === '_boutPrompted') continue;  // transient UI flag
+    if (SHARE_OMIT.indexOf(k) !== -1) continue;
     if (JSON.stringify(c[k]) !== JSON.stringify(DEFAULT_CHARACTER[k])) d[k] = c[k];
   }
+  // Keep the subsystems' current state, drop the roll-by-roll logs inside them.
+  if (d.journey) { d.journey = Object.assign({}, d.journey); d.journey.events = []; }
+  if (d.council) { d.council = Object.assign({}, d.council); d.council.rolls = []; }
+  if (d.skillEndeavour) { d.skillEndeavour = Object.assign({}, d.skillEndeavour); d.skillEndeavour.rolls = []; }
+  if (d.battle) { d.battle = Object.assign({}, d.battle); d.battle.log = []; }
   if (c.name) d.name = c.name;            // always carry the name for the import prompt
   return d;
 }
@@ -1521,7 +1532,7 @@ async function foeAttacks(id) {
   // marks Wounded and rolls Wound Severity (shared with the Dice-tab Protection card).
   if (piercing) {
     const injTN = parseInt(f.atkInj) || 14;
-    if (await confirmStyled(`🗡️ <strong>Piercing Blow!</strong> ${escapeHtml(c.foeName)}'s blow finds a gap.<br><br>Roll your Protection vs Injury <strong>${injTN}</strong>?`, 'Piercing Blow')) {
+    if (await confirmStyled(`🗡️ <strong>Piercing Blow!</strong> ${escapeHtml(possessive(c.foeName))} blow finds a gap.<br><br>Roll your Protection vs Injury <strong>${injTN}</strong>?`, 'Piercing Blow')) {
       const protDice = (parseInt(char.armourProt) || 0) + (parseInt(char.helmProt) || 0);
       const P = _protectionRoll(injTN, protDice);
       const pScore = P.isAutoSuccess ? '★' : (P.isAutoFail ? '✗' : P.total);

@@ -1707,6 +1707,9 @@ function applyMarchingTestResult(success, icons, detail, quiet) {
   let daysSpent = hexesToNext + hardHexesNow;
   if (j.forcedMarch) daysSpent = Math.ceil(daysSpent / 2);
   j.daysElapsed += daysSpent;
+  // The journey kept its own day counter and the hero's calendar never moved — after a nine-day
+  // march the Endurance card still read "Day 1", and a Wounded hero's injury days never ticked.
+  advanceDays(daysSpent);
   if (j.forcedMarch) j.travelFatigue += daysSpent;  // +1 Fatigue per forced-march day
   j.currentHex += hexesToNext;
   j.nextEventHex = j.currentHex;  // event happens at landing hex
@@ -2295,12 +2298,12 @@ function _resolveBandExtras(r, scope, dispKey) {
     const a = char.band.allies.find(x => x.id === gift.allyId);
     if (a) {
       if (gift.kingly) {
-        html += `<br><small style="color:var(--gold)">👑 ${escapeHtml(a.name)}'s Kingly Gift aided the roll (+1d · re-rolls one 👁)</small>`;
+        html += `<br><small style="color:var(--gold)">👑 ${escapeHtml(possessive(a.name))} Kingly Gift aided the roll (+1d · re-rolls one 👁)</small>`;
       } else if (r.feat.special === 'eye') {
         a.giftWasted = true;
-        html += `<br><span class="result-tag" style="background:var(--btn-warn-bg);color:white">⚠ ${escapeHtml(a.name)}'s Gift is wasted (👁) — recovers next Fellowship Phase</span>`;
+        html += `<br><span class="result-tag" style="background:var(--btn-warn-bg);color:white">⚠ ${escapeHtml(possessive(a.name))} Gift is wasted (👁) — recovers next Fellowship Phase</span>`;
       } else {
-        html += `<br><small style="color:var(--gold)">${escapeHtml(a.name)}'s Gift aided the roll (+1d)</small>`;
+        html += `<br><small style="color:var(--gold)">${escapeHtml(possessive(a.name))} Gift aided the roll (+1d)</small>`;
       }
     }
   }
@@ -3624,16 +3627,20 @@ async function sagaStartSession() {
 
 async function sagaEndSession() {
   const s = sagaState();
+  const solo = typeof isSolo === 'function' && isSolo();
+  const banksXp = char.experienceMode !== 'milestone' && !solo;
   if (!await confirmStyled(
-      'End this play session?<br><br>You will be awarded the session\'s experience, and told whether a ' +
+      'End this play session?<br><br>' +
+      (banksXp
+        ? 'You will be awarded the session\'s experience (+3 Skill Points, +3 Adventure Points), and told whether a '
+        : 'You are on the <strong>Milestone</strong> experience scheme, so no session XP is awarded — award it with 🏆 Award Milestone XP when something notable happens. You will be told whether a ') +
       '<strong>Fellowship Phase</strong> is due — the rest between adventures where your hero heals and grows.',
       '🌙 End session')) return;
-  const solo = typeof isSolo === 'function' && isSolo();
   // Strider Mode advises AGAINST session-based XP for solo play: sessions "might last for a few
   // minutes or a few hours, which can make session-based rewards disconnected from events and
   // achievements in your story" — it recommends Experience Milestones instead. So only award
   // session XP when the hero is actually on that scheme.
-  if (typeof awardSessionXP === 'function' && char.experienceMode !== 'milestone' && !solo) {
+  if (typeof awardSessionXP === 'function' && banksXp) {
     const orig = window.confirmStyled; window.confirmStyled = async () => true;
     try { await awardSessionXP(); } finally { window.confirmStyled = orig; }
   }
@@ -3679,7 +3686,7 @@ async function sagaEnd() {
   }
   render();
   await alertStyled(
-    `<strong>${escapeHtml(char.name || 'Your hero')}'s tale is finished.</strong><br><em>${escapeHtml(s.endedHow)}</em><br><br>` +
+    `<strong>${escapeHtml(possessive(char.name || 'Your hero'))} tale is finished.</strong><br><em>${escapeHtml(s.endedHow)}</em><br><br>` +
     'Export the Chronicle from that tab to keep it. Your hero stays in the roster — nothing is deleted — ' +
     'and ☰ Menu → ➕ New Character begins the next one whenever you are ready.',
     '🏁 The tale is told');
@@ -4003,8 +4010,22 @@ async function playAsk() {
   const q = await promptStyled('Ask the world a <strong>yes or no</strong> question.<br><br>Phrase it so that <strong>“yes” is what your hero would want</strong>.',
     '', '🔮 Ask the Oracle', 'e.g. Is the gate unguarded?');
   if (q === null) return;
-  const res = _tellingResult(q, 'middling');
-  playSay(`You wonder: <em>${escapeHtml(q)}</em><br>The answer is <strong>${res.answer}</strong>${escapeHtml(res.twist)}.`);
+  // The odds band is the whole point of the Telling Table — the Oracle tab says so — and Play used
+  // to hard-code Middling, so from here you could never ask an unlikely question.
+  const chance = await showModal({
+    title: '🔮 How likely is that?',
+    message: `<em>${escapeHtml(q)}</em><br><br>Judge it from the story so far. The less likely, the higher the Feat die must roll.`,
+    buttons: [
+      { label: 'Almost certain', value: 'certain' },
+      { label: 'Likely', value: 'likely' },
+      { label: 'Middling', value: 'middling' },
+      { label: 'Doubtful', value: 'doubtful' },
+      { label: 'Unthinkable', value: 'unthinkable' }
+    ]
+  });
+  if (!chance) return;
+  const res = _tellingResult(q, chance);
+  playSay(`You wonder: <em>${escapeHtml(q)}</em> <span style="opacity:.7">(${chance})</span><br>The answer is <strong>${res.answer}</strong>${escapeHtml(res.twist)}.`);
   renderPlay();
 }
 
@@ -4274,13 +4295,35 @@ function playGoStep(step) {
    full health — nothing on the surface built to run a session for a newcomer ever said what
    being Dying meant, or that it was urgent. These two helpers say it, in front of everything
    else, and the choice list puts recovery first. */
+/** Move the hero's calendar on by `n` days: a new day frees the Short Rest and ticks down a
+    Wounded hero's injury days, exactly as a night's Prolonged Rest does. Days pass on the road
+    too, which is why this is not private to the rest code. */
+function advanceDays(n) {
+  const days = Math.max(0, parseInt(n) || 0);
+  if (!days) return;
+  char.dayCount = (parseInt(char.dayCount) || 1) + days;
+  char.shortRestUsedToday = false;
+  if (char.wounded && (parseInt(char.injuryDays) || 0) > 0) {
+    const before = parseInt(char.injuryDays) || 0;
+    char.injuryDays = Math.max(0, before - days);
+    if (char.injuryDays < before) char.firstAidUsed = false;   // a new day allows another attempt
+  }
+}
+
 function _playStateTags() {
   const t = [];
   if ((parseInt(char.endCur) || 0) <= 0) t.push('DYING');
   if (char.wounded) t.push('WOUNDED');
-  if (char.weary) t.push('WEARY');
-  if (char.miserable) t.push('MISERABLE');
-  return t.length ? ' · <strong style="color:var(--error-text)">' + t.join(' · ') + '</strong>' : '';
+  // Show the conditions the rules have imposed on you as well as the ones you have ticked: the
+  // Character tab pulses an auto-WEARY badge that this line used to omit entirely.
+  const autoWeary = (parseInt(char.endCur) || 0) <= (parseInt(char.load) || 0) + (parseInt(char.fatigue) || 0);
+  const totalShadow = (parseInt(char.shadow) || 0) + (parseInt(char.scars) || 0);
+  const autoMiser = char.hopeMax > 0 && totalShadow >= (parseInt(char.hopeCur) || 0);
+  if (char.weary || autoWeary) t.push('WEARY' + (!char.weary && autoWeary ? '?' : ''));
+  if (char.miserable || autoMiser) t.push('MISERABLE' + (!char.miserable && autoMiser ? '?' : ''));
+  return t.length
+    ? ' · <strong style="color:var(--error-text)" title="A ? means the rules say this applies but you have not ticked it on the Character tab.">' + t.join(' · ') + '</strong>'
+    : '';
 }
 
 function _playConditionBanner() {

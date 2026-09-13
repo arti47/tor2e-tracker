@@ -246,6 +246,14 @@ function addTnAdjust(key, delta) {
    a table keyed 'Balin, son of Fundin'.
    Match on a folded form — diacritics stripped, case- and punctuation-insensitive — and accept a
    bare first name ("Balin") as naming the one patron whose full name starts with it. */
+/** Possessive form of a name. Pregens include Duinhir 'Eaglenose', so a bare +"'s" produced
+    `Duinhir 'Eaglenose''s`. A name already ending in an apostrophe or s takes the bare apostrophe. */
+function possessive(name) {
+  const n = String(name == null ? '' : name).trim();
+  if (!n) return '';
+  return /[s'\u2019]$/.test(n) ? n + '\u2019' : n + '\u2019s';
+}
+
 function _foldName(x) {
   return String(x || '')
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '')   // Dírhael → Dirhael

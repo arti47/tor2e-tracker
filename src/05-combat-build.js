@@ -953,7 +953,26 @@ function _equippedWeapons() { return (char.weapons || []).map((w, i) => ({ ...w,
 // the WEAPONS catalog by name, falling back to any stored prof, then '' (custom → treated as Brawling).
 function _weaponProf(w) { if (w && w.prof) return w.prof; const wp = WEAPONS.find(x => x.name === (w && w.name)); return wp ? wp.prof : ''; }
 
-function nextRound() { const e = enc(); e.round = (parseInt(e.round) || 1) + 1; saveCharacter(); renderEncounter(); }
+async function nextRound() {
+  const e = enc();
+  e.round = (parseInt(e.round) || 1) + 1;
+  saveCharacter(); renderEncounter();
+  await _encRoundFellPrompt(e.round);
+}
+
+/** Fell abilities are free text and cannot be automated, but they were not even surfaced: a foe
+    whose ability reads "Start of round 1: all heroes gain 3 Shadow" simply never came up in an app
+    that rolls Protection for you. Any ability that names a round trigger is now put in front of
+    the player when that round begins — they apply it, but they are told. */
+async function _encRoundFellPrompt(round) {
+  const e = enc();
+  const due = (e.foes || []).filter(f => !f.slain && f.fell && /\b(start|beginning|end) of (the )?(each |every |any )?round\b|\beach round\b|\bevery round\b/i.test(String(f.fell)));
+  if (!due.length) return;
+  await alertStyled(
+    `<strong>Round ${round}</strong> — these fell abilities are in play. The app does not apply them for you:` +
+    due.map(f => `<br><br><strong>${escapeHtml(f.name)}</strong><br>⚜ ${escapeHtml(f.fell)}`).join(''),
+    '⚜ Fell abilities');
+}
 async function endEncounter() {
   const e = enc();
   if (e.foes.length && !await confirmStyled('End the encounter and clear all adversaries?', 'End Encounter')) return;
@@ -999,6 +1018,7 @@ function addFoeFromBestiary(idx) {
   });
   encDeriveEngaged(); _encEnsureGroup(); saveCharacter(); renderEncounter();
   document.getElementById('bestiary-overlay').classList.remove('show');
+  _encRoundFellPrompt(enc().round || 1);
 }
 function addCustomFoe() {
   ensureEncounterActive();
@@ -1940,6 +1960,9 @@ function renderPECard() {
 
   const spent = parseInt(char.peSpent) || 0;
   const budget = getPEBudget();
+  // The card's own title and blurb said "10 pts" while solo play gets 15 — the heading contradicted
+  // the budget bar directly under it.
+  document.querySelectorAll('.pe-budget-n').forEach(el => { el.textContent = budget; });
   const remaining = budget - spent;
   const budgetEl = document.getElementById('pe-budget');
   budgetEl.innerHTML = `Budget: <span style="color:${remaining<0?'var(--red)':'var(--red-dark)'}">${remaining} / ${budget}</span> remaining · Spent ${spent}`;

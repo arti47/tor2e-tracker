@@ -321,7 +321,7 @@
       <div style="margin-bottom:14px">
         <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
           <strong style="flex:1;color:var(--red-dark);font-size:13px">Backstory (1d6)</strong>
-          <button class="add-row-btn" onclick="rollBackstory()" style="padding:6px 12px;font-size:12px">🎲 Roll</button>
+          <button class="add-row-btn" onclick="rollBackstory()" aria-label="Roll a random backstory" style="padding:6px 12px;font-size:12px">🎲 Roll backstory</button>
         </div>
         <div id="backstory-result" style="display:none;padding:10px;background:var(--bg);border-radius:6px;font-size:13px;line-height:1.5"></div>
       </div>
@@ -329,7 +329,7 @@
       <div>
         <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
           <strong style="flex:1;color:var(--red-dark);font-size:13px">Major Event (Feat die)</strong>
-          <button class="add-row-btn" onclick="rollMajorEvent()" style="padding:6px 12px;font-size:12px">🎲 Roll</button>
+          <button class="add-row-btn" onclick="rollMajorEvent()" aria-label="Roll a random Major Event" style="padding:6px 12px;font-size:12px">🎲 Roll event</button>
         </div>
         <div id="major-event-result" style="display:none;padding:10px;background:var(--bg);border-radius:6px;font-size:13px;line-height:1.5"></div>
       </div>
@@ -343,8 +343,8 @@
   </div>
 
   <div class="card" id="pe-card" style="display:none">
-    <h3 class="card-title" data-hint="Previous Experience">3 · Previous Experience (10 pts)</h3>
-    <p class="hint" style="margin-bottom:8px">Spend up to 10 pts raising Skills (cap ◆◆◆◆) and Combat Proficiencies (cap ◆◆◆) above your Culture's baseline. <em>Costs differ from in-game XP.</em></p>
+    <h3 class="card-title" data-hint="Previous Experience">3 · Previous Experience (<span class="pe-budget-n">10</span> pts)</h3>
+    <p class="hint" style="margin-bottom:8px">Spend up to <span class="pe-budget-n">10</span> pts raising Skills (cap ◆◆◆◆) and Combat Proficiencies (cap ◆◆◆) above your Culture's baseline. <em>Costs differ from in-game XP.</em></p>
     <div id="pe-budget" style="text-align:center;padding:10px;background:var(--bg-deep);border-radius:6px;margin-bottom:10px;font-weight:700;font-size:14px;color:var(--red-dark)"></div>
     <div style="text-align:center;margin-bottom:10px">
       <button class="add-row-btn" onclick="resetPE()" style="background:var(--btn-secondary-bg);padding:6px 12px;font-size:12px">↺ Reset to Culture Baseline</button>
@@ -677,7 +677,7 @@
           <button onclick="adj('skillPts',-1)">−</button>
           <button onclick="adj('skillPts',1)">+</button>
         </div>
-        <button class="add-row-btn" onclick="openSpendXP('skill')" style="padding:5px 8px;font-size:11px;margin-top:5px;width:100%">Spend</button>
+        <button class="add-row-btn" onclick="openSpendXP('skill')" aria-label="Spend Skill Points" style="padding:5px 8px;font-size:11px;margin-top:5px;width:100%">Spend SP</button>
       </div>
       <div class="counter">
         <div class="counter-label">Adventure Pts</div>
@@ -686,7 +686,7 @@
           <button onclick="adj('advPts',-1)">−</button>
           <button onclick="adj('advPts',1)">+</button>
         </div>
-        <button class="add-row-btn" onclick="openSpendXP('adv')" style="padding:5px 8px;font-size:11px;margin-top:5px;width:100%">Spend</button>
+        <button class="add-row-btn" onclick="openSpendXP('adv')" aria-label="Spend Adventure Points" style="padding:5px 8px;font-size:11px;margin-top:5px;width:100%">Spend AP</button>
       </div>
       <div class="counter">
         <div class="counter-label">Treasure</div>
@@ -1603,14 +1603,14 @@
 
   <div class="card">
     <h3 class="card-title">Fortune Table — Rune result</h3>
-    <p class="hint" style="text-align:left">When a successful action was bolstered by fortune (Gandalf Rune on the Feat die).</p>
+    <p class="hint" style="text-align:left">When a ☉ Gandalf Rune comes up on the Feat die. The table triggers on the Feat die alone — success or failure — and rolling it is optional, for worthy challenges and key actions.</p>
     <button class="add-row-btn" onclick="rollFortuneTable(false)" style="width:100%;background:var(--gold)">🎲 Roll on the Fortune Table</button>
     <div id="oracle-fortune-result" style="margin-top:10px;padding:10px;background:var(--bg-deep);border-radius:6px;font-size:13px;line-height:1.5;display:none"></div>
   </div>
 
   <div class="card">
     <h3 class="card-title">Ill-Fortune Table — Eye result</h3>
-    <p class="hint" style="text-align:left">When a failed action was complicated by ill-fortune (Eye of Sauron on the Feat die).</p>
+    <p class="hint" style="text-align:left">When an 👁 Eye of Sauron comes up on the Feat die. The table triggers on the Feat die alone — success or failure — and rolling it is optional, for worthy challenges and key actions.</p>
     <button class="add-row-btn" onclick="rollFortuneTable(true)" style="width:100%;background:var(--btn-alert-bg)">🎲 Roll on the Ill-Fortune Table</button>
     <div id="oracle-illfortune-result" style="margin-top:10px;padding:10px;background:var(--bg-deep);border-radius:6px;font-size:13px;line-height:1.5;display:none"></div>
   </div>
