@@ -1071,6 +1071,7 @@ function finalizeSkillEndeavour(outcome) {
   if (!char.skillEndeavour || !char.skillEndeavour.active) return;
   char.skillEndeavour.outcome = outcome;
   char.skillEndeavour.active = false;
+  if (typeof logTimeline === 'function') logTimeline('endeavour', `Skill Endeavour — ${char.skillEndeavour.task || 'a prolonged task'}: ${outcome}.`);
   saveCharacter();
   renderSkillEndeavour();
   // Keep cards visible until reset
@@ -1354,6 +1355,7 @@ function finalizeCouncil(outcome) {
   if (!char.council || !char.council.active) return;
   char.council.outcome = outcome;
   char.council.active = false;  // mark inactive but keep state visible until reset
+  if (typeof logTimeline === 'function') logTimeline('council', `Council — ${char.council.topic || 'a matter of some weight'}: ${outcome}.`);
   // Persist a summary to the council history.
   if (!Array.isArray(char.councilHistory)) char.councilHistory = [];
   char.councilHistory.push({
@@ -2844,6 +2846,7 @@ async function arriveAtDestination() {
   renderConditionWarnings();
   setText('fat-v', char.fatigue);
   if (typeof journalAuto === 'function') journalAuto('ojc', 'milestone', `Arrived at ${j.destination || 'the destination'} after ${j.daysElapsed || '?'} days (from ${j.origin || '?'}).`);
+  if (typeof logTimeline === 'function') logTimeline('journey', `Journey: ${j.origin || 'home'} → ${j.destination || 'the destination'}, ${j.daysElapsed || '?'} days, ${j.totalHexes || '?'} hexes.`);
   const recap = 'Journey complete!\n\n' + lines.map(l => l.replace(/<[^>]+>/g, '')).join('\n');
   // In solo play, offer to open a fresh "at the landmark" scene in the Chronicle (montage → play hand-off).
   const dest = j.destination || 'the destination';
@@ -3774,7 +3777,10 @@ function advStep() { return ADVENTURE_STEPS.find(x => x.id === sagaState().step)
 
 async function advGoTo(stepId) {
   const s = sagaState();
-  if (stepId === 'haven' && s.step === 'fellowship') s.adventures = (parseInt(s.adventures) || 0) + 1;
+  if (stepId === 'haven' && s.step === 'fellowship') {
+    s.adventures = (parseInt(s.adventures) || 0) + 1;
+    if (typeof logTimeline === 'function') logTimeline('saga', `Adventure ${s.adventures} begins.`);
+  }
   s.step = stepId;
   saveCharacter(); render();
   const st = advStep();
@@ -3825,7 +3831,31 @@ function playSay(text, kind) {
   if (_playFeed.length > 40) _playFeed.shift();
   // Everything the app narrates is also written into the Chronicle, so the journal
   // fills itself for a player who never opens that tab.
-  try { if (typeof pushBlock === 'function' && isSolo()) pushBlock('auto', 'note', text.replace(/<[^>]+>/g, ''), 'play'); } catch (e) {}
+  try { if (typeof pushBlock === 'function' && isSolo()) pushBlock('auto', 'note', _playPlainText(text), 'play'); } catch (e) {}
+}
+
+/** HTML the Play tab narrates → the plain prose the Chronicle stores.
+    Stripping tags alone left `&#39;` in the journal and welded sentences together where a
+    <br> had been the only separator, so strip to text and then decode the entities. */
+function _playPlainText(html) {
+  const withBreaks = String(html == null ? '' : html)
+    .replace(/<br\s*\/?>/gi, ' ')
+    .replace(/<\/(p|div|li|h[1-6])>/gi, ' ')
+    .replace(/<[^>]+>/g, '');
+  let out = withBreaks;
+  try {
+    const d = document.createElement('textarea');
+    d.innerHTML = withBreaks;
+    out = d.value;
+  } catch (e) {
+    out = withBreaks
+      .replace(/&#0*39;|&apos;|&#x0*27;/gi, "'")
+      .replace(/&quot;|&#0*34;/gi, '"')
+      .replace(/&nbsp;/gi, ' ')
+      .replace(/&lt;/gi, '<').replace(/&gt;/gi, '>')
+      .replace(/&amp;/gi, '&');
+  }
+  return out.replace(/[ \t]+/g, ' ').trim();
 }
 
 function playClearFeed() { _playFeed = []; }
@@ -4203,6 +4233,7 @@ async function playNextAdventure() {
   const newPremise = String(reason).trim();
   if (newPremise) s.premise = newPremise;
   s.adventures = (parseInt(s.adventures) || 0) + 1;
+  if (typeof logTimeline === 'function') logTimeline('saga', `Adventure ${s.adventures} begins${newPremise ? ': ' + newPremise : ''}.`);
   s.step = 'haven';
   char.journey = { active: false };
   saveCharacter();

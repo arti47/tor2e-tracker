@@ -223,6 +223,7 @@ async function hardenWill() {
   if (!ok) return;
   char.shadow = 0;
   char.scars = scars + 1;
+  if (typeof logTimeline === 'function') logTimeline('scars', `Hardened will: cleared ${shadow} Shadow, took a Shadow Scar (now ${scars + 1}).`);
   char._boutPrompted = false;  // reset so future bouts can fire
   saveCharacter();
   render();
@@ -956,6 +957,12 @@ function nextRound() { const e = enc(); e.round = (parseInt(e.round) || 1) + 1; 
 async function endEncounter() {
   const e = enc();
   if (e.foes.length && !await confirmStyled('End the encounter and clear all adversaries?', 'End Encounter')) return;
+  // A whole fight used to leave no mark on the Campaign Timeline; record it before it is cleared.
+  if (typeof logTimeline === 'function' && e.foes.length) {
+    const slain = e.foes.filter(f => f.slain).length;
+    const names = e.foes.map(f => f.name).filter(Boolean).join(', ');
+    logTimeline('combat', `Fight ended after ${e.round || 1} round${(e.round || 1) === 1 ? '' : 's'} — ${names}${slain ? ` (${slain} slain)` : ''}.`);
+  }
   _encFinishGroup();  // finalise the Chronicle combat group (summary) BEFORE clearing the encounter
   if (encShared()) { const m = Sync.sharedEnc(); m.active = false; m.round = 1; m.foes = []; }
   else char.encounter = JSON.parse(JSON.stringify(DEFAULT_CHARACTER.encounter));
@@ -2361,7 +2368,17 @@ function renderSpendXP(mode) {
       <button style="background:${can?'var(--red)':'#ccc'};color:white;border:none;border-radius:5px;padding:8px 12px;font-size:12px;font-weight:600;cursor:${can?'pointer':'not-allowed'}" ${can?'':'disabled'} title="${fpBlock || ''}">${status}</button>
     `;
     const btn = row.querySelector('button');
-    if (can) btn.onclick = () => { onUpgrade(cost); fpSpendRecord(group, label); closeSpendXP(); };
+    if (can) btn.onclick = () => {
+      onUpgrade(cost);
+      fpSpendRecord(group, label);
+      // Rank-ups bought here never touch adj(), so the Campaign Timeline never saw them — an
+      // adventure's worth of advancement produced one line. This is the funnel for all four kinds.
+      if (typeof logTimeline === 'function') {
+        const what = group === 'valour' ? 'Valour' : group === 'wisdom' ? 'Wisdom' : label;
+        logTimeline('rank', `${what} raised to ${newRank} (${cost} ${group === 'skill' ? 'Skill' : 'Adventure'} Points).`);
+      }
+      closeSpendXP();
+    };
     list.appendChild(row);
   };
 
