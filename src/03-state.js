@@ -414,6 +414,9 @@ function _pregenToChar(p) {
   // Rewards/Virtues earned by a rank-up but not yet chosen (both pickers offer "Skip for now").
   c.pendingRewards = parseInt(p.pendingRewards) || 0;
   c.pendingVirtues = parseInt(p.pendingVirtues) || 0;
+  // A Bout of Madness that was triggered but never answered (the prompt is a timed dialog and can
+  // be lost). Durable, so the claim control survives a reload — see renderBoutDue.
+  c.boutDue = !!p.boutDue;
   c.parryAdjust = parseInt(p.parryAdjust) || 0;   // Lifepath Major-Event Parry ±1 (see addParryAdjust)
   c.fellowshipRating = p.patron ? 1 : 0;
   return c;

@@ -1376,7 +1376,11 @@ module.exports = {
       // 13 — the Moria dialog promises Balin; enabling must deliver him, reversibly.
       char.patron = 'Gilraen'; char.safeHaven = 'Bree'; char.huntRegion = 'wild'; saveCharacter();
       await toggleMoriaMode();
-      out.moriaGivesBalin = char.patron === 'Balin' && /First Hall/.test(char.safeHaven) && char.huntRegion === 'dark';
+      // Must be the key PATRONS/PATRON_QUESTS actually use — a bare 'Balin' matched nothing,
+      // so Roll a Patron Quest refused on a hero whose sheet named a Patron.
+      out.moriaGivesBalin = char.patron === 'Balin, son of Fundin'
+        && !!PATRONS[char.patron] && !!PATRON_QUESTS[char.patron]
+        && /First Hall/.test(char.safeHaven) && char.huntRegion === 'dark';
       await toggleMoriaMode();
       out.moriaRestores = char.patron === 'Gilraen' && char.safeHaven === 'Bree' && char.huntRegion === 'wild';
 

@@ -215,7 +215,8 @@ async function hardenWill() {
     return;
   }
   if (shadow + scars >= char.hopeMax) {
-    alert('Harden Will is unavailable: your Shadow (' + shadow + ') + Scars (' + scars + ') already matches or exceeds Max Hope (' + char.hopeMax + '). At this point only a Bout of Madness can clear your Shadow.');
+    alert('Harden Will is unavailable: your Shadow (' + shadow + ') + Scars (' + scars + ') already matches or exceeds Max Hope (' + char.hopeMax + ').\n\nAt this point only a Bout of Madness can clear your Shadow — face it with the \u201cFace the Bout of Madness\u201d button on this tab, or run a Fellowship Phase to recover Shadow.');
+    if (!char.retired) { char.boutDue = true; saveCharacter(); if (typeof renderBoutDue === 'function') renderBoutDue(); }
     return;
   }
   const ok = await confirmStyled(`Clear all <strong>${shadow}</strong> current Shadow → gain <strong>1 permanent Shadow Scar</strong> (now ${scars} → ${scars + 1}).<br><br>A Scar counts as Shadow for Miserable / Bout of Madness, but can only be removed by the Heal Scars undertaking at Yule (5 AP per Scar).`, '🔥 Harden Will');
@@ -233,9 +234,13 @@ function refreshHardenWillButton() {
   const shadow = parseInt(char.shadow) || 0;
   const scars = parseInt(char.scars) || 0;
   const enabled = shadow > 0 && (shadow + scars) < char.hopeMax;
-  btn.disabled = !enabled;
-  btn.style.opacity = enabled ? '1' : '0.4';
-  btn.style.cursor = enabled ? 'pointer' : 'not-allowed';
+  // Never `disabled`: at exactly the Bout-of-Madness threshold this was the one control that
+  // resets `_boutPrompted`, and a disabled button swallows the click — it did nothing and said
+  // nothing. It stays clickable so `hardenWill()`'s guards can explain themselves.
+  btn.disabled = false;
+  btn.setAttribute('aria-disabled', enabled ? 'false' : 'true');
+  btn.style.opacity = enabled ? '1' : '0.55';
+  btn.style.cursor = 'pointer';
 }
 
 function rollCombatTask(btn) {
@@ -518,7 +523,7 @@ function renderWeapons() {
     const ro = w.picked ? 'readonly' : '';
     const versatile = !!(w.inj1h && w.inj2h);
     const gripBtn = versatile
-      ? `<button onclick="toggleWeaponGrip(${i})" title="Switch between 1-handed (lower Injury, can use shield) and 2-handed (higher Injury, no shield Parry bonus)" style="background:${w.grip==='2h'?'var(--red)':'var(--bg-deep)'};color:${w.grip==='2h'?'white':'var(--ink)'};border:1px solid var(--border);border-radius:4px;font-size:10px;font-weight:600;padding:2px 6px;margin-top:2px;cursor:pointer;width:100%">${w.grip || '1h'}</button>`
+      ? `<button onclick="toggleWeaponGrip(${i})" aria-label="Switch ${escapeHtml(w.name || 'weapon')} between one-handed and two-handed grip" title="Switch between 1-handed (lower Injury, can use shield) and 2-handed (higher Injury, no shield Parry bonus)" style="background:${w.grip==='2h'?'var(--red)':'var(--bg-deep)'};color:${w.grip==='2h'?'white':'var(--ink)'};border:1px solid var(--border);border-radius:4px;font-size:10px;font-weight:600;padding:2px 6px;margin-top:2px;cursor:pointer;width:100%">${w.grip || '1h'}</button>`
       : '';
     const tr = document.createElement('tr');
     tr.innerHTML = `
@@ -1118,8 +1123,19 @@ async function heroAttackFoe(foeId) {
   const isRanged = prof === 'Bows' || /bow/i.test(w.name);
   if (char.stance === 'forward') { dice += 1; note.push('Fwd +1d'); }
   else if (char.stance === 'defensive') { const foes = encEngagedFoes().length; dice = Math.max(0, dice - foes); if (foes) note.push(`Def −${foes}d`); }
-  else if (char.stance === 'rearward' && !isRanged) { note.push('⚠ Rearward: melee cannot attack'); }
-  else if (char.stance === 'skirmish') { if (isRanged) { dice = Math.max(0, dice - 1); note.push('Skirmish −1d'); } else { note.push('⚠ Skirmish: melee cannot attack'); } }
+  // RAW: from Rearward (and Strider's Skirmish) a melee weapon cannot attack at all. This used to
+  // print the note and then roll at full effect — the app said no and did it anyway. It now blocks
+  // and offers the way out, because a refusal with no route is the same as a dead button.
+  else if ((char.stance === 'rearward' || char.stance === 'skirmish') && !isRanged) {
+    const stanceName = char.stance === 'rearward' ? 'Rearward' : 'Skirmish';
+    const ok = await confirmStyled(
+      `<strong>${escapeHtml(w.name)}</strong> is a melee weapon, and from <strong>${stanceName}</strong> stance melee weapons cannot attack at all — you are too far back to reach the foe.<br><br>` +
+      'Your options: attack with a <strong>ranged</strong> weapon instead, or step into a closer stance.<br><br>Switch to <strong>Open</strong> stance now?',
+      `⚠️ Cannot attack from ${stanceName}`);
+    if (ok) { char.stance = 'open'; saveCharacter(); render(); }
+    return;
+  }
+  else if (char.stance === 'skirmish') { dice = Math.max(0, dice - 1); note.push('Skirmish −1d'); }
   let hopeSpent = false;
   if (a.hope && (parseInt(char.hopeCur) || 0) > 0) { dice += 1; note.push('Hope +1d'); hopeSpent = true; }
   dice = Math.max(0, dice + (parseInt(a.extra) || 0));
@@ -2795,7 +2811,8 @@ function bindBuilder() {
     const info = document.getElementById('patron-info');
     const btn = document.getElementById('apply-patron-btn');
     if (!name) { info.style.display = 'none'; btn.style.display = 'none'; return; }
-    const p = PATRONS[name];
+    const p = (typeof patronFor === 'function' ? patronFor(name) : null) || PATRONS[name];
+    if (!p) { info.style.display = 'none'; btn.style.display = 'none'; return; }
     const match = char.calling && p.callings.includes(char.calling);
     info.innerHTML = `
       <strong>${name}</strong><br>
@@ -2953,7 +2970,8 @@ async function applyCulture() {
 async function applyPatron() {
   const name = document.getElementById('patron-pick').value;
   if (!name) return;
-  const p = PATRONS[name];
+  const p = (typeof patronFor === 'function' ? patronFor(name) : null) || PATRONS[name];
+  if (!p) return;
 
   if (!await confirmStyled(`Apply ${name} as your Patron?\n\nThis will set your Patron field and add +${p.fpBonus} to your Fellowship.`)) return;
 

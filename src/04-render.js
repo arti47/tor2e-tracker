@@ -47,6 +47,7 @@ function render() {
   renderDerivedStats();
   renderConditionWarnings();
   refreshHardenWillButton();
+  renderBoutDue();
   refreshFirstAidRow();
   refreshFPSummary();
   renderJourney();
@@ -184,7 +185,13 @@ async function checkAutoTriggers() {
   const totalShadow = (parseInt(char.shadow) || 0) + (parseInt(char.scars) || 0);
   if (char.hopeMax > 0 && totalShadow >= char.hopeMax && !char._boutPrompted && !char.retired) {
     char._boutPrompted = true;
+    // The prompt fires on a timer and can be lost — closing the app, tapping away. `_boutPrompted`
+    // latched, Harden Will is disabled at exactly this threshold, and (with the phase bug) no
+    // Fellowship Phase could clear the Shadow either: the hero was locked in permanent Despair
+    // with no rules route out. `boutDue` keeps the bout claimable until it is actually resolved.
+    char.boutDue = true;
     saveCharacter();
+    if (typeof renderBoutDue === 'function') renderBoutDue();
     setTimeout(async () => {
       const path = char.shadowPath;
       const flaws = FLAWS_BY_PATH[path];
@@ -205,6 +212,7 @@ async function checkAutoTriggers() {
           : '💀 Your hero succumbs completely to madness. Their fate is left for the player and Loremaster to decide together — death by violence, by starvation in a solitary place, forsaken by folk and beasts, or other dark end.';
         alert(`💀 SUCCUMB TO SHADOW\n\nShadow (${char.shadow}${scarsBit}) reached Max Hope (${char.hopeMax}) and you already bear all 4 Flaws of "${path}".\n\n${fate.replace(/[🌊💀]/g, '').trim()}\n\nYour hero is removed from play. Export a JSON backup before resetting — you may want to bring them back as an NPC, raise their Heir, or revisit them in flashback.`);
         char.retired = true;
+        char.boutDue = false;
         char.retiredReason = isElf ? 'Sailed for Valinor (Shadow)' : 'Lost to madness (Shadow)';
         char.shadow = 0;  // moot but consistent
         saveCharacter();
@@ -230,6 +238,7 @@ async function checkAutoTriggers() {
         alert(msg + `(No Shadow Path set — set one in Build tab to enable Flaw picker)`);
       }
       char.shadow = 0;
+      char.boutDue = false;          // resolved
       saveCharacter();
       render();
     }, 100);
@@ -238,6 +247,10 @@ async function checkAutoTriggers() {
     char._boutPrompted = false;
     saveCharacter();
   }
+  if (((parseInt(char.shadow) || 0) + (parseInt(char.scars) || 0)) < (parseInt(char.hopeMax) || 0)) {
+    if (char.boutDue) { char.boutDue = false; saveCharacter(); }
+  }
+  if (typeof renderBoutDue === 'function') renderBoutDue();
   // Dying — Endurance reaches 0
   const dyingBadge = document.getElementById('dying-badge');
   if (dyingBadge) dyingBadge.style.display = (char.endCur === 0) ? 'inline-block' : 'none';
@@ -3390,18 +3403,71 @@ async function unlockDormantQuality(itemIdx) {
 }
 
 async function flyYouFools() {
-  const choice = await promptStyled(`🏃 Fly, You Fools! (Core Rules p.95)\n\nTwo ways to leave combat:\n\n1. REARWARD — assume Rearward stance, then escape when your turn comes. No roll. (Works only if conditions allow Rearward — see Combat tab Stance card.)\n\n2. DEFENSIVE — assume Defensive stance and roll your attack normally. SUCCESS → you escape (no damage dealt). FAILURE → you remain engaged.\n\nEnter 1 or 2 to set your stance, or Cancel to dismiss.`, '');
-  if (choice === '1') {
+  // Finding 11: this used to send you to the Dice tab to "roll your attack", where the foe's Parry
+  // is not part of the TN — the same swing was TN 12 there and TN 17 here. The escape roll is now
+  // made in place, against the engaged foe, with its Parry applied like any other attack.
+  const foes = (typeof encEngagedFoes === 'function') ? encEngagedFoes() : [];
+  const choice = await showModal({
+    title: '🏃 Fly, You Fools!',
+    message: 'Two ways to leave a fight (Core Rules p.95):<br><br>' +
+      '<strong>Rearward</strong> — fall back now, and escape when your turn comes. No roll.<br><br>' +
+      '<strong>Defensive</strong> — fight your way clear: make an attack roll. Success and you are away, ' +
+      'dealing no damage; failure and you are still engaged.' +
+      (foes.length ? '' : '<br><br><em>No foe is engaged with you right now, so the Defensive escape has nothing to roll against — it will just set your stance.</em>'),
+    buttons: [
+      { label: '🛡 Fall back (Rearward)', value: 'rearward' },
+      { label: '⚔️ Fight clear (Defensive)', value: 'defensive' },
+      { label: 'Cancel', value: null, cancel: true }
+    ]
+  });
+  if (choice === 'rearward') {
     char.stance = 'rearward';
     saveCharacter();
     render();
-    alert('Stance set to Rearward.\n\nOn your next action, you may escape without a roll (no Combat Task or attack possible).');
-  } else if (choice === '2') {
-    char.stance = 'defensive';
-    saveCharacter();
-    render();
-    alert('Stance set to Defensive.\n\nRoll your attack on the Dice tab. SUCCESS = escape; FAILURE = remain engaged.\n\nRemember: Defensive stance loses 1d per Engaged Foe.');
+    alert('Stance set to Rearward.\n\nOn your next action you may escape without a roll — you cannot attack or take a Combat Task from Rearward.');
+    return;
   }
+  if (choice !== 'defensive') return;   // Cancel, Escape, or a stray dismissal: say nothing, change nothing
+  char.stance = 'defensive';
+  saveCharacter();
+  render();
+  if (!foes.length) {
+    requireStep('Stance set to Defensive — but no foe is engaged with you, so there is nothing to break away from.<br><br>Add the foe under <strong>Encounter</strong>, then tap 🏃 again and the escape roll will be made against it.', 'combat', 'encounter-card-wrap', '🏃 Nothing to escape from');
+    return;
+  }
+  await _flyEscapeRoll(foes[0]);
+}
+
+/** The Defensive escape: a real attack roll against the foe, Parry and stance included. */
+async function _flyEscapeRoll(foe) {
+  const wpns = (typeof _equippedWeapons === 'function') ? _equippedWeapons() : [];
+  if (!wpns.length) return requireStep('You need a weapon in hand to fight your way clear.<br><br>Pick one under <strong>War Gear</strong> on this tab.', 'combat', 'war-gear-card', '⚠️ No weapon equipped');
+  const e = enc();
+  const w = wpns[Math.min(e.weaponIdx || 0, wpns.length - 1)];
+  const prof = w.prof;
+  const profRating = (!prof || prof === 'Brawling') ? getBrawlingRating() : (parseInt((char.profs || {})[prof]) || 0);
+  const engaged = encEngagedFoes().length;
+  const dice = Math.max(0, profRating - engaged);     // Defensive: −1d per engaged foe
+  const tn = (parseInt(char.strTN) || 0) + (parseInt(foe.parry) || 0);
+  _suspendInlineEye(true);
+  const roll = _doInlineRoll(dice, 'normal', tn);
+  _suspendInlineEye(false);
+  const score = roll.featSpecial === 'rune' ? '★' : (roll.featSpecial === 'eye' ? '✗' : roll.total);
+  const escaped = roll.outcome.startsWith('SUCCESS');
+  let line = `<strong>You</strong> · escape attempt · ${escapeHtml(w.name)} · ${score} vs TN ${tn} (${char.strTN} Str + Parry ${foe.parry}) · Def −${engaged}d → ${roll.outcome}`;
+  if (escaped) {
+    foe.engaged = false;
+    line += ' · 🏃 <strong>you break away</strong> — no damage dealt';
+  } else {
+    line += ' · you remain engaged';
+  }
+  encDeriveEngaged();
+  saveCharacter();
+  encLogRoll(line);
+  render(); renderEncounter();
+  alert(escaped
+    ? `🏃 Away!\n\n${score} vs TN ${tn} — you fight clear of ${foe.name} and deal no damage. You are no longer engaged.`
+    : `You are still engaged.\n\n${score} vs TN ${tn} — ${foe.name} keeps you pinned. You may try again on your next turn.`);
 }
 
 async function spendHopeToSupport() {
@@ -3604,6 +3670,26 @@ async function sagaEnd() {
 async function sagaReopen() {
   if (!await confirmStyled('Continue this saga after all? The ending you wrote stays in the Chronicle.', '↩ Reopen')) return;
   const s = sagaState(); s.ended = false; saveCharacter(); render();
+}
+
+/** A Bout of Madness you were owed but never answered. The prompt is a timed dialog; losing it
+    used to strand the hero permanently. This puts a standing control on the Character tab. */
+function renderBoutDue() {
+  const host = document.getElementById('bout-due');
+  if (!host) return;
+  if (!char.boutDue || char.retired) { host.style.display = 'none'; host.innerHTML = ''; return; }
+  host.style.display = 'block';
+  host.innerHTML =
+    '<p class="hint" style="text-align:left;margin:0 0 6px;line-height:1.5"><strong>⚠️ A Bout of Madness is owed.</strong> ' +
+    'Your Shadow and Scars have filled your Hope. Face it: you take a Flaw from your Shadow Path, and your Shadow clears to 0.</p>' +
+    '<button class="add-row-btn" style="width:100%;background:var(--btn-alert-bg);color:white" onclick="triggerBoutNow()">🌑 Face the Bout of Madness</button>';
+}
+
+/** Re-fire the Bout the player lost. */
+async function triggerBoutNow() {
+  char._boutPrompted = false;      // let checkAutoTriggers run it again
+  saveCharacter();
+  await checkAutoTriggers();
 }
 
 function renderSaga() {
