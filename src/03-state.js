@@ -1495,7 +1495,9 @@ async function foeAttacks(id) {
   const f = c.foe || { atkDice: 2, atkDmg: 4, atkInj: 14, atkTN: 14 };
   const heroParry = (parseInt(char.parry) || 0) + (parseInt(char.shieldTotal) || 0);
   const tn = (parseInt(f.atkTN) || 0) + heroParry;
+  _suspendInlineEye(true);                       // legacy Chronicle combat log — still combat
   const roll = _doInlineRoll(parseInt(f.atkDice) || 0, 'normal', tn);
+  _suspendInlineEye(false);
   const hit = roll.outcome.startsWith('SUCCESS');
   const score = roll.featSpecial === 'rune' ? '★(Rune)' : (roll.featSpecial === 'eye' ? '✗(Eye)' : roll.total);
   // Piercing Blow: a Gandalf rune or a 10 on the foe's Feat die (matches the hero-attack model).

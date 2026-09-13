@@ -1397,7 +1397,24 @@ function _doInlineRoll(successDice, fav, tn) {
   else if (chosen.special === 'eye') outcome = 'FAIL (Eye)';
   else if (total >= tn) outcome = 'SUCCESS';
   else outcome = 'FAIL';
-  return { featValue: chosen.value, featSpecial: chosen.special, featLabel: chosen.label, total, icons, outcome };
+  const res = { featValue: chosen.value, featSpecial: chosen.special, featLabel: chosen.label, total, icons, outcome };
+  _soloEyeFromRoll(res);
+  return res;
+}
+
+/* The Eye card states the rule plainly: "Raise by 1 for any Eye icon outside combat." That hook
+   lived in `rollDice()` alone, so an 👁 in a Council, Journey, Endeavour, Battle or ▶ Play roll —
+   every one of which goes through `_doInlineRoll` — did nothing at all. Solo campaigns ran lighter
+   than the rules intend on every surface except the Dice tab.
+   A Rune does NOT raise it (GOTCHA / Strider Mode: an Eye only); it offers the Fortune table. */
+let _inlineEyeSuspended = false;
+function _suspendInlineEye(on) { _inlineEyeSuspended = !!on; }
+function _soloEyeFromRoll(r) {
+  if (_inlineEyeSuspended) return;                         // combat rolls: the Eye ignores blows
+  if (typeof isSolo !== 'function' || !isSolo()) return;
+  if (!r || r.featSpecial !== 'eye') return;
+  char.eyeAwareness = (parseInt(char.eyeAwareness) || 0) + 1;
+  try { saveCharacter(); if (typeof refreshEyeOfMordor === 'function') refreshEyeOfMordor(); } catch (e) {}
 }
 
 function startJourney() {
@@ -1514,7 +1531,8 @@ function renderJourneyEventRoll() {
     `<p class="hint" style="text-align:left;margin:0 0 6px;font-size:11px;line-height:1.4">` +
     `${escapeHtml(pend.skill)} ${'◆'.repeat(sk.rating)}${'◇'.repeat(Math.max(0, 6 - sk.rating))} vs TN ${sk.tn}` +
     `${sk.favoured ? ' · ★ Favoured' : ''}${pend.hard ? ' · hard terrain −1d' : ''}` +
-    `${effect ? `<br>On a success: <strong>${escapeHtml(effect.label)}</strong>` : ''}</p>` +
+    `${effect ? `<br>On a success: <strong>${escapeHtml(effect.label)}</strong>` : ''}` +
+    `${effect && effect.onFail ? `<br>On a failure, the app applies the event's cost for you.` : ''}</p>` +
     `<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">` +
     `<button class="add-row-btn" style="font-size:12px;background:var(--red)" onclick="rollJourneyEvent()">🎲 Roll ${escapeHtml(pend.skill)}</button>` +
     `<button class="add-row-btn" style="font-size:12px;background:var(--btn-secondary-bg);color:white" onclick="skipJourneyEventRoll()">Skip this roll</button>` +
@@ -1526,22 +1544,57 @@ function renderJourneyEventRoll() {
 const _jDay  = (j, d) => { j.daysElapsed = Math.max(0, (parseInt(j.daysElapsed) || 0) + d); return (d < 0 ? '−' : '+') + Math.abs(d) + ' day (now day ' + j.daysElapsed + ')'; };
 const _jHope = () => { const before = parseInt(char.hopeCur) || 0, max = parseInt(char.hopeMax) || 0;
   char.hopeCur = Math.min(max, before + 1); return char.hopeCur > before ? `+1 Hope (${before} → ${char.hopeCur})` : 'Hope already full'; };
+const _jShadow = (n) => {
+  const before = (parseInt(char.shadow) || 0);
+  if (typeof adj === 'function') { try { adj('shadow', n); } catch (e) { char.shadow = before + n; } }
+  else char.shadow = before + n;
+  return `+${n} Shadow (${before} → ${parseInt(char.shadow) || 0})`;
+};
+const _jFatigue = (n) => { char.fatigue = Math.max(0, (parseInt(char.fatigue) || 0) + n); return `+${n} Fatigue (now ${char.fatigue})`; };
+const _jWound = () => {
+  if (char.wounded) return 'you are hurt again, but already Wounded';
+  char.wounded = true;
+  let sev = '';
+  try { if (typeof _applyWoundFromFail === 'function') { _applyWoundFromFail(); sev = char.injury ? ` — ${char.injury}` : ''; } } catch (e) {}
+  return `you are <strong>WOUNDED</strong>${sev}`;
+};
+/* Each event names a consequence for BOTH outcomes. The success half was automated and the
+   failure half printed "the event's effect stands" and applied nothing — while the Travel
+   Fatigue from the same event WAS applied, so a player had no way to tell which half of an
+   event was theirs to do by hand. `onFail` closes that. */
 const JOURNEY_EVENT_ROLL_EFFECT = {
   // Core Rules journey events
   shortcut: { label: '−1 day off the journey',    apply: (j) => _jDay(j, -1) },
   chance:   { label: 'a favourable encounter',    apply: () => 'the meeting goes well — play it out as a scene' },
   joyful:   { label: '+1 Hope',                   apply: () => _jHope() },
-  mishap:   { label: 'no extra day, no extra Fatigue', apply: () => 'the mishap costs you nothing further' },
-  ill:      { label: 'no Shadow from this',       apply: () => 'you keep your head — no Shadow gained' },
-  despair:  { label: 'no Shadow from this',       apply: () => 'you hold on to your Hope — no Shadow gained' },
-  terrible: { label: 'you are not Wounded',       apply: () => 'you come through it unwounded' },
+  mishap:   { label: 'no extra day, no extra Fatigue', apply: () => 'the mishap costs you nothing further',
+              onFail: (j) => `${_jDay(j, 1)} and ${_jFatigue(1)}` },
+  ill:      { label: 'no Shadow from this',       apply: () => 'you keep your head — no Shadow gained',
+              onFail: () => _jShadow(1) },
+  despair:  { label: 'no Shadow from this',       apply: () => 'you hold on to your Hope — no Shadow gained',
+              onFail: () => _jShadow(1) },
+  terrible: { label: 'you are not Wounded',       apply: () => 'you come through it unwounded',
+              onFail: () => _jWound() },
   // Moria
   rightWay:        { label: '−1 day off the journey', apply: (j) => _jDay(j, -1) },
-  dreadWonder:     { label: '+1 Hope',                apply: () => _jHope() },
-  branchingStairs: { label: 'no lost day',            apply: () => 'you pick the right stair — no day lost' },
-  longDark:        { label: 'no Shadow from this',    apply: () => 'the dark does not reach you — no Shadow gained' },
-  watchfulEyes:    { label: 'unseen — no Shadow, no Eye', apply: () => 'you pass unseen — no Shadow, and the Eye does not stir' },
-  deadlyDark:      { label: 'you are not Wounded',    apply: () => 'you come through it unwounded, and unnoticed' }
+  dreadWonder:     { label: '+1 Hope',                apply: () => _jHope(),
+                     onFail: () => _jShadow(1) },
+  branchingStairs: { label: 'no lost day',            apply: () => 'you pick the right stair — no day lost',
+                     onFail: (j) => `${_jDay(j, 1)} and ${_jFatigue(1)}` },
+  longDark:        { label: 'no Shadow from this',    apply: () => 'the dark does not reach you — no Shadow gained',
+                     onFail: () => _jShadow(2) },
+  watchfulEyes:    { label: 'unseen — no Shadow, no Eye', apply: () => 'you pass unseen — no Shadow, and the Eye does not stir',
+                     onFail: () => {
+                       const sh = _jShadow(1);
+                       char.eyeAwareness = (parseInt(char.eyeAwareness) || 0) + 1;
+                       return `${sh}, and the Eye stirs (👁 ${char.eyeAwareness})`;
+                     } },
+  deadlyDark:      { label: 'you are not Wounded',    apply: () => 'you come through it unwounded, and unnoticed',
+                     onFail: () => {
+                       const w = _jWound();
+                       char.eyeAwareness = (parseInt(char.eyeAwareness) || 0) + 1;
+                       return `${w}, and the Eye stirs (👁 ${char.eyeAwareness})`;
+                     } }
 };
 
 async function rollJourneyEvent() {
@@ -1555,13 +1608,13 @@ async function rollJourneyEvent() {
   if (char.miserable && r.featSpecial === 'eye') ok = false;
   const effect = JOURNEY_EVENT_ROLL_EFFECT[pend.eventKey];
   let applied = '';
-  if (ok && effect) applied = effect.apply(j) || '';
+  if (effect) applied = (ok ? effect.apply(j) : (effect.onFail ? effect.onFail(j) : '')) || '';
   const score = (r.total === null) ? 'a Gandalf rune — automatic success' : `${r.total} vs TN ${sk.tn}`;
   j.events.push({
     day: j.daysElapsed, hex: j.currentHex,
     text: `▶ <strong>${escapeHtml(pend.skill)}</strong> roll for ${escapeHtml(pend.eventName)} — ${score}${r.icons ? `, ${r.icons} ✦` : ''}: ` +
           (ok ? `<strong style="color:var(--success-text)">success</strong>${applied ? ' — ' + applied : ''}`
-              : `<strong style="color:var(--error-text)">failure</strong> — the event's effect stands.`)
+              : `<strong style="color:var(--error-text)">failure</strong>${applied ? ' — ' + applied : " — the event's effect stands."}`)
   });
   j.pendingEventRoll = null;
   saveCharacter();
@@ -2610,7 +2663,11 @@ function resolveJourneyEvent(isPeril) {
     featFav = (j.region === 'Border') ? 'normal' : 'ill';
   } else if (j.region === 'Free' || j.region === 'Border') featFav = 'fav';
   else if (j.region === 'Shadow' || j.region === 'Dark') featFav = 'ill';
+  // The EVENT feat die is the table's own die, not a roll the hero made — an Eye here selects
+  // "Terrible Misfortune", it is not the player drawing the Eye's attention.
+  _suspendInlineEye(true);
   const r = _doInlineRoll(0, featFav, null);
+  _suspendInlineEye(false);
 
   // Ponder Storied & Figured Maps undertaking: +1 to Feat result on Journey Events (Core Rules p.121).
   // Eye → 1 (Despair); 10 → still 10 (cap); Rune stays Rune.
@@ -3695,7 +3752,9 @@ function _playSituation() {
       const j = char.journey || {};
       return { title: 'On the road' + (j.destination ? ' to ' + escapeHtml(j.destination) : ''),
         text: j.active
-          ? `You have covered <strong>${j.currentHex || 0}</strong> of <strong>${j.totalHexes || 0}</strong> stretches. Day ${j.daysElapsed || 0}.`
+          ? `You have covered <strong>${j.currentHex || 0}</strong> of <strong>${j.totalHexes || 0}</strong> stretches. Day ${j.daysElapsed || 0}.` +
+            (_playEventDue() ? '<br><strong style="color:var(--error-text)">The road has something waiting for you here.</strong>' : '') +
+            ((j.pendingEventRoll && j.pendingEventRoll.skill) ? `<br><strong style="color:var(--red-dark)">${escapeHtml(j.pendingEventRoll.eventName)} — it wants a ${escapeHtml(j.pendingEventRoll.skill)} roll.</strong>` : '')
           : (j.destination
               ? 'The road is behind you — you finished this journey on the Journey tab. Tap <strong>We have arrived</strong> to carry on.'
               : 'You are ready to travel, but have not set out yet.') };
@@ -3736,11 +3795,25 @@ function _playStepChoices() {
     ];
     case 'journey': {
       const jc = char.journey || {};
-      if (jc.active) return [
-        C('🥾 Travel onward', 'playTravel()', 'Cover ground. The road may interrupt you.'),
-        C('🔥 Make camp', 'playRest()', 'Stop for the night and recover.'),
-        C('🏁 We have arrived', 'playArrive()', 'End the journey here.')
-      ];
+      if (jc.active) {
+        // An event due at this hex BLOCKS the road (the Journey tab enforces the same order).
+        // Play used to sail past it entirely — `applyMarchingTestResult` sets `nextEventHex`
+        // and nothing here read it, so a player taking "you never need the other tabs" at its
+        // word never met a single Journey Event: the whole pressure mechanic of TOR2E travel.
+        if (_playEventDue()) return [
+          C('⚠️ Something happens on the road', 'playEvent()', 'Resolve it before you travel on.'),
+          C('🔥 Make camp', 'playRest()', 'Stop for the night and recover.')
+        ];
+        if (jc.pendingEventRoll && jc.pendingEventRoll.skill) return [
+          C(`🎲 Roll ${jc.pendingEventRoll.skill}`, 'playEventRoll()', 'The road is asking something of you.'),
+          C('↷ Let it happen', 'playEventSkip()', 'Skip the roll and take what comes.')
+        ];
+        return [
+          C('🥾 Travel onward', 'playTravel()', 'Cover ground. The road may interrupt you.'),
+          C('🔥 Make camp', 'playRest()', 'Stop for the night and recover.'),
+          C('🏁 We have arrived', 'playArrive()', 'End the journey here.')
+        ];
+      }
       // A journey finished on the Journey tab clears `active`. Without this branch the Play
       // tab offered only "Set out" and "Go back", and step 3 was unreachable from the very
       // surface that promises you never need another tab.
@@ -3867,6 +3940,51 @@ async function playTravel() {
   if (j.currentHex >= (j.totalHexes || 1)) {
     playSay('<strong>The place you were making for is in sight.</strong>');
   }
+  renderPlay();
+}
+
+/** Is a Journey Event due at the hero's current hex? (Mirrors the Journey tab's own gate.) */
+function _playEventDue() {
+  const j = char.journey;
+  if (!j || !j.active) return false;
+  if (j.pendingEventRoll && j.pendingEventRoll.skill) return false;   // already rolled up
+  const next = j.nextEventHex;
+  if (next === null || next === undefined) return false;
+  return (j.currentHex || 0) >= next;
+}
+
+/** Resolve the waiting Journey Event, narrated into the Play feed. */
+async function playEvent() {
+  if (!_playEventDue()) { playSay('Nothing is waiting on the road just now.', 'aside'); return renderPlay(); }
+  const before = (char.journey.events || []).length;
+  const origAlert = window.alert; window.alert = () => {};
+  try { resolveJourneyEvent(); } finally { window.alert = origAlert; }
+  const ev = (char.journey.events || [])[before];
+  if (ev) playSay(String(ev.text).replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim());
+  const pend = char.journey.pendingEventRoll;
+  if (pend && pend.skill) playSay(`<em>It asks something of you: a <strong>${escapeHtml(pend.skill)}</strong> roll.</em>`, 'aside');
+  else playSay('<em>Nothing to roll for this one — say what it looks like, and travel on.</em>', 'aside');
+  renderPlay();
+}
+
+/** Make the roll the event asked for, from Play. */
+async function playEventRoll() {
+  const j = char.journey;
+  if (!j || !j.pendingEventRoll) return renderPlay();
+  const before = (j.events || []).length;
+  await rollJourneyEvent();
+  const line = (j.events || [])[(j.events || []).length - 1];
+  if (line && (j.events || []).length > before) {
+    playSay(String(line.text).replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim());
+  }
+  renderPlay();
+}
+
+function playEventSkip() {
+  const pend = char.journey && char.journey.pendingEventRoll;
+  if (typeof skipJourneyEventRoll === 'function') skipJourneyEventRoll();
+  playSay(pend ? `You let it pass without testing yourself against it — the ${escapeHtml(pend.eventName)} takes its course.`
+               : 'You let it pass.', 'aside');
   renderPlay();
 }
 

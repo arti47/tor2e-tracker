@@ -1124,7 +1124,9 @@ async function heroAttackFoe(foeId) {
   dice = Math.max(0, dice + (parseInt(a.extra) || 0));
   if (a.fav === 'fav') note.push('Favoured'); else if (a.fav === 'ill') note.push('Ill-Favoured');
   const tn = (parseInt(char.strTN) || 0) + (parseInt(f.parry) || 0);
+  _suspendInlineEye(true);                       // combat: the Eye rises outside combat only
   const roll = _doInlineRoll(dice, a.fav, tn);
+  _suspendInlineEye(false);
   const hit = roll.outcome.startsWith('SUCCESS');
   const piercing = hit && (roll.featSpecial === 'rune' || roll.featValue === 10 || (a.keen && roll.featValue >= 9));
   if (hopeSpent) char.hopeCur = Math.max(0, (parseInt(char.hopeCur) || 0) - 1);
@@ -1164,7 +1166,9 @@ async function foeAttackHero(foeId, attackIdx) {
   let stanceNote = '';
   if (char.stance === 'forward') { atkDice += 1; stanceNote = ' · you Forward +1d'; }
   else if (char.stance === 'defensive') { atkDice = Math.max(0, atkDice - 1); stanceNote = ' · you Defensive −1d'; }
+  _suspendInlineEye(true);
   const roll = _doInlineRoll(atkDice, 'normal', tn);
+  _suspendInlineEye(false);
   const hit = roll.outcome.startsWith('SUCCESS');
   const piercing = hit && (roll.featSpecial === 'rune' || roll.featValue === 10);
   const score = roll.featSpecial === 'rune' ? '★' : (roll.featSpecial === 'eye' ? '✗' : roll.total);
