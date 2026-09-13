@@ -1084,7 +1084,16 @@ function _tutEnterSandbox() {
 async function _tutExitSandbox() {
   const sb = window._tutSandbox; if (!sb) { return; }
   saveCharacter();
-  const keep = await confirmStyled(`Keep this practice hero in your roster?<br><br>Save <strong>${escapeHtml(char.name || 'the hero')}</strong> as a real character, or discard it. Either way your previous character comes back.`, '📖 Tutorial');
+  // A bare [OK] [Cancel] on a choice about someone's character is not a choice anyone should have
+  // to guess at — the buttons say what they do.
+  const keep = await showModal({
+    title: '📖 Tutorial finished',
+    message: `What should happen to your practice hero, <strong>${escapeHtml(char.name || 'the hero')}</strong>?<br><br>Either way, the character you were playing before comes back.`,
+    buttons: [
+      { label: '💾 Keep — add to my roster', value: true },
+      { label: '🗑 Discard the practice hero', value: false, style: 'background:var(--btn-secondary-bg);color:white;border:none;border-radius:5px;padding:10px;font-size:14px;cursor:pointer' }
+    ]
+  }) === true;
   if (keep) {
     char.name = (char.name || 'Hero').replace(/\s*\(Practice\)\s*/i, '').trim() || 'Hero';
     if (char.name === 'Practice Hero') char.name = 'Hero';
@@ -1315,6 +1324,8 @@ function _tutRender() {
   // auto-advance on a false→true transition (so a condition already met just lets you tap Next).
   s.baseline = {
     rolls: (typeof history !== 'undefined' && history) ? history.length : 0,
+    oracle: (typeof oracleHistory !== 'undefined' && oracleHistory) ? oracleHistory.length : 0,
+    scenes: (typeof journal !== 'undefined' && journal && journal.entries) ? journal.entries.length : 0,
     sp: parseInt(char.skillPts) || 0, ap: parseInt(char.advPts) || 0,
     treasure: parseInt(char.treasure) || 0, items: (char.magicalItems || []).length,
     shadow: (parseInt(char.shadow) || 0) + (parseInt(char.scars) || 0),
@@ -1520,10 +1531,10 @@ const TUTORIAL_LESSONS = [
     prep: c => { _tutBuildIfBlank(c); c.striderMode = true; if (!c.fellowshipRating || c.fellowshipRating < 3) c.fellowshipRating = 3; },
     steps: [
       { tab: 'character', intro: `Even alone, a Ranger's long road can be walked.`, title: `Solo modes`, body: `The ☰ menu offers “Enable Strider Mode” (lone-hero play) and “Enable Moria Solo Mode” (the Durin's Folk campaign). We've switched Strider on for this lesson.`, more: `Solo mode lowers your Target Numbers (18 − rating), sets a minimum Fellowship rating, and unlocks the Oracle, the Eye of Mordor, and the Chronicle.` },
-      { tab: 'oracle', sel: '[onclick="rollTellingTable()"]', title: `The Oracle — yes or no`, body: `With no Loremaster, the Oracle answers for the world. Ask a yes/no question, set the odds, and tap “Ask the Telling Table”. Try it.`, more: `A ☉ rune or 👁 Eye on the answer adds a twist — “yes, but…” or “no, and…” — to keep the story surprising.` },
+      { tab: 'oracle', sel: '[onclick="rollTellingTable()"]', title: `The Oracle — yes or no`, body: `With no Loremaster, the Oracle answers for the world. Ask a yes/no question, set the odds, and tap “Ask the Telling Table”. Try it.`, done: (c, b) => (typeof oracleHistory !== 'undefined' && oracleHistory ? oracleHistory.length : 0) > (b.oracle || 0), more: `A ☉ rune or 👁 Eye on the answer adds a twist — “yes, but…” or “no, and…” — to keep the story surprising.` },
       { tab: 'oracle', sel: '[onclick="rollLoreTable()"]', title: `The Oracle — inspiration`, body: `Stuck for what happens next? The Lore Table gives Action / Aspect / Focus words to spark a scene, an NPC, or a complication.`, more: `Fortune and Ill-Fortune tables turn special Feat results on your ordinary rolls into unfolding story events.` },
       { tab: 'character', sel: '#eye-of-mordor-card', title: `The Eye of Mordor`, body: `In solo play the Eye measures how close the Enemy is to noticing you. It rises as you act and gather Shadow; cross the Hunt threshold and a Revelation Episode strikes.`, more: `Each region has its own Hunt threshold — the deeper into darkness you go, the sooner the Eye turns your way.` },
-      { tab: 'chronicle', sel: '[onclick="rollWritingPrompt()"]', title: `The Chronicle`, body: `Your solo journal. Scenes, dice, oracle results, and whole combats fold into a Tale of Years you can export. Tap “🎬 Scene” to seed what happens next. Try it.`, more: `It auto-captures the mechanical beats — rolls, oracle answers, journey events, combats — and you write the prose around them.` },
+      { tab: 'chronicle', sel: '[onclick="rollWritingPrompt()"]', title: `The Chronicle`, body: `Your solo journal. Scenes, dice, oracle results, and whole combats fold into a Tale of Years you can export. Tap “🎬 Scene” to seed what happens next. Try it.`, done: (c, b) => (typeof journal !== 'undefined' && journal && journal.entries ? journal.entries.length : 0) > (b.scenes || 0), more: `It auto-captures the mechanical beats — rolls, oracle answers, journey events, combats — and you write the prose around them.` },
       { tab: 'character', title: `You're ready`, body: `That's the whole game! Tap Finish, then choose whether to keep this practice hero. May your road be ever eastward.`, more: `Revisit any lesson anytime from ☰ Menu → 📖 Tutorial. Good journey, and mind the Shadow.` }
     ] }
 ];

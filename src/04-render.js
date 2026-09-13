@@ -3882,6 +3882,22 @@ function _playPlainText(html) {
 
 function playClearFeed() { _playFeed = []; }
 
+/** Open a fresh Chronicle scene at a natural break in the Play loop. A whole campaign played from
+    ▶ Play used to land in one undifferentiated scene, because nothing here ever started a new one. */
+function playScene(title) {
+  if (typeof isSolo !== 'function' || !isSolo()) return;
+  if (typeof ensureActiveScene !== 'function' || typeof journal === 'undefined' || !journal) return;
+  try {
+    ensureActiveScene();                       // guarantees journal.scenes/clock are usable
+    const sc = { id: genCharId(), title: String(title || '').trim() || `${ordinal(journal.clock.day)} ${journal.clock.month}`,
+                 date: { ...journal.clock }, ts: nowStamp(), state: captureState() };
+    journal.scenes.push(sc);
+    journal.activeSceneId = sc.id;
+    saveJournal();
+    if (typeof renderChronicle === 'function') renderChronicle();
+  } catch (e) {}
+}
+
 /* ---- the moment-to-moment script ---------------------------------------- */
 
 function _playSituation() {
@@ -4165,6 +4181,7 @@ async function playSetOut() {
   sagaState().step = 'journey';
   saveCharacter();
   playClearFeed();
+  playScene(`The road to ${char.journey.destination}`);
   playSay(`You leave ${escapeHtml(char.safeHaven || 'home')} for <strong>${escapeHtml(char.journey.destination)}</strong>.`);
   renderPlay();
 }
@@ -4185,6 +4202,7 @@ async function playArrive() {
   sagaState().step = 'location';
   saveCharacter();
   playClearFeed();
+  playScene(`At ${dest}`);
   playSay(`You reach <strong>${escapeHtml(dest)}</strong>.`);
   const fatGained = (parseInt(char.fatigue) || 0) - fatBefore;
   if (fatGained > 0) playSay(`The road has left its mark: <strong>+${fatGained} Fatigue</strong>. A Prolonged Rest in a Safe Haven clears 1 at a time.`, 'aside');
@@ -4213,6 +4231,7 @@ async function playSetOutHome() {
     travelFatigue: 0, daysElapsed: 0, events: [], nextEventHex: null };
   saveCharacter();
   playClearFeed();
+  playScene(`The road home to ${home}`);
   playSay(`You turn back for <strong>${escapeHtml(home)}</strong>.`);
   renderPlay();
 }
@@ -4274,6 +4293,7 @@ async function playNextAdventure() {
   char.journey = { active: false };
   saveCharacter();
   playClearFeed();
+  playScene(`Adventure ${s.adventures}${newPremise ? ' — ' + newPremise : ''}`);
   playSay(`<strong>Adventure ${s.adventures} begins.</strong> You are back at ${escapeHtml(char.safeHaven || 'the haven')}.`);
   if (newPremise) playSay(`Why you are leaving again: <em>${escapeHtml(newPremise)}</em>`);
   if (typeof pushBlock === 'function' && isSolo()) {

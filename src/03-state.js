@@ -245,6 +245,31 @@ function snapshotHero(id, reason) {
   saveBackups(all);
   return true;
 }
+/** Snapshot reasons read as bare slugs — eight rows all saying "load", separable only by clock.
+    Say what the snapshot IS, and show the vitals it holds so a row can be recognised. */
+const BACKUP_REASONS = {
+  load: 'on opening the app',
+  manual: 'saved by you',
+  'pre-restore': 'taken just before a restore',
+  import: 'before an import',
+  reset: 'before a reset'
+};
+function _backupReasonLabel(reason) {
+  const r = String(reason || 'manual');
+  return BACKUP_REASONS[r] || r;
+}
+function _backupStateLabel(raw) {
+  try {
+    const d = JSON.parse(raw);
+    const bits = [];
+    if (d.endMax != null) bits.push(`\u2764 ${d.endCur ?? '?'}/${d.endMax}`);
+    if (d.hopeMax != null) bits.push(`\u2726 ${d.hopeCur ?? '?'}/${d.hopeMax}`);
+    const sh = (parseInt(d.shadow) || 0) + (parseInt(d.scars) || 0);
+    if (sh) bits.push(`\u{1F311} ${sh}`);
+    return bits.length ? ' · ' + bits.join(' · ') : '';
+  } catch (e) { return ''; }
+}
+
 function backupNow() {
   const ok = snapshotHero(activeCharId, 'manual');
   alert(ok ? 'Snapshot saved.' : 'No change since the last snapshot — nothing new to save.');
@@ -262,7 +287,7 @@ function renderRestorePoints() {
   if (!list.length) { body.innerHTML = '<div class="hint" style="text-align:center;padding:10px">No snapshots yet for this hero.</div>'; return; }
   body.innerHTML = list.map((s, i) =>
     `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)">
-      <span style="font-size:12px"><strong>${escapeHtml(s.name || 'Hero')}</strong><br><span style="color:var(--text-muted)">${new Date(s.ts).toLocaleString()} · ${escapeHtml(s.reason || '')}</span></span>
+      <span style="font-size:12px"><strong>${escapeHtml(s.name || 'Hero')}</strong><br><span style="color:var(--text-muted)">${new Date(s.ts).toLocaleString()} · ${escapeHtml(_backupReasonLabel(s.reason))}${_backupStateLabel(s.data)}</span></span>
       <button onclick="restoreSnapshot(${i})" style="flex:0 0 auto">Restore</button></div>`).join('');
 }
 async function restoreSnapshot(idx) {
@@ -758,7 +783,9 @@ function renderTableMode() {
       const dying = (parseInt(d.endCur) || 0) <= 0;
       const conds = (dying ? [pill('DYING', '#b01010')] : [])
         .concat([d.weary && pill('WEARY', '#8a5a14'), d.miserable && pill('MISERABLE', '#6a1a6a'), d.wounded && pill('WOUNDED', '#7a1a1a')].filter(Boolean)).join(' ');
-      return card(escapeHtml(d.name || '?') + (e.id === activeCharId ? ' ★' : ''), d.endCur, d.endMax, d.hopeCur, d.hopeMax, totalShadow, conds);
+      // "?" told a table full of people nothing. Fall back to what the hero IS.
+      const label = d.name || [d.culture, d.calling].filter(Boolean).join(' ') || 'Unnamed hero';
+      return card(escapeHtml(label) + (e.id === activeCharId ? ' ★' : ''), d.endCur, d.endMax, d.hopeCur, d.hopeMax, totalShadow, conds);
     }).filter(Boolean).join('');
   }
   // P5: shared-aware — in a campaign the shared encounter shows on the table screen for everyone.

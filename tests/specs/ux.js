@@ -547,20 +547,32 @@ module.exports = {
       const sb = JSON.parse(localStorage.getItem('tor2e-tut-sandbox') || '{}');
       out.remembersReal = sb.prevActiveId === realId;
       // …and cleared once the tutorial is properly exited.
-      const origConfirm = window.confirmStyled;
-      window.confirmStyled = async () => false;          // "discard the practice hero"
+      // Answer the Keep/Discard dialog the way a player does: by pressing the button that says
+      // Discard. Stubbing it blind would pass even if the dialog offered no such choice.
+      window._tutDialogLabels = [];
+      window.showModal = async (opts) => {
+        const btns = (opts && opts.buttons) || [];
+        window._tutDialogLabels = btns.map(b => b.label);
+        const discard = btns.find(b => /discard/i.test(b.label || ''));
+        return discard ? discard.value : null;
+      };
       return { out, cleanup: true, origSet: true };
     });
     // finish the exit outside the first evaluate so the async dialog can resolve
     const tut2 = await page.evaluate(async () => {
       await _tutExitSandbox();
-      return { cleared: !localStorage.getItem('tor2e-tut-sandbox'), back: char.name };
+      return { cleared: !localStorage.getItem('tor2e-tut-sandbox'), back: char.name,
+               labels: window._tutDialogLabels || [] };
     });
     checks.push({ ok: tut.out.lessons === 10 && tut.out.steps === 57, msg: `tutorial has 10 lessons / 57 steps (got ${tut.out.lessons}/${tut.out.steps})` });
     checks.push({ ok: tut.out.bad.length === 0, msg: `every tutorial step resolves its tab+selector and has copy (bad: ${tut.out.bad.slice(0, 4).join(', ') || 'none'})` });
     checks.push({ ok: tut.out.persisted && tut.out.swapped && tut.out.remembersReal, msg: 'tutorial sandbox is persisted and remembers the real hero' });
     checks.push({ ok: tut2.cleared, msg: 'exiting the tutorial clears the persisted sandbox' });
     checks.push({ ok: tut2.back === 'RealHero', msg: 'discarding the practice hero restores the real one' });
+    checks.push({
+      ok: tut2.labels.length === 2 && tut2.labels.some(l => /keep/i.test(l)) && tut2.labels.some(l => /discard/i.test(l)),
+      msg: `the practice-hero choice names both outcomes rather than OK/Cancel (got: ${tut2.labels.join(' | ') || 'none'})`
+    });
 
     // ---- Build progress is real, and dice say what they are ----
     const build = await page.evaluate(() => {
