@@ -1269,7 +1269,19 @@ async function rollMoriaRevelation(forceCat) {
   const r = rollFeatOnce();
   const key = r.special === 'eye' ? 'eye' : (r.special === 'rune' ? 'rune' : r.value);
   const [name, effect] = tbl.t[key];
-  await alertStyled(`<strong>${tbl.label}</strong> (Feat ${r.label})<br><br><strong>${name}</strong><br><br>${effect}<br><br><small>After resolving, reset Eye Awareness to your starting value (↺ button). An Eye result here may escalate the next Revelation to the Ghâsh! table.</small>`, '👁️ Moria Revelation');
+  // Moria was left out of the run-1 fix that put the Eye reset in the dialog: it still told the
+  // player to go and find the ↺ button. Same RAW, same offer, one tap.
+  const doReset = await showModal({
+    title: '👁️ Moria Revelation',
+    message: `<strong>${tbl.label}</strong> (Feat ${r.label})<br><br><strong>${name}</strong><br><br>${effect}` +
+             `<br><br>Play this out. Once it is resolved, Eye Awareness resets and the tally begins again.` +
+             (r.special === 'eye' ? `<br><br><small>An Eye here escalates your <em>next</em> Revelation to the Ghâsh! table.</small>` : ''),
+    buttons: [
+      { label: '↺ Resolved — reset the Eye', value: 'reset' },
+      { label: 'Not yet', value: null, style: 'background:var(--btn-secondary-bg);color:white;border:1px solid var(--btn-secondary-bg);border-radius:5px;padding:10px;font-size:14px;cursor:pointer' }
+    ]
+  });
+  if (doReset === 'reset' && typeof resetEyeAwarenessToStarting === 'function') resetEyeAwarenessToStarting();
   logOracleRoll('Revelation: ' + tbl.label, name);
 }
 

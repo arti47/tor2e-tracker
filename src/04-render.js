@@ -475,9 +475,12 @@ function fpPrevStep() {
     The Rangers' Cultural Blessing prints its own cost on the sheet — "Kings of Men … Weakness:
     only ½ Heart Hope recovered during Fellowship Phase (not Yule)" — and the wizard used to
     ignore it, awarding full Heart. Halved (rounded up), Yule exempt. */
-function fpHopeRecovery() {
+/** The Hope a Fellowship Phase restores. `phaseType` overrides the wizard's own state so the
+    Moria phases (which never open that wizard) get the same Rangers halving — they used to hand
+    Rangers the full Heart, silently ignoring the culture's printed weakness. */
+function fpHopeRecovery(phaseType) {
   const heart = parseInt(char.hrtRating) || 1;
-  const isYule = fpState && fpState.phaseType === 'yule';
+  const isYule = (phaseType || (fpState && fpState.phaseType)) === 'yule';
   const curHope = parseInt(char.hopeCur) || 0;
   const maxHope = parseInt(char.hopeMax) || 0;
   const halved = !isYule && /Rangers/i.test(String(char.culture || ''));
@@ -2038,7 +2041,13 @@ async function moriaFP(duration) {
   const lines = [];
   // Hope
   if (duration === 'extended') { char.hopeCur = char.hopeMax; lines.push('Hope fully restored'); }
-  else if (duration === 'brief') { const h = parseInt(char.hrtRating) || 0; char.hopeCur = Math.min(parseInt(char.hopeMax) || 0, (parseInt(char.hopeCur) || 0) + h); lines.push(`+${h} Hope (Heart)`); }
+  else if (duration === 'brief') {
+    // Through fpHopeRecovery so the Rangers' "only ½ Heart Hope recovered" applies here too
+    // (Moria has no Yule, so the exemption never fires).
+    const rec = fpHopeRecovery('ordinary');
+    char.hopeCur = Math.min(parseInt(char.hopeMax) || 0, (parseInt(char.hopeCur) || 0) + rec.amount);
+    lines.push(`+${rec.amount} Hope (${rec.halved ? 'half Heart — Rangers' : 'Heart'})`);
+  }
   // Endurance — always fully restored
   char.endCur = parseInt(char.endMax) || 0; lines.push('Endurance fully restored');
   // Hero Wound
@@ -2065,6 +2074,12 @@ async function moriaFP(duration) {
   if (cleared) lines.push(`Cleared ${cleared} ally condition(s)`);
   if (giftsRecovered) lines.push(`Recovered ${giftsRecovered} wasted Gift(s)`);
   const undertakings = duration === 'extended' ? 2 : (duration === 'brief' ? 1 : 0);
+  // RAW: Eye Awareness resets to its starting value at the beginning of each Adventuring phase.
+  // The core wizard got this in run 1; the Moria phases did not.
+  try {
+    if (typeof resetEyeAwarenessToStarting === 'function') { resetEyeAwarenessToStarting(); lines.push('Eye Awareness reset'); }
+  } catch (e) {}
+  if (typeof logTimeline === 'function') logTimeline('fp', `Moria Fellowship Phase (${duration}) completed.`);
   saveCharacter(); render();
   await alertStyled(`🌿 <strong>${duration.charAt(0).toUpperCase() + duration.slice(1)} Fellowship Phase</strong><br><br>${lines.join('<br>')}<br><br>Undertakings available: <strong>${undertakings}</strong>.<br><br>Now roll for a Fellowship Interruption, then perform undertakings.`, 'Fellowship Phase');
 }
