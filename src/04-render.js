@@ -222,25 +222,35 @@ async function checkAutoTriggers() {
       }
 
       let msg = `⚠️ BOUT OF MADNESS\n\nShadow (${char.shadow}${scarsBit}) reached Max Hope (${char.hopeMax}).\n\n`;
+      let taken = '';
       if (flaws) {
-        const remaining = flaws.map((f, i) => ({ f, i, owned: flawsField.includes(f) }));
-        const available = remaining.filter(x => !x.owned);
-        msg += `Shadow Path: "${path}" (${ownedFlaws.length}/4 Flaws acquired)\n\nPick a Flaw to add (only un-owned shown):\n\n`;
-        available.forEach(x => { msg += `  ${x.i + 1}. ${x.f}\n`; });
-        msg += `\nEnter the number — or Cancel to skip and just clear Shadow.`;
-        const n = parseInt(await promptStyled(msg, ''));
-        if (n >= 1 && n <= 4 && flaws[n - 1] && !flawsField.includes(flaws[n - 1])) {
-          const flawName = flaws[n - 1];
-          if (!char.flaws) char.flaws = flawName;
-          else char.flaws = char.flaws + '\n' + flawName;
+        const available = flaws.filter(f => !flawsField.includes(f));
+        const picked = await showModal({
+          title: '⚠️ Bout of Madness',
+          message: escapeHtml(msg).replace(/\n/g, '<br>') +
+            `<br>Shadow Path: <strong>${escapeHtml(path)}</strong> (${ownedFlaws.length}/4 Flaws acquired).` +
+            '<br><br>Which Flaw does this bout leave you with?',
+          buttons: available.map(f => ({ label: f, value: f }))
+            .concat([{ label: 'Skip — just clear the Shadow', value: null,
+                       style: 'background:var(--btn-secondary-bg);color:white;border:none;border-radius:5px;padding:10px;font-size:14px;cursor:pointer' }])
+        });
+        if (picked && !flawsField.includes(picked)) {
+          taken = picked;
+          char.flaws = char.flaws ? (char.flaws + '\n' + picked) : picked;
         }
       } else {
         alert(msg + `(No Shadow Path set — set one in Build tab to enable Flaw picker)`);
       }
+      const cleared = parseInt(char.shadow) || 0;
       char.shadow = 0;
       char.boutDue = false;          // resolved
       saveCharacter();
       render();
+      // Say what just happened. Skipping the Flaw is the better outcome, so a silent skip
+      // rewarded anyone who mistyped and told nobody the bout had been spent.
+      alert(taken
+        ? `The bout passes. You take the Flaw "${taken}", and your Shadow clears (${cleared} → 0).`
+        : `The bout passes. You take no Flaw this time, and your Shadow clears (${cleared} → 0).\n\nA Flaw not taken here is not owed later — the bout is spent.`);
     }, 100);
   }
   if (char.shadow < char.hopeMax && char._boutPrompted) {
@@ -538,7 +548,9 @@ function fpRenderStep2() {
 
 function fpApplyRecovery() {
   if (fpState.recoveryApplied) {
-    alert('Recovery already applied this session. Cancel and reopen to redo.');
+    // The guard is durable by design (run-1 finding 6), so "cancel and reopen to redo" was
+    // simply false — reopening restores the same phase, which is the point.
+    alert('Spiritual Recovery has already been applied in this Fellowship Phase — Hope and Shadow have moved once, and they only move once per phase.\n\nClosing and reopening the wizard resumes this same phase; it does not undo the recovery. Complete the phase to begin a new one.');
     return;
   }
   const heart = parseInt(char.hrtRating) || 1;
@@ -664,6 +676,7 @@ function fpToggleUndertaking(id) {
     }
     fpState.selectedUndertakings.push(id);
   }
+  fpPersist();          // the wizard promises picks survive a close — persist on every toggle
   fpRenderStep4();
 }
 
@@ -897,7 +910,11 @@ function renderSkillEndeavour() {
   if (resPick) document.getElementById('se-resistance-hint').textContent = SE_RESISTANCE_HINTS[parseInt(resPick.dataset.val)] || '';
   if (riskPick) document.getElementById('se-risk-hint').textContent = SE_RISK_HINTS[riskPick.dataset.val] || '';
 
-  if (e.active) {
+  // A CLOSED endeavour stays on screen with its outcome until the player starts a new one.
+  // finalizeSkillEndeavour used to force these cards visible itself, and the render() that runs
+  // on the very next line re-hid them — so a Foolish Disaster vanished without a word.
+  const showing = e.active || !!e.outcome;
+  if (showing) {
     setup.style.display = 'none';
     active.style.display = 'block';
     log.style.display = 'block';
@@ -1062,6 +1079,9 @@ function rollSkillEndeavourAttempt(skillName) {
   saveCharacter();
   if (disaster) {
     finalizeSkillEndeavour('disaster');  // keeps the active+log cards visible with the outcome
+    alertStyled('💀 <strong>Disaster.</strong><br><br>A failed roll on a <strong>Foolish</strong> endeavour ends it outright — ' +
+      escapeHtml(char.skillEndeavour.task || 'the task') + ' fails and <strong>cannot be resumed</strong>. ' +
+      'Whatever you were attempting is beyond reach by this route; find another.', '💀 Disaster');
   } else {
     renderSkillEndeavour();
   }
@@ -1076,8 +1096,7 @@ function finalizeSkillEndeavour(outcome) {
   char.skillEndeavour.active = false;
   if (typeof logTimeline === 'function') logTimeline('endeavour', `Skill Endeavour — ${char.skillEndeavour.task || 'a prolonged task'}: ${outcome}.`);
   saveCharacter();
-  renderSkillEndeavour();
-  // Keep cards visible until reset
+  renderSkillEndeavour();       // shows the closed endeavour + its outcome (see `showing` there)
   document.getElementById('se-active-card').style.display = 'block';
   document.getElementById('se-log-card').style.display = 'block';
   document.getElementById('se-setup-card').style.display = 'none';
@@ -1632,7 +1651,7 @@ async function rollJourneyEvent() {
     day: j.daysElapsed, hex: j.currentHex,
     text: `▶ <strong>${escapeHtml(pend.skill)}</strong> roll for ${escapeHtml(pend.eventName)} — ${score}${r.icons ? `, ${r.icons} ✦` : ''}: ` +
           (ok ? `<strong style="color:var(--success-text)">success</strong>${applied ? ' — ' + applied : ''}`
-              : `<strong style="color:var(--error-text)">failure</strong>${applied ? ' — ' + applied : " — the event's effect stands."}`)
+              : `<strong style="color:var(--error-text)">failure</strong>${applied ? ' — ' + applied : (effect && !effect.onFail ? ' — you simply do not get the benefit; nothing worse happens.' : " — the event's effect stands.")}`)
   });
   j.pendingEventRoll = null;
   saveCharacter();
@@ -2948,6 +2967,14 @@ async function takeProlongedRest() {
   // Advance the Chronicle clock by a day (the night passes).
   if (journal && journal.clock) { journal.clock.day = (parseInt(journal.clock.day) || 1) + 1; saveJournal(); }
   let injuryTicked = 0;
+  let moderateHealed = false;
+  // A Moderate Injury's own printed text is "Uncheck Wounded in a few hours" — a night's sleep
+  // is those hours, so do what the app said rather than leaving the player to find the checkbox.
+  if (char.wounded && char.injuryKind === 'moderate') {
+    char.wounded = false; char.injury = ''; char.injuryKind = ''; char.firstAidUsed = false;
+    moderateHealed = true;
+  }
+  if (char.wounded) char.injuryRested = true;      // a Grievous wound can now be cleared
   if (char.wounded && (parseInt(char.injuryDays) || 0) > 0) {
     const before = parseInt(char.injuryDays) || 0;
     char.injuryDays = before - 1;
@@ -2960,6 +2987,7 @@ async function takeProlongedRest() {
   let recap = `🌙 Prolonged Rest applied. A new day dawns (Day ${char.dayCount}).\n\nEndurance: +${endRecover} → ${char.endCur} / ${max}`;
   if (hopeRecover > 0) recap += `\nHope: +${hopeRecover} → ${char.hopeCur} / ${hopeMax}`;
   if (fatigueRemoved > 0) recap += `\nFatigue: −${fatigueRemoved} (Safe Haven rest) → ${char.fatigue}`;
+  if (moderateHealed) recap += `\nThe Moderate Injury has closed — you are no longer Wounded.`;
   if (injuryTicked > 0) recap += `\nInjury: ${char.injuryDays + 1} → ${char.injuryDays} day(s) remaining` + (char.injuryDays === 0 ? ' — the wound has run its course; you may clear Wounded.' : '');
   alert(recap);
 }
@@ -3431,21 +3459,40 @@ async function flyYouFools() {
   const choice = await showModal({
     title: '🏃 Fly, You Fools!',
     message: 'Two ways to leave a fight (Core Rules p.95):<br><br>' +
+      ((char.flyPending && char.stance === 'rearward' && foes.length)
+        ? '<strong>You fell back last round</strong> — your escape is owed. Take it now, without a roll.<br><br>'
+        : '') +
       '<strong>Rearward</strong> — fall back now, and escape when your turn comes. No roll.<br><br>' +
       '<strong>Defensive</strong> — fight your way clear: make an attack roll. Success and you are away, ' +
       'dealing no damage; failure and you are still engaged.' +
       (foes.length ? '' : '<br><br><em>No foe is engaged with you right now, so the Defensive escape has nothing to roll against — it will just set your stance.</em>'),
-    buttons: [
-      { label: '🛡 Fall back (Rearward)', value: 'rearward' },
-      { label: '⚔️ Fight clear (Defensive)', value: 'defensive' },
-      { label: 'Cancel', value: null, cancel: true }
-    ]
+    buttons: ((char.flyPending && char.stance === 'rearward' && foes.length)
+        ? [{ label: '🏃 Slip away now (you fell back last round)', value: 'slip' }]
+        : [])
+      .concat([
+        { label: '🛡 Fall back (Rearward)', value: 'rearward' },
+        { label: '⚔️ Fight clear (Defensive)', value: 'defensive' },
+        { label: 'Cancel', value: null, cancel: true }
+      ])
   });
   if (choice === 'rearward') {
     char.stance = 'rearward';
+    char.flyPending = true;                 // the escape is owed on your next action
     saveCharacter();
-    render();
-    alert('Stance set to Rearward.\n\nOn your next action you may escape without a roll — you cannot attack or take a Combat Task from Rearward.');
+    render(); renderEncounter();
+    alert('Stance set to Rearward.\n\nYou fall back this round. On your next action you leave the fight without a roll — tap 🏃 <strong>Slip away now</strong> when your turn comes. From Rearward you cannot attack or take a Combat Task.'.replace(/<\/?strong>/g, ''));
+    return;
+  }
+  if (choice === 'slip') {
+    // The promised escape, actually performed: disengage every foe and leave the encounter.
+    const n = foes.length;
+    foes.forEach(f => { f.engaged = false; });
+    char.flyPending = false;
+    if (typeof encDeriveEngaged === 'function') encDeriveEngaged();
+    saveCharacter();
+    if (typeof encLogRoll === 'function') encLogRoll(`<strong>You</strong> · 🏃 slipped away from the fight — no roll needed (Rearward)`);
+    render(); renderEncounter();
+    alert(`🏃 Away.\n\nYou break off and leave the fight — ${n} foe${n === 1 ? '' : 's'} no longer engaged with you. Tap 🏁 End encounter when the scene is over.`);
     return;
   }
   if (choice !== 'defensive') return;   // Cancel, Escape, or a stray dismissal: say nothing, change nothing
@@ -3900,21 +3947,32 @@ function playScene(title) {
 
 /* ---- the moment-to-moment script ---------------------------------------- */
 
+/** "a Awareness roll" — the app names skills that start with a vowel. */
+function _anWord(w) {
+  const t = String(w || '');
+  return (/^[aeiou]/i.test(t) ? 'an ' : 'a ') + escapeHtml(t);
+}
+
 function _playSituation() {
   const s = sagaState();
   const where = char.safeHaven || 'your home';
   switch (s.step) {
-    case 'haven':
+    case 'haven': {
+      const jh = char.journey || {};
+      if (jh.active) return { title: 'On the road' + (jh.destination ? ' to ' + escapeHtml(jh.destination) : ''),
+        text: `A journey is already under way — <strong>${parseInt(jh.currentHex) || 0}</strong> of <strong>${parseInt(jh.totalHexes) || 0}</strong> stretches covered. ` +
+              'Tap <strong>Back to the road</strong> to carry on with it.' };
       return { title: 'At ' + escapeHtml(where),
         text: 'You are somewhere safe. Nothing is trying to kill you yet.<br><br>' +
               (s.premise ? 'Why you are about to leave: <em>' + escapeHtml(s.premise) + '</em>' : 'You have no errand yet — ask around, and one will find you.') };
+    }
     case 'journey':
       const j = char.journey || {};
       return { title: 'On the road' + (j.destination ? ' to ' + escapeHtml(j.destination) : ''),
         text: j.active
           ? `You have covered <strong>${j.currentHex || 0}</strong> of <strong>${j.totalHexes || 0}</strong> stretches. Day ${j.daysElapsed || 0}.` +
             (_playEventDue() ? '<br><strong style="color:var(--error-text)">The road has something waiting for you here.</strong>' : '') +
-            ((j.pendingEventRoll && j.pendingEventRoll.skill) ? `<br><strong style="color:var(--red-dark)">${escapeHtml(j.pendingEventRoll.eventName)} — it wants a ${escapeHtml(j.pendingEventRoll.skill)} roll.</strong>` : '')
+            ((j.pendingEventRoll && j.pendingEventRoll.skill) ? `<br><strong style="color:var(--red-dark)">${escapeHtml(j.pendingEventRoll.eventName)} — it wants ${_anWord(j.pendingEventRoll.skill)} roll.</strong>` : '')
           : (j.destination
               ? 'The road is behind you — you finished this journey on the Journey tab. Tap <strong>We have arrived</strong> to carry on.'
               : 'You are ready to travel, but have not set out yet.') };
@@ -3922,13 +3980,26 @@ function _playSituation() {
       const j2 = char.journey || {};
       return { title: 'At ' + escapeHtml(j2.destination || 'the place you came to'),
         text: 'You have arrived. This is where the thing you came for is — or is not.' };
-    case 'home':
-      return { title: 'The road home', text: 'You turn back the way you came, carrying whatever you found — and whatever found you.' };
+    case 'home': {
+      const jh2 = char.journey || {};
+      return { title: 'The road home',
+        text: jh2.active
+          ? `You have covered <strong>${jh2.currentHex || 0}</strong> of <strong>${jh2.totalHexes || 0}</strong> stretches. Day ${jh2.daysElapsed || 0}.` +
+            (_playEventDue() ? '<br><strong style="color:var(--error-text)">The road has something waiting for you here.</strong>' : '') +
+            ((jh2.pendingEventRoll && jh2.pendingEventRoll.skill) ? `<br><strong style="color:var(--red-dark)">${escapeHtml(jh2.pendingEventRoll.eventName)} — it wants ${_anWord(jh2.pendingEventRoll.skill)} roll.</strong>` : '')
+          : 'You turn back the way you came, carrying whatever you found — and whatever found you.' };
+    }
     case 'fellowship':
       return { title: 'Safe again, at ' + escapeHtml(where),
         text: 'The adventure is over. Time to rest properly, spend what you have earned, and let the Shadow ebb.' };
   }
   return { title: 'Somewhere', text: '' };
+}
+
+function _playRetiredSituation() {
+  return { title: escapeHtml(char.name || 'Your hero') + ' has left the story',
+    text: escapeHtml(char.retiredReason || 'This hero is retired from play.') +
+          '<br><br>Nothing more is asked of them. Their tale is on the Character tab, and the Chronicle keeps what they did.' };
 }
 
 function _playChoices() {
@@ -3944,36 +4015,65 @@ function _playChoices() {
   return lead.concat(_playStepChoices());
 }
 
+/** The choices offered while a journey is under way. ONE function for both legs: the outbound
+    road and the road home run the same subsystem, and keeping two copies is exactly how the
+    return leg ended up with no Journey Events at all while the outbound leg had them. */
+function _playRoadChoices(C, homeward) {
+  const jc = char.journey || {};
+  const camp = C('🔥 Make camp', 'playRest()', 'Stop for the night and recover.');
+  // An event due at this hex BLOCKS the road (the Journey tab enforces the same order).
+  // Play used to sail past it entirely — `applyMarchingTestResult` sets `nextEventHex`
+  // and nothing here read it, so a player taking "you never need the other tabs" at its
+  // word never met a single Journey Event: the whole pressure mechanic of TOR2E travel.
+  if (_playEventDue()) return [
+    C('⚠️ Something happens on the road', 'playEvent()', 'Resolve it before you travel on.'),
+    camp
+  ];
+  if (jc.pendingEventRoll && jc.pendingEventRoll.skill) return [
+    C(`🎲 Roll ${jc.pendingEventRoll.skill}`, 'playEventRoll()', 'The road is asking something of you.'),
+    C('↷ Let it happen', 'playEventSkip()', 'Skip the roll and take what comes.')
+  ];
+  return homeward
+    ? [
+      C('🥾 Travel onward', 'playTravel()', 'Cover ground on the way back.'),
+      camp,
+      C('🏠 We are safe again', 'playArriveHome()', 'You are home.')
+    ]
+    : [
+      C('🥾 Travel onward', 'playTravel()', 'Cover ground. The road may interrupt you.'),
+      camp,
+      C('🏁 We have arrived', 'playArrive()', 'End the journey here.')
+    ];
+}
+
 function _playStepChoices() {
   const s = sagaState();
   const C = (label, fn, hint) => ({ label, fn, hint });
+  // A retired hero takes no more actions. Play used to offer "⚔️ Something attacks!" to someone
+  // the header was already labelling RETIRED.
+  if (char.retired) return [
+    C('📖 Read the ending', "document.querySelector('.tab[data-tab=character]').click()", char.retiredReason || 'This hero has left the story.'),
+    C('👥 Play someone else', 'openRoster()', 'Switch to another hero, or make a new one.')
+  ];
   switch (s.step) {
-    case 'haven': return [
-      C('👂 Ask around for news', 'playAskAround()', 'The world tells you something you did not know.'),
-      C('🥾 Set out on the road', 'playSetOut()', 'Begin the journey to wherever this takes you.'),
-      C('🌙 Rest here a while', 'playRest()', 'Recover Endurance and Hope before you go.')
-    ];
+    case 'haven': {
+      // A journey started on the Journey tab leaves the step on 'haven'. Say so here rather than
+      // insisting the hero is "somewhere safe" while a march is under way.
+      const jh = char.journey || {};
+      if (jh.active) return [
+        C('🥾 Back to the road', "playGoStep('journey')", `Your journey to ${jh.destination || 'somewhere'} is under way — ${parseInt(jh.currentHex) || 0}/${parseInt(jh.totalHexes) || 0} hexes.`),
+        C('👂 Ask around for news', 'playAskAround()', 'The world tells you something you did not know.'),
+        C('🌙 Rest here a while', 'playRest()', 'Recover Endurance and Hope before you go.')
+      ];
+      return [
+        C('👂 Ask around for news', 'playAskAround()', 'The world tells you something you did not know.'),
+        C('🥾 Set out on the road', 'playSetOut()', 'Begin the journey to wherever this takes you.'),
+        C('🌙 Rest here a while', 'playRest()', 'Recover Endurance and Hope before you go.')
+      ];
+    }
     case 'journey': {
       const jc = char.journey || {};
-      if (jc.active) {
-        // An event due at this hex BLOCKS the road (the Journey tab enforces the same order).
-        // Play used to sail past it entirely — `applyMarchingTestResult` sets `nextEventHex`
-        // and nothing here read it, so a player taking "you never need the other tabs" at its
-        // word never met a single Journey Event: the whole pressure mechanic of TOR2E travel.
-        if (_playEventDue()) return [
-          C('⚠️ Something happens on the road', 'playEvent()', 'Resolve it before you travel on.'),
-          C('🔥 Make camp', 'playRest()', 'Stop for the night and recover.')
-        ];
-        if (jc.pendingEventRoll && jc.pendingEventRoll.skill) return [
-          C(`🎲 Roll ${jc.pendingEventRoll.skill}`, 'playEventRoll()', 'The road is asking something of you.'),
-          C('↷ Let it happen', 'playEventSkip()', 'Skip the roll and take what comes.')
-        ];
-        return [
-          C('🥾 Travel onward', 'playTravel()', 'Cover ground. The road may interrupt you.'),
-          C('🔥 Make camp', 'playRest()', 'Stop for the night and recover.'),
-          C('🏁 We have arrived', 'playArrive()', 'End the journey here.')
-        ];
-      }
+      if (jc.active) return _playRoadChoices(C, false);
       // A journey finished on the Journey tab clears `active`. Without this branch the Play
       // tab offered only "Set out" and "Go back", and step 3 was unreachable from the very
       // surface that promises you never need another tab.
@@ -3994,16 +4094,14 @@ function _playStepChoices() {
       C('⚔️ Something attacks!', 'playFight()', 'Start a fight and run it here.'),
       C('✅ Our business here is done', "playGoStep('home')", '')
     ];
-    case 'home': return (char.journey && char.journey.active) ? [
-      C('🥾 Travel onward', 'playTravel()', 'Cover ground on the way back.'),
-      C('🔥 Make camp', 'playRest()', 'Stop for the night and recover.'),
-      C('🏠 We are safe again', "playGoStep('fellowship')", 'You are home.')
-    ] : [
-      // Arriving cleared the outbound journey, so "Travel onward" had nothing to travel and
-      // answered "You are not travelling yet" every time. Set out for home instead.
-      C('🥾 Set out for home', 'playSetOutHome()', 'Begin the road back.'),
-      C('🏠 We are safe again', "playGoStep('fellowship')", 'Skip the return road.')
-    ];
+    case 'home': return (char.journey && char.journey.active)
+      ? _playRoadChoices(C, true)
+      : [
+        // Arriving cleared the outbound journey, so "Travel onward" had nothing to travel and
+        // answered "You are not travelling yet" every time. Set out for home instead.
+        C('🥾 Set out for home', 'playSetOutHome()', 'Begin the road back.'),
+        C('🏠 We are safe again', "playGoStep('fellowship')", 'Skip the return road.')
+      ];
     case 'fellowship': return [
       C('🌿 Take a Fellowship Phase', 'playFellowship()', 'Rest, recover Hope, spend experience.'),
       C('▶ Begin the next adventure', 'playNextAdventure()', 'Back to the haven, with a new reason to leave.')
@@ -4134,9 +4232,11 @@ async function playEvent() {
   const origAlert = window.alert; window.alert = () => {};
   try { resolveJourneyEvent(); } finally { window.alert = origAlert; }
   const ev = (char.journey.events || [])[before];
-  if (ev) playSay(String(ev.text).replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim());
+  // Through _playPlainText, like everything else Play narrates: a bare tag-strip welded the
+  // event's clauses into one run-on sentence, in the feed AND in the Chronicle.
+  if (ev) playSay(escapeHtml(_playPlainText(ev.text)));
   const pend = char.journey.pendingEventRoll;
-  if (pend && pend.skill) playSay(`<em>It asks something of you: a <strong>${escapeHtml(pend.skill)}</strong> roll.</em>`, 'aside');
+  if (pend && pend.skill) playSay(`<em>It asks something of you: ${_anWord(pend.skill)} <strong>roll</strong>.</em>`, 'aside');
   else playSay('<em>Nothing to roll for this one — say what it looks like, and travel on.</em>', 'aside');
   renderPlay();
 }
@@ -4163,6 +4263,27 @@ function playEventSkip() {
 }
 
 async function playSetOut() {
+  // A journey begun on the Journey tab leaves saga.step on 'haven', so Play used to say "you are
+  // somewhere safe" during a live march and then overwrite the whole thing — destination, hexes,
+  // region, Forced March, mount and Peril — without a word. Never destroy a journey silently.
+  const live = char.journey;
+  if (live && live.active) {
+    const covered = `${parseInt(live.currentHex) || 0} / ${parseInt(live.totalHexes) || 0} hexes`;
+    const go = await showModal({
+      title: '🥾 You are already on the road',
+      message: `A journey to <strong>${escapeHtml(live.destination || 'somewhere')}</strong> is under way — ${covered} covered.` +
+               '<br><br>Carry on with it, or abandon it and set out somewhere else? Abandoning discards its progress, region, mount and any Peril.',
+      buttons: [
+        { label: '▶ Carry on with this journey', value: 'keep' },
+        { label: '🗑 Abandon it and set out anew', value: 'new' },
+        { label: 'Cancel', value: null, cancel: true }
+      ]
+    });
+    if (go !== 'new') {
+      if (go === 'keep') { sagaState().step = 'journey'; saveCharacter(); renderPlay(); }
+      return;
+    }
+  }
   const dest = await promptStyled('Where are you going?', '', '🥾 Set out', 'e.g. the ruined watchtower');
   if (dest === null) return;
   const far = await showModal({
@@ -4176,7 +4297,7 @@ async function playSetOut() {
   });
   if (!far) return;
   char.journey = { active: true, origin: char.safeHaven || 'home', destination: String(dest).trim() || 'somewhere',
-    totalHexes: far, hardTerrainHexes: 0, currentHex: 0, season: 'Spring', region: char.huntRegion || 'wild',
+    totalHexes: far, hardTerrainHexes: 0, currentHex: 0, season: 'Spring', region: _regionLabel(char.huntRegion || 'wild'),
     forcedMarch: false, mounted: false, roles: {}, travelFatigue: 0, daysElapsed: 0, events: [], nextEventHex: null };
   sagaState().step = 'journey';
   saveCharacter();
@@ -4209,6 +4330,36 @@ async function playArrive() {
   renderPlay();
 }
 
+/** The Journey tab's region picker writes 'Free'/'Border'/'Wild'/'Shadow'/'Dark' and renders the
+    value + " Land"; `char.huntRegion` is lower-case. Without this the return leg read "wild Land". */
+function _regionLabel(r) {
+  const k = String(r || 'wild').toLowerCase();
+  return k.charAt(0).toUpperCase() + k.slice(1);
+}
+
+/** Reaching home ends the return journey properly. "🏠 We are safe again" used to just change
+    the saga step, leaving `journey.active` true — so the Journey tab described a road the hero
+    had finished walking for the rest of the campaign. */
+async function playArriveHome() {
+  const home = (char.journey || {}).destination || char.safeHaven || 'home';
+  const fatBefore = parseInt(char.fatigue) || 0;
+  if (char.journey && char.journey.active) {
+    const orig = window.confirmStyled;
+    let call = 0;
+    window.confirmStyled = async () => (++call === 1);     // yes to arrive, no to the Chronicle jump
+    const origAlert = window.alert; window.alert = () => {};
+    try { await arriveAtDestination(); } finally { window.confirmStyled = orig; window.alert = origAlert; }
+  }
+  sagaState().step = 'fellowship';
+  saveCharacter();
+  playClearFeed();
+  playScene(`Home at ${home}`);
+  playSay(`You are home at <strong>${escapeHtml(home)}</strong>.`);
+  const fatGained = (parseInt(char.fatigue) || 0) - fatBefore;
+  if (fatGained > 0) playSay(`The road took its toll: <strong>+${fatGained} Fatigue</strong>.`, 'aside');
+  renderPlay();
+}
+
 /** The road back. Same journey machinery, pointed the other way. */
 async function playSetOutHome() {
   const home = char.safeHaven || 'home';
@@ -4225,13 +4376,18 @@ async function playSetOutHome() {
   });
   if (!far) return;
   const hexes = (far === 'same') ? (parseInt((char.journey || {}).totalHexes) || 9) : far;
+  // "The way we came" means the same road: keep the outbound region rather than silently
+  // re-rolling the hero into whatever their Hunt region happens to be. The Journey tab renders
+  // `region + ' Land'`, so the value must be capitalised the way its own picker writes it.
+  const outboundRegion = (char.journey || {}).region;
+  const region = (far === 'same' && outboundRegion) ? outboundRegion : _regionLabel(char.huntRegion || 'wild');
   char.journey = { active: true, origin: from, destination: home,
     totalHexes: hexes, hardTerrainHexes: 0, currentHex: 0, season: (char.journey || {}).season || 'Spring',
-    region: char.huntRegion || 'wild', forcedMarch: false, mounted: false, roles: {},
+    region: region, forcedMarch: false, mounted: false, roles: {},
     travelFatigue: 0, daysElapsed: 0, events: [], nextEventHex: null };
   saveCharacter();
   playClearFeed();
-  playScene(`The road home to ${home}`);
+  playScene(home && home !== 'home' ? `The road home to ${home}` : 'The road home');
   playSay(`You turn back for <strong>${escapeHtml(home)}</strong>.`);
   renderPlay();
 }
@@ -4384,7 +4540,7 @@ function renderPlay() {
     return;
   }
 
-  const sit = _playSituation();
+  const sit = char.retired ? _playRetiredSituation() : _playSituation();
   const choices = _playChoices();
   const feed = _playFeed.length
     ? _playFeed.slice(-8).map(f => `<p style="margin:0 0 8px;line-height:1.6;font-size:13px;${f.kind === 'aside' ? 'color:var(--text-muted);font-size:12px' : 'color:var(--ink)'}">${f.text}</p>`).join('')

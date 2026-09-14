@@ -442,6 +442,10 @@ function _pregenToChar(p) {
   // A Bout of Madness that was triggered but never answered (the prompt is a timed dialog and can
   // be lost). Durable, so the claim control survives a reload — see renderBoutDue.
   c.boutDue = !!p.boutDue;
+  c.flyPending = !!p.flyPending;   // a Rearward fall-back whose escape has not been taken yet
+  // Which kind of wound is open: 'severe' (day-counted) · 'moderate' (hours) · 'grievous' (dying).
+  c.injuryKind = typeof p.injuryKind === 'string' ? p.injuryKind : (parseInt(p.injuryDays) > 0 ? 'severe' : '');
+  c.injuryRested = !!p.injuryRested;
   c.parryAdjust = parseInt(p.parryAdjust) || 0;   // Lifepath Major-Event Parry ±1 (see addParryAdjust)
   c.fellowshipRating = p.patron ? 1 : 0;
   return c;

@@ -1373,8 +1373,16 @@ module.exports = {
       out.travelLogged = (char.journey.events || []).some(e => /Marching Test/.test(e.text));
 
       // 2 — a journey event that names a skill must bring its own roll.
+      // Force the event die: the table's own roll decides which event comes up, and some of them
+      // (Short Cut, a Noteworthy Encounter) correctly arm nothing — a check that let the dice
+      // choose passed about nine runs in ten. Feat 5 is Mishap, which always names a skill.
       char.journey.nextEventHex = char.journey.currentHex;
+      const realInlineJ = window._doInlineRoll;
+      window._doInlineRoll = (d, f, tn) => (tn === null)
+        ? { total: 5, outcome: 'SUCCESS', icons: 0, featValue: 5, featSpecial: null, featLabel: '5', isAutoSuccess: false }
+        : realInlineJ(d, f, tn);
       resolveJourneyEvent();
+      window._doInlineRoll = realInlineJ;
       const armed = !!(char.journey.pendingEventRoll && char.journey.pendingEventRoll.skill);
       out.eventArmsRoll = armed;
       if (armed) {
@@ -1441,7 +1449,10 @@ module.exports = {
       char.shadow = 10; char.scars = 0; char._boutPrompted = false; char.boutDue = false;
       char.shadowPath = 'Path of Despair'; char.flaws = '';
       saveCharacter();
-      window.promptStyled = () => new Promise(() => {});    // never answered
+      // The bout now asks with a button list (it used to ask you to type a digit). Losing it is
+      // the same player situation either way: the dialog never gets an answer.
+      window.promptStyled = () => new Promise(() => {});
+      window.showModal = () => new Promise(() => {});       // never answered
       await checkAutoTriggers();
       await new Promise(r => setTimeout(r, 250));           // let the bout's own timer fire
       render();

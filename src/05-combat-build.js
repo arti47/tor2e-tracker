@@ -150,7 +150,17 @@ function applyPierce() {
 function rollFirstAid() {
   if (!char.wounded) return requireStep('First Aid treats a <strong>Wound</strong>, and your hero doesn\'t have one.<br><br>Wounds are set by the <strong>Wounded</strong> toggle in the Conditions card (a failed Protection roll sets it for you).', 'character', null, '⚠️ Not Wounded');
   const days = parseInt(char.injuryDays) || 0;
-  if (days <= 0) { alert('No Severe Injury day-count to reduce. (Moderate/Grievous injuries do not use day-tracking.)'); return; }
+  if (days <= 0) {
+    // This used to be a flat refusal, forever, on the control ▶ Play promotes to the top of the
+    // list while you are Wounded — with nothing anywhere naming the way out.
+    const kind = char.injuryKind || '';
+    alert(kind === 'grievous'
+      ? 'A Grievous Injury has no day-count to shorten — it is the worst result on the table, and your hero is Unconscious and Dying.\n\nWhat ends it: a Prolonged Rest under care. Take one from the Endurance card, then tap "The wound has passed" below to clear the Wounded condition.'
+      : kind === 'moderate'
+      ? 'A Moderate Injury has no day-count — it closes on its own after a few hours.\n\nTake a Prolonged Rest from the Endurance card and the Wound clears itself.'
+      : 'This injury has no day-count to reduce — First Aid shortens a Severe Injury\'s mending time only.\n\nIf the Wound has passed in the fiction, tap "The wound has passed" below to clear it.');
+    return;
+  }
   if (char.firstAidUsed) {
     alert('First Aid already attempted on this injury.\n\nPer RAW: a failed HEALING roll cannot be repeated until at least a day has passed. Tap "Reset (next day)" if a day has passed in fiction.');
     return;
@@ -165,6 +175,28 @@ function rollFirstAid() {
   quickRoll(item, s);
 }
 
+/** Clear a wound that carries no day-count (Moderate, Grievous) — the route the app described
+    in the Injury text and then gave no control for. */
+async function clearWound() {
+  if (!char.wounded) return;
+  const kind = char.injuryKind || '';
+  const ok = await confirmStyled(
+    kind === 'grievous'
+      ? 'Your hero came through a <strong>Grievous Injury</strong> — unconscious and dying, brought round and mended.<br><br>Clear the <strong>Wounded</strong> condition?'
+      : 'Clear the <strong>Wounded</strong> condition? Use this once the injury has passed in the fiction.',
+    '🩹 The wound has passed');
+  if (!ok) return;
+  char.wounded = false;
+  char.injury = '';
+  char.injuryDays = 0;
+  char.injuryKind = '';
+  char.injuryRested = false;
+  char.firstAidUsed = false;
+  saveCharacter();
+  render();
+  alert('The Wound is closed. You are no longer Wounded.');
+}
+
 async function resetFirstAid() {
   if (!await confirmStyled('Reset First Aid for this injury? Use this when a day has passed in fiction and you want to retry a failed Healing roll.')) return;
   char.firstAidUsed = false;
@@ -175,18 +207,27 @@ async function resetFirstAid() {
 function refreshFirstAidRow() {
   const row = document.getElementById('first-aid-row');
   if (!row) return;
-  const show = char.wounded && (parseInt(char.injuryDays) || 0) > 0;
-  row.style.display = show ? 'flex' : 'none';
-  if (!show) return;
+  // Show for ANY wound: a Moderate or Grievous injury has no day-count, and hiding the row left
+  // the only routes out of them undiscoverable.
+  row.style.display = char.wounded ? 'flex' : 'none';
+  if (!char.wounded) return;
+  const days = parseInt(char.injuryDays) || 0;
   const btn = document.getElementById('first-aid-btn');
   const status = document.getElementById('first-aid-status');
   const resetBtn = document.getElementById('first-aid-reset-btn');
+  const clearBtn = document.getElementById('wound-clear-btn');
   const used = !!char.firstAidUsed;
-  btn.disabled = used;
-  btn.style.opacity = used ? '0.4' : '1';
-  btn.style.cursor = used ? 'not-allowed' : 'pointer';
-  status.textContent = `${char.injuryDays} day${char.injuryDays>1?'s':''} to mend` + (used ? ' · First Aid spent' : '');
-  resetBtn.style.display = used ? 'inline-block' : 'none';
+  const canRoll = days > 0 && !used;
+  btn.disabled = !canRoll;
+  btn.style.opacity = canRoll ? '1' : '0.4';
+  btn.style.cursor = canRoll ? 'pointer' : 'not-allowed';
+  status.textContent = days > 0
+    ? `${days} day${days > 1 ? 's' : ''} to mend` + (used ? ' · First Aid spent' : '')
+    : (char.injuryKind === 'grievous' ? 'Grievous — no day-count; rest, then clear it'
+       : char.injuryKind === 'moderate' ? 'Moderate — a Prolonged Rest closes it'
+       : 'No day-count on this injury');
+  resetBtn.style.display = (days > 0 && used) ? 'inline-block' : 'none';
+  if (clearBtn) clearBtn.style.display = (days > 0 && !char.injuryRested) ? 'none' : 'inline-block';
 }
 
 function rollShadowTest(source) {
@@ -698,6 +739,13 @@ function renderProtectionParry() {
   if (dwarfHint) dwarfHint.style.display = isDwarfCulture() ? 'block' : 'none';
 }
 
+/** Is this adversary attack a ranged one? Their attacks are free text, so go by the name —
+    the same way `_equippedWeapons` decides a hero's weapon is a bow. */
+function _atkIsRanged(atk) {
+  const n = String((atk && (atk.name || atk.special)) || '');
+  return /bow|arrow|sling|dart|javelin|thrown|hurl|spit|quarrel|crossbow/i.test(n);
+}
+
 function toggleOpeningVolley() {
   char.openingVolley = !char.openingVolley;
   saveCharacter();
@@ -871,10 +919,22 @@ async function _applyWoundFromFail() {
   const r = rollWoundSeverity();
   char.injury = `${r.label} — ${r.detail}`;
   char.injuryDays = r.days;
-  char.firstAidUsed = false;  // new injury → First Aid available again
+  char.injuryKind = r.kind;         // severe (day-counted) · moderate (hours) · grievous (dying)
+  char.injuryRested = false;        // has a Prolonged Rest happened since this wound?
+  char.firstAidUsed = false;        // new injury → First Aid available again
+  let extra = '';
+  // The Grievous result's own printed effect — "Unconscious & Dying (as if Wounded twice)" — was
+  // rolled, written into the Injury field, and then applied to nothing: the hero kept full
+  // Endurance and full agency. It puts you at 0 Endurance, which is what Dying means here.
+  if (r.kind === 'grievous') {
+    char.endCur = 0;
+    extra = '\n\nYou are Unconscious and Dying — this counts as being Wounded twice. You act only when someone brings you round.';
+  } else if (r.kind === 'moderate') {
+    extra = '\n\nA few hours will see it closed: take a Prolonged Rest and the Wound clears itself.';
+  }
   saveCharacter();
   render();
-  alert(`Wound Severity:\n\n${r.label}\n${r.detail}`);
+  alert(`Wound Severity:\n\n${r.label}\n${r.detail}${extra}`);
   return r;
 }
 async function rollProtection() {
@@ -927,9 +987,9 @@ async function rollProtection() {
 /* ---------- WOUND SEVERITY ---------- */
 function rollWoundSeverity() {
   const r = Math.floor(Math.random() * 12) + 1;
-  if (r === 11) return { label: 'Grievous Injury 👁', detail: 'Unconscious & Dying (as if Wounded twice)', days: 0 };
-  if (r === 12) return { label: 'Moderate Injury ᚱ', detail: 'Uncheck Wounded in a few hours', days: 0 };
-  return { label: `Severe Injury (${r})`, detail: `${r} days to mend; dies in 1 hr without Healing roll`, days: r };
+  if (r === 11) return { label: 'Grievous Injury 👁', detail: 'Unconscious & Dying (as if Wounded twice)', days: 0, kind: 'grievous' };
+  if (r === 12) return { label: 'Moderate Injury ᚱ', detail: 'Uncheck Wounded in a few hours', days: 0, kind: 'moderate' };
+  return { label: `Severe Injury (${r})`, detail: `${r} days to mend; dies in 1 hr without Healing roll`, days: r, kind: 'severe' };
 }
 
 /* ---------- COMBAT-TAB ENCOUNTER TRACKER ---------- */
@@ -1117,6 +1177,9 @@ function encLogRoll(plain) {
   _encEnsureGroup();  // open/refresh the group BEFORE logging so the block carries its combatId
   if (typeof journalAuto === 'function') journalAuto('dice', 'roll', clean);
 }
+/** Per-foe Pierce offer from the last attack: { feat, icons, bonus, prof, weaponIdx }. */
+let _encPierceState = {};
+
 function _encStash(foeId, lineHtml, note) {
   const noteStr = note && note.length ? ` <span style="color:var(--text-faint)">[${note.join(' · ')}]</span>` : '';
   _encResults[foeId] = lineHtml + noteStr;
@@ -1182,16 +1245,55 @@ async function heroAttackFoe(foeId) {
     line += ` · −${dmg} End → ${f.endCur}/${f.endMax}`;
     if (f.endCur === 0) { f.slain = true; f.engaged = false; line += ` · ⚔ <strong>${escapeHtml(f.name)} slain!</strong>`; }
   } else { line += ` · miss`; }
-  if (piercing && !f.slain && w.inj && w.inj !== '—') {
-    const injTN = parseInt(w.inj) || 14;
-    const P = _foeProtectionRoll(f, injTN);
-    const pScore = P.isAutoSuccess ? '★' : P.total;
-    if (P.outcome.startsWith('SUCCESS')) line += ` · Piercing Blow — foe Protection ${pScore} vs ${injTN} → resisted`;
-    else if (f.wounded) { f.slain = true; f.engaged = false; line += ` · Piercing Blow — foe Protection ${pScore} vs ${injTN} → already Wounded → <strong>SLAIN!</strong>`; }
-    else { f.wounded = true; line += ` · Piercing Blow — foe Protection ${pScore} vs ${injTN} → foe WOUNDED`; }
+  if (piercing && !f.slain) line += _encPiercingBlow(f, w);
+  // Pierce (Core Rules p.99): spend a remaining ✦ to push the Feat die toward the Piercing
+  // window. It was injected only by the Dice tab's rollDice(), so the surface the app tells you
+  // to fight on could not use a combat option the app implements.
+  delete _encPierceState[foeId];
+  const pierceBonus = { Swords: 1, Bows: 2, Spears: 3 }[prof];
+  if (hit && !f.slain && !piercing && pierceBonus && roll.icons > 0
+      && !roll.featSpecial && roll.featValue < 10 && w.inj && w.inj !== '—') {
+    _encPierceState[foeId] = { feat: roll.featValue, icons: roll.icons, bonus: pierceBonus, prof, weaponIdx: e.weaponIdx || 0 };
   }
   a.hope = false;
   _encStash(foeId, line, note);
+  encDeriveEngaged(); saveCharacter(); encLogRoll(line);
+  render(); renderEncounter();
+}
+
+/** The Piercing-Blow chain against a foe: its Protection vs your weapon's Injury. */
+function _encPiercingBlow(f, w) {
+  if (!w.inj || w.inj === '—') return '';
+  const injTN = parseInt(w.inj) || 14;
+  const P = _foeProtectionRoll(f, injTN);
+  const pScore = P.isAutoSuccess ? '★' : P.total;
+  if (P.outcome.startsWith('SUCCESS')) return ` · Piercing Blow — foe Protection ${pScore} vs ${injTN} → resisted`;
+  if (f.wounded) { f.slain = true; f.engaged = false; return ` · Piercing Blow — foe Protection ${pScore} vs ${injTN} → already Wounded → <strong>SLAIN!</strong>`; }
+  f.wounded = true;
+  return ` · Piercing Blow — foe Protection ${pScore} vs ${injTN} → foe WOUNDED`;
+}
+
+/** Spend one ✦ to push the Feat die up (Swords +1 / Bows +2 / Spears +3, capped at 10).
+    Reaching 10 opens the Piercing window and resolves it immediately. */
+function encPierce(foeId) {
+  const st = _encPierceState[foeId];
+  const f = getFoe(foeId);
+  if (!st || !f || f.slain) return;
+  const wpns = _equippedWeapons();
+  const w = wpns[Math.min(st.weaponIdx, Math.max(0, wpns.length - 1))] || wpns[0];
+  if (!w) return;
+  st.icons -= 1;
+  const before = st.feat;
+  st.feat = Math.min(10, st.feat + st.bonus);
+  let line = (_encResults[foeId] || '').replace(/ <span style="color:var\(--text-faint\)">\[.*?\]<\/span>$/, '');
+  line += ` · 🗡️ Pierce (${st.prof} +${st.bonus}): Feat ${before}→${st.feat}`;
+  if (st.feat >= 10) {
+    line += _encPiercingBlow(f, w);
+    delete _encPierceState[foeId];
+  } else if (st.icons <= 0) {
+    delete _encPierceState[foeId];
+  }
+  _encResults[foeId] = line;
   encDeriveEngaged(); saveCharacter(); encLogRoll(line);
   render(); renderEncounter();
 }
@@ -1205,11 +1307,17 @@ async function foeAttackHero(foeId, attackIdx) {
   // hero IS the hero's Parry (a full TN incl. shield) — NOT the foe's own atkTN added on top.
   // The foe's skill is its number of attack dice; the targeted hero's stance modifies the FOE's
   // dice as a ±Success die (Forward = easier to hit, +1d; Defensive = harder, −1d), per STANCE_INFO.
-  const tn = (parseInt(char.parry) || 0) + (parseInt(char.shieldTotal) || 0);
+  const shield = parseInt(char.shieldTotal) || 0;
+  // Opening Volley (Core Rules p.93): an AWARE target of a ranged volley doubles the shield's
+  // Parry bonus for that exchange. `char.openingVolley` was rendered on the Combat card and read
+  // nowhere else, so the toggle changed a printed number and nothing about the fight.
+  const ranged = _atkIsRanged(atk);
+  const volley = !!char.openingVolley && ranged && shield > 0;
+  const tn = (parseInt(char.parry) || 0) + shield + (volley ? shield : 0);
   let atkDice = parseInt(atk.dice) || 0;
-  let stanceNote = '';
-  if (char.stance === 'forward') { atkDice += 1; stanceNote = ' · you Forward +1d'; }
-  else if (char.stance === 'defensive') { atkDice = Math.max(0, atkDice - 1); stanceNote = ' · you Defensive −1d'; }
+  let stanceNote = volley ? ' · 🏹 Opening Volley: shield Parry doubled' : '';
+  if (char.stance === 'forward') { atkDice += 1; stanceNote += ' · you Forward +1d'; }
+  else if (char.stance === 'defensive') { atkDice = Math.max(0, atkDice - 1); stanceNote += ' · you Defensive −1d'; }
   _suspendInlineEye(true);
   const roll = _doInlineRoll(atkDice, 'normal', tn);
   _suspendInlineEye(false);
@@ -1316,6 +1424,12 @@ function _renderFoeCard(f, canGm = true) {
       </div>`;
   }
   if (_encResults[f.id]) h += `<div style="font-size:12px;margin-top:6px;padding:6px;background:var(--bg-deep);border-radius:6px;line-height:1.45">${_encResults[f.id]}</div>`;
+  const ps = _encPierceState[f.id];
+  if (ps && !f.slain) {
+    const next = Math.min(10, ps.feat + ps.bonus);
+    h += `<button onclick="encPierce('${f.id}')" aria-label="Spend one success icon to Pierce" style="margin-top:6px;width:100%;background:var(--warn-orange);color:white;border:none;border-radius:6px;padding:8px;font-size:12px;font-weight:600;cursor:pointer">`
+      + `🗡️ Pierce: spend 1 ✦ (${ps.prof} +${ps.bonus}) → Feat ${ps.feat}→${next}${next === 10 ? ' = <strong>Piercing Blow!</strong>' : ''} · ${ps.icons} ✦ left</button>`;
+  }
   if (f._edit && canGm) h += _renderFoeEdit(f);
   return h + `</div>`;
 }
@@ -2138,6 +2252,8 @@ function confirmApplyReward(target) {
     appliedLabel: target.label
   });
   if (pendingReward.source === 'starting') char.startingReward = rewardName;
+  // The claim is spent here, at the moment the Reward is actually received.
+  if (pendingReward.source === 'new') char.pendingRewards = Math.max(0, (parseInt(char.pendingRewards) || 0) - 1);
   pendingReward = null;
   document.getElementById('apply-reward-overlay').classList.remove('show');
   saveCharacter();
@@ -2340,11 +2456,13 @@ function fpSpendBlocker(group, label) {
   if (group === 'prof' && char.fpSpend.profs[label]) {
     return `Already raised "${label}" this Fellowship Phase (1 rank per Combat Proficiency per FP).`;
   }
-  if (group === 'valour' && char.fpSpend.wisdom > 0) {
-    return `Already raised Wisdom this Fellowship Phase — Valour and Wisdom are exclusive per phase (RAW p.119).`;
+  if (group === 'valour') {
+    if (char.fpSpend.valour > 0) return `Already raised Valour this Fellowship Phase — one rank per phase (RAW p.119).`;
+    if (char.fpSpend.wisdom > 0) return `Already raised Wisdom this Fellowship Phase — Valour and Wisdom are exclusive per phase (RAW p.119).`;
   }
-  if (group === 'wisdom' && char.fpSpend.valour > 0) {
-    return `Already raised Valour this Fellowship Phase — Valour and Wisdom are exclusive per phase (RAW p.119).`;
+  if (group === 'wisdom') {
+    if (char.fpSpend.wisdom > 0) return `Already raised Wisdom this Fellowship Phase — one rank per phase (RAW p.119).`;
+    if (char.fpSpend.valour > 0) return `Already raised Valour this Fellowship Phase — Valour and Wisdom are exclusive per phase (RAW p.119).`;
   }
   return null;
 }
@@ -2507,8 +2625,9 @@ function closeNewReward() { document.getElementById('new-reward-overlay').classL
 
 function pickNewReward(name) {
   closeNewReward();
-  char.pendingRewards = Math.max(0, (parseInt(char.pendingRewards) || 0) - 1);
-  saveCharacter();
+  // Do NOT decrement `pendingRewards` here — the Reward is not yours until the apply step
+  // completes, and cancelling that dialog used to leave you with neither the Reward nor the
+  // claim. `confirmApplyReward` spends the claim; anything else leaves it standing.
   promptApplyReward(name, 'new');
 }
 
