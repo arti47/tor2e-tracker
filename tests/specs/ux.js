@@ -1649,6 +1649,311 @@ module.exports = {
     checks.push({ ok: pt3.moriaRevelationResets, msg: 'the Moria Revelation offers the Eye reset in the dialog' });
     checks.push({ ok: pt3.playOpensScene, msg: 'the Play loop opens a new Chronicle scene at a break' });
 
+    // ---- RUN-3 playtest findings. GOTCHA 23: three of the worst were one earlier fix applied to
+    // one branch of two, so these assert BOTH branches wherever a pair exists.
+    const pt4 = await page.evaluate(async () => {
+      const out = {};
+      const op = window.promptStyled, om = window.showModal, oa = window.alertStyled,
+            oc = window.confirmStyled, oal = window.alert;
+      window.alertStyled = async () => {}; window.confirmStyled = async () => true; window.alert = () => {};
+      // Never leave a real modal open mid-run: an unanswered dialog from an incidental roll used
+      // to block the Fortune offer these checks are looking for.
+      window.showModal = async () => null;
+
+      const hero = () => {
+        char = JSON.parse(JSON.stringify(DEFAULT_CHARACTER));
+        Object.assign(char, { culture: 'Bardings', calling: 'Warden', strRating: 5, strTN: 15,
+          hrtRating: 4, hrtTN: 16, witRating: 3, witTN: 17, endMax: 25, endCur: 25, parry: 3,
+          hopeMax: 10, hopeCur: 10, name: 'B', safeHaven: 'Lake-town',
+          skills: { Travel: { rating: 2 }, Awareness: { rating: 2 }, Healing: { rating: 2 } },
+          profs: { Swords: 3, Bows: 2, Axes: 0, Spears: 0 } });
+        char.striderMode = true;
+        saveCharacter(); refreshStriderUI();
+        char.saga = Object.assign(sagaState(), { started: true, premise: 'p' });
+      };
+      const labels = () => _playChoices().map(c => c.label).join(' | ');
+
+      // 16 — a Rune on an INLINE roll offers the Fortune table. FIRST, before any other beat
+      // here can leave a dialog open: an unanswered dialog holds the one-at-a-time guard.
+      // An earlier block can also leave one open across the evaluate boundary — answer it the
+      // way a player would, by pressing a button, rather than waiting on it forever.
+      for (let i = 0; i < 12; i++) {
+        const openBtns = document.querySelectorAll('.menu-overlay.show button');
+        if (!openBtns.length) break;
+        openBtns.forEach(b => { try { b.click(); } catch (e) {} });
+        await new Promise(r => setTimeout(r, 120));
+      }
+      hero();
+      let fortuneOffered = false;
+      window.showModal = async (o) => { fortuneOffered = /Fortune/i.test(String(o.title) + ' ' + String(o.message)); return null; };
+      _soloEyeFromRoll({ featSpecial: 'rune', featValue: 11, total: 20, outcome: 'SUCCESS', icons: 0 });
+      for (let i = 0; i < 30 && !fortuneOffered; i++) await new Promise(r => setTimeout(r, 120));
+      out.fortuneOfferedInline = fortuneOffered;
+      out.fortuneDbg = `open=${document.querySelectorAll('.menu-overlay.show').length} solo=${isSolo()}`;
+      window.showModal = async () => null;
+
+      // 1 — BOTH legs of the journey must stop for an event. The road home had none.
+      hero();
+      const legHasEvent = (step) => {
+        sagaState().step = step;
+        char.journey = { active: true, origin: 'a', destination: 'b', totalHexes: 9, currentHex: 4,
+          season: 'Spring', region: 'Wild', forcedMarch: false, mounted: false, roles: {},
+          travelFatigue: 0, daysElapsed: 4, events: [], nextEventHex: 4, pendingEventRoll: null };
+        saveCharacter();
+        return /Something happens on the road/.test(labels());
+      };
+      out.eventsOutbound = legHasEvent('journey');
+      out.eventsHomeward = legHasEvent('home');
+      // …and reaching home ends the journey rather than leaving it live forever.
+      sagaState().step = 'home';
+      char.journey.currentHex = char.journey.totalHexes; char.journey.nextEventHex = null;
+      saveCharacter();
+      await playArriveHome();
+      out.homeEndsJourney = !char.journey.active && sagaState().step === 'fellowship';
+
+      // 17 — the event Play narrates must read as prose, not a welded run-on with entities.
+      hero();
+      sagaState().step = 'journey';
+      char.journey = { active: true, origin: 'a', destination: 'b', totalHexes: 9, currentHex: 4,
+        season: 'Spring', region: 'Wild', forcedMarch: false, mounted: false, roles: {},
+        travelFatigue: 0, daysElapsed: 4, events: [], nextEventHex: 4, pendingEventRoll: null };
+      saveCharacter();
+      playClearFeed();
+      const realInlineE = window._doInlineRoll;
+      window._doInlineRoll = (d, f, tn) => (tn === null)
+        ? { total: 5, outcome: 'SUCCESS', icons: 0, featValue: 5, featSpecial: null, featLabel: '5', isAutoSuccess: false }
+        : realInlineE(d, f, tn);
+      await playEvent();
+      window._doInlineRoll = realInlineE;
+      const evText = _playFeed.map(f => f.text).join(' ');
+      const raw = (char.journey.events || [])[0] || { text: '' };
+      // Every <br> boundary in the event must be whitespace in the narration — a bare tag-strip
+      // welded the clauses together — and no HTML entity may survive into the feed.
+      const segs = String(raw.text).split(/<br\s*\/?>/i)
+        .map(t => t.replace(/<[^>]+>/g, '').replace(/&[a-z#0-9]+;/gi, '').trim())
+        .filter(t => t.length > 8);
+      out.eventProse = evText.indexOf('&#') === -1 && segs.length > 1
+        && segs.every(t => new RegExp('\\s' + t.slice(0, 12).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).test(' ' + evText));
+
+      // 2 — a live journey is visible from the haven and never silently overwritten.
+      hero();
+      sagaState().step = 'haven';
+      char.journey = { active: true, origin: 'a', destination: 'the watchtower', totalHexes: 8,
+        currentHex: 0, season: 'Spring', region: 'Border', forcedMarch: true, mounted: true,
+        mountVigour: 4, roles: {}, travelFatigue: 0, daysElapsed: 0, events: [], nextEventHex: null };
+      saveCharacter();
+      out.havenSeesJourney = /Back to the road/.test(labels());
+      let warned = false;
+      window.showModal = async (o) => {
+        warned = warned || /already on the road/i.test(String(o.title || '') + String(o.message || ''));
+        return null;                                                     // player cancels
+      };
+      window.promptStyled = async () => 'somewhere else';
+      await playSetOut();
+      out.setOutAsksFirst = warned && char.journey.destination === 'the watchtower'
+        && char.journey.totalHexes === 8 && char.journey.forcedMarch === true;
+
+      // 3 — cancelling "Apply to…" must not destroy the Reward you were owed.
+      hero();
+      char.pendingRewards = 1; char.weapons = [{ name: 'Long Sword', dmg: 5, inj: 16, load: 3, prof: 'Swords' }];
+      saveCharacter();
+      pickNewReward('Keen');                 // opens the apply-to dialog
+      cancelApplyReward();                   // …and the player backs out
+      out.rewardSurvivesCancel = (parseInt(char.pendingRewards) || 0) === 1
+        && (char.rewardsList || []).length === 0;
+      renderOwedPicks();
+      out.rewardClaimVisible = /openNewReward\(\)/.test(document.getElementById('owed-picks').innerHTML);
+
+      // 4 — the worst wound must do something, and have a way out.
+      hero();
+      const realWS = window.rollWoundSeverity;
+      window.rollWoundSeverity = () => ({ label: 'Grievous Injury 👁', detail: 'Unconscious & Dying (as if Wounded twice)', days: 0, kind: 'grievous' });
+      await _applyWoundFromFail();
+      window.rollWoundSeverity = realWS;
+      out.grievousIsDying = (parseInt(char.endCur) || 0) === 0 && char.injuryKind === 'grievous';
+      refreshFirstAidRow();
+      out.woundRowShown = document.getElementById('first-aid-row').style.display !== 'none';
+      char.injuryKind = 'moderate'; char.wounded = true; char.endCur = 10; saveCharacter();
+      await takeProlongedRest();
+      out.moderateHealsOnRest = !char.wounded;
+
+      // 5 — the Bout offers buttons and says what happened; no silent Shadow wipe.
+      hero();
+      char.shadow = 10; char.scars = 0; char.shadowPath = 'Path of Despair'; char.flaws = '';
+      char._boutPrompted = false; char.boutDue = false; saveCharacter();
+      let boutButtons = [];
+      window.showModal = async (o) => { boutButtons = (o.buttons || []).map(b => b.label); return boutButtons[0]; };
+      let said = '';
+      window.alert = (m) => { said += String(m); };
+      await checkAutoTriggers();
+      await new Promise(r => setTimeout(r, 250));
+      out.boutOffersButtons = boutButtons.length >= 2 && FLAWS_BY_PATH['Path of Despair'].indexOf(boutButtons[0]) >= 0;
+      out.boutTookFlaw = String(char.flaws).indexOf(boutButtons[0]) >= 0 && (parseInt(char.shadow) || 0) === 0;
+      out.boutSaidSo = /Flaw|bout passes/i.test(said);
+      window.alert = () => {};
+
+      // 6 — a Foolish Disaster stays on screen.
+      hero();
+      char.skillEndeavour = { active: true, task: 'dig it out', resistance: 6, timeLimit: 4,
+        riskLevel: 'foolish', attemptsUsed: 1, successesScored: 0, rolls: [], outcome: null };
+      saveCharacter();
+      finalizeSkillEndeavour('disaster');
+      render();                              // the line that used to hide it
+      out.disasterStaysVisible = document.getElementById('se-active-card').style.display !== 'none'
+        && /Disaster/i.test(document.getElementById('se-end-message').innerHTML);
+
+      // 7 — Valour is capped against itself.
+      hero();
+      char.fpModeActive = true; char.fpSpend = { skills: {}, profs: {}, valour: 1, wisdom: 0 };
+      saveCharacter();
+      out.valourCapped = !!fpSpendBlocker('valour', 'Valour');
+
+      // 8 — the Rearward escape actually disengages the foes.
+      hero();
+      char.encounter = JSON.parse(JSON.stringify(DEFAULT_CHARACTER.encounter));
+      char.encounter.active = true;
+      char.encounter.foes = [{ id: 'f1', name: 'Orc', endMax: 12, endCur: 12, parry: 3, armour: 1,
+        might: 0, hateMax: 2, hateCur: 2, atkTN: 14, attacks: [{ name: 'sword', dice: 2, dmg: 4, inj: 14 }],
+        fell: '', engaged: true, wounded: false, slain: false }];
+      saveCharacter();
+      window.showModal = async () => 'rearward';
+      await flyYouFools();
+      out.rearwardArms = char.flyPending === true && char.stance === 'rearward';
+      let slipOffered = false;
+      window.showModal = async (o) => {
+        slipOffered = (o.buttons || []).some(b => /slip away/i.test(b.label));
+        return 'slip';
+      };
+      await flyYouFools();
+      out.rearwardEscapes = slipOffered && char.encounter.foes[0].engaged === false;
+
+      // 9 — Opening Volley changes the ranged TN it prints.
+      hero();
+      char.shieldTotal = 3; char.parry = 14; char.openingVolley = true; char.stance = 'open';
+      char.encounter = JSON.parse(JSON.stringify(DEFAULT_CHARACTER.encounter));
+      char.encounter.active = true;
+      char.encounter.foes = [{ id: 'a1', name: 'Archer', endMax: 12, endCur: 12, parry: 3, armour: 1,
+        might: 0, hateMax: 2, hateCur: 2, atkTN: 14,
+        attacks: [{ name: 'Black bow', dice: 2, dmg: 4, inj: 14 }, { name: 'Short sword', dice: 2, dmg: 4, inj: 14 }],
+        fell: '', engaged: true, wounded: false, slain: false }];
+      saveCharacter();
+      const realInline2 = window._doInlineRoll; const tns = [];
+      window._doInlineRoll = (d, f, tn) => { tns.push(tn); return { total: 1, outcome: 'FAIL', icons: 0, featValue: 2, featSpecial: null }; };
+      await foeAttackHero('a1', 0);          // ranged — volley applies
+      await foeAttackHero('a1', 1);          // melee — it does not
+      window._doInlineRoll = realInline2;
+      out.volleyApplies = tns[0] === 14 + 3 + 3 && tns[1] === 14 + 3;
+
+      // 10 — Pierce is reachable in the Encounter.
+      hero();
+      char.weapons = [{ name: 'Bow', dmg: 4, inj: 14, load: 1, prof: 'Bows' }];
+      char.encounter = JSON.parse(JSON.stringify(DEFAULT_CHARACTER.encounter));
+      char.encounter.active = true;
+      char.encounter.foes = [{ id: 'p1', name: 'Orc', endMax: 30, endCur: 30, parry: 3, armour: 1,
+        might: 0, hateMax: 2, hateCur: 2, atkTN: 14, attacks: [{ name: 'sword', dice: 2, dmg: 4, inj: 14 }],
+        fell: '', engaged: true, wounded: false, slain: false }];
+      saveCharacter();
+      const realInline3 = window._doInlineRoll;
+      window._doInlineRoll = () => ({ total: 40, outcome: 'SUCCESS', icons: 2, featValue: 8, featSpecial: null });
+      await heroAttackFoe('p1');
+      window._doInlineRoll = realInline3;
+      renderEncounter();
+      out.pierceOffered = /encPierce\('p1'\)/.test(document.getElementById('encounter-card').innerHTML);
+      const featBefore = (_encPierceState['p1'] || {}).feat;
+      encPierce('p1');
+      out.pierceApplies = featBefore === 8 && !_encPierceState['p1']
+        && /Pierce/.test(_encResults['p1'] || '');
+
+      // 11 — undertakings survive a close (they are persisted on every toggle).
+      hero();
+      char.fpWizardState = null; saveCharacter();
+      openFPWizard();
+      fpState.phaseType = 'ordinary';
+      fpToggleUndertaking('ponder-maps');
+      // Assert what SURVIVES — read the saved slot back, the way a reload does. In memory
+      // `fpState` and `char.fpWizardState` can be the same object, so an in-memory check passes
+      // even when nothing was ever written.
+      const savedFp = JSON.parse(localStorage.getItem('tor2e-char-' + activeCharId) || '{}');
+      out.undertakingPersisted = ((savedFp.fpWizardState || {}).selectedUndertakings || []).indexOf('ponder-maps') >= 0;
+      fpClose();
+
+      // 13 — Play notices a retired hero.
+      hero();
+      char.retired = true; char.retiredReason = 'Sailed for Valinor (Shadow)';
+      saveCharacter();
+      out.playNoticesRetired = !/Something attacks/.test(labels()) && /left the story|Play someone else/i.test(labels());
+      char.retired = false; saveCharacter();
+
+      // Eye Awareness stops at the Hunt threshold instead of running to 106.
+      hero();
+      char.huntRegion = 'wild'; char.huntMod = 0; char.eyeAwareness = 0; saveCharacter();
+      window.showModal = async () => null;
+      for (let i = 0; i < 40; i++) raiseEye(1);
+      await new Promise(r => setTimeout(r, 400));
+      out.eyeCapped = (parseInt(char.eyeAwareness) || 0) === huntThreshold();
+
+      // Applying a Culture must leave a NUMBER in the Age field, not the culture's range —
+      // assert the field a player reads, not the helper.
+      hero();
+      char.culture = ''; char.age = ''; saveCharacter();
+      document.getElementById('culture-pick').value = 'Bardings';
+      document.getElementById('attr-set').value = '0';
+      await applyCulture();
+      out.ageIsNumber = !isNaN(parseInt(char.age)) && !/[–-]/.test(String(char.age))
+        && parseInt(char.age) > 0;
+      out.ageSeen = String(char.age);
+
+      // An unnamed hero is named by what it is, everywhere.
+      out.heroLabelled = heroLabel({ name: '', culture: 'Bardings', calling: 'Warden' }) === 'Bardings Warden'
+        && heroLabel({ name: 'Beran' }) === 'Beran' && heroLabel({}) === 'Unnamed hero';
+
+      window.promptStyled = op; window.showModal = om; window.alertStyled = oa;
+      window.confirmStyled = oc; window.alert = oal;
+      return out;
+    });
+    checks.push({ ok: pt4.eventsOutbound && pt4.eventsHomeward && pt4.homeEndsJourney,
+                  msg: 'BOTH legs of a journey stop for a Journey Event, and reaching home ends the journey' });
+    checks.push({ ok: pt4.eventProse, msg: 'a journey event reaches the Play feed as prose, not a run-on' });
+    checks.push({ ok: pt4.havenSeesJourney && pt4.setOutAsksFirst,
+                  msg: 'Play sees a journey started elsewhere and never overwrites one silently' });
+    checks.push({ ok: pt4.rewardSurvivesCancel && pt4.rewardClaimVisible,
+                  msg: 'cancelling "Apply to…" leaves the Reward still owed' });
+    checks.push({ ok: pt4.grievousIsDying && pt4.woundRowShown && pt4.moderateHealsOnRest,
+                  msg: 'a Grievous wound applies its effect, and every wound has a way out' });
+    checks.push({ ok: pt4.boutOffersButtons && pt4.boutTookFlaw && pt4.boutSaidSo,
+                  msg: 'the Bout of Madness picks a Flaw from buttons and reports the outcome' });
+    checks.push({ ok: pt4.disasterStaysVisible, msg: 'a Foolish endeavour\'s Disaster stays on screen' });
+    checks.push({ ok: pt4.valourCapped, msg: 'a second Valour rank in one Fellowship Phase is refused' });
+    checks.push({ ok: pt4.rearwardArms && pt4.rearwardEscapes,
+                  msg: 'the Rearward escape exists and disengages the foes' });
+    checks.push({ ok: pt4.volleyApplies, msg: 'Opening Volley doubles the shield Parry against a ranged attack only' });
+    checks.push({ ok: pt4.pierceOffered && pt4.pierceApplies, msg: 'Pierce can be used against an Encounter foe' });
+    checks.push({ ok: pt4.undertakingPersisted, msg: 'a Fellowship Phase undertaking survives closing the wizard' });
+    checks.push({ ok: pt4.playNoticesRetired, msg: '▶ Play notices a retired hero' });
+    checks.push({ ok: pt4.fortuneOfferedInline, msg: 'a Rune on an inline roll offers the Fortune table' });
+    checks.push({ ok: pt4.eyeCapped, msg: 'Eye Awareness stops at the Hunt threshold' });
+    checks.push({ ok: pt4.ageIsNumber, msg: `applying a Culture writes an age, not its range (got "${pt4.ageSeen}")` });
+    checks.push({ ok: pt4.heroLabelled, msg: 'an unnamed hero is named by what it is' });
+
+    // 14 — the printed sheet must carry the CHARACTER, not whatever tabs exist. Emulate print
+    // media and read what is actually visible, rather than trusting the stylesheet's list.
+    await page.emulateMedia({ media: 'print' });
+    const printed = await page.evaluate(() => {
+      const vis = id => {
+        const el = document.getElementById(id);
+        if (!el) return false;
+        const r = el.getBoundingClientRect();
+        return getComputedStyle(el).display !== 'none' && r.width > 0 && r.height > 0;
+      };
+      return { play: vis('panel-play'), gm: vis('panel-gm'), dice: vis('panel-dice'),
+               character: vis('panel-character'), combat: vis('panel-combat') };
+    });
+    await page.emulateMedia({ media: null });
+    checks.push({
+      ok: !printed.play && !printed.gm && !printed.dice && printed.character && printed.combat,
+      msg: `the printed sheet is the character, not every tab (play=${printed.play} gm=${printed.gm} char=${printed.character})`
+    });
+
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length})` });
     await context.close();
     return { checks };

@@ -1460,14 +1460,17 @@ function _soloEyeFromRoll(r) {
     dice result offers a one-tap button to roll the matching table right there." That was true on
     the Dice tab and nowhere else — a Rune on a Marching Test, a Clash or a Peril was offered
     nothing. Every inline roll comes through here, so the offer belongs here. */
-let _fortuneOfferPending = false;
 function _soloFortuneOffer(r) {
-  if (_fortuneOfferPending) return;
   if (!r || (r.featSpecial !== 'rune' && r.featSpecial !== 'eye')) return;
   const isIll = r.featSpecial === 'eye';
-  _fortuneOfferPending = true;
-  // Deferred, so the roll that triggered it finishes rendering first.
+  // Gate on what is actually on screen, not on a flag: a flag survives a dialog that was hidden
+  // without resolving (the Escape handler can do that), and then no roll is ever offered a table
+  // again for the rest of the session — a silent, permanent loss of the feature.
   setTimeout(async () => {
+    for (let i = 0; i < 40 && document.querySelector('.menu-overlay.show'); i++) {
+      await new Promise(res => setTimeout(res, 150));
+    }
+    if (document.querySelector('.menu-overlay.show')) return;     // still busy — let this one go
     try {
       const go = await showModal({
         title: isIll ? '👁 An Eye on that roll' : '☉ A Gandalf Rune on that roll',
@@ -1484,14 +1487,10 @@ function _soloFortuneOffer(r) {
         const out = fortuneTableRoll(isIll);
         const label = isIll ? '🎲 Ill-Fortune' : '🎲 Fortune';
         if (typeof journalAuto === 'function') journalAuto('ojc', 'oracle', `${label} (Feat ${out.r.label}): ${out.entry.text}`);
-        if (typeof _playFeed !== 'undefined' && typeof renderPlay === 'function' && document.getElementById('panel-play')?.classList.contains('active')) {
-          playSay(`<strong>${label}</strong> (Feat ${escapeHtml(out.r.label)}): ${escapeHtml(out.entry.text)}`);
-          renderPlay();
-        }
         alert(`${label} (Feat ${out.r.label})\n\n${out.entry.text}`);
         render();
       }
-    } catch (e) {} finally { _fortuneOfferPending = false; }
+    } catch (e) {}
   }, 300);
 }
 
