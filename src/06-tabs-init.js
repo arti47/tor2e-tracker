@@ -855,7 +855,7 @@ function rollDice(skillLabel) {
     if (chosenFeat.special === 'eye') eaDelta += 1;
     if (diceState.magical) eaDelta += 1;
     if (eaDelta > 0) {
-      char.eyeAwareness = (parseInt(char.eyeAwareness) || 0) + eaDelta;
+      raiseEye(eaDelta);
       saveCharacter();   // persist — rollDice's earlier saveCharacter() runs before this hook
       refreshEyeOfMordor();
       // Tag in summary so the player sees the bump

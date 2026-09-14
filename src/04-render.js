@@ -1449,9 +1449,50 @@ function _suspendInlineEye(on) { _inlineEyeSuspended = !!on; }
 function _soloEyeFromRoll(r) {
   if (_inlineEyeSuspended) return;                         // combat rolls: the Eye ignores blows
   if (typeof isSolo !== 'function' || !isSolo()) return;
-  if (!r || r.featSpecial !== 'eye') return;
-  char.eyeAwareness = (parseInt(char.eyeAwareness) || 0) + 1;
-  try { saveCharacter(); if (typeof refreshEyeOfMordor === 'function') refreshEyeOfMordor(); } catch (e) {}
+  if (!r) return;
+  if (r.featSpecial === 'eye') {
+    raiseEye(1);
+  }
+  _soloFortuneOffer(r);
+}
+
+/** The Oracle tab promises: "When one of your ordinary rolls turns up a ☉ Rune or an 👁 Eye, the
+    dice result offers a one-tap button to roll the matching table right there." That was true on
+    the Dice tab and nowhere else — a Rune on a Marching Test, a Clash or a Peril was offered
+    nothing. Every inline roll comes through here, so the offer belongs here. */
+let _fortuneOfferPending = false;
+function _soloFortuneOffer(r) {
+  if (_fortuneOfferPending) return;
+  if (!r || (r.featSpecial !== 'rune' && r.featSpecial !== 'eye')) return;
+  const isIll = r.featSpecial === 'eye';
+  _fortuneOfferPending = true;
+  // Deferred, so the roll that triggered it finishes rendering first.
+  setTimeout(async () => {
+    try {
+      const go = await showModal({
+        title: isIll ? '👁 An Eye on that roll' : '☉ A Gandalf Rune on that roll',
+        message: (isIll
+          ? 'The Enemy\'s luck turns against you. Roll on the <strong>Ill-Fortune</strong> table for a complication to fold into the story?'
+          : 'Fortune favours you. Roll on the <strong>Fortune</strong> table for a turn of luck to fold into the story?') +
+          '<br><br><em>Optional — for worthy challenges and key actions.</em>',
+        buttons: [
+          { label: isIll ? '🎲 Roll Ill-Fortune' : '🎲 Roll Fortune', value: 'roll' },
+          { label: 'Not this time', value: null, style: 'background:var(--btn-secondary-bg);color:white;border:none;border-radius:5px;padding:10px;font-size:14px;cursor:pointer' }
+        ]
+      });
+      if (go === 'roll' && typeof fortuneTableRoll === 'function') {
+        const out = fortuneTableRoll(isIll);
+        const label = isIll ? '🎲 Ill-Fortune' : '🎲 Fortune';
+        if (typeof journalAuto === 'function') journalAuto('ojc', 'oracle', `${label} (Feat ${out.r.label}): ${out.entry.text}`);
+        if (typeof _playFeed !== 'undefined' && typeof renderPlay === 'function' && document.getElementById('panel-play')?.classList.contains('active')) {
+          playSay(`<strong>${label}</strong> (Feat ${escapeHtml(out.r.label)}): ${escapeHtml(out.entry.text)}`);
+          renderPlay();
+        }
+        alert(`${label} (Feat ${out.r.label})\n\n${out.entry.text}`);
+        render();
+      }
+    } catch (e) {} finally { _fortuneOfferPending = false; }
+  }, 300);
 }
 
 function startJourney() {
@@ -1623,13 +1664,13 @@ const JOURNEY_EVENT_ROLL_EFFECT = {
   watchfulEyes:    { label: 'unseen — no Shadow, no Eye', apply: () => 'you pass unseen — no Shadow, and the Eye does not stir',
                      onFail: () => {
                        const sh = _jShadow(1);
-                       char.eyeAwareness = (parseInt(char.eyeAwareness) || 0) + 1;
+                       raiseEye(1);
                        return `${sh}, and the Eye stirs (👁 ${char.eyeAwareness})`;
                      } },
   deadlyDark:      { label: 'you are not Wounded',    apply: () => 'you come through it unwounded, and unnoticed',
                      onFail: () => {
                        const w = _jWound();
-                       char.eyeAwareness = (parseInt(char.eyeAwareness) || 0) + 1;
+                       raiseEye(1);
                        return `${w}, and the Eye stirs (👁 ${char.eyeAwareness})`;
                      } }
 };
@@ -1823,14 +1864,29 @@ async function beginBattle() {
 }
 
 /* ---- Clash loop ---- */
-function resolveLeaderFocus() {
+async function resolveLeaderFocus() {
   const b = char.battle;
   if (!b.active) return;
   const focus = b.leaderFocus;
   if (focus === 'duel') {
     if (b.archfoe === 'none') { alert('No Archfoe present to duel. Choose another Focus, or add an Archfoe.'); return; }
-    alert('⚔️ DUEL: fight the Archfoe with the normal combat rules (Combat + Dice tabs) for 3 close-quarters rounds, then return here and make the Clash roll. Spend Clash successes via "Harry the Archfoe" to gain bonus dice in the duel.');
-    battleLog('Leader Focus: <strong>Duel</strong> — playing out 3 close-quarters rounds vs the Archfoe (use Combat/Dice tabs).');
+    // The Duel used to be an alert telling you to go and fight a foe that did not exist anywhere.
+    // Put the Archfoe in the Encounter, carrying the Harry bonus you were told to bank.
+    const harried = parseInt(b.harried) || 0;
+    const go = await showModal({
+      title: '⚔️ Duel the Archfoe',
+      message: 'A Duel is three close-quarters rounds against the Archfoe, fought with the ordinary combat rules — then you come back here and make the Clash roll.' +
+        (harried ? `<br><br>You have harried them: <strong>+${harried}d</strong> on your attacks in this duel.` : '<br><br>You have not harried them — spend Clash successes on <strong>☠ Harry Archfoe</strong> first to gain dice here.') +
+        '<br><br>Put the Archfoe into the Encounter on the Combat tab?',
+      buttons: [
+        { label: '⚔️ Add the Archfoe and go', value: 'go' },
+        { label: 'Just note it — I will run it myself', value: 'note' },
+        { label: 'Cancel', value: null, cancel: true }
+      ]
+    });
+    if (!go) return;
+    if (go === 'go') _battleAddArchfoeToEncounter(harried);
+    battleLog(`Leader Focus: <strong>Duel</strong> — three close-quarters rounds vs the Archfoe${harried ? ` (+${harried}d from Harrying)` : ''}.`);
     saveCharacter(); renderBattle(); return;
   }
   let r, msg;
@@ -1951,7 +2007,7 @@ function renderClashSpend() {
       <button class="add-row-btn" style="font-size:11px;background:var(--btn-secondary-bg)" onclick="clashSpend('adv')">▲ Gain Advantage</button>
       ${n >= 2 ? `<button class="add-row-btn" style="font-size:11px;background:var(--btn-secondary-bg)" onclick="clashSpend('advP')">▲⚓ Persistent (2)</button>` : ''}
       ${hasPersistComp ? `<button class="add-row-btn" style="font-size:11px;background:var(--btn-secondary-bg)" onclick="clashSpend('comp')">✓ Remove Complication</button>` : ''}
-      ${b.archfoe !== 'none' ? `<button class="add-row-btn" style="font-size:11px;background:var(--btn-secondary-bg)" onclick="clashSpend('harry')">☠ Harry Archfoe (+1d duel)</button>` : ''}
+      ${b.archfoe !== 'none' ? `<button class="add-row-btn" style="font-size:11px;background:var(--btn-secondary-bg)" onclick="clashSpend('harry')">☠ Harry Archfoe (+1d duel${(parseInt(b.harried) || 0) ? ` · banked +${b.harried}d` : ''})</button>` : ''}
     </div>
   </div>`;
 }
@@ -1967,7 +2023,12 @@ function clashSpend(type) {
   else if (type === 'adv') { b.advantages.push({ name: 'Advantage', persistent: false }); log = 'gained temporary Advantage'; }
   else if (type === 'advP') { if ((b._pendingSpend || 0) < 2) return; cost = 2; b.advantages.push({ name: 'Advantage', persistent: true }); log = 'gained persistent Advantage'; }
   else if (type === 'comp') { const i = b.complications.findIndex(c => c.persistent); if (i >= 0) b.complications.splice(i, 1); log = 'removed a persistent Complication'; }
-  else if (type === 'harry') { log = 'Harry the Archfoe — +1d to spend in the duel'; }
+  else if (type === 'harry') {
+    // This wrote a log line and stored nothing, so the bonus the app told you to bank did not
+    // exist. It is now a real pool the Duel spends.
+    b.harried = (parseInt(b.harried) || 0) + 1;
+    log = `Harry the Archfoe — the duel bonus is now +${b.harried}d`;
+  }
   b._pendingSpend -= cost;
   battleLog(`Spend: ${log}`);
   saveCharacter();
@@ -1975,6 +2036,31 @@ function clashSpend(type) {
   document.getElementById('b-clash-result').style.display = 'block';
   renderClashSpend();
   checkBattleEnd();
+}
+
+/** Build the Archfoe as an Encounter foe so the Duel has something to fight, and carry the
+    Harry bonus into the hero's attack dice (`enc().adv.extra`). */
+function _battleAddArchfoeToEncounter(harried) {
+  const b = char.battle || {};
+  const greater = b.archfoe === 'greater';
+  if (typeof ensureEncounterActive === 'function') ensureEncounterActive();
+  const e = enc();
+  const id = (typeof _newFoeId === 'function') ? _newFoeId() : ('af' + Date.now());
+  e.foes.push({
+    id, name: greater ? 'Greater Archfoe' : 'Lesser Archfoe', source: 'Moria Battle',
+    endMax: greater ? 40 : 28, endCur: greater ? 40 : 28,
+    might: greater ? 2 : 1, hateMax: greater ? 8 : 5, hateCur: greater ? 8 : 5,
+    parry: greater ? 6 : 4, armour: greater ? 4 : 3, atkTN: 16,
+    attacks: [{ name: greater ? 'Great blade' : 'Heavy blade', dice: greater ? 4 : 3, dmg: greater ? 9 : 7, inj: greater ? 18 : 16, special: '' }],
+    fell: 'An Archfoe of the war party — stat line is an editable starting point; set it to the foe your story needs.',
+    engaged: true, wounded: false, slain: false, _edit: true
+  });
+  if (harried > 0) e.adv.extra = (parseInt(e.adv.extra) || 0) + harried;
+  if (typeof encDeriveEngaged === 'function') encDeriveEngaged();
+  saveCharacter();
+  if (typeof renderEncounter === 'function') renderEncounter();
+  document.querySelector('.tab[data-tab=combat]')?.click();
+  alert(`The Archfoe is in the Encounter on the Combat tab${harried > 0 ? `, and your Harrying is applied as +${harried}d on your attack rolls` : ''}.\n\nIts stat line is a starting point — tap ✎ on the foe to set it to the adversary your story calls for. Fight three rounds, then return to the Battle tab for the Clash roll.`);
 }
 
 /* ---- Advantages / Complications / End ---- */
@@ -3898,6 +3984,9 @@ let _playBusy = false;
 function playSay(text, kind) {
   _playFeed.push({ text, kind: kind || 'story' });
   if (_playFeed.length > 40) _playFeed.shift();
+  // Asides are the app talking to the player ("Read those as a rumour…"), not events in the
+  // hero's life. They stay on screen and out of the journal.
+  if (kind === 'aside') return;
   // Everything the app narrates is also written into the Chronicle, so the journal
   // fills itself for a player who never opens that tab.
   try { if (typeof pushBlock === 'function' && isSolo()) pushBlock('auto', 'note', _playPlainText(text), 'play'); } catch (e) {}
@@ -4138,8 +4227,9 @@ async function playAsk() {
     ]
   });
   if (!chance) return;
-  const res = _tellingResult(q, chance);
-  playSay(`You wonder: <em>${escapeHtml(q)}</em> <span style="opacity:.7">(${chance})</span><br>The answer is <strong>${res.answer}</strong>${escapeHtml(res.twist)}.`);
+  const res = _tellingResult(q, chance);     // this already writes the structured Q: line
+  // …so narrate to the feed only, or the Chronicle gets the same ask twice.
+  _playFeed.push({ text: `You wonder: <em>${escapeHtml(q)}</em> <span style="opacity:.7">(${chance})</span><br>The answer is <strong>${res.answer}</strong>${escapeHtml(res.twist)}.`, kind: 'story' });
   renderPlay();
 }
 

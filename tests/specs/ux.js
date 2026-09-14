@@ -1575,10 +1575,25 @@ module.exports = {
       char.journey = { active: true, origin: 'a', destination: 'b', totalHexes: 9, currentHex: 3,
         events: new Array(40).fill(0).map((_, i) => ({ day: i, hex: i, text: 'event ' + i })) };
       saveCharacter();
+      // Give it a played hero's worth of session state, the way run 3's 6,092-char link had.
+      char.saga = { started: true, premise: 'x'.repeat(400), sessions: 3, adventures: 2,
+                    ended: true, endedHow: 'y'.repeat(300), step: 'haven', lastFpSession: 1 };
+      char.council = { active: true, topic: 'z'.repeat(200), rolls: new Array(20).fill({ t: 1 }) };
+      char.skillEndeavour = { active: true, task: 'w'.repeat(200), rolls: new Array(20).fill({ t: 1 }) };
+      SKILLS.str.concat(SKILLS.hrt, SKILLS.wit).forEach(n => { char.skills[n] = { rating: 3, favoured: true }; });
+      saveCharacter();
       const d = characterDelta(char);
-      out.shareDropsPlayLog = d.timeline === undefined && (d.journey.events || []).length === 0
-        && d.name === 'B' && d.culture === 'Bardings';
-      out.shareLinkShort = encodeShare(d).length < 1200;
+      out.shareDropsPlayLog = d.timeline === undefined && d.journey === undefined
+        && d.saga === undefined && d.council === undefined && d.skillEndeavour === undefined
+        && d.name === 'B' && d.culture === 'Bardings'
+        && typeof d._sk === 'string' && d.skills === undefined;   // skills travel as one compact string
+      // Under the gate a QR can actually carry — the whole point of trimming it.
+      out.shareLinkLen = encodeShare(d).length;
+      out.shareLinkShort = out.shareLinkLen < 1200;
+      // …and the hero survives the round trip: the compact skill string must come back as skills.
+      const back = migrateCharacter(decodeShare(encodeShare(d)));
+      out.shareRoundTrips = back.name === 'B' && back.culture === 'Bardings'
+        && back.skills['Awe'] && back.skills['Awe'].rating === 3 && back.skills['Awe'].favoured === true;
       char.journey = { active: false }; char.timeline = []; saveCharacter();
 
       // 16b — the Moria Revelation must offer the Eye reset in the dialog, as Strider's does,
@@ -1605,8 +1620,11 @@ module.exports = {
       char.journey = { active: false }; char.striderMode = false; saveCharacter(); refreshStriderUI();
 
       // minor — a name that ends in a quote takes a bare apostrophe.
-      out.possessiveHandlesQuote = possessive("Duinhir 'Eaglenose'") === "Duinhir 'Eaglenose'\u2019"
-        && possessive('Beran') === 'Beran\u2019s';
+      // A name in quotes keeps its 's — the earlier version treated the closing quote as a
+      // terminal s and produced `Duinhir 'Eaglenose'’`.
+      out.possessiveHandlesQuote = possessive("Duinhir 'Eaglenose'") === "Duinhir 'Eaglenose'\u2019s"
+        && possessive('Beran') === 'Beran\u2019s'
+        && possessive('Elros') === 'Elros\u2019';
 
       window.promptStyled = op; window.showModal = om; window.alertStyled = oa;
       window.confirmStyled = oc; window.alert = oal;
@@ -1625,7 +1643,8 @@ module.exports = {
     checks.push({ ok: pt3.askOffersOdds, msg: 'the Play tab can set the Telling Table odds, not only Middling' });
     checks.push({ ok: pt3.playShowsAutoWeary, msg: 'the Play vitals show an auto-applied condition' });
     checks.push({ ok: pt3.roadAdvancesTheCalendar, msg: 'days spent travelling advance the day count and injury days' });
-    checks.push({ ok: pt3.shareDropsPlayLog && pt3.shareLinkShort, msg: 'a share link carries the hero without the play log' });
+    checks.push({ ok: pt3.shareDropsPlayLog && pt3.shareLinkShort && pt3.shareRoundTrips,
+                  msg: `a played hero's share link carries the hero alone, fits the QR gate (${pt3.shareLinkLen} chars) and round-trips (drop=${pt3.shareDropsPlayLog} trip=${pt3.shareRoundTrips})` });
     checks.push({ ok: pt3.possessiveHandlesQuote, msg: 'a possessive on a name ending in a quote reads correctly' });
     checks.push({ ok: pt3.moriaRevelationResets, msg: 'the Moria Revelation offers the Eye reset in the dialog' });
     checks.push({ ok: pt3.playOpensScene, msg: 'the Play loop opens a new Chronicle scene at a break' });

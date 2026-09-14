@@ -648,14 +648,17 @@
     body { background: #fff !important; color: #000 !important; }
     /* hide all interactive chrome */
     header, .tabs, .menu-btn, .menu-overlay, #sw-update-banner, #undo-btn,
-    button, .roll-btn, .add-row-btn, .counter-buttons, .seg-btns, .quick-skill,
-    #panel-dice, #panel-build, #panel-oracle, #panel-band, #panel-battle,
-    #panel-journey, #panel-council, #panel-reference { display: none !important; }
+    button, .roll-btn, .add-row-btn, .counter-buttons, .seg-btns, .quick-skill { display: none !important; }
+    /* The printed sheet is an ALLOW-list, not a deny-list: this used to enumerate every tab that
+       existed when it was written, so ▶ Play and the GM Screen — added later — printed in full,
+       hand-out controls and all. Adding a tab must not silently add a page to the character sheet. */
+    .panel { display: none !important; }
     /* a print-only title */
     #print-title { display: block !important; font-size: 20px; font-weight: 700;
       text-align: center; margin: 0 0 6px; color: #000; }
-    /* stack every sheet panel so the whole character prints */
-    .panel { display: block !important; padding: 0; max-width: none; }
+    /* stack the four sheet panels so the whole character prints */
+    #panel-character, #panel-skills, #panel-combat, #panel-gear {
+      display: block !important; padding: 0; max-width: none; }
     .card { border: 1px solid #999 !important; background: #fff !important;
       box-shadow: none !important; page-break-inside: avoid; break-inside: avoid;
       margin-bottom: 8px; }

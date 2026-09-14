@@ -35,32 +35,38 @@ function renderSpecialSuccessPanel(iconsAvailable) {
   status.textContent = `${iconsAvailable} ✦ icon${iconsAvailable>1?'s':''} available to spend`;
 }
 
-function rollAutoFortune(type) {
-  // Roll on the Fortune or Ill-Fortune table inline. Same logic as the Oracle tab roller,
-  // but result is appended to the dice tab's result summary for in-context narrative.
-  const isIll = type === 'illfortune';
+/** Roll the Fortune / Ill-Fortune table and apply its Eye-Awareness consequences.
+    Shared so the offer can be made from ANY solo roll, not only the Dice tab's. */
+function fortuneTableRoll(isIll) {
   const table = isIll ? ILL_FORTUNE_TABLE : FORTUNE_TABLE;
   const r = rollFeatOnce();
   let entry;
   if (r.special === 'eye') entry = table[0];
   else if (r.special === 'rune') entry = table[11];
   else entry = table.find(e => e.roll === r.value) || table[0];
+  // Special EA hooks: Fortune Eye → −1 EA; Ill-Fortune Eye → +2 EA (solo; Moria reuses the tables).
+  if (typeof isSolo === 'function' && isSolo() && r.special === 'eye') {
+    if (isIll) raiseEye(2);
+    else {
+      char.eyeAwareness = Math.max(0, (parseInt(char.eyeAwareness) || 0) - 1);
+      saveCharacter();
+      if (typeof refreshEyeOfMordor === 'function') refreshEyeOfMordor();
+    }
+  }
+  logOracleRoll(isIll ? 'Ill-Fortune (auto)' : 'Fortune (auto)', entry.text.substring(0, 80));
+  return { r, entry };
+}
+
+function rollAutoFortune(type) {
+  // Roll on the Fortune or Ill-Fortune table inline. Same logic as the Oracle tab roller,
+  // but result is appended to the dice tab's result summary for in-context narrative.
+  const isIll = type === 'illfortune';
+  const { r, entry } = fortuneTableRoll(isIll);
   const summaryEl = document.getElementById('result-summary');
   if (summaryEl) {
     const colour = isIll ? 'var(--btn-alert-bg)' : 'var(--gold)';
     summaryEl.innerHTML += `<br><span class="result-tag" style="background:${colour};color:white">${isIll?'🎲 Ill-Fortune':'🎲 Fortune'} (Feat ${r.label}): ${entry.text}</span>`;
   }
-  // Special EA hooks: Fortune Eye → −1 EA; Ill-Fortune Eye → +2 EA (solo modes — Moria reuses these tables).
-  if (isSolo()) {
-    if (isIll && r.special === 'eye') {
-      char.eyeAwareness = (parseInt(char.eyeAwareness) || 0) + 2;
-      saveCharacter(); refreshEyeOfMordor();
-    } else if (!isIll && r.special === 'eye') {
-      char.eyeAwareness = Math.max(0, (parseInt(char.eyeAwareness) || 0) - 1);
-      saveCharacter(); refreshEyeOfMordor();
-    }
-  }
-  logOracleRoll(isIll ? 'Ill-Fortune (auto)' : 'Fortune (auto)', entry.text.substring(0, 80));
   // Disable the button once used
   const btn = document.getElementById('strider-fortune-action');
   if (btn) btn.remove();
@@ -317,6 +323,14 @@ function rollCombatTask(btn) {
     displayName: `${taskName} (${skillName})`
   };
   quickRoll(item, s);
+}
+
+/** "18-40" → 29. A culture's age is a printed range; the sheet holds one number. */
+function _ageFromRange(range) {
+  const m = String(range || '').match(/(\d+)\s*[–-]\s*(\d+)/);
+  if (m) return Math.round((parseInt(m[1]) + parseInt(m[2])) / 2);
+  const n = parseInt(range);
+  return isNaN(n) ? '' : n;
 }
 
 function renderAgeHint() {
@@ -1028,9 +1042,13 @@ async function _encRoundFellPrompt(round) {
   const e = enc();
   const due = (e.foes || []).filter(f => !f.slain && f.fell && /\b(start|beginning|end) of (the )?(each |every |any )?round\b|\beach round\b|\bevery round\b/i.test(String(f.fell)));
   if (!due.length) return;
+  // An ability that names "round 1" on a foe who joined later has already missed its moment —
+  // say so, rather than quoting a trigger that has silently not fired.
+  const late = round > 1 && due.some(f => /\bround 1\b/i.test(String(f.fell)));
   await alertStyled(
     `<strong>Round ${round}</strong> — these fell abilities are in play. The app does not apply them for you:` +
-    due.map(f => `<br><br><strong>${escapeHtml(f.name)}</strong><br>⚜ ${escapeHtml(f.fell)}`).join(''),
+    due.map(f => `<br><br><strong>${escapeHtml(f.name)}</strong><br>⚜ ${escapeHtml(f.fell)}`).join('') +
+    (late ? '<br><br><em>One of these fires at the start of round 1. If that round has already passed, apply it now or decide it was missed — the app does not track it for you.</em>' : ''),
     '⚜ Fell abilities');
 }
 async function endEncounter() {
@@ -1086,6 +1104,7 @@ function addCustomFoe() {
   enc().foes.push(f);
   encDeriveEngaged(); saveCharacter(); renderEncounter();
   document.getElementById('bestiary-overlay').classList.remove('show');
+  _encRoundFellPrompt(enc().round || 1);
 }
 function removeFoe(id) { const e = enc(); e.foes = e.foes.filter(f => f.id !== id); delete _encResults[id]; encDeriveEngaged(); saveCharacter(); renderEncounter(); }
 function adjFoe(id, field, delta) {
@@ -1573,7 +1592,7 @@ function adj(field, delta) {
   if (field === 'shadow' && isSolo() && delta > 0) {
     const actualDelta = v - prevValue;  // capped at hopeMax−scars
     if (actualDelta > 0) {
-      char.eyeAwareness = (parseInt(char.eyeAwareness) || 0) + actualDelta;
+      raiseEye(actualDelta);
     }
   }
 
@@ -3059,7 +3078,9 @@ async function applyCulture() {
   char.culture = name;
   char.blessing = c.blessing;
   char.standard = c.standard;
-  char.age = c.age;
+  // `c.age` is a RANGE ("18-40") — a suggestion, not this hero's age. Take its midpoint as a
+  // starting number the player can edit, rather than writing the range into the field.
+  char.age = _ageFromRange(c.age);
 
   char.strRating = attrs[0]; char.hrtRating = attrs[1]; char.witRating = attrs[2];
   recomputeAttrTNs();

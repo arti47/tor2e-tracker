@@ -248,10 +248,24 @@ function addTnAdjust(key, delta) {
    bare first name ("Balin") as naming the one patron whose full name starts with it. */
 /** Possessive form of a name. Pregens include Duinhir 'Eaglenose', so a bare +"'s" produced
     `Duinhir 'Eaglenose''s`. A name already ending in an apostrophe or s takes the bare apostrophe. */
+/** A hero's display name for any roster/party/GM list. A blank name used to render as "?",
+    which tells a Loremaster reading four rows nothing at all. */
+function heroLabel(d) {
+  if (!d) return 'Unnamed hero';
+  const n = String(d.name || '').trim();
+  if (n) return n;
+  const what = [d.culture, d.calling].filter(Boolean).join(' ').trim();
+  return what || 'Unnamed hero';
+}
+
 function possessive(name) {
   const n = String(name == null ? '' : name).trim();
   if (!n) return '';
-  return /[s'\u2019]$/.test(n) ? n + '\u2019' : n + '\u2019s';
+  // A trailing QUOTE is not a trailing s: `Duinhir 'Eaglenose'` is a name in quotes, and the
+  // possessive belongs on the whole thing — `Duinhir 'Eaglenose'’s`. Only a real terminal s
+  // (or a name that already ends in an apostrophe-s) takes the bare apostrophe.
+  if (/['\u2019]$/.test(n)) return n + '\u2019s';
+  return /s$/i.test(n) ? n + '\u2019' : n + '\u2019s';
 }
 
 function _foldName(x) {
@@ -314,7 +328,7 @@ async function toggleMoriaMode() {
   document.getElementById('menu-overlay').classList.remove('show');  // close menu so the dialog + result are visible
   const turningOn = !char.moriaMode;
   const msg = turningOn
-    ? `<strong>Play the Moria campaign on your own?</strong><br><br>A second solo mode — no Game Master needed. You lead a <strong>Band</strong> of dwarf allies into Moria under Balin's expedition, with its own journey, battle and oracle tables.<br><br>New to solo play? Read <strong>📖 Ref → Playing Solo</strong> first.<br><br>Rules changes:<ul style="text-align:left;font-size:12px;padding-left:18px;margin:6px 0"><li>PE budget: → <strong>15</strong> (solo)</li><li><strong>+5 max Hope</strong> (support of your Band)</li><li>Patron becomes <strong>Balin</strong> — <em>Balin's Counsel</em>: spend Fellowship to make a combat/battle roll Favoured. Your current Patron is remembered and restored if you switch back.</li><li>Fellowship Rating starts at <strong>3</strong> (+1 from Balin)</li><li>Safe Haven → <strong>Moria — First Hall</strong> (likewise restored)</li><li>Journeys use the <strong>Moria</strong> event table (Dark Land, Ill-Favoured)</li><li>Unlocks <strong>Oracle tab</strong> + <strong>Eye of Mordor</strong> (Moria: Dark Land, Hunt 12)</li><li>Unlocks the <strong>Band</strong> and <strong>Battle</strong> tabs, and the Moria oracle tables (chambers, orc-bands, Moria Lore)</li></ul>You can switch back any time.`
+    ? `<strong>Play the Moria campaign on your own?</strong><br><br>A second solo mode — no Game Master needed. You lead a <strong>Band</strong> of dwarf allies into Moria under Balin's expedition, with its own journey, battle and oracle tables.<br><br>New to solo play? Read <strong>📖 Ref → Playing Solo</strong> first.<br><br>Rules changes:<ul style="text-align:left;font-size:12px;padding-left:18px;margin:6px 0"><li>PE budget: 10 → <strong>15</strong> (solo)</li><li><strong>+5 max Hope</strong> (support of your Band)</li><li>Patron becomes <strong>Balin</strong> — <em>Balin's Counsel</em>: spend Fellowship to make a combat/battle roll Favoured. Your current Patron is remembered and restored if you switch back.</li><li>Fellowship Rating starts at <strong>3</strong> (+1 from Balin)</li><li>Safe Haven → <strong>Moria — First Hall</strong> (likewise restored)</li><li>Journeys use the <strong>Moria</strong> event table (Dark Land, Ill-Favoured)</li><li>Unlocks <strong>Oracle tab</strong> + <strong>Eye of Mordor</strong> (Moria: Dark Land, Hunt 12)</li><li>Unlocks the <strong>Band</strong> and <strong>Battle</strong> tabs, and the Moria oracle tables (chambers, orc-bands, Moria Lore)</li></ul>You can switch back any time.`
     : `<strong>Disable Moria Solo Mode?</strong><br><br>Revert to standard play. The +5 Hope band bonus is removed; journeys/oracle return to normal (or Strider, if that's still on).`;
   if (!await confirmStyled(msg, turningOn ? '⛏️ Moria Solo Mode' : 'Disable Moria Solo Mode')) return;
   char.moriaMode = turningOn;
@@ -1211,6 +1225,46 @@ function refreshFpEntry() {
   }
 }
 
+/** The hero's current Hunt threshold — one derivation, so every caller agrees. */
+function huntThreshold(c) {
+  const h = c || char;
+  return (HUNT_THRESHOLDS[h.huntRegion || 'wild'] || 16) + (parseInt(h.huntMod) || 0);
+}
+
+/** Raise Eye Awareness. It has a CEILING: the tally runs to the Hunt threshold, a Revelation
+    Episode happens, and the tally begins again. Without this it ran to 106/16 and the Revelation
+    never came back — the solo game's pressure clock silently stopped meaning anything. */
+function raiseEye(n) {
+  const add = parseInt(n) || 0;
+  if (add <= 0) return;
+  const t = huntThreshold();
+  const before = parseInt(char.eyeAwareness) || 0;
+  char.eyeAwareness = Math.min(t, before + add);
+  if (char.eyeAwareness >= t && before < t) _eyeThresholdReached();
+  try { saveCharacter(); if (typeof refreshEyeOfMordor === 'function') refreshEyeOfMordor(); } catch (e) {}
+}
+
+let _revelationPrompted = false;
+function _eyeThresholdReached() {
+  if (_revelationPrompted) return;
+  _revelationPrompted = true;
+  setTimeout(async () => {
+    try {
+      const go = await showModal({
+        title: '👁 The Eye turns your way',
+        message: `Eye Awareness has reached the Hunt threshold (<strong>${huntThreshold()}</strong>). ` +
+          'A <strong>Revelation Episode</strong> happens now — and afterwards the tally resets and begins again.' +
+          '<br><br>Until you resolve it, the Eye cannot rise any further.',
+        buttons: [
+          { label: '🎲 Roll the Revelation Episode', value: 'roll' },
+          { label: 'Later — I will roll it from the Eye card', value: null, style: 'background:var(--btn-secondary-bg);color:white;border:none;border-radius:5px;padding:10px;font-size:14px;cursor:pointer' }
+        ]
+      });
+      if (go === 'roll') await rollRevelationEpisode();
+    } catch (e) {} finally { _revelationPrompted = false; }
+  }, 350);
+}
+
 function refreshEyeOfMordor() {
   const card = document.getElementById('eye-of-mordor-card');
   if (!card) return;
@@ -1221,7 +1275,7 @@ function refreshEyeOfMordor() {
   const ea = parseInt(char.eyeAwareness) || 0;
   const region = char.huntRegion || 'wild';
   const huntMod = parseInt(char.huntMod) || 0;  // Moria mission modifiers (prev mission + FP duration)
-  const threshold = (HUNT_THRESHOLDS[region] || 16) + huntMod;
+  const threshold = huntThreshold();          // one derivation (see raiseEye's ceiling)
   setText('eye-aware-v', ea);
   setText('eye-region-v', region.charAt(0).toUpperCase() + region.slice(1) + (huntMod ? (huntMod > 0 ? ' +' + huntMod : ' ' + huntMod) : ''));
   setText('eye-threshold-v', threshold);
@@ -1314,10 +1368,48 @@ function rollOrcBand() {
   const leader = ORC_BAND_LEADER[_chamberKey()];
   const members = [];
   for (let i = 0; i < n; i++) { members.push(ORC_BAND_MEMBER[Math.floor(Math.random() * 6) + 1]); }
+  // Tally identical entries: "• 2 Orc Soldiers · • 1 Orc Soldier · • 1 Orc Soldier" is a list of
+  // die results, not a band you can picture. Count them, then offer to put them in the Encounter.
+  const tally = {};
+  members.forEach(m => { tally[m] = (tally[m] || 0) + 1; });
+  const lines = Object.keys(tally).map(k => `• ${tally[k]} × ${k}`);
+  window._lastOrcBand = { leader, tally };
   const el = document.getElementById('orcband-result');
   el.style.display = 'block';
-  el.innerHTML = `<strong>Leader:</strong> ${leader}<br><strong>Foes (${n} Success ${n === 1 ? 'die' : 'dice'}):</strong><br>` + members.map(m => '• ' + m).join('<br>');
-  logOracleRoll('Orc-Band', leader + ' + ' + members.join(', '));
+  el.innerHTML = `<strong>Leader:</strong> ${leader}<br><strong>The band (${n} Success ${n === 1 ? 'die' : 'dice'}):</strong><br>` + lines.join('<br>')
+    + `<br><button class="add-row-btn" style="width:100%;margin-top:8px;font-size:12px" onclick="orcBandToEncounter()">⚔️ Put this band into the Encounter</button>`;
+  logOracleRoll('Orc-Band', leader + ' + ' + lines.join(', ').replace(/•\s*/g, ''));
+}
+
+/** Take the generated band into the Combat tab's Encounter, matching each entry to the bestiary
+    where a name matches and adding an editable custom foe where it does not. */
+function orcBandToEncounter() {
+  const band = window._lastOrcBand;
+  if (!band) return;
+  if (typeof ensureEncounterActive !== 'function') return;
+  ensureEncounterActive();
+  const all = (typeof allBestiary === 'function') ? allBestiary() : [];
+  const add = (label, count) => {
+    const clean = String(label).replace(/^\d+\s*/, '').replace(/s$/, '');
+    const b = all.find(x => new RegExp('^' + clean.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + 's?$', 'i').test(x.name))
+           || all.find(x => new RegExp(clean.split(/\s+/).pop(), 'i').test(x.name));
+    for (let i = 0; i < count; i++) {
+      enc().foes.push(b
+        ? { id: _newFoeId(), name: b.name, source: b.source, endMax: b.end, endCur: b.end, might: b.might,
+            hateMax: b.hate, hateCur: b.hate, parry: b.parry, armour: b.armour, atkTN: b.atkTN,
+            attacks: JSON.parse(JSON.stringify(b.attacks)), fell: b.fell, engaged: true, wounded: false, slain: false }
+        : { id: _newFoeId(), name: clean, source: 'Orc-Band', endMax: 12, endCur: 12, might: 0, hateMax: 2, hateCur: 2,
+            parry: 3, armour: 1, atkTN: 14, attacks: [{ name: 'Attack', dice: 2, dmg: 4, inj: 14, special: '' }],
+            fell: '', engaged: true, wounded: false, slain: false, _edit: true });
+    }
+  };
+  add(band.leader, 1);
+  Object.keys(band.tally).forEach(k => add(k, band.tally[k]));
+  if (typeof encDeriveEngaged === 'function') encDeriveEngaged();
+  saveCharacter();
+  if (typeof renderEncounter === 'function') renderEncounter();
+  document.querySelector('.tab[data-tab=combat]')?.click();
+  alert('The orc-band is in the Encounter on the Combat tab. Any foe the bestiary did not recognise is added with a starting stat line — tap ✎ to set it.');
 }
 
 function refreshStriderUI() {

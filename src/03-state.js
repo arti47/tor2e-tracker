@@ -32,8 +32,23 @@ function validCharacterShape(obj) {
  * @param {Object} raw  a parsed (possibly partial / legacy) character object
  * @returns {Object} a complete, current-schema character
  */
+/** One fixed order for the 18 skills, so a share link can carry them positionally. */
+const SKILL_ORDER = ['str', 'hrt', 'wit'].reduce((a, k) => a.concat(SKILLS[k]), []);
+
 function migrateCharacter(raw) {
     {
+      // A share link carries the 18 skills positionally as `_sk` ("3F,2,0,…") to stay under the
+      // QR gate — expand it back before anything reads char.skills.
+      if (raw && typeof raw._sk === 'string') {
+        const parts = raw._sk.split(',');
+        const skills = { ...(raw.skills || {}) };
+        SKILL_ORDER.forEach((n, i) => {
+          const tok = String(parts[i] || '0');
+          skills[n] = { rating: parseInt(tok) || 0, favoured: /F/i.test(tok) };
+        });
+        raw = { ...raw, skills };
+        delete raw._sk;
+      }
       const merged = { ...DEFAULT_CHARACTER, ...raw };
       // Migrate legacy string rewards/virtues into arrays
       if (!Array.isArray(merged.rewardsList)) {
@@ -111,13 +126,14 @@ function migrateCharacter(raw) {
       }
       if (typeof merged.huntMod !== 'number') merged.huntMod = 0;
       if (!merged.battle || typeof merged.battle !== 'object') {
-        merged.battle = { active: false, scale: '', foeMight: 1, foeResistance: 6, foeResMax: 6, archfoe: 'none', objective: '', objectiveRes: 0, objectiveResMax: 0, advantages: [], complications: [], leaderFocus: 'fight', bandStance: 'balanced', inspired: false, focusBonus: 0, fleeIll: false, round: 0, log: [] };
+        merged.battle = { active: false, scale: '', foeMight: 1, foeResistance: 6, foeResMax: 6, archfoe: 'none', objective: '', objectiveRes: 0, objectiveResMax: 0, advantages: [], complications: [], leaderFocus: 'fight', bandStance: 'balanced', inspired: false, focusBonus: 0, fleeIll: false, round: 0, harried: 0, log: [] };
       } else {
         const bd = { active: false, scale: '', foeMight: 1, foeResistance: 6, foeResMax: 6, archfoe: 'none', objective: '', objectiveRes: 0, objectiveResMax: 0, advantages: [], complications: [], leaderFocus: 'fight', bandStance: 'balanced', inspired: false, focusBonus: 0, fleeIll: false, round: 0, log: [] };
         merged.battle = { ...bd, ...merged.battle };
         if (!Array.isArray(merged.battle.advantages)) merged.battle.advantages = [];
         if (!Array.isArray(merged.battle.complications)) merged.battle.complications = [];
         if (!Array.isArray(merged.battle.log)) merged.battle.log = [];
+        merged.battle.harried = parseInt(merged.battle.harried) || 0;   // banked "Harry the Archfoe" dice
       }
       if (typeof merged.eyeAwareness !== 'number') merged.eyeAwareness = 0;
       if (typeof merged.huntRegion !== 'string') merged.huntRegion = 'wild';
@@ -254,6 +270,18 @@ const BACKUP_REASONS = {
   import: 'before an import',
   reset: 'before a reset'
 };
+/** snapshotHero stores `name` as the hero id when the hero is unnamed, so every Restore Point
+    row was headed by a random slug. Read the snapshot itself for something a person recognises. */
+function _backupHeroName(snap) {
+  try {
+    const d = JSON.parse(snap.data);
+    const n = heroLabel(d);
+    if (n && n !== 'Unnamed hero') return n;
+  } catch (e) {}
+  const raw = String(snap.name || '');
+  return (raw && !/^[a-z0-9]{8,}$/i.test(raw)) ? raw : 'Unnamed hero';
+}
+
 function _backupReasonLabel(reason) {
   const r = String(reason || 'manual');
   return BACKUP_REASONS[r] || r;
@@ -287,7 +315,7 @@ function renderRestorePoints() {
   if (!list.length) { body.innerHTML = '<div class="hint" style="text-align:center;padding:10px">No snapshots yet for this hero.</div>'; return; }
   body.innerHTML = list.map((s, i) =>
     `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)">
-      <span style="font-size:12px"><strong>${escapeHtml(s.name || 'Hero')}</strong><br><span style="color:var(--text-muted)">${new Date(s.ts).toLocaleString()} · ${escapeHtml(_backupReasonLabel(s.reason))}${_backupStateLabel(s.data)}</span></span>
+      <span style="font-size:12px"><strong>${escapeHtml(_backupHeroName(s))}</strong><br><span style="color:var(--text-muted)">${new Date(s.ts).toLocaleString()} · ${escapeHtml(_backupReasonLabel(s.reason))}${_backupStateLabel(s.data)}</span></span>
       <button onclick="restoreSnapshot(${i})" style="flex:0 0 auto">Restore</button></div>`).join('');
 }
 async function restoreSnapshot(idx) {
@@ -580,7 +608,7 @@ function renderPartyView() {
     const active = e.id === r.activeId;
     const sub = [d.culture, d.calling].filter(Boolean).join(' · ');
     return `<tr style="${active ? 'background:var(--gold-soft)' : ''}">
-      <td ${td}><strong>${escapeHtml(d.name || '?')}</strong>${active ? ' ★' : ''}${sub ? `<br><small style="color:var(--text-muted)">${escapeHtml(sub)}</small>` : ''}</td>
+      <td ${td}><strong>${escapeHtml(heroLabel(d))}</strong>${active ? ' ★' : ''}${sub ? `<br><small style="color:var(--text-muted)">${escapeHtml(sub)}</small>` : ''}</td>
       <td ${td}>${d.endCur ?? '?'}/${d.endMax ?? '?'}</td>
       <td ${td}>${d.hopeCur ?? '?'}/${d.hopeMax ?? '?'}</td>
       <td ${td}>${totalShadow}${scarsBit}</td>
@@ -788,7 +816,7 @@ function renderTableMode() {
       const conds = (dying ? [pill('DYING', '#b01010')] : [])
         .concat([d.weary && pill('WEARY', '#8a5a14'), d.miserable && pill('MISERABLE', '#6a1a6a'), d.wounded && pill('WOUNDED', '#7a1a1a')].filter(Boolean)).join(' ');
       // "?" told a table full of people nothing. Fall back to what the hero IS.
-      const label = d.name || [d.culture, d.calling].filter(Boolean).join(' ') || 'Unnamed hero';
+      const label = heroLabel(d);
       return card(escapeHtml(label) + (e.id === activeCharId ? ' ★' : ''), d.endCur, d.endMax, d.hopeCur, d.hopeMax, totalShadow, conds);
     }).filter(Boolean).join('');
   }
@@ -844,7 +872,12 @@ function renderTimeline() {
 /** Play records, not the hero: these are what made a played hero's share link 15,000 characters
     (well past the 1,200 the QR gate allows) — the journey's whole event log, the campaign
     timeline, past councils, an in-progress fight. Someone receiving your hero wants the hero. */
-const SHARE_OMIT = ['timeline', 'councilHistory', 'encounter', 'rollStats'];
+const SHARE_OMIT = ['timeline', 'councilHistory', 'encounter', 'rollStats',
+  // A share link transfers the HERO. These are the state of a session in progress — a live
+  // journey, an open council or endeavour, a battle, the saga's prose — and they kept the link
+  // five times over the 1,200-character gate the QR needs, so a played hero could not be shared
+  // by code at all. The receiving player starts their own session with this hero.
+  'journey', 'council', 'skillEndeavour', 'battle', 'mission', 'saga', 'fpWizardState', 'songs'];
 
 function characterDelta(c) {
   const d = {};
@@ -853,11 +886,19 @@ function characterDelta(c) {
     if (SHARE_OMIT.indexOf(k) !== -1) continue;
     if (JSON.stringify(c[k]) !== JSON.stringify(DEFAULT_CHARACTER[k])) d[k] = c[k];
   }
-  // Keep the subsystems' current state, drop the roll-by-roll logs inside them.
-  if (d.journey) { d.journey = Object.assign({}, d.journey); d.journey.events = []; }
-  if (d.council) { d.council = Object.assign({}, d.council); d.council.rolls = []; }
-  if (d.skillEndeavour) { d.skillEndeavour = Object.assign({}, d.skillEndeavour); d.skillEndeavour.rolls = []; }
-  if (d.battle) { d.battle = Object.assign({}, d.battle); d.battle.log = []; }
+  // Skill notes are the player's own marginalia and can run long; keep them, but not the
+  // Chronicle-sized ones (the journal already travels separately, in the full JSON export).
+  if (d.skillNotes && JSON.stringify(d.skillNotes).length > 600) delete d.skillNotes;
+  // Skills are 18 objects of {rating, favoured} — around 700 characters of JSON on a played
+  // hero, which alone put the link over the QR gate. Ship them as one ordered string instead:
+  // "3F,2,0,…" in SKILL_ORDER, decoded by migrateCharacter.
+  if (d.skills && typeof d.skills === 'object') {
+    d._sk = SKILL_ORDER.map(n => {
+      const sk = d.skills[n] || {};
+      return (parseInt(sk.rating) || 0) + (sk.favoured ? 'F' : '');
+    }).join(',');
+    delete d.skills;
+  }
   if (c.name) d.name = c.name;            // always carry the name for the import prompt
   return d;
 }
