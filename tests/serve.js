@@ -8,7 +8,8 @@ const path = require('path');
 const ROOT = path.resolve(__dirname, '..');
 const TYPES = {
   '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css',
-  '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png'
+  '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png',
+  '.webp': 'image/webp', '.jpg': 'image/jpeg', '.woff2': 'font/woff2'
 };
 
 function startServer() {

@@ -950,6 +950,19 @@ module.exports = {
     checks.push({ ok: !tp.err && tp.first < 0.5 && tp.turned < 0.5 && tp.dragKeeps && tp.route,
       msg: `tapping the map chooses the hex under the finger, after it changes shape too, and a drag chooses nothing (${JSON.stringify(tp)})` });
 
+    // The picture the map draws is the one the data was read from: it loads at its full size, and
+    // every town's printed dot is dark where the data says it is (a swapped image with other framing fails).
+    const im = await safe(`
+      const img = new Image(); img.src = MAP_DATA.img; await img.decode();
+      const c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight;
+      const g = c.getContext('2d'); g.drawImage(img, 0, 0); const d = g.getImageData(0, 0, c.width, c.height).data;
+      const s = img.naturalWidth / MAP_DATA.W, lum = (x, y) => { const i = 4 * (y * c.width + x); return d[i] * .3 + d[i + 1] * .59 + d[i + 2] * .11; };
+      const light = MAP_DATA.places.filter(p => p.length > 4).filter(([n, r, cc, x, y]) => { let m = 999; for (let j = -2; j <= 2; j++) for (let k = -2; k <= 2; k++) m = Math.min(m, lum(Math.round(x * s) + j, Math.round(y * s) + k)); return m > 60; }).map(p => p[0]);
+      const onMap = document.querySelector('#map-svg image').getAttribute('href') === MAP_DATA.img;
+      return { w: img.naturalWidth, h: img.naturalHeight, ratio: +(img.naturalHeight / img.naturalWidth / (MAP_DATA.H / MAP_DATA.W)).toFixed(4), light, onMap };`);
+    checks.push({ ok: !im.err && im.w === 2576 && Math.abs(im.ratio - 1) < 0.002 && !im.light.length && im.onMap,
+      msg: `the map picture loads at full size, keeps the data's framing, and every town's dot is where the data says (${JSON.stringify(im)})` });
+
     // Tapping a town's printed dot chooses that town by name — a fingertip off the dot still counts,
     // an empty spot names nothing. Zoom stops where the picture turns to blur; names stay vector.
     const td = {};
@@ -974,8 +987,8 @@ module.exports = {
       await page.evaluate(() => closeMapPicker());
     } catch (e) { td.err = String(e); }
     await page.setViewportSize(vp2); await page.waitForTimeout(150);
-    checks.push({ ok: !td.err && td.town[0] === 'Rivendell' && td.town[1] === 'Rivendell' && td.spot === 'a spot on the map' && td.maxScale <= 2.51 && td.names > 0 && td.dots >= 50 && !td.dotsInHex.length,
-      msg: `tapping near a town's printed dot chooses the town; an empty spot names nothing; zoom stops at 2.5x with names drawn sharp (${JSON.stringify(td)})` });
+    checks.push({ ok: !td.err && td.town[0] === 'Rivendell' && td.town[1] === 'Rivendell' && td.spot === 'a spot on the map' && td.maxScale <= 2.58 && td.names > 0 && td.dots >= 50 && !td.dotsInHex.length,
+      msg: `tapping near a town's printed dot chooses the town; an empty spot names nothing; zoom stops at ~2.5x the picture with names drawn sharp (${JSON.stringify(td)})` });
     await hero();
 
 
