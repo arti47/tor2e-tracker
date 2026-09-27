@@ -4,16 +4,16 @@ An HTML5 character sheet + play tracker for **The One Ring 2nd Edition** RPG —
 
 ---
 
-## ⭐ STATUS DASHBOARD — read this first (updated 2026-09-27, map fix)
+## ⭐ STATUS DASHBOARD — read this first (updated 2026-09-27, new map image)
 
 > **This section is the single source of truth for "where are we and what's next."**
 > Everything below it is reference detail and per-phase history. Keep this dashboard
 > current whenever work lands (and prune it — it must stay one screen).
 
 ### Current state
-- **All roadmap phases COMPLETE (incl. the full loremaster port):** P0 adversaries · P1 test harness (`npm test`, **391/391 green**, 8 specs) · P2 module split (`src/01…08` + `styles.css`) · P3 cloud-owned heroes · P4 live campaigns/party · P5 shared GM-driven encounter · P6 Loremaster screen (role-gated GM tab, peek, broadcast) · P7 security rules (**deployed + live-verified 2026-07-02**) · P8 accessibility. Plus the full UX batch (U3, U4, U5/6/7/8, U9–U15 — all shipped; "group rolls" deliberately skipped).
+- **All roadmap phases COMPLETE (incl. the full loremaster port):** P0 adversaries · P1 test harness (`npm test`, **392/392 green**, 8 specs) · P2 module split (`src/01…08` + `styles.css`) · P3 cloud-owned heroes · P4 live campaigns/party · P5 shared GM-driven encounter · P6 Loremaster screen (role-gated GM tab, peek, broadcast) · P7 security rules (**deployed + live-verified 2026-07-02**) · P8 accessibility. Plus the full UX batch (U3, U4, U5/6/7/8, U9–U15 — all shipped; "group rolls" deliberately skipped).
 - **Cloud is LIVE**: real Firebase config committed (`FIREBASE_ENABLED=true`); rules deployed; broadcast / in-campaign push / peek all verified against the real project 2026-07-02.
-- **SW cache `tor2e-v138`** · git repo (origin = github.com/arti47/tor2e-tracker, branch main) · shells (`character-tracker.html` = `index.html`) in sync.
+- **SW cache `tor2e-v139`** · git repo (origin = github.com/arti47/tor2e-tracker, branch main) · shells (`character-tracker.html` = `index.html`) in sync.
 - **Dice-tab QoL (2026-07-02):** quick-roll grid moved to sit directly above the 🎲 Roll button (result renders right below → tap-to-result with no hunting) + the result `scrollIntoView`s on every roll (`behavior:'auto'` on purpose — `'smooth'` never completes in some headless/older-Safari engines); roll history gets a per-row **×** delete (`deleteRollAt`, index via `history.indexOf`) and a **🗑 Clear** button (`clearRollHistory`, confirmed). +2 ux-spec checks.
 - **Dice/Oracle QoL 2 (2026-07-02, SW v101, harness 104/104):** the roll-result summary now **leads with the skill/prof name** (quick rolls pass it as `rollDice(skillLabel)`; e.g. "Valour · vs TN 15 — SUCCESS"); **Oracle History** gets per-row **×** (`deleteOracleRollAt` — direct index, newest-first) + **🗑 Clear** (`clearOracleHistory`, confirmed; device-global history). +2 ux-spec checks. *(Preview-verification note: the local `http.server` + SW combo can poison the HTTP cache so even a new SW precaches stale JS — when the preview serves old code, switch the preview port = fresh origin.)*
 
@@ -353,6 +353,12 @@ An HTML5 character sheet + play tracker for **The One Ring 2nd Edition** RPG —
   - **Resolution:** the only copy of the map is the 2501×1806 image the owner uploaded, so the painted terrain **cannot get sharper without a larger original**. What was done: (1) a vector layer (`#map-places`) draws a ring on every tappable town and, once zoomed past 1.1 screen px per map px, its name in the display face. Rings, names and pins redraw with zoom (`_mapScaleMarks`) so they stay sharp and one size. (2) Zoom stops at **2.5 screen px per map px** (`_mapSetVB`). On a tablet it used to reach ~7× and turn to mush; a phone's old 160-px floor was already about 2.4×. **A larger image of the same map drops straight in:** the SVG places `maps/middle-earth.jpg` in a fixed 2501×1806 box, so hexes, places and fixes need no changes; only the 2.5× cap should be raised to match.
   - **+1 design check (94 → 95), run at tablet width.** A real click 7 px off Rivendell's dot must choose "Rivendell"; a spot 3+ hexes from any dot names nothing; zoom must stop at ≤2.5×; town names must render; all 51 dots must sit within 1.6 hexes of their hex. Three revert probes went red: dot snapping removed, the zoom cap removed, the vector layer removed. The zoom-cap probe **first passed**: at phone width the old 160-px floor already gave 2.44×, so the check moved to a tablet (GOTCHA 32 again).
 
+- **The map picture replaced with the owner's cleaner copy (2026-09-27, SW v139, harness 392/392):** the owner supplied a 2576×1860 PNG of the same map ("this instead").
+  - **Checked before swapping:** it is the same map in the same framing. Both images scaled to 500px align best at a 0 px offset; the aspect ratio matches to 0.01%; the image is fully opaque; and all 51 town dots, scaled by 2576/2501, land on ink (luminance ≤ 38). So `src/10-map-data.js` (grid, lands, perils, places) stays valid unchanged. All coordinates stay in the 2501×1806 box, and the picture is drawn into that box. The new copy has **no JPEG smearing**: ink lines and labels are crisper and the palette is lighter and more muted. It is only 3% larger, so the gain is cleanliness, not pixels.
+  - **Shipped as `maps/middle-earth.webp`** (quality 0.95, 1.3 MB; the PNG is 6.6 MB, the old JPEG 1.1 MB). Encoded with Chromium's canvas encoder, since the container has no image tools; RMSE against the PNG is 2.65 out of 255, and a side-by-side zoom looked identical to the PNG. WebP needs iOS 14+ Safari. `maps/middle-earth.jpg` is deleted and `sw.js` PRECACHE updated. `tests/serve.js` now serves `.webp`, `.jpg` and `.woff2` with their MIME types.
+  - **The zoom cap follows the picture:** `MAP_DATA.srcW` (2576) records the file's real width, and `_mapSetVB` caps at 2.5 screen px per *picture* px (≈2.58 per box unit).
+  - **+1 design check (95 → 96):** `MAP_DATA.img` must load at 2576 px wide, keep the data's aspect, match the `<image>` the picker draws, and have **every town's dot dark where the data says**. So a future image with different framing fails instead of silently misplacing every hex. Revert-probed twice and red both times: town dots shifted 8 px, and a wrong image file.
+
 ### The dev workflow (every change)
 1. Edit **`src/*.js`** (JS) or **`character-tracker.html`** (markup) or `styles.css`.
 2. If the HTML changed: `cp character-tracker.html index.html`.
@@ -459,7 +465,7 @@ An HTML5 character sheet + play tracker for **The One Ring 2nd Edition** RPG —
 
 41. **Delete means cloud-delete.** Anything that removes a hero's local slots (`CHAR_PREFIX`) must also call `Sync.deleteChar(id)`, or `_syncDown` restores it on the next sign-in. Tombstones (`data._deleted`) are skipped on restore — never treat one as a hero. *(→ Deleted heroes came back)*
 
-42. **The map data is generated, not hand-written.** `src/10-map-data.js` came from pixel analysis of `maps/middle-earth.jpg` (grid, colour, ink and crimson-digit tests described in the dashboard entry). Replacing or re-scaling the image means refitting the grid and regenerating the file — a wrong grid misplaces every hex by a fraction and every route with it. Player corrections live in `tor2e-map-fixes`, never in the data file. A **larger** image of the same map needs no regeneration (it is drawn into the same 2501×1806 box); raise the 2.5× zoom cap in `_mapSetVB` to match. Places carry their printed dot `[name, r, c, dotX, dotY]` in image pixels — re-read those if the image framing changes. *(→ The Middle-earth map; Map dots)*
+42. **The map data is generated, not hand-written.** `src/10-map-data.js` came from pixel analysis of `maps/middle-earth.jpg` (grid, colour, ink and crimson-digit tests described in the dashboard entry). Replacing or re-scaling the image means refitting the grid and regenerating the file — a wrong grid misplaces every hex by a fraction and every route with it. Player corrections live in `tor2e-map-fixes`, never in the data file. A **larger** image of the same map needs no regeneration: it is drawn into the same 2501×1806 box. Set `MAP_DATA.srcW` to its width (the zoom cap follows), and the design check will fail if its framing differs. The shipped file is `maps/middle-earth.webp`. Places carry their printed dot `[name, r, c, dotX, dotY]` in image pixels — re-read those if the image framing changes. *(→ The Middle-earth map; Map dots)*
 43. **A number box inside a `.field` needs `flex: 0 0 64px`.** `.field input` sets `flex: 1 1 0%`, which beats `width` and squeezed a stepper's input to 22px. *(→ The Middle-earth map)*
 
 44. **HTML and code must come from the same version.** The service worker serves HTML *and* `.js`/`.css`/`.json` network-first, and precaches with `cache: 'reload'`. Do not make scripts cache-first again: fresh HTML running last version's scripts shows new controls wired to old functions, which then do nothing and report no error. *(→ Pick on the map fix)*
@@ -491,8 +497,8 @@ npm install && npm test                     # harness must be green (npm install
 
 As of last verification:
 - **Layout (since P2, 2026-06-29)**: thin `character-tracker.html` shell (mirrored to `index.html`) loading `styles.css` + `src/vendor-qrcode.js` + `src/01-core.js`…`src/08-gm.js` in order — **classic scripts, no build step, still works over `file://`**. `firebase-config.js` (real keys, `FIREBASE_ENABLED=true`) + Firebase compat CDN scripts power the optional-but-live cloud layer (`src/07-sync.js`); the app degrades gracefully to fully-local when offline.
-- **`sw.js` `CACHE_VERSION`**: `tor2e-v138` (bump on every deploy). `PRECACHE` lists all 8 `src/*.js` + `vendor-qrcode.js` + `styles.css` + `firebase-config.js` + shells + PWA assets — **add any new file there**. SW strategy: HTML/navigations **and code (.js/.css/.json)** network-first; images/fonts cache-first; precache bypasses the HTTP cache (`cache:'reload'`); auto-activate.
-- **Test harness**: `npm test` → 8 specs / **391 checks** (smoke 23, adversaries 11, ux 208, spillage 20, a11y 7, gm 20, reachability 7, **design 95**). A fresh clone needs `npm install` first (`playwright-core` is the only devDependency; `tests/browser.js` glob-resolves a cached Chromium, `CHROMIUM_BIN` overrides). Cloud paths are no-ops in tests (SDK blocked) — verify live features via preview against the real project.
+- **`sw.js` `CACHE_VERSION`**: `tor2e-v139` (bump on every deploy). `PRECACHE` lists all 8 `src/*.js` + `vendor-qrcode.js` + `styles.css` + `firebase-config.js` + shells + PWA assets — **add any new file there**. SW strategy: HTML/navigations **and code (.js/.css/.json)** network-first; images/fonts cache-first; precache bypasses the HTTP cache (`cache:'reload'`); auto-activate.
+- **Test harness**: `npm test` → 8 specs / **392 checks** (smoke 23, adversaries 11, ux 208, spillage 20, a11y 7, gm 20, reachability 7, **design 96**). A fresh clone needs `npm install` first (`playwright-core` is the only devDependency; `tests/browser.js` glob-resolves a cached Chromium, `CHROMIUM_BIN` overrides). Cloud paths are no-ops in tests (SDK blocked) — verify live features via preview against the real project.
 - **Cloud (P3–P7)**: heroes mirror to `characters/{id}` (owner-only, rules-enforced); campaigns at `campaigns/{cid}` (join codes, live vitals party, presence, shared encounter, loremaster broadcast). `database.rules.json` **deployed + live-verified 2026-07-02**.
 - **Solo modes**: Strider + Moria complete (see their sections below).
 - **localStorage keys**: a **multi-character roster** (added 2026-05-31):
@@ -551,7 +557,7 @@ As of last verification:
 | `src/06-tabs-init.js` | ~1,730 | tab wiring, the ☰ menu, `DOMContentLoaded` init, the whole **interactive Tutorial**, **a11y (P8)**, U4 swipe, U3 collapsible cards, U7 (?) hints, U14 backup nudge |
 | `src/07-sync.js` | 447 | the `Sync` module — Firebase auth, character mirror, campaigns/party/presence, shared encounter, broadcast. Dormant unless enabled **and** the SDK loaded |
 | `src/08-gm.js` | 402 | GM Screen (P6): local hand-out dashboard, campaign Fellowship + peek + broadcast composer, Eye manager, NPC ledger, Group Shadow Test, the 6 **ported loremaster GM tables** |
-| `src/10-map-data.js` | 1 (data) | the Middle-earth hex map, generated from `maps/middle-earth.jpg`: grid, one terrain char per hex (100×122), 102 perilous hexes in 40 rated areas, 66 places |
+| `src/10-map-data.js` | 1 (data) | the Middle-earth hex map, generated from the first JPEG of the map (the shipped `maps/middle-earth.webp` shares its framing): grid, one terrain char per hex (100×122), 102 perilous hexes in 40 rated areas, 66 places |
 | `src/10-map.js` | ~400 | `HexMap` (hex maths, terrain + device fixes, Dijkstra fewest-days routing), the map picker (`openMapPicker`/`useMapRoute`), hex corrections (`openHexFix`), `journeyRegionNow`, the live map on Play (`liveRouteMap`) |
 | `src/09-art.js` | ~390 | the drawn layer: terrain vignettes + `sceneTerrain`, the inked `routeMap` (camps, events, day), `cultureSilhouette`, `FOE_ART`/`foeSilhouette`, ~65 extra sprite icons (`ART_SYMBOLS`), optional WebAudio sound (`sfx`, `tor2e-sound`) |
 | `styles.css` | 686 | both original `<style>` blocks — theme vars (light/dark/sepia/hc), compact & text-size classes, print rules |
@@ -1481,7 +1487,7 @@ tor2e-tracker/
 ├── src/
 │   ├── vendor-qrcode.js        # vendored qrcodejs (MIT)
 │   └── 01-core.js … 10-map.js  # the app modules — see the Module map above
-├── maps/middle-earth.jpg       # the hex map (Tayla Sommer, "Creaperbox"), precached
+├── maps/middle-earth.webp      # the hex map (Tayla Sommer, "Creaperbox"), 2576×1860, precached
 ├── firebase-config.js          # real web config, FIREBASE_ENABLED = true (public by design; rules are the boundary)
 ├── database.rules.json         # RTDB security rules — deployed; redeploy after any rules edit
 ├── sw.js                       # service worker (bump CACHE_VERSION + add new files to PRECACHE)
