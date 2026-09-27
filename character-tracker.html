@@ -288,13 +288,13 @@
 <!-- ============ BUILD ============ -->
 <section class="panel" id="panel-build">
 
-  <div class="card">
+  <div class="card" id="build-progress-card">
     <h3 class="card-title">📋 Your progress — what's left</h3>
     <div id="build-checklist"></div>
   </div>
 
-  <div class="card" style="border-color: var(--gold); background: linear-gradient(180deg, var(--gold-paler) 0%, var(--pure-white) 100%);">
-    <h3 class="card-title" style="color: var(--gold);">1 · Quick Build</h3>
+  <div class="card" id="quick-build-card">
+    <h3 class="card-title">1 · Quick Build</h3>
     <p class="hint" style="margin-bottom:10px">Auto-fill attributes, skills & gear from culture/calling defaults. Then switch to the Character tab to fine-tune.</p>
 
     <div class="field">
@@ -368,7 +368,7 @@
   </div>
 
   <div class="card" id="lifepath-card" style="border-color:var(--gold);background:linear-gradient(180deg,var(--gold-paler) 0%,var(--pure-white) 100%);">
-    <h3 class="card-title" style="color:var(--gold);">Optional — instead of choosing in step 1 · 🎲 Random Lifepath</h3>
+    <h3 class="card-title">Optional — instead of choosing in step 1 · 🎲 Random Lifepath</h3>
     <p class="hint" style="margin-bottom:10px;text-align:left;line-height:1.5">From the <em>Character Lifepaths</em> supplement — an <strong>alternative to picking</strong>: it rolls your backstory, attributes, a culture-Favoured skill and two Distinctive Features for you, then a Major Event adds a twist.<br><strong>Use it here, before step 2</strong> — running it later overwrites what you chose in steps 4 and 5. (It always asks first.)</p>
 
     <div id="lifepath-disabled-hint" style="display:none;padding:10px;background:var(--bg-deep);border-radius:var(--r-sm);font-size:var(--fs-xs);color:var(--text-muted);font-style:italic"></div>
@@ -429,8 +429,8 @@
     <div id="useful-items-list"></div>
   </div>
 
-  <div class="card" style="border-color:var(--gold);background:linear-gradient(180deg,var(--gold-paler) 0%,var(--pure-white) 100%);">
-    <h3 class="card-title" style="color:var(--gold);">7 · Starting Gear</h3>
+  <div class="card" id="starting-gear-card">
+    <h3 class="card-title">7 · Starting Gear</h3>
     <p class="hint" style="margin-bottom:10px;text-align:left">
       Before picking your Starting Reward, equip your weapons, armour, helm, and shield on the <strong>Combat tab</strong>.
       Per rules you get <strong>1 weapon per Combat Proficiency rank</strong> (the count hint shows your allotment), plus armour/helm/shield as your Standard of Living allows.
@@ -1378,7 +1378,7 @@
     <p class="hint" style="text-align:left;margin:0 0 8px 0">Free text — winter: boots, jacket, fur-lined cloak, woollen trousers, blankets; summer: light clothes and cloak. No Load.</p>
     <textarea class="full" data-field="travel" style="min-height:160px" placeholder="Describe your travelling clothes and supplies..."></textarea>
   </div>
-  <div class="card" style="border-color:var(--gold);background:linear-gradient(180deg,var(--gold-paler) 0%,var(--pure-white) 100%)">
+  <div class="card">
     <h3 class="card-title" data-hint="Blessing (magical item)" style="color:var(--gold)">✨ Magical Treasure</h3>
     <p class="hint" style="text-align:left;margin-bottom:10px;line-height:1.5">Marvellous Artefacts (1 Blessing → +2d on that skill + Magical Success), Wondrous Items (2 Blessings), Famous Weapons/Armour. Each magical item counts as <strong>+1 Load</strong>.</p>
     <div style="display:flex;gap:6px;margin-bottom:10px">
@@ -1746,7 +1746,7 @@
     <button class="roll-btn" onclick="applyMissionSetup()" style="width:100%">✅ Apply Mission Setup</button>
   </div>
 
-  <div class="card" style="border-color:var(--gold);background:linear-gradient(180deg,var(--gold-paler) 0%,var(--pure-white) 100%)">
+  <div class="card">
     <h3 class="card-title" data-hint="Your Band (Moria)">3 · ⛏️ Band of Allies</h3>
     <p class="hint" style="text-align:left;line-height:1.5">Your Band of Dwarves under Balin's expedition. Roll <strong>Dispositions</strong> for the Band vs the <strong>Readiness TN</strong> (= 20 − Readiness). Generate allies below.</p>
     <div class="row-2" style="margin-top:6px">

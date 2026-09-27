@@ -34,10 +34,10 @@ module.exports = {
     // U5/6/8 — Reference tab renders groups + filter.
     const ref = await page.evaluate(() => {
       document.querySelector('.tab[data-tab="reference"]').click();
-      const all = document.getElementById('reference-body').innerText;
+      const all = document.getElementById('reference-body').textContent;   // groups are collapsed; the content is all there
       const groups = (document.getElementById('reference-body').innerHTML.match(/<h3/g) || []).length;
       document.getElementById('ref-filter').value = 'stealth'; renderReference();
-      const filtered = document.getElementById('reference-body').innerText;
+      const filtered = document.getElementById('reference-body').innerText;   // a search opens matching groups, so innerText sees them
       document.getElementById('ref-filter').value = ''; renderReference();
       return { groups, hasWeary: all.includes('Weary'), hasStealth: all.includes('Stealth'), filterShowsStealth: filtered.includes('Stealth'), filterHidesWeary: !filtered.includes('Weary'),
                hasSolo: all.includes('Playing Solo'), hasLoop: all.includes('How a solo session runs'), hasFavoured: all.includes('Ill-Favoured') };

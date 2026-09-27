@@ -3357,10 +3357,12 @@ function renderReference() {
   groups.forEach(([title, rows]) => {
     const matched = rows.filter(([t, d]) => !q || title.toLowerCase().includes(q) || (((t || '') + ' ' + (d || '')).toLowerCase().includes(q)));
     if (!matched.length) return;
-    html += `<h3 style="color:var(--red-dark);border-bottom:1px solid var(--border);padding-bottom:3px;margin:14px 0 6px;font-size:var(--fs-md)">${title}</h3>`;
+    // Collapsed by default (the tab was 13 screens long); a search opens every matching group.
+    html += `<details class="ref-group"${q ? ' open' : ''}><summary><h3>${title}</h3><span class="ref-count">${matched.length}</span></summary><dl>`;
     matched.forEach(([t, d]) => {
-      html += `<div style="margin:0 0 7px;font-size:var(--fs-sm);line-height:1.45;color:var(--ink)">${t ? `<strong>${escapeHtml(t)}</strong> — ` : ''}${d}</div>`;
+      html += t ? `<dt>${escapeHtml(t)}</dt><dd>${d}</dd>` : `<dd class="solo">${d}</dd>`;
     });
+    html += '</dl></details>';
   });
   body.innerHTML = html || '<div class="hint">No match.</div>';
 }
@@ -3388,15 +3390,85 @@ function _buildSteps() {
     { done: itemCap === 0 || (c.usefulItems || []).length > 0, label: 'Choose <strong>Useful Items</strong>' + (itemCap != null ? ' (your Standard of Living allows ' + itemCap + ')' : ''), where: 'step 6 below' }
   ];
 }
+/* ---------- BUILD WIZARD ----------
+   Character creation was 22 cards on one 5-screen scroll. It is now one step at a time with
+   Back / Next and progress dots; "Show every step" restores the long page for people who
+   already know the game (remembered in tor2e-buildall). The cards and their order are
+   unchanged — the wizard only decides which step is on screen. */
+const BUILD_WIZ_STEPS = [
+  { cards: ['quick-build-card', 'lifepath-card'], title: 'Culture, Calling & Patron' },
+  { cards: ['combat-profs-card'], title: 'Combat skills' },
+  { cards: ['pe-card'], title: 'Previous Experience' },
+  { cards: ['favoured-card'], title: 'Favoured skills' },
+  { cards: ['features-card'], title: 'Distinctive Features' },
+  { cards: ['useful-items-card'], title: 'Useful Items' },
+  { cards: ['starting-gear-card'], title: 'Starting gear' },
+  { cards: ['rewards-card'], title: 'Starting Reward' },
+  { cards: ['virtues-card'], title: 'Starting Virtue' },
+];
+let buildStep = 0;
+function _buildShowAll() { try { return localStorage.getItem('tor2e-buildall') === '1'; } catch (e) { return false; } }
+function buildGoStep(n) {
+  buildStep = Math.max(0, Math.min(BUILD_WIZ_STEPS.length - 1, n));
+  renderBuildWizard();
+  const top = document.getElementById('build-stepper');
+  if (top && !_buildShowAll()) top.scrollIntoView({ block: 'start' });
+}
+function buildGoToCard(cardId) {
+  const i = BUILD_WIZ_STEPS.findIndex(s => s.cards.includes(cardId));
+  if (i >= 0) { buildStep = i; renderBuildWizard(); }
+}
+function toggleBuildShowAll() {
+  try { localStorage.setItem('tor2e-buildall', _buildShowAll() ? '0' : '1'); } catch (e) {}
+  renderBuildWizard();
+}
+function renderBuildWizard() {
+  const panel = document.getElementById('panel-build'); if (!panel) return;
+  const all = _buildShowAll();
+  let top = document.getElementById('build-stepper'), foot = document.getElementById('build-step-nav');
+  const first = document.getElementById(BUILD_WIZ_STEPS[0].cards[0]);
+  if (!top && first) {
+    top = document.createElement('div'); top.id = 'build-stepper'; top.className = 'build-stepper';
+    first.parentNode.insertBefore(top, first);
+    foot = document.createElement('div'); foot.id = 'build-step-nav'; foot.className = 'build-step-nav';
+    const last = document.getElementById('virtues-card');
+    (last || first).parentNode.insertBefore(foot, last ? last.nextSibling : null);
+  }
+  if (!top) return;
+  BUILD_WIZ_STEPS.forEach((s, i) => s.cards.forEach(id => {
+    const c = document.getElementById(id); if (c) c.classList.toggle('bw-hidden', !all && i !== buildStep);
+  }));
+  // A step whose cards the app has hidden (e.g. Previous Experience on a ready-made hero, whose
+  // experience is already spent) says so instead of showing an empty page.
+  const empty = !all && !BUILD_WIZ_STEPS[buildStep].cards.some(id => { const c = document.getElementById(id); return c && c.style.display !== 'none'; });
+  const n = BUILD_WIZ_STEPS.length, st = BUILD_WIZ_STEPS[buildStep];
+  top.innerHTML = all
+    ? `<div class="bs-row"><span class="bs-label">All ${n} steps</span><button class="btn btn-quiet" onclick="toggleBuildShowAll()">One step at a time</button></div>`
+    : `<div class="bs-row"><span class="bs-label">Step ${buildStep + 1} of ${n} · <strong>${st.title}</strong></span>` +
+      `<button class="btn btn-quiet" onclick="toggleBuildShowAll()">Show every step</button></div>` +
+      `<div class="bs-dots" role="tablist" aria-label="Creation steps">${BUILD_WIZ_STEPS.map((s, i) =>
+        `<button role="tab" aria-selected="${i === buildStep}" aria-label="Step ${i + 1}: ${s.title}" class="bs-dot${i === buildStep ? ' on' : ''}${i < buildStep ? ' past' : ''}" onclick="buildGoStep(${i})"></button>`).join('')}</div>`;
+  foot.style.display = all ? 'none' : '';
+  foot.innerHTML = all ? '' :
+    (empty ? `<p class="bs-empty">Nothing to choose here for this hero — it is already settled. Carry on.</p>` : '') +
+    `<button class="btn btn-secondary" ${buildStep === 0 ? 'disabled' : ''} onclick="buildGoStep(${buildStep - 1})">Back</button>` +
+    (buildStep < n - 1
+      ? `<button class="btn" onclick="buildGoStep(${buildStep + 1})">Next · ${BUILD_WIZ_STEPS[buildStep + 1].title}</button>`
+      : `<button class="btn" onclick="openNavGroup('play')">Done — go and play</button>`);
+}
+
 function renderBuildChecklist() {
   const host = document.getElementById('build-checklist'); if (!host) return;
   const steps = _buildSteps();
   const done = steps.filter(s => s.done).length;
   const pct = Math.round((done / steps.length) * 100);
-  const rows = steps.map(s => {
+  // Only what is still left is listed; finished items collapse into the count above.
+  const rows = steps.filter(s => !s.done).map(s => {
+    const stepN = (String(s.where).match(/^step (\d)/) || [])[1];
     const jump = s.tab ? ` <a href="#" onclick="document.querySelector('.tab[data-tab=${s.tab}]').click();return false" style="color:var(--gold)">${escapeHtml(s.where)} →</a>`
+               : stepN ? ` <a href="#" onclick="buildGoStep(${stepN - 1});return false" style="color:var(--gold)">go to step ${stepN} →</a>`
                        : ` <span style="color:var(--text-faint)">${escapeHtml(s.where)}</span>`;
-    return `<div style="margin:0 0 5px;font-size:var(--fs-sm);line-height:1.5;${s.done ? 'opacity:.55' : ''}">` +
+    return `<div style="margin:0 0 5px;font-size:var(--fs-sm);line-height:1.5">` +
            `<span style="color:${s.done ? 'var(--success-text,green)' : 'var(--text-faint)'};font-weight:700">${s.done ? '✓' : '○'}</span> ` +
            `${s.done ? '<s>' + s.label + '</s>' : s.label}${s.done ? '' : jump}</div>`;
   }).join('');
@@ -3406,5 +3478,6 @@ function renderBuildChecklist() {
     `<div style="height:6px;background:var(--bg-deep);border-radius:var(--r-sm);overflow:hidden;margin:0 0 10px">` +
     `<div style="height:100%;width:${pct}%;background:var(--gold);transition:width .2s"></div></div>` +
     rows +
-    (done === steps.length ? '<p class="hint" style="text-align:left;margin:8px 0 0 0;color:var(--success-text,green)"><strong>Your hero is ready.</strong> Go and play — the Dice tab is where most of it happens.</p>' : '');
+    (done === steps.length ? '<p class="hint" style="text-align:left;margin:8px 0 0 0;color:var(--success-text,green)"><strong>Your hero is ready.</strong> Go and play — the Play tab runs the game for you.</p>' : '');
+  renderBuildWizard();
 }

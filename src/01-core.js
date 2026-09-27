@@ -1180,6 +1180,7 @@ async function requireStep(message, tabId, cardId, title) {
   if (go === 'go') {
     const t = document.querySelector('.tab[data-tab=' + tabId + ']');
     if (t) t.click();
+    if (cardId && tabId === 'build' && typeof buildGoToCard === 'function') buildGoToCard(cardId);
     if (cardId) setTimeout(() => { const c = document.getElementById(cardId); if (c) c.scrollIntoView({ block: 'center' }); }, 60);
   }
   return false;

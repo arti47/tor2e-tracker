@@ -1467,6 +1467,8 @@ function _tutRender() {
     // Resolve the step's target, then highlight the whole SECTION it sits in (its enclosing
     // .card), not the tiny control — unless the step opts out with `exact: true`.
     let tgt = step.sel ? document.querySelector(step.sel) : null;
+    // A Build-tab target may sit on another wizard step — bring that step on screen first.
+    if (tgt && typeof buildGoToCard === 'function') { const bc = tgt.closest('.bw-hidden'); if (bc && bc.id) buildGoToCard(bc.id); }
     if (tgt && !step.exact) tgt = tgt.closest('.card') || tgt;
     let r = tgt ? tgt.getBoundingClientRect() : null;
     if (tgt && r && (r.width === 0 && r.height === 0)) { tgt = null; r = null; }  // hidden → no frame

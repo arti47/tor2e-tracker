@@ -923,3 +923,31 @@ body.adjust-mode .adj-lock { background: var(--gold-soft); border-color: var(--g
 .toast-action { background: none; border: none; color: var(--gold); font-weight: 700; font-size: var(--fs-sm); padding: 4px 6px; }
 @media (min-width: 900px) { #toast-wrap { bottom: 24px !important; } }
 .gloss { display: block; font-size: 11px; font-weight: 500; text-transform: none; letter-spacing: 0; color: var(--text-faint); margin-top: 1px; font-family: var(--font-body); }
+
+/* Build wizard */
+.bw-hidden { display: none !important; }
+.build-stepper { padding: var(--sp-2) 0 var(--sp-3); margin-bottom: var(--sp-2); }
+.bs-row { display: flex; justify-content: space-between; align-items: center; gap: var(--sp-2); }
+.bs-label { font-size: var(--fs-sm); color: var(--text-muted); }
+.bs-label strong { color: var(--ink); font-family: var(--font-display); font-size: var(--fs-lg); font-weight: 600; }
+.bs-row .btn { margin: 0; min-height: 32px; padding: 4px 8px; font-size: var(--fs-xs); }
+.bs-dots { display: flex; gap: 6px; margin-top: var(--sp-2); }
+.bs-dot { flex: 1; height: 6px; padding: 0; border: none; border-radius: 3px; background: var(--bg-deep); }
+.bs-dot.past { background: color-mix(in srgb, var(--gold) 55%, var(--bg-deep)); }
+.bs-dot.on { background: var(--red); }
+.bs-dot::before { content: ''; display: block; height: 28px; margin-top: -11px; }
+.build-step-nav { display: grid; grid-template-columns: auto 1fr; gap: var(--sp-2); margin: var(--sp-2) 0 var(--sp-5); }
+.build-step-nav .btn { margin: 0; min-height: 48px; }
+.btn[disabled] { opacity: .4; }
+
+/* Reference: collapsible glossary groups */
+.ref-group { border-top: 1px solid var(--line); }
+.ref-group > summary { list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding: var(--sp-3) 0; }
+.ref-group > summary::-webkit-details-marker { display: none; }
+.ref-group > summary h3 { margin: 0; font-family: var(--font-display); font-size: var(--fs-lg); font-weight: 600; color: var(--ink); }
+.ref-count { font-size: var(--fs-xs); color: var(--text-faint); background: var(--bg-deep); border-radius: var(--r-pill); padding: 1px 8px; }
+.ref-group dl { margin: 0 0 var(--sp-3); }
+.ref-group dt { font-weight: 600; margin-top: var(--sp-2); }
+.ref-group dd { margin: 2px 0 0; color: var(--ink-soft); font-size: var(--fs-sm); line-height: 1.5; }
+.ref-group dd.solo { margin-top: var(--sp-2); }
+.bs-empty { grid-column: 1 / -1; margin: 0 0 var(--sp-2); padding: var(--sp-4); background: var(--card-bg); border-radius: var(--r-md); color: var(--text-muted); text-align: center; box-shadow: var(--elev-1); }
