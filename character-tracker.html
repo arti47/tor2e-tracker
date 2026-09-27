@@ -875,6 +875,7 @@
 
   <div class="card">
     <h3 class="card-title" data-hint="Favoured">Skills</h3>
+    <button class="btn btn-quiet notes-toggle" onclick="const p=document.getElementById('panel-skills');const on=p.classList.toggle('notes-on');this.textContent=on?'Hide empty notes':'Add notes';this.setAttribute('aria-pressed',on)" aria-pressed="false">Add notes</button>
     <p class="hint">🔒 Locked — toggle Edit Mode above to change manually, or use Spend XP on Character tab</p>
     <div class="skill-cols">
       <div id="skills-str"></div>
