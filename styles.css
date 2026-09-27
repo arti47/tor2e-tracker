@@ -1194,8 +1194,6 @@ body.dark { background-image: var(--contours), radial-gradient(ellipse 80% 45% a
   color: var(--red); padding: 4px 6px 0 0;
 }
 /* the road: mountains along the foot of the scene card */
-.play-scene.on-road { background-image: var(--mountains); background-repeat: no-repeat; background-position: right bottom; background-size: 360px 90px; }
-.play-scene.on-road::after { display: none; }
 /* the header gets a gilt hairline */
 .header { border-bottom: 1px solid color-mix(in srgb, var(--gold) 30%, transparent); box-shadow: 0 1px 0 rgba(255,255,255,.4); }
 .char-name { letter-spacing: .3px; }
@@ -1406,3 +1404,97 @@ select.pick-src { position: absolute !important; width: 1px !important; height: 
 .qchip strong { font-family: var(--font-display); font-size: var(--fs-md); font-weight: 600; }
 .qchip small { font-size: var(--fs-xs); color: var(--text-muted); }
 .choice .c-ico .ic { width: 20px; height: 20px; }
+
+/* ---- Engraved dice (round 3) ----
+   The Feat die is a drawn d12 face (a pentagon with its facets), bone for a number, oxblood
+   for the Eye, gilt for the Rune; Success dice are bone d6 faces with carved numerals, and a
+   6 (an icon) carries a gilt star. Pure CSS over the existing markup. */
+.feat-die { width: 60px; height: 60px; border: 0 !important; border-radius: 0 !important; box-shadow: none !important;
+  background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 60'><defs><linearGradient id='g' x1='0' y1='0' x2='.4' y2='1'><stop offset='0' stop-color='%23f4ead2'/><stop offset='1' stop-color='%23d6c29a'/></linearGradient></defs><polygon points='30,2 58,22 47,57 13,57 2,22' fill='url(%23g)' stroke='%235a4330' stroke-width='2' stroke-linejoin='round'/><polygon points='30,12 48,25 41,47 19,47 12,25' fill='none' stroke='%238a6a45' stroke-width='1' stroke-opacity='.55'/><path d='M30 2 30 12 M58 22 48 25 M47 57 41 47 M13 57 19 47 M2 22 12 25' stroke='%238a6a45' stroke-width='1' stroke-opacity='.55'/></svg>") center / contain no-repeat !important; color: #3a2a1c !important;
+  text-shadow: 0 1px 0 rgba(255,255,255,.55), 0 -1px 0 rgba(0,0,0,.25); padding-top: 6px; filter: drop-shadow(0 2px 2px rgba(40,25,10,.3)); }
+.feat-die.eye { background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 60'><defs><linearGradient id='g' x1='0' y1='0' x2='.4' y2='1'><stop offset='0' stop-color='%239a2c1d'/><stop offset='1' stop-color='%234a100a'/></linearGradient></defs><polygon points='30,2 58,22 47,57 13,57 2,22' fill='url(%23g)' stroke='%23d8aa55' stroke-width='2' stroke-linejoin='round'/><polygon points='30,12 48,25 41,47 19,47 12,25' fill='none' stroke='%23f0c878' stroke-width='1' stroke-opacity='.55'/><path d='M30 2 30 12 M58 22 48 25 M47 57 41 47 M13 57 19 47 M2 22 12 25' stroke='%23f0c878' stroke-width='1' stroke-opacity='.55'/></svg>") !important; color: #f6dfb0 !important; text-shadow: 0 1px 0 rgba(0,0,0,.4); }
+.feat-die.rune { background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 60'><defs><linearGradient id='g' x1='0' y1='0' x2='.4' y2='1'><stop offset='0' stop-color='%23e3bb62'/><stop offset='1' stop-color='%238a6417'/></linearGradient></defs><polygon points='30,2 58,22 47,57 13,57 2,22' fill='url(%23g)' stroke='%235a3d0c' stroke-width='2' stroke-linejoin='round'/><polygon points='30,12 48,25 41,47 19,47 12,25' fill='none' stroke='%23fff0c0' stroke-width='1' stroke-opacity='.55'/><path d='M30 2 30 12 M58 22 48 25 M47 57 41 47 M13 57 19 47 M2 22 12 25' stroke='%23fff0c0' stroke-width='1' stroke-opacity='.55'/></svg>") !important; color: #3a2508 !important; text-shadow: 0 1px 0 rgba(255,240,200,.6); }
+.success-die { position: relative; width: 44px; height: 44px; border-radius: 9px !important; font-size: 21px;
+  background: linear-gradient(150deg, #f6eed9, #d9c8a2) !important; border: 1px solid #8a6a45 !important; color: #3a2a1c !important;
+  box-shadow: inset 0 0 0 3px rgba(255,255,255,.35), inset 0 -3px 6px rgba(90,60,30,.25), 0 2px 3px rgba(40,25,10,.25) !important;
+  text-shadow: 0 1px 0 rgba(255,255,255,.6), 0 -1px 0 rgba(0,0,0,.2); }
+.success-die.icon { background: linear-gradient(150deg, #f8ecc8, #e0c27a) !important; border-color: #a67a22 !important; color: #7a1f14 !important; }
+.success-die.icon::after { content: '✦'; position: absolute; top: 1px; right: 4px; font-size: 11px; color: #a67a22; text-shadow: none; }
+.success-die.dim { opacity: .4; filter: grayscale(.4); }
+
+/* ---- Group accents (round 3): a muted colour per nav group, for wayfinding only ---- */
+body { --grp: var(--red); }
+body[data-group="play"] { --grp: #8a2a1c; } body[data-group="hero"] { --grp: #86601a; }
+body[data-group="adventure"] { --grp: #3d6636; } body[data-group="roll"] { --grp: #9b2a1f; } body[data-group="journal"] { --grp: #2f4f73; }
+body.dark[data-group="play"] { --grp: #e0877a; } body.dark[data-group="hero"] { --grp: #dcb060; }
+body.dark[data-group="adventure"] { --grp: #97c483; } body.dark[data-group="roll"] { --grp: #e8836f; } body.dark[data-group="journal"] { --grp: #9dbbe0; }
+.bn-item.active { color: var(--grp); }
+.bn-item.active::before { background: var(--grp); }
+.tabs .tab.active { box-shadow: inset 0 -2px 0 var(--grp), var(--elev-1); color: var(--ink); }
+.panel.active > .card:first-of-type:not(.tab-intro), .panel.active > .tab-intro + .card { border-top: 2px solid color-mix(in srgb, var(--grp) 55%, transparent); }
+
+/* ---- Terrain vignette on the Play scene ---- */
+.play-scene { overflow: hidden; }
+.scene-art { margin: calc(-1 * var(--sp-4)) calc(-1 * var(--sp-4)) var(--sp-2); height: 84px; color: var(--ink);
+  -webkit-mask-image: linear-gradient(#000 60%, transparent); mask-image: linear-gradient(#000 60%, transparent); opacity: .7; }
+.scene-art svg { width: 100%; height: 100%; display: block; fill: none; stroke: currentColor; stroke-width: 1.3; stroke-linecap: round; stroke-linejoin: round; }
+.scene-art .f { fill: currentColor; fill-opacity: .14; }
+.scene-art .f2 { fill: currentColor; fill-opacity: .06; }
+.scene-art .w { stroke: var(--gold); stroke-width: 1.6; }
+.scene-art .dark { fill: currentColor; fill-opacity: .1; stroke: none; }
+
+/* ---- The inked route map ---- */
+.route { margin-top: var(--sp-3); }
+.route-svg { width: 100%; height: auto; display: block; overflow: visible; }
+.route .rm-land { fill: none; stroke: color-mix(in srgb, var(--ink) 55%, transparent); stroke-width: 1.2; stroke-linecap: round; stroke-linejoin: round; }
+.route .rm-land .f { fill: color-mix(in srgb, var(--ink) 18%, transparent); }
+.route .rm-ahead { fill: none; stroke: color-mix(in srgb, var(--ink) 55%, transparent); stroke-width: 1.8; stroke-dasharray: 4 4; stroke-linecap: round; }
+.route .rm-done { fill: none; stroke: var(--red); stroke-width: 2.6; stroke-linecap: round; }
+.route .rm-end { fill: var(--card-bg); stroke: var(--ink); stroke-width: 1.5; }
+.route .rm-ev path { fill: var(--card-bg); stroke: var(--red); stroke-width: 1.6; }
+.route .rm-ev text { fill: var(--red); font-size: 9px; font-weight: 800; font-family: var(--font-body); }
+.route .rm-here path { fill: var(--red); stroke: var(--red); stroke-width: 1.5; stroke-linejoin: round; }
+.route .rm-here circle { fill: var(--red); stroke: var(--card-bg); stroke-width: 2.5; }
+.route .rm-place { fill: var(--ink); font-family: var(--font-display); font-size: 12px; font-weight: 600; font-style: italic; }
+.route-count { text-align: center; font-size: var(--fs-xs); color: var(--text-muted); font-weight: 600; margin-top: -2px; }
+
+/* ---- Culture silhouette behind the name on the hero sheet ---- */
+.sheet-head { overflow: hidden; }
+.sheet-head .silhouette { position: absolute; right: 64px; bottom: -6px; width: 110px; height: 132px; fill: var(--ink); opacity: .1; pointer-events: none; }
+.sheet-head .silhouette .s-line { fill: none; stroke: var(--ink); stroke-width: 3; stroke-linecap: round; }
+.sheet-head .silhouette .s-thin { fill: none; stroke: var(--ink); stroke-width: 1; }
+.sheet-head .silhouette .s-gold { fill: none; stroke: var(--gold); stroke-width: 2; }
+.sheet-head > *:not(.silhouette) { position: relative; }
+
+/* ---- Icons on the vitals ---- */
+.m-ic, .chip-ic { width: 12px; height: 12px; vertical-align: -1px; margin-right: 3px; }
+.chip-ic { width: 11px; height: 11px; }
+
+/* ---- The Eye glows as the Hunt nears, and pulses at it ---- */
+#eye-pill.near { box-shadow: 0 0 0 2px color-mix(in srgb, var(--red) 35%, transparent), 0 0 10px color-mix(in srgb, var(--red) 35%, transparent); }
+#eye-pill.hit { animation: eyePulse 1.8s ease-in-out infinite; }
+@keyframes eyePulse { 0%, 100% { box-shadow: 0 0 0 2px var(--red), 0 0 6px color-mix(in srgb, var(--red) 40%, transparent); }
+  50% { box-shadow: 0 0 0 3px var(--red), 0 0 18px color-mix(in srgb, var(--red) 70%, transparent); } }
+@media (prefers-reduced-motion: reduce) { #eye-pill.hit { animation: none; } }
+
+/* ---- The Chronicle as a book (round 3) ----
+   The timeline is a page: paper with a soft gutter shadow, a red ribbon bookmark, each scene
+   opening on a rubric (the date in small red capitals) over its title; your prose in the book
+   face, the dice and oracle lines as quiet marginal notes. Two pages side by side on a tablet. */
+#ch-timeline { position: relative; background: linear-gradient(90deg, rgba(90,60,30,.06), transparent 18px, transparent calc(100% - 18px), rgba(90,60,30,.06)), var(--card-bg);
+  border: 1px solid var(--line); border-radius: 4px 10px 10px 4px; padding: 18px 16px 18px 20px !important;
+  box-shadow: inset 6px 0 12px -8px rgba(60,40,20,.35), var(--elev-1); }
+#ch-timeline::before { content: ''; position: absolute; top: -4px; right: 22px; width: 14px; height: 46px; background: var(--red);
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 80%, 0 100%); box-shadow: 0 2px 3px rgba(0,0,0,.2); }
+.ch-scene-h { background: none !important; border-radius: 0 !important; padding: 14px 0 4px !important; margin: 6px 0 6px !important;
+  border-top: 1px solid var(--line); }
+#ch-timeline .ch-scene-h:first-of-type { border-top: 0; }
+.ch-date { font-size: var(--fs-xs); font-variant: small-caps; letter-spacing: 1px; color: var(--red); font-weight: 700; }
+.ch-title { font-family: var(--font-display); font-size: var(--fs-xl) !important; font-weight: 600 !important; line-height: 1.15; }
+.ch-p { font-family: var(--font-display); font-size: var(--fs-lg); line-height: 1.5 !important; color: var(--ink); }
+.ch-auto { opacity: 1 !important; margin: 2px 0 6px 10px; border-left: 2px solid color-mix(in srgb, var(--gold) 60%, transparent); padding-left: 8px !important; }
+@media (min-width: 1100px) {
+  #ch-timeline { max-height: none !important; column-count: 2; column-gap: 56px; column-rule: 1px solid var(--line);
+    background: linear-gradient(90deg, transparent calc(50% - 16px), rgba(90,60,30,.10) 50%, transparent calc(50% + 16px)), var(--card-bg); }
+  #ch-timeline > * { break-inside: avoid; }
+}

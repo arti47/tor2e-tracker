@@ -1456,11 +1456,12 @@ function renderChronicleTimeline() {
     const active = sc.id === journal.activeSceneId;
     const collapsed = !!sc.collapsed;
     const sceneCombats = (journal.combats || []).filter(c => c.sceneId === sc.id && !c.active);
-    html += `<div id="ch-scene-${sc.id}" style="margin:10px 0 4px;padding:6px 8px;background:var(--gold-soft);border-radius:var(--r-sm);display:flex;align-items:center;gap:6px">
+    html += `<div id="ch-scene-${sc.id}" class="ch-scene-h" style="margin:10px 0 4px;padding:6px 8px;background:var(--gold-soft);border-radius:var(--r-sm);display:flex;align-items:center;gap:6px">
       <button onclick="toggleSceneCollapse('${sc.id}')" title="${collapsed ? 'Expand' : 'Collapse'}" style="flex:0 0 auto;background:none;border:none;cursor:pointer;color:var(--ink);font-size:var(--fs-xs)">${collapsed ? '▸' : '▾'}</button>
       <div style="flex:1;min-width:0">
-        <div style="font-weight:700;color:var(--ink);font-size:var(--fs-sm)">${escapeHtml(sc.title)}${active ? ' <span style="font-size:var(--fs-xs);background:var(--gold);color:#fff;padding:1px 5px;border-radius:var(--r-sm);vertical-align:middle">OPEN</span>' : ''}${collapsed ? ` <span style="font-size:var(--fs-xs);color:var(--text-faint);font-weight:400">(${blocks.length})</span>` : ''}</div>
-        <div style="font-size:var(--fs-xs);color:var(--text-faint)">${dateLabel(sc.date)}${sc.state ? ' · ' + stateLabel(sc.state) : ''}</div>
+        <div class="ch-date">${dateLabel(sc.date)}</div>
+        <div class="ch-title" style="font-weight:700;color:var(--ink);font-size:var(--fs-sm)">${escapeHtml(sc.title)}${active ? ' <span style="font-size:var(--fs-xs);background:var(--gold);color:#fff;padding:1px 5px;border-radius:var(--r-sm);vertical-align:middle">OPEN</span>' : ''}${collapsed ? ` <span style="font-size:var(--fs-xs);color:var(--text-faint);font-weight:400">(${blocks.length})</span>` : ''}</div>
+        <div class="ch-state" style="font-size:var(--fs-xs);color:var(--text-faint)">${sc.state ? stateLabel(sc.state) : ''}</div>
       </div>
       ${active ? '' : `<button onclick="setActiveScene('${sc.id}')" title="Write here" style="background:none;border:1px solid var(--border);border-radius:var(--r-sm);font-size:var(--fs-xs);padding:2px 6px;cursor:pointer;color:var(--ink)">Write here</button>`}
       <button onclick="renameScene('${sc.id}')" title="Rename" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:var(--fs-sm)">✎</button>
@@ -1476,14 +1477,14 @@ function renderChronicleTimeline() {
       if (_editingBlockId === b.id) return editTextarea(b);
       if (b.kind === 'prose') {
         return `<div style="display:flex;gap:4px;padding:2px 10px 6px;align-items:flex-start">
-          <div style="flex:1;min-width:0;line-height:1.55;white-space:pre-wrap">${escapeHtml(b.text)}</div>
+          <div class="ch-p" style="flex:1;min-width:0;line-height:1.55;white-space:pre-wrap">${escapeHtml(b.text)}</div>
           ${moveBtns(b.id)}
           <button onclick="editBlock('${b.id}')" title="Edit" style="flex:0 0 auto;background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:var(--fs-xs)">✎</button>
           <button onclick="deleteChronicleEntry('${b.id}')" title="Delete" style="flex:0 0 auto;background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:var(--fs-sm)">×</button>
         </div>`;
       }
       const t = JOURNAL_TYPES[b.type] || JOURNAL_TYPES.note;
-      let h = `<div style="display:flex;gap:6px;padding:5px 10px 1px;align-items:baseline;opacity:0.72">
+      let h = `<div class="ch-auto" style="display:flex;gap:6px;padding:5px 10px 1px;align-items:baseline;opacity:0.72">
           <span style="flex:0 0 auto;font-size:var(--fs-xs);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted)">${t.label}</span>
           <span style="flex:1;min-width:0;font-size:var(--fs-xs);font-style:italic;color:var(--text-muted)">${escapeHtml(b.text)}</span>
           ${moveBtns(b.id)}

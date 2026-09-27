@@ -61,6 +61,7 @@ function refreshNav() {
   const active = document.querySelector('.tab.active');
   const cur = navGroupOf(active ? active.dataset.tab : 'play');
   if (active) _navLast[cur.id] = active.dataset.tab;
+  document.body.dataset.group = cur.id;   // per-group accent colour (wayfinding)
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('nav-out', !cur.tabs.includes(t.dataset.tab)));
   const nav = document.querySelector('.tabs');
   if (nav) nav.classList.toggle('single', cur.tabs.filter(_tabShown).length <= 1);
@@ -114,6 +115,7 @@ function initRollDrawer() {
 function openRollDrawer() {
   const d = document.getElementById('roll-drawer'); if (!d) return;
   d.classList.add('open'); document.body.classList.add('drawer-open');
+  if (typeof sfx === 'function') sfx('dice');
   const b = d.querySelector('.rd-body'); if (b) b.scrollTop = 0;
 }
 function closeRollDrawer() {

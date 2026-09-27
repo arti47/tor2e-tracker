@@ -25,6 +25,7 @@ const PRECACHE = [
   './src/06-tabs-init.js',
   './src/07-sync.js',
   './src/08-gm.js',
+  './src/09-art.js',
   './manifest.json',
   './icon-192.png',
   './icon-512.png',

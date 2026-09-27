@@ -4665,6 +4665,7 @@ function renderHeroSheet() {
   ].filter(([, h]) => h).map(([t, h]) => `<div class="s-h">${t}</div><div class="traits">${h}</div>`).join('');
   host.innerHTML = `
   <div class="card ornate sheet-head">
+    ${typeof cultureSilhouette === 'function' ? cultureSilhouette(char.culture) : ''}
     <div class="sh-crest">${cultureCrest(char.culture, 76, char.name)}</div>
     <div class="sh-id">
       <h2 class="sh-name">${escapeHtml(heroLabel(char))}</h2>
@@ -4715,10 +4716,11 @@ function _hudConditions() {
   if (char.miserable || autoMiser) t.push({ k: 'miserable', label: 'Miserable', set: !!char.miserable });
   return t;
 }
-function _meter(label, cur, max, cls, extraPct) {
+function _meter(label, cur, max, cls, extraPct, icon) {
   const pct = max > 0 ? Math.max(0, Math.min(100, cur / max * 100)) : 0;
   const shadow = extraPct ? `<i class="shadow" style="width:${Math.min(100, extraPct)}%"></i>` : '';
-  return `<span class="m-label">${label}</span><span class="m-val">${cur}<small>/${max}</small></span>` +
+  const ic = icon ? `<svg class="m-ic" aria-hidden="true"><use href="#${icon}"/></svg>` : '';
+  return `<span class="m-label">${ic}${label}</span><span class="m-val">${cur}<small>/${max}</small></span>` +
          `<span class="m-bar ${cls}"><i style="width:${pct}%"></i>${shadow}</span>`;
 }
 function renderHud() {
@@ -4736,10 +4738,12 @@ function renderHud() {
   const hope = parseInt(char.hopeCur) || 0, hopeMax = parseInt(char.hopeMax) || 0;
   const sh = (parseInt(char.shadow) || 0) + (parseInt(char.scars) || 0);
   const weary = end <= (parseInt(char.load) || 0) + (parseInt(char.fatigue) || 0);
-  document.getElementById('hud-end').innerHTML = _meter('Endurance', end, endMax, weary ? 'end low' : 'end');
-  document.getElementById('hud-hope').innerHTML = _meter('Hope', hope, hopeMax, 'hope', hopeMax ? sh / hopeMax * 100 : 0);
-  document.getElementById('hud-chips').innerHTML = (sh ? `<span class="chip shadow" title="Shadow (incl. Scars). When it reaches your Hope you are Miserable.">Shadow ${sh}</span>` : '') + _hudConditions()
-    .map(c => `<span class="chip ${c.k}${c.set ? '' : ' auto'}" title="${c.set ? '' : 'The rules say this applies — tap Weary/Miserable on the Character tab to confirm.'}">${c.label}</span>`).join('');
+  document.getElementById('hud-end').innerHTML = _meter('Endurance', end, endMax, weary ? 'end low' : 'end', 0, 'i-heart');
+  document.getElementById('hud-hope').innerHTML = _meter('Hope', hope, hopeMax, 'hope', hopeMax ? sh / hopeMax * 100 : 0, 'i-star');
+  const CIC = { shadow: 'i-moon', weary: 'i-weary', miserable: 'i-rain', wounded: 'i-drop', dying: 'i-skull' };
+  const cic = k => `<svg class="chip-ic" aria-hidden="true"><use href="#${CIC[k]}"/></svg>`;
+  document.getElementById('hud-chips').innerHTML = (sh ? `<span class="chip shadow" title="Shadow (incl. Scars). When it reaches your Hope you are Miserable.">${cic('shadow')}Shadow ${sh}</span>` : '') + _hudConditions()
+    .map(c => `<span class="chip ${c.k}${c.set ? '' : ' auto'}" title="${c.set ? '' : 'The rules say this applies — tap Weary/Miserable on the Character tab to confirm.'}">${cic(c.k)}${c.label}</span>`).join('');
 }
 // Conditions + the in-play actions that used to live on the Character tab form.
 function _vitalsConditions() {
@@ -4884,10 +4888,15 @@ function renderPlay() {
   };
 
   const jr = char.journey || {};
-  const road = (jr.active && parseInt(jr.totalHexes) > 0) ? _roadStrip(parseInt(jr.currentHex) || 0, parseInt(jr.totalHexes), jr.nextEventHex) : '';
+  const terrain = typeof sceneTerrain === 'function' ? sceneTerrain() : 'road';
+  const road = (jr.active && parseInt(jr.totalHexes) > 0)
+    ? (typeof routeMap === 'function'
+        ? routeMap(parseInt(jr.currentHex) || 0, parseInt(jr.totalHexes), jr.nextEventHex, jr.origin || char.safeHaven, jr.destination, terrain)
+        : _roadStrip(parseInt(jr.currentHex) || 0, parseInt(jr.totalHexes), jr.nextEventHex)) : '';
   host.innerHTML =
     _playConditionBanner() +
     `<div class="card ornate play-scene${['journey', 'home'].includes(s.step) && (char.journey || {}).active ? ' on-road' : ''}">
+       ${typeof terrainVignette === 'function' ? terrainVignette(terrain) : ''}
        <div class="eyebrow">Where you are</div>
        <h3 class="card-title">${escapeHtml(sit.title)}</h3>
        <div class="play-sit">${sit.text}</div>

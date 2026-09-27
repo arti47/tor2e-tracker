@@ -355,11 +355,11 @@ module.exports = {
       char.journey = Object.assign(char.journey || {}, { active: true, totalHexes: 9, currentHex: 3, nextEventHex: 5 });
       saveCharacter(); openNavGroup('play');
       _playFeed.push({ text: 'Hard going. (Travel roll 6 vs 15 — failure.) Two stretches.' }); renderPlay();
-      const r = { here: document.querySelectorAll('#play-body .road-track i.here').length, pill: !!document.querySelector('#play-body .roll-pill.fail') };
+      const r = { here: document.querySelectorAll('#play-body .route .route-here').length, pill: !!document.querySelector('#play-body .roll-pill.fail') };
       _playFeed.pop(); char.journey.active = false; saveCharacter(); renderPlay();
       return r;
     });
-    checks.push({ ok: road.here === 1 && road.pill, msg: 'on the road, Play draws the road with your marker and shows rolls as dice pills' });
+    checks.push({ ok: road.here === 1 && road.pill, msg: 'on the road, Play draws the inked route map with your marker and shows rolls as dice pills' });
 
     // ---- Jump bar on the long tabs ----
     const jump = await page.evaluate(() => {

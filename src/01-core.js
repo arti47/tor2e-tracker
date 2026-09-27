@@ -1381,6 +1381,7 @@ function updateEyePill(ea, threshold) {
   // The pill doubles as a gauge: a ring fills toward the Hunt threshold.
   pill.style.setProperty('--p', Math.min(100, Math.round(ea / Math.max(1, threshold) * 100)));
   pill.classList.toggle('hit', hit);
+  pill.classList.toggle('near', !hit && threshold - ea <= 2);   // the Eye begins to glow two points out
 }
 
 async function rollRevelationEpisode() {
