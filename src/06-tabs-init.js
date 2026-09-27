@@ -1762,7 +1762,7 @@ const TUTORIAL_LESSONS = [
     steps: [
       { tab: 'character', intro: `Even alone, a Ranger's long road can be walked.`, title: `Solo modes`, body: `The ☰ menu offers “Enable Strider Mode” (lone-hero play) and “Enable Moria Solo Mode” (the Durin's Folk campaign). We've switched Strider on for this lesson.`, more: `Solo mode lowers your Target Numbers (18 − rating), sets a minimum Fellowship rating, and unlocks the Oracle, the Eye of Mordor, and the Chronicle.` },
       { tab: 'oracle', sel: '[onclick="rollTellingTable()"]', title: `The Oracle — yes or no`, body: `With no Loremaster, the Oracle answers for the world. Ask a yes/no question, set the odds, and tap “Ask the Telling Table”. Try it.`, done: (c, b) => (typeof oracleHistory !== 'undefined' && oracleHistory ? oracleHistory.length : 0) > (b.oracle || 0), more: `A ☉ rune or 👁 Eye on the answer adds a twist — “yes, but…” or “no, and…” — to keep the story surprising.` },
-      { tab: 'oracle', sel: '[onclick="rollLoreTable()"]', title: `The Oracle — inspiration`, body: `Stuck for what happens next? The Lore Table gives Action / Aspect / Focus words to spark a scene, an NPC, or a complication.`, more: `Fortune and Ill-Fortune tables turn special Feat results on your ordinary rolls into unfolding story events.` },
+      { tab: 'oracle', sel: '#oracle-ask', title: `The Oracle — inspiration`, body: `Stuck for what happens next? The Lore Table gives Action / Aspect / Focus words to spark a scene, an NPC, or a complication.`, more: `Fortune and Ill-Fortune tables turn special Feat results on your ordinary rolls into unfolding story events.` },
       { tab: 'character', sel: '#eye-of-mordor-card', title: `The Eye of Mordor`, body: `In solo play the Eye measures how close the Enemy is to noticing you. It rises as you act and gather Shadow; cross the Hunt threshold and a Revelation Episode strikes.`, more: `Each region has its own Hunt threshold — the deeper into darkness you go, the sooner the Eye turns your way.` },
       { tab: 'chronicle', sel: '[onclick="rollWritingPrompt()"]', title: `The Chronicle`, body: `Your solo journal. Scenes, dice, oracle results, and whole combats fold into a Tale of Years you can export. Tap “🎬 Scene” to seed what happens next. Try it.`, done: (c, b) => (typeof journal !== 'undefined' && journal && journal.entries ? journal.entries.length : 0) > (b.scenes || 0), more: `It auto-captures the mechanical beats — rolls, oracle answers, journey events, combats — and you write the prose around them.` },
       { tab: 'character', title: `You're ready`, body: `That's the whole game! Tap Finish, then choose whether to keep this practice hero. May your road be ever eastward.`, more: `Revisit any lesson anytime from ☰ Menu → 📖 Tutorial. Good journey, and mind the Shadow.` }
@@ -1818,7 +1818,8 @@ function initCollapsibleCards() {
     h.classList.add('collapsible');
     h.setAttribute('role', 'button');
     h.setAttribute('tabindex', '0');
-    if (saved[card.dataset.ckey]) card.classList.add('collapsed');
+    // fold-default cards (the full Oracle tables under the Ask box) start folded until opened.
+    if (saved[card.dataset.ckey] || (card.classList.contains('fold-default') && !saved[card.dataset.ckey + '|open'])) card.classList.add('collapsed');
     h.setAttribute('aria-expanded', card.classList.contains('collapsed') ? 'false' : 'true');
     const toggle = () => {
       const on = !card.classList.contains('collapsed');
@@ -1842,6 +1843,7 @@ function setCardCollapsed(card, on) {
   const key = card.dataset.ckey; if (!key) return;
   const s = loadCollapsed();
   if (on) s[key] = 1; else delete s[key];
+  if (card.classList.contains('fold-default')) { if (on) delete s[key + '|open']; else s[key + '|open'] = 1; }
   try { localStorage.setItem(COLLAPSE_KEY, JSON.stringify(s)); } catch (e) {}
 }
 function _accCards(panel) {

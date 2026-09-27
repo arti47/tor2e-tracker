@@ -1627,7 +1627,26 @@
     <p class="hint" style="text-align:left;line-height:1.5"><strong>Your stand-in for a Loremaster.</strong> Solo-play oracle tables from the Strider Mode supplement. Use these in place of a Loremaster's adjudication when you need a yes/no/maybe answer (Telling), a story prompt (Lore), or a narrative twist on a Rune / Eye result (Fortune / Ill-Fortune).</p>
   </div>
 
-  <div class="card">
+  <div class="card ornate oracle-ask" id="oracle-ask">
+    <h3 class="card-title">Ask the Oracle</h3>
+    <textarea id="ask-q" rows="2" placeholder="Is there a light in the passage?  —  or  —  What waits at the bridge?" aria-label="Your question"></textarea>
+    <div class="ask-lab">How likely is “yes”?</div>
+    <div class="seg-btns" id="ask-odds" role="group" aria-label="How likely is yes?">
+      <button class="seg-btn" data-val="certain" onclick="setAskOdds('certain')">Certain</button>
+      <button class="seg-btn" data-val="likely" onclick="setAskOdds('likely')">Likely</button>
+      <button class="seg-btn active" data-val="middling" onclick="setAskOdds('middling')">Even</button>
+      <button class="seg-btn" data-val="doubtful" onclick="setAskOdds('doubtful')">Doubtful</button>
+      <button class="seg-btn" data-val="unthinkable" onclick="setAskOdds('unthinkable')">Unlikely</button>
+    </div>
+    <div class="ask-btns">
+      <button class="btn" onclick="askYesNo()">Yes or no?</button>
+      <button class="btn btn-secondary" onclick="askWords()">Give me words</button>
+    </div>
+    <div id="ask-slip" class="ask-slip" aria-live="polite" hidden></div>
+    <p class="hint" style="text-align:left">Phrase a yes/no question so “yes” is what your hero hopes for. For what, who or why, ask for words.</p>
+  </div>
+
+  <div class="card fold-default">
     <h3 class="card-title" data-hint="Telling Table">Telling Table — yes/no question</h3>
     <p class="hint" style="text-align:left;line-height:1.5">Ask a <strong>closed</strong> question about the world — a place, a person, a creature, an event. Phrase it so that <strong>“yes” is the outcome your hero would prefer</strong>; that keeps the odds meaningful.<br>Only ask when you genuinely don’t know, or when yes and no are both interesting. If the answer is already obvious from the story, don’t roll — just say it. Open-ended questions belong to the <strong>Lore Table</strong> below.<br>Pick how likely “yes” feels, then tap Ask.</p>
     <div class="field"><label>Question</label><input id="oracle-telling-q" placeholder="e.g. Is there a light in the passage?"></div>
@@ -1644,7 +1663,7 @@
     <div id="oracle-telling-result" style="margin-top:10px;padding:10px;background:var(--bg-deep);border-radius:var(--r-sm);font-size:var(--fs-sm);line-height:1.5;display:none"></div>
   </div>
 
-  <div class="card">
+  <div class="card fold-default">
     <h3 class="card-title" data-hint="Lore Table">Lore Table — open-ended prompt</h3>
     <p class="hint" style="text-align:left;line-height:1.5">For the <strong>open-ended</strong> questions the Telling Table can't answer — what happens next, who is this, what is going on here.<br>Roll <strong>one</strong> column for a single word, or two or three to build a phrase. Read the result literally or as an abstraction, whichever fits — deciding how the riddle relates to your situation is the point.<br><strong>If a word doesn't fit, roll again or read the rows next to it.</strong> You are never stuck with an unusable answer.</p>
     <div style="margin-top:6px">

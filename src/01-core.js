@@ -1122,6 +1122,7 @@ function rollTellingTable() {
   resultEl.innerHTML = `<strong>Q:</strong> ${escapeHtml(q || '(no question entered)')}<br>` +
     `<strong>Feat die:</strong> ${res.r.label} · chance: ${chance} (yes if ≥ ${res.threshold})<br>` +
     `<strong style="color:${res.answer==='YES'?'var(--success-text)':'var(--error-text)'};font-size:var(--fs-lg)">→ ${res.answer}${res.twist}</strong>`;
+  return Object.assign({ q, chance }, res);
 }
 // A random Lore row (Action/Aspect/Focus) from the active table — used by Chronicle Lore + random events.
 function _randomLoreRow() {
@@ -1158,6 +1159,7 @@ function rollLoreTable() {
   resultEl.style.display = 'block';
   resultEl.innerHTML = `<strong>Feat ${r.label} / Success ${rowIdx + 1}</strong>${moria ? ' <small style="color:var(--gold)">(Moria)</small>' : ''}<br>` + parts.join('<br>') + `<br><br><em>Phrase: <strong>"${phrase}"</strong></em>`;
   logOracleRoll(`Lore (${cols})`, phrase);
+  return { phrase, row, cols, r, moria };
 }
 
 function rollFortuneTable(ill) {
@@ -1727,3 +1729,33 @@ const BESTIARY = [
   { name: 'Marsh-dweller', source: 'Wilderland', end: 12, might: 1, hate: 3, parry: 4, armour: 1, atkTN: 14,
     attacks: [{ name: 'Clammy grasp', dice: 2, dmg: 4, inj: 16, special: 'Drags under' }], fell: 'Lures with pale lights. Lurks in bog-water.' }
 ];
+
+/* ---------- The Oracle "Ask" box (round 3) ----------
+   One question field, one odds choice, two answers: a yes/no from the Telling Table, or a few
+   words from the Lore Table. Both run the real table functions (so history and the Chronicle
+   log them exactly as before) and the answer comes back as a written slip. */
+let _askOdds = 'middling';
+function setAskOdds(v) {
+  _askOdds = v;
+  document.querySelectorAll('#ask-odds .seg-btn').forEach(b => b.classList.toggle('active', b.dataset.val === v));
+}
+function _askSlip(html) { const el = document.getElementById('ask-slip'); if (!el) return; el.innerHTML = html; el.hidden = false; el.classList.remove('fresh'); void el.offsetWidth; el.classList.add('fresh'); }
+function askYesNo() {
+  const q = (document.getElementById('ask-q').value || '').trim();
+  document.getElementById('oracle-telling-q').value = q;
+  document.getElementById('oracle-telling-chance').value = _askOdds;
+  const res = rollTellingTable();
+  const yes = res.answer === 'YES';
+  const twist = res.twist ? `<div class="slip-twist">${res.r.special === 'rune' ? 'A Gandalf rune — yes, and more than you hoped.' : 'The Eye — no, and worse besides.'}</div>` : '';
+  _askSlip(`<div class="slip-a ${yes ? 'yes' : 'no'}">${yes ? 'Yes' : 'No'}</div>${twist}` +
+    `<div class="slip-q">${q ? '“' + escapeHtml(q) + '”' : 'Your question'}</div>` +
+    `<div class="slip-d">Feat die ${res.r.label} · ${res.chance} odds · yes on ${res.threshold}+</div>`);
+}
+function askWords() {
+  const res = rollLoreTable();
+  const q = (document.getElementById('ask-q').value || '').trim();
+  const w = [res.row.action, res.row.aspect, res.row.focus].concat(res.moria && res.row.feature ? [res.row.feature] : []);
+  _askSlip(`<div class="slip-words">${w.map(x => `<span>${escapeHtml(x)}</span>`).join('<i>·</i>')}</div>` +
+    (q ? `<div class="slip-q">“${escapeHtml(q)}”</div>` : '') +
+    `<div class="slip-d">Read them as an action, a quality and a thing — literally or loosely. If they don’t fit, ask again.</div>`);
+}

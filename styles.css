@@ -1507,3 +1507,25 @@ body.dark[data-group="adventure"] { --grp: #97c483; } body.dark[data-group="roll
 #ch-timeline .ch-auto > button, #ch-timeline div:has(> .ch-p) > button { opacity: .55; padding: 2px 5px !important; }
 
 .play-scene:has(.scene-art)::after { display: none; }   /* the vignette replaces the watermark */
+
+/* ---- Oracle Ask box ---- */
+.oracle-ask textarea { width: 100%; min-height: 64px; font-family: var(--font-display); font-size: var(--fs-lg); line-height: 1.4; padding: 10px 12px;
+  border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--bg); color: var(--ink); resize: vertical; }
+.ask-lab { font-size: var(--fs-xs); color: var(--text-muted); font-weight: 600; margin: 10px 0 4px; }
+.ask-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+.ask-btns .btn { margin-top: 0; min-height: 46px; }
+.ask-slip { margin-top: 14px; padding: 16px 18px 14px; text-align: center; position: relative;
+  background: linear-gradient(175deg, #fbf3dd, #efe0b8); color: #2e2216; border: 1px solid #c9a14a; border-radius: 3px;
+  box-shadow: 0 3px 10px rgba(60,40,20,.2); transform: rotate(-.6deg); }
+.ask-slip::before { content: ''; position: absolute; left: 50%; top: -9px; width: 18px; height: 18px; margin-left: -9px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #b8452f, #6e160c); box-shadow: 0 1px 2px rgba(0,0,0,.35); }
+.ask-slip.fresh { animation: slipIn .35s var(--ease); }
+@keyframes slipIn { from { opacity: 0; transform: translateY(8px) rotate(-2deg); } to { opacity: 1; transform: rotate(-.6deg); } }
+@media (prefers-reduced-motion: reduce) { .ask-slip.fresh { animation: none; } }
+.slip-a { font-family: var(--font-display); font-size: 44px; font-weight: 700; line-height: 1; letter-spacing: .5px; }
+.slip-a.yes { color: #2f5a2a; } .slip-a.no { color: #8a2519; }
+.slip-twist { font-style: italic; margin-top: 4px; }
+.slip-q { font-family: var(--font-display); font-style: italic; font-size: var(--fs-md); margin-top: 8px; }
+.slip-d { font-size: var(--fs-xs); color: #6b5a44; margin-top: 8px; }
+.slip-words { font-family: var(--font-display); font-size: 26px; font-weight: 600; display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 10px; }
+.slip-words i { color: #a67a22; font-style: normal; }
