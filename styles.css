@@ -1779,6 +1779,10 @@ body.theme-sepia .card { background-image: linear-gradient(180deg, rgba(255,245,
 .map-overlay.view-only .map-actions .map-done { display: block; }
 .map-overlay.view-only .map-top { justify-content: flex-end; }
 /* marks, in the image's own pixels */
+#map-places .mp-town circle { fill: rgba(255, 244, 223, .18); stroke: #2b1a0c; stroke-width: 1.4; vector-effect: non-scaling-stroke; }
+#map-places .mp-town text { display: none; font-family: var(--font-display, serif); font-weight: 600; fill: #2b1a0c; stroke: rgba(255, 244, 223, .92); stroke-width: 3; paint-order: stroke; stroke-linejoin: round; vector-effect: non-scaling-stroke; pointer-events: none; }
+#map-svg.mp-near #map-places .mp-town text { display: inline; }
+#map-overlay.view-only #map-places { display: none; }
 #map-marks .mr-shadow { fill: none; stroke: rgba(255, 244, 223, .85); stroke-width: 7; stroke-linecap: round; stroke-linejoin: round; }
 #map-marks .mr-route { fill: none; stroke: #9b1c10; stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round; }
 #map-marks .mr-route.ahead { stroke-dasharray: 6 5; stroke: #5b1008; }

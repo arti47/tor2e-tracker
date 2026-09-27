@@ -104,10 +104,16 @@ const HexMap = {
     const end = path[path.length - 1], endT = this.terr(end[0], end[1]);
     return { path, lands, hexes: steps.length, hard: steps.filter(([r, c]) => this.terr(r, c).hard).length, perils, destPeril: endT.peril, destArea: endT.area };
   },
+  // the place in exactly this hex — a printed town first, then a named land
   placeAt(r, c) {
+    const hit = MAP_DATA.places.filter(p => p[1] === r && p[2] === c);
+    return ((hit.find(p => p.length > 3) || hit[0]) || [''])[0];
+  },
+  // the printed dot nearest an image point, within tol image pixels
+  dotNear(x, y, tol) {
     let best = null;
-    for (const [n, pr, pc] of MAP_DATA.places) { const d = Math.hypot(...this.center(pr, pc).map((v, i) => v - this.center(r, c)[i])); if (d < 30 && (!best || d < best.d)) best = { n, d }; }
-    return best ? best.n : '';
+    for (const p of MAP_DATA.places) { if (p.length < 5) continue; const d = Math.hypot(p[3] - x, p[4] - y); if (d <= tol && (!best || d < best.d)) best = { p, d }; }
+    return best ? best.p : null;
   }
 };
 
@@ -128,6 +134,7 @@ function openMapPicker(mode) {
   const img = svg.querySelector('image');
   if (img && !img.getAttribute('href')) { img.setAttribute('href', MAP_DATA.img); img.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', MAP_DATA.img); }
   initMapGestures();
+  _mapDrawPlaces();
   ov.classList.toggle('view-only', MapPick.mode === 'view');
   ov.classList.add('show');
   if (MapPick.mode === 'view') { _mapShowJourney(); return; }
@@ -190,34 +197,65 @@ function _mapDraw() {
   const R = MapPick.result;
   let h = '';
   if (R) {
-    const pts = R.path.map(([r, c]) => HexMap.center(r, c).map(v => v.toFixed(1)).join(',')).join(' ');
+    // the road runs from the town's printed dot, not the middle of its hex
+    const xy = R.path.map(([r, c]) => HexMap.center(r, c));
+    xy[0] = _placeXY(MapPick.from, MapPick.fromName); xy[xy.length - 1] = _placeXY(MapPick.to, MapPick.toName);
+    const pts = xy.map(p => p.map(v => (+v).toFixed(1)).join(',')).join(' ');
     h += `<polyline class="mr-shadow" points="${pts}"/><polyline class="mr-route" points="${pts}"/>`;
     R.path.forEach(([r, c], i) => { if (!i) return; const t = HexMap.terr(r, c); if (t.peril) h += _hexPoly(r, c, 'mr-peril'); else if (t.hard) { const [x, y] = HexMap.center(r, c); h += `<circle class="mr-hard" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.6"/>`; } });
   }
-  if (MapPick.via) h += _pin(MapPick.via, 'via');
-  if (MapPick.from) h += _pin(MapPick.from, 'from');
-  if (MapPick.to) h += _pin(MapPick.to, 'to');
+  if (MapPick.via) h += _pin(MapPick.via, 'via', MapPick.viaName);
+  if (MapPick.from) h += _pin(MapPick.from, 'from', MapPick.fromName);
+  if (MapPick.to) h += _pin(MapPick.to, 'to', MapPick.toName);
   g.innerHTML = h;
+  _mapScaleMarks();
 }
 function _hexPoly(r, c, cls) {
   const [x, y] = HexMap.center(r, c), s = MAP_DATA.grid.h * 2 / 3;
   const pts = [0, 1, 2, 3, 4, 5].map(k => { const a = Math.PI / 180 * (60 * k - 90); return (x + s * Math.cos(a)).toFixed(1) + ',' + (y + s * Math.sin(a)).toFixed(1); }).join(' ');
   return `<polygon class="${cls}" points="${pts}"/>`;
 }
-function _pin(rc, kind) {
-  const [x, y] = HexMap.center(rc[0], rc[1]);
+function _placeXY(rc, name) {
+  const p = name && MAP_DATA.places.find(q => q.length > 3 && q[0] === name && q[1] === rc[0] && q[2] === rc[1]);
+  return p ? [p[3], p[4]] : HexMap.center(rc[0], rc[1]);
+}
+function _pin(rc, kind, name) {
+  const [x, y] = _placeXY(rc, name);
   const col = kind === 'from' ? 'mr-from' : kind === 'to' ? 'mr-to' : 'mr-via';
-  return `<g class="mr-pin ${col}" transform="translate(${x.toFixed(1)},${y.toFixed(1)})"><path d="M0 0 C-7 -9 -9 -14 -9 -18 a9 9 0 1 1 18 0 c0 4 -2 9 -9 18z"/><circle cx="0" cy="-18" r="3.4" class="mr-pin-dot"/></g>`;
+  return `<g class="mr-pin ${col}" data-x="${x.toFixed(1)}" data-y="${y.toFixed(1)}" transform="translate(${x.toFixed(1)},${y.toFixed(1)})"><path d="M0 0 C-7 -9 -9 -14 -9 -18 a9 9 0 1 1 18 0 c0 4 -2 9 -9 18z"/><circle cx="0" cy="-18" r="3.4" class="mr-pin-dot"/></g>`;
 }
 
 /* view box: pan, pinch, wheel; taps pick hexes, a long press corrects one */
 function _mapSetVB(x, y, w) {
   const svg = document.getElementById('map-svg'); if (!svg) return;
   const box = svg.getBoundingClientRect(); const ar = (box.height || 1) / (box.width || 1);
-  w = Math.max(160, Math.min(MAP_DATA.W, w)); const h = w * ar;
+  // the printed map is 2501 px wide: past ~2.5 screen px per map px it is only blur, so stop there
+  w = Math.max(160, (box.width || 0) / 2.5, Math.min(MAP_DATA.W, w)); const h = w * ar;
   x = Math.max(-w * 0.25, Math.min(MAP_DATA.W - w * 0.75, x)); y = Math.max(-h * 0.25, Math.min(MAP_DATA.H - h * 0.75, y));
   MapPick.vb = { x, y, w, h };
   svg.setAttribute('viewBox', `${x.toFixed(1)} ${y.toFixed(1)} ${w.toFixed(1)} ${h.toFixed(1)}`);
+  _mapScaleMarks();
+}
+
+/* Drawn on top of the picture, in vector, so they stay sharp at any zoom: a ring on every
+   printed town you can tap, its name once you are close, and pins that keep one size. */
+function _mapScale() { const svg = document.getElementById('map-svg'), b = svg && svg.getBoundingClientRect(); return b && b.width && MapPick.vb ? b.width / MapPick.vb.w : 1; }
+function _mapDrawPlaces() {
+  const g = document.getElementById('map-places'); if (!g || g._drawn) return; g._drawn = true;
+  g.innerHTML = MAP_DATA.places.filter(p => p.length > 4).map(([n, r, c, x, y]) =>
+    `<g class="mp-town" data-x="${x}" data-y="${y}"><circle cx="${x}" cy="${y}" r="5"/><text x="${x}" y="${y}">${escapeHtml(n)}</text></g>`).join('');
+}
+function _mapScaleMarks() {
+  const k = _mapScale(), inv = 1 / k;
+  const svg = document.getElementById('map-svg'); if (!svg) return;
+  svg.classList.toggle('mp-near', k >= 1.1);
+  svg.querySelectorAll('#map-places .mp-town').forEach(t => {
+    const x = +t.dataset.x, y = +t.dataset.y;
+    t.firstChild.setAttribute('r', (9 * inv).toFixed(2));
+    const tx = t.lastChild; tx.setAttribute('x', (x + 12 * inv).toFixed(1)); tx.setAttribute('y', (y + 4.5 * inv).toFixed(1)); tx.style.fontSize = (13 * inv).toFixed(2) + 'px';
+  });
+  const s = Math.max(0.45, Math.min(1.6, 1.25 * inv));
+  svg.querySelectorAll('#map-marks .mr-pin').forEach(p => p.setAttribute('transform', `translate(${p.dataset.x},${p.dataset.y}) scale(${s.toFixed(3)})`));
 }
 function _mapFitAll() {
   if (MapPick.from && !MapPick.to) { const [x, y] = HexMap.center(...MapPick.from); _mapSetVB(x - 300, y - 200, 600); return; }
@@ -288,14 +326,19 @@ function initMapGestures() {
   svg.addEventListener('click', e => {
     const skip = dragged || pressed; dragged = false; pressed = false;
     if (skip || MapPick.mode !== 'pick') return;
-    const at = HexMap.at(..._mapClientToImg(e)); if (at) mapTapHex(at);
+    const [x, y] = _mapClientToImg(e);
+    // a town's printed dot is chosen by name when the tap lands within a fingertip of it
+    const tol = Math.max(8, Math.min(30, 24 / _mapScale()));
+    const town = HexMap.dotNear(x, y, tol);
+    if (town) { mapTapHex([town[1], town[2]], town[0]); return; }
+    const at = HexMap.at(x, y); if (at) mapTapHex(at);
   });
   svg.addEventListener('wheel', e => { e.preventDefault(); const [x, y] = _mapClientToImg(e); mapZoom(e.deltaY > 0 ? 1.15 : 1 / 1.15, x, y); }, { passive: false });
   svg.addEventListener('contextmenu', e => { e.preventDefault(); if (MapPick.mode !== 'pick') return; pressed = true; const at = HexMap.at(..._mapClientToImg(e)); if (at) openHexFix(at); });
 }
-function mapTapHex(rc) {
+function mapTapHex(rc, name) {
   const which = MapPick.setting;
-  if (!_mapSet(which, rc)) return;
+  if (!_mapSet(which, rc, name)) return;
   if (which === 'from' && !MapPick.to) MapPick.setting = 'to';
   else if (which === 'via') MapPick.setting = 'to';
   _mapRecompute();
@@ -428,7 +471,7 @@ function _mapShowJourney() {
   const i = Math.max(0, Math.min(j.route.length - 1, parseInt(j.currentHex) || 0));
   const pts = a => a.map(([r, c]) => HexMap.center(r, c).map(v => v.toFixed(1)).join(',')).join(' ');
   g.innerHTML = `<polyline class="mr-shadow" points="${pts(j.route)}"/><polyline class="mr-route ahead" points="${pts(j.route.slice(i))}"/><polyline class="mr-route" points="${pts(j.route.slice(0, i + 1))}"/>` +
-    _pin(j.route[0], 'from') + _pin(j.route[j.route.length - 1], 'to') + _pin(j.route[i], 'via');
+    _pin(j.route[0], 'from', j.origin) + _pin(j.route[j.route.length - 1], 'to', j.destination) + _pin(j.route[i], 'via');
   _mapFitPath(j.route);
   const el = document.getElementById('map-summary');
   if (el) el.innerHTML = `<div class="map-sum-head"><strong>${escapeHtml(j.origin || '')}</strong> → <strong>${escapeHtml(j.destination || '')}</strong></div><div class="map-sum-nums"><span><b>${i}</b> of <b>${j.route.length - 1}</b> hexes</span><span>${journeyRegionNow(j)} Land here</span></div>`;

@@ -949,6 +949,30 @@ module.exports = {
     } catch (e) { tp.err = String(e); }
     checks.push({ ok: !tp.err && tp.first < 0.5 && tp.turned < 0.5 && tp.dragKeeps && tp.route,
       msg: `tapping the map chooses the hex under the finger, after it changes shape too, and a drag chooses nothing (${JSON.stringify(tp)})` });
+
+    // Tapping a town's printed dot chooses that town by name — a fingertip off the dot still counts,
+    // an empty spot names nothing. Zoom stops where the picture turns to blur; names stay vector.
+    const td = {};
+    try {
+      await page.evaluate(() => { Object.assign(MapPick, { from: null, to: null, via: null }); closeMapPicker(); char.safeHaven = 'Bree'; saveCharacter(); openMapPicker(); _mapSetVB(700, 300, 700); });
+      await page.waitForTimeout(250);
+      const scr = (x, y) => page.evaluate(([x, y]) => { const svg = document.getElementById('map-svg'); const q = Object.assign(svg.createSVGPoint(), { x, y }).matrixTransform(svg.getScreenCTM()); return [q.x, q.y]; }, [x, y]);
+      const riv = await page.evaluate(() => MAP_DATA.places.find(p => p[0] === 'Rivendell'));
+      let [x, y] = await scr(riv[3], riv[4]); await page.mouse.click(x + 7, y + 5); await page.waitForTimeout(200);
+      td.town = await page.evaluate(() => [MapPick.toName, document.getElementById('map-to').value]);
+      // a spot at least 3 hexes from every printed dot
+      const empty = await page.evaluate(() => { const v = MapPick.vb; for (let x = v.x + v.w * .2; x < v.x + v.w * .8; x += 9) for (let y = v.y + v.h * .3; y < v.y + v.h * .8; y += 9) { if (MAP_DATA.places.every(p => p.length < 5 || Math.hypot(p[3] - x, p[4] - y) > 62)) { const h = HexMap.at(x, y); if (h && HexMap.passable(...h) && !HexMap.placeAt(...h)) return [x, y]; } } return null; });
+      [x, y] = await scr(...empty); await page.mouse.click(x, y); await page.waitForTimeout(200);
+      td.spot = await page.evaluate(() => MapPick.toName);
+      for (let k = 0; k < 12; k++) await page.evaluate(() => mapZoom(0.7));
+      td.maxScale = +(await page.evaluate(() => _mapScale())).toFixed(2);
+      td.names = await page.evaluate(() => [...document.querySelectorAll('#map-places text')].filter(t => t.checkVisibility()).length);
+      td.dots = await page.evaluate(() => MAP_DATA.places.filter(p => p.length > 4).length);
+      td.dotsInHex = await page.evaluate(() => MAP_DATA.places.filter(p => p.length > 4 && Math.hypot(p[3] - HexMap.center(p[1], p[2])[0], p[4] - HexMap.center(p[1], p[2])[1]) > MAP_DATA.grid.w * 1.6).map(p => p[0]));
+      await page.evaluate(() => closeMapPicker());
+    } catch (e) { td.err = String(e); }
+    checks.push({ ok: !td.err && td.town[0] === 'Rivendell' && td.town[1] === 'Rivendell' && td.spot === 'a spot on the map' && td.maxScale <= 2.51 && td.names > 0 && td.dots >= 50 && !td.dotsInHex.length,
+      msg: `tapping near a town's printed dot chooses the town; an empty spot names nothing; zoom stops at 2.5x with names drawn sharp (${JSON.stringify(td)})` });
     await hero();
 
 
