@@ -17,6 +17,7 @@ function bindTabs() {
       if (t.dataset.tab === 'reference') renderReference();
       if (t.dataset.tab === 'gm' && typeof renderGm === 'function') renderGm();
       if (typeof initHintButtons === 'function') initHintButtons();       // (?) hints on any newly-shown markup
+      clampLongHints();
       if (typeof renderNewcomerBanner === 'function') renderNewcomerBanner();
       refreshNav();
       window.scrollTo(0, 0);
@@ -82,6 +83,47 @@ function restoreLastTab() {
   } catch (e) {}
 }
 
+/* ---------- ONE-TIME TIPS ----------
+   Every tab opens with an explanation (.tab-intro — GOTCHA 14 keeps them). Shown every
+   visit they became a wall of grey text; now each carries "Got it" and stays dismissed
+   (tor2e-tips, device-global). Menu → Appearance → "Show the tips again" restores them. */
+const TIPS_KEY = 'tor2e-tips';
+function _tipsSeen() { try { return JSON.parse(localStorage.getItem(TIPS_KEY)) || {}; } catch (e) { return {}; } }
+function initTips() {
+  const seen = _tipsSeen();
+  document.querySelectorAll('.panel .tab-intro').forEach(el => {
+    const panel = el.closest('.panel'); const id = panel ? panel.id : '';
+    if (!el.querySelector('.tip-dismiss')) {
+      const b = document.createElement('button');
+      b.className = 'tip-dismiss'; b.type = 'button'; b.textContent = 'Got it';
+      b.setAttribute('aria-label', 'Hide this tip');
+      b.onclick = () => { const s = _tipsSeen(); s[id] = 1; try { localStorage.setItem(TIPS_KEY, JSON.stringify(s)); } catch (e) {} el.classList.add('tip-hidden'); };
+      el.appendChild(b);
+    }
+    el.classList.toggle('tip-hidden', !!seen[id]);
+  });
+}
+/* Long explanations collapse to one line marked ⓘ; tap to read the rest. The text is all still
+   there (and still read by screen readers) — it just stops shouting from every card. */
+function clampLongHints() {
+  document.querySelectorAll('.panel .card .hint:not(.hint-clamp-checked)').forEach(h => {
+    h.classList.add('hint-clamp-checked');
+    if (h.closest('.tab-intro')) return;
+    if (h.querySelector('button, a, input, select, textarea')) return;
+    if ((h.textContent || '').trim().length < 110) return;
+    h.classList.add('hint-clamp');
+    h.setAttribute('role', 'button'); h.setAttribute('tabindex', '0'); h.setAttribute('aria-expanded', 'false');
+    const t = () => { const o = h.classList.toggle('open'); h.setAttribute('aria-expanded', o ? 'true' : 'false'); };
+    h.addEventListener('click', t);
+    h.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); t(); } });
+  });
+}
+function resetTips() {
+  try { localStorage.removeItem(TIPS_KEY); } catch (e) {}
+  initTips();
+  if (typeof showToast === 'function') showToast('Tips are back on every tab.');
+}
+
 /* ---------- MENU ---------- */
 function toggleMenu() {
   const ov = document.getElementById('menu-overlay');
@@ -91,7 +133,7 @@ function toggleMenu() {
     const el = document.getElementById('sync-status-line');
     if (el && typeof Sync !== 'undefined') {
       const on = Sync.isEnabled();
-      el.textContent = (on ? '☁️ ' : '📴 ') + Sync.status();
+      el.textContent = on ? 'Cloud: ' + Sync.status() : 'Saved locally on this device.';
       el.style.color = on ? 'var(--success-text)' : 'var(--text-muted)';
     }
   }
@@ -228,10 +270,10 @@ let diceState = {
   support: 'none',  // 'none' | '1d' | '2d'
   magical: false,
   keen: false,
-  inspired: false,        // RAW p.20: Inspired doubles the +1d Hope bonus to +2d (no effect without Hope spend)
+  inspired: false,        // Inspired doubles the +1d Hope bonus to +2d (no effect without Hope spend)
   inspiredSource: '',     // 'Brave at a Pinch' | 'Distinctive Feature' | ...
   isAttack: false,  // only true when rolling a combat proficiency (weapon attack)
-  foeParry: 0,      // current foe's Parry rating — adds to Str TN on attack rolls (RAW p.98)
+  foeParry: 0,      // current foe's Parry rating — adds to Str TN on attack rolls
   dragonSlayer: false,  // Bardings virtue: toggled on for attacks vs Might 2+ foes
   // Sources that contribute Favoured / Ill-Favoured Feat die rolls. Populated by quickRoll
   // from blessings/virtues/toggles; the player's manual seg-btn pick stacks on top.
@@ -636,7 +678,7 @@ function refreshFavCancelHint() {
   if (cancels) {
     const favList = [...autoFavs, ...(manualFav ? ['Manual Favoured'] : [])].join(', ');
     const illList = [...autoIlls, ...(manualIll ? ['Manual Ill'] : [])].join(', ');
-    el.innerHTML = `⚖ ${favList} ⇄ ${illList} — cancel to Normal (RAW p.20)`;
+    el.innerHTML = `⚖ ${favList} ⇄ ${illList} — cancel to Normal`;
     el.style.display = 'block';
   } else if (hasAutoFav && !manualFav && !manualIll) {
     el.innerHTML = `★ Auto-Favoured: ${autoFavs.join(', ')}`;
@@ -1784,6 +1826,8 @@ document.addEventListener('DOMContentLoaded', () => {
   initSwipeTabs();          // U4: swipe between tabs on touch
   initCollapsibleCards();   // U3: tap a card title to collapse (remembered per device)
   initHintButtons();        // U7/B: (?) hints app-wide (text-matched labels + data-hint)
+  initTips();               // one-time tab tips (dismissable intros)
+  clampLongHints();         // long explanations fold to one tappable line
   renderNewcomerBanner();   // A: 'start here' card while the active hero is still blank
   // Dice tab: the manual dice controls fold away behind the quick-roll grid. Remember the
   // player's choice, but default OPEN for anyone who already knows the app (no hidden controls

@@ -54,7 +54,14 @@ function applyTheme() {
   const tc = document.querySelector('meta[name="theme-color"]');
   if (tc) tc.setAttribute('content', eff === 'dark' ? '#15110c' : (eff === 'sepia' ? '#ece0bf' : '#f5ecd9'));
   const btn = document.getElementById('dark-mode-btn');
-  if (btn) btn.textContent = '🎨 Theme: ' + THEME_LABELS[pref];
+  if (btn) setMenuLabel(btn, 'Theme', THEME_LABELS[pref]);
+}
+/* Menu rows: label on the left, current state on the right (no emoji soup). */
+function setMenuLabel(btn, label, state) {
+  // DOM, not innerHTML+escapeHtml: this runs at boot from applyTheme, before 05-combat-build.js loads.
+  btn.textContent = '';
+  const a = document.createElement('span'); a.textContent = label; btn.appendChild(a);
+  if (state) { const b = document.createElement('span'); b.className = 'm-state'; b.textContent = state; btn.appendChild(b); }
 }
 function cycleTheme() {
   const next = THEMES[(THEMES.indexOf(currentThemePref()) + 1) % THEMES.length];
@@ -386,7 +393,7 @@ async function toggleMoriaMadnessPath() {
     char.shadowPath = char.shadowPathOrig || '';
     char.shadowPathOrig = '';
   } else {
-    if (!await confirmStyled('Follow the <strong>Moria-Madness</strong> Shadow Path?<br><br>Per the Moria solo rules (p.43) a Dwarf overcome by the sacred memory of Khazad-dûm may suffer Moria-Madness — Flaws: <em>Distracted, Mistrustful, Blinded, Jealous</em> — instead of the Flaws of "' + escapeHtml(char.shadowPath || '(none)') + '". Reversible.', '⛏️ Moria-Madness')) return;
+    if (!await confirmStyled('Follow the <strong>Moria-Madness</strong> Shadow Path?<br><br>A Dwarf overcome by the sacred memory of Khazad-dûm may suffer Moria-Madness — Flaws: <em>Distracted, Mistrustful, Blinded, Jealous</em> — instead of the Flaws of "' + escapeHtml(char.shadowPath || '(none)') + '". Reversible.', '⛏️ Moria-Madness')) return;
     char.shadowPathOrig = char.shadowPath || '';
     char.shadowPath = 'Moria-Madness';
   }
@@ -1192,7 +1199,7 @@ function refreshXpMode() {
   mBtn.textContent = '🏆 Award Milestone XP';
   note.style.display = '';
   note.innerHTML = (mode === 'session'
-      ? 'Earning XP per session (RAW). '
+      ? 'Earning XP per session. '
       : 'Earning XP per milestone (Strider Mode alternative). ')
     + '<a href="#" onclick="switchXpMode();return false" style="color:var(--gold)">switch</a>';
 }
@@ -1479,9 +1486,9 @@ function refreshStriderUI() {
   }
   // Mode toggle button labels.
   const btn = document.getElementById('strider-mode-btn');
-  if (btn) btn.textContent = char.striderMode ? '🗡️ Solo Play: Strider Mode — ON' : '🗡️ Solo Play: Strider Mode';
+  if (btn) setMenuLabel(btn, 'Solo Play: Strider Mode', char.striderMode ? 'On' : 'Off');
   const mbtn = document.getElementById('moria-mode-btn');
-  if (mbtn) mbtn.textContent = char.moriaMode ? '⛏️ Solo Play: Moria campaign — ON' : '⛏️ Solo Play: Moria campaign';
+  if (mbtn) setMenuLabel(mbtn, 'Solo Play: Moria campaign', char.moriaMode ? 'On' : 'Off');
   // GM Screen (P6): device-global toggle, independent of char mode. Keep its tab + label in sync.
   if (typeof refreshGmUI === 'function') refreshGmUI();
   if (typeof refreshNav === 'function') refreshNav();
@@ -1517,7 +1524,7 @@ function applyCompact() {
   const on = localStorage.getItem(COMPACT_KEY) === '1';
   document.body.classList.toggle('compact', on);
   const btn = document.getElementById('compact-mode-btn');
-  if (btn) btn.textContent = on ? '📏 Normal Spacing' : '📏 Compact Mode';
+  if (btn) setMenuLabel(btn, 'Compact spacing', on ? 'On' : 'Off');
 }
 function toggleCompactMode() {
   const on = localStorage.getItem(COMPACT_KEY) === '1';
@@ -1539,7 +1546,7 @@ function applyTextSize() {
   if (v === 'small') document.body.classList.add('text-small');
   else if (v === 'large') document.body.classList.add('text-large');
   const btn = document.getElementById('textsize-btn');
-  if (btn) btn.textContent = '🔠 Text Size: ' + v.charAt(0).toUpperCase() + v.slice(1);
+  if (btn) setMenuLabel(btn, 'Text size', v.charAt(0).toUpperCase() + v.slice(1));
 }
 function cycleTextSize() {
   const v = localStorage.getItem(TEXTSIZE_KEY) || 'normal';

@@ -15,9 +15,9 @@ function refreshGmUI() {
   const vis = gmVisible();
   if (tab) tab.style.display = vis ? '' : 'none';
   const btn = document.getElementById('gm-mode-btn');
-  if (btn) btn.textContent = gmInCampaign()
-    ? (Sync.isLoremaster() ? '🎲 GM Screen (campaign: you are Loremaster)' : '🎲 GM Screen (campaign: Loremaster only)')
-    : (gmEnabled() ? '🎲 Disable GM Screen' : '🎲 Enable GM Screen');
+  if (btn) setMenuLabel(btn, 'GM Screen', gmInCampaign()
+    ? (Sync.isLoremaster() ? 'You are Loremaster' : 'Loremaster only')
+    : (gmEnabled() ? 'On' : 'Off'));
   if (!vis && tab && tab.classList.contains('active')) {
     const home = document.querySelector('.tab[data-tab="character"]');
     if (home) home.click();

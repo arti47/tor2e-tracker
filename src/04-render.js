@@ -310,18 +310,21 @@ function renderCombatTasks() {
   if (!card) return;
   card.style.display = 'block';
   const labels = { forward: 'Forward', open: 'Open', defensive: 'Defensive', rearward: 'Rearward' };
+  // Only the task your stance allows is shown — four greyed-out buttons read as four broken ones.
+  let shown = 0;
   card.querySelectorAll('button[data-task]').forEach(btn => {
     const matches = btn.dataset.stanceReq === char.stance;
-    btn.style.opacity = matches ? '1' : '0.35';
-    btn.style.cursor = matches ? 'pointer' : 'not-allowed';
-    btn.style.background = matches ? 'var(--gold-soft)' : 'var(--bg-deep)';
-    btn.style.borderColor = matches ? 'var(--gold)' : 'var(--border)';
+    btn.style.display = matches ? '' : 'none';
+    btn.style.opacity = '1';
+    if (matches) shown++;
   });
+  const grid = document.getElementById('combat-tasks-grid');
+  if (grid) grid.style.display = shown ? '' : 'none';
   const hint = document.getElementById('combat-tasks-hint');
   if (hint) {
     hint.textContent = char.stance
-      ? `Current stance: ${labels[char.stance]} — matching task highlighted gold.`
-      : 'Pick a stance on the Combat tab to enable.';
+      ? (shown ? `Your ${labels[char.stance] || char.stance} stance allows this task.` : `No combat task goes with the ${labels[char.stance] || char.stance} stance.`)
+      : 'Choose a stance on the Combat tab — each stance unlocks one combat task.';
   }
 }
 
@@ -368,7 +371,7 @@ let fpState = null;
 async function awardSessionXP() {
   const sp = parseInt(char.skillPts) || 0;
   const ap = parseInt(char.advPts) || 0;
-  if (!await confirmStyled(`📜 <strong>End Session — award XP</strong><br><br>Per Core Rules p.55: <strong>+3 Skill Points + 3 Adventure Points</strong> per session attended.<br><br>SP: ${sp} → ${sp + 3}<br>AP: ${ap} → ${ap + 3}`, '📜 End Session')) return;
+  if (!await confirmStyled(`📜 <strong>End Session — award XP</strong><br><br><strong>+3 Skill Points + 3 Adventure Points</strong> per session attended.<br><br>SP: ${sp} → ${sp + 3}<br>AP: ${ap} → ${ap + 3}`, '📜 End Session')) return;
   char.skillPts = sp + 3;
   char.advPts = ap + 3;
   saveCharacter();
@@ -538,7 +541,7 @@ function fpRenderStep2() {
   if (taintEl) {
     if (taintedItems.length > 0) {
       taintEl.style.display = 'block';
-      taintEl.innerHTML = `<strong>⚠️ Shadow Taint:</strong> ${taintedItems.length} cursed item${taintedItems.length>1?'s':''} (${taintedItems.map(i=>i.name).join(', ')}) → <strong>+${taintedItems.length} Shadow</strong> this phase (Core Rules p.165). Applied after the Shadow Removal you choose below.`;
+      taintEl.innerHTML = `<strong>⚠️ Shadow Taint:</strong> ${taintedItems.length} cursed item${taintedItems.length>1?'s':''} (${taintedItems.map(i=>i.name).join(', ')}) → <strong>+${taintedItems.length} Shadow</strong> this phase. Applied after the Shadow Removal you choose below.`;
     } else {
       taintEl.style.display = 'none';
     }
@@ -2301,7 +2304,7 @@ function bandRoll(successDice, fav, tn, opts) {
   const total = feat.special === 'rune' ? null : feat.value + sum;
   let outcome;
   if (feat.special === 'rune') outcome = 'SUCCESS (Rune)';
-  else if (feat.special === 'eye' && miserable) outcome = 'FAIL (Eye, Miserable)';  // Eye only auto-fails when Miserable (RAW)
+  else if (feat.special === 'eye' && miserable) outcome = 'FAIL (Eye, Miserable)';  // Eye only auto-fails when Miserable
   else outcome = (total >= tn) ? 'SUCCESS' : 'FAIL';
   return { feat, dice, icons, total, outcome, weary };
 }
@@ -3004,12 +3007,12 @@ async function takeShortRest() {
   const max = parseInt(char.endMax) || 0;
   if (cur >= max) { alert('Endurance already at maximum.'); return; }
   if (char.wounded) {
-    alert('☀️ Short Rest while Wounded: no Endurance recovered (Core Rules p.71).');
+    alert('☀️ Short Rest while Wounded: no Endurance recovered.');
     return;
   }
   // Frequency: one Short Rest per day (Core Rules p.71). Allow an explicit override.
   if (char.shortRestUsedToday) {
-    if (!await confirmStyled(`You have already taken a Short Rest on Day ${char.dayCount || 1}.<br><br>RAW allows one Short Rest per day. Take another anyway?`, '☀️ Already Rested Today')) return;
+    if (!await confirmStyled(`You have already taken a Short Rest on Day ${char.dayCount || 1}.<br><br>The rules allow one Short Rest per day. Take another anyway?`, '☀️ Already Rested Today')) return;
   }
   const recovered = Math.min(str, max - cur);
   if (!await confirmStyled(`Recover <strong>+${recovered}</strong> Endurance (your STRENGTH ${str}).<br>End: ${cur} → ${cur + recovered} / ${max}<br><br><small>At least 1 hour of inactivity. Marks your Short Rest for Day ${char.dayCount || 1}.</small>`, '☀️ Short Rest')) return;
@@ -3360,7 +3363,7 @@ function renderMagicalItemForm() {
     // Famous Weapon / Armour — up to 3 qualities. First active, rest dormant.
     const rewardOpts = '<option value="">— Custom / leave blank —</option>' +
       ENCHANTED_REWARDS.map(r => `<option value="${r.name}" data-desc="${escapeHtml(r.desc)}">${r.enchanted ? '✨ ' : ''}${r.name}</option>`).join('');
-    section.innerHTML = `<p class="hint" style="text-align:left;line-height:1.5;margin-bottom:8px">Famous Weapons/Armour have up to <strong>3 qualities</strong>, with at least 1 Enchanted Reward (per RAW p.162). Only the <strong>first is active</strong> when found; the rest unlock via new Valour rank or the Visiting the Treasury undertaking.</p>` +
+    section.innerHTML = `<p class="hint" style="text-align:left;line-height:1.5;margin-bottom:8px">Famous Weapons/Armour have up to <strong>3 qualities</strong>, with at least 1 Enchanted Reward. Only the <strong>first is active</strong> when found; the rest unlock via new Valour rank or the Visiting the Treasury undertaking.</p>` +
       [1,2,3].map(n => `
         <div style="padding:8px;background:${n===1?'var(--gold-soft)':'var(--bg-deep)'};border:1px solid ${n===1?'var(--gold)':'var(--border)'};border-radius:var(--r-sm);margin-bottom:6px">
           <strong style="font-size:var(--fs-xs);color:var(--red-dark)">Quality ${n} ${n===1 ? '<span style="background:var(--gold);color:white;padding:1px 6px;border-radius:var(--r-sm);font-size:var(--fs-xs)">ACTIVE on find</span>' : '<span style="background:var(--btn-secondary-bg);color:white;padding:1px 6px;border-radius:var(--r-sm);font-size:var(--fs-xs)">DORMANT</span>'}</strong>
@@ -3522,7 +3525,7 @@ async function unlockDormantQuality(itemIdx) {
   if (nextDormantIdx < 0) { alert('No dormant qualities to unlock.'); return; }
   const q = item.qualities[nextDormantIdx];
 
-  const method = await promptStyled(`🔓 Unlock dormant quality on "${item.name}":\n\n  ${q.name}\n  ${q.description}\n\nHow are you unlocking it?\n\n  1. Via new VALOUR rank (instead of taking a Reward this rank-up — Core Rules p.163)\n  2. Via VISITING THE TREASURY undertaking (trade in 1 Reward from war gear at your folk's treasury — pp.121, 165)\n\nEnter 1 or 2 to confirm, or Cancel to abort.`, '');
+  const method = await promptStyled(`🔓 Unlock dormant quality on "${item.name}":\n\n  ${q.name}\n  ${q.description}\n\nHow are you unlocking it?\n\n  1. Via new VALOUR rank (instead of taking a Reward this rank-up)\n  2. Via VISITING THE TREASURY undertaking (trade in 1 Reward from war gear at your folk's treasury)\n\nEnter 1 or 2 to confirm, or Cancel to abort.`, '');
 
   if (method === null) return;                       // Cancel — the user meant to back out, say nothing
   if (method !== '1' && method !== '2') {
@@ -3544,7 +3547,7 @@ async function flyYouFools() {
   const foes = (typeof encEngagedFoes === 'function') ? encEngagedFoes() : [];
   const choice = await showModal({
     title: '🏃 Fly, You Fools!',
-    message: 'Two ways to leave a fight (Core Rules p.95):<br><br>' +
+    message: 'Two ways to leave a fight:<br><br>' +
       ((char.flyPending && char.stance === 'rearward' && foes.length)
         ? '<strong>You fell back last round</strong> — your escape is owed. Take it now, without a roll.<br><br>'
         : '') +
@@ -3647,7 +3650,7 @@ async function spendFPforHope() {
     alert('Hope is already at maximum.');
     return;
   }
-  if (!await confirmStyled(`Spend 1 Fellowship point to gain +1 Hope?\n\nFP: ${fp} → ${fp - 1}\nHope: ${curHope} → ${curHope + 1} / ${maxHope}\n\n(Per RAW: only during a resting scene.)`)) return;
+  if (!await confirmStyled(`Spend 1 Fellowship point to gain +1 Hope?\n\nFP: ${fp} → ${fp - 1}\nHope: ${curHope} → ${curHope + 1} / ${maxHope}\n\n(only during a resting scene.)`)) return;
   char.fellowship = fp - 1;
   char.hopeCur = Math.min(maxHope, curHope + 1);
   saveCharacter();

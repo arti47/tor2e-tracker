@@ -18,7 +18,7 @@ module.exports = {
       return { on, off, btnOn, btnOff };
     });
     checks.push({ ok: vis.on && vis.off, msg: 'GM flag shows/hides the tab' });
-    checks.push({ ok: /Disable/.test(vis.btnOn) && /Enable/.test(vis.btnOff), msg: `menu button label tracks state (${vis.btnOn} / ${vis.btnOff})` });
+    checks.push({ ok: /On$/.test(vis.btnOn) && /Off$/.test(vis.btnOff), msg: `menu button label tracks state (${vis.btnOn} / ${vis.btnOff})` });
 
     // renderGm lists at least the active hero, with a control row.
     const listed = await page.evaluate(() => {

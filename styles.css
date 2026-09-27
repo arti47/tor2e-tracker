@@ -883,3 +883,26 @@ body.dark .m-bar > i.shadow { background: repeating-linear-gradient(135deg, #000
 .callout.danger { background: var(--red-soft); }
 .callout.danger .card-title { color: var(--red-dark); }
 .callout.info { background: var(--gold-paler); }
+
+/* One-time tips + menu */
+.tab-intro { position: relative; padding-right: 70px !important; }
+.tab-intro.tip-hidden { display: none !important; }
+.tip-dismiss {
+  position: absolute; top: 0; right: 0;
+  background: var(--card-bg); color: var(--ink); border: 1px solid var(--border); border-radius: var(--r-pill);
+  font-size: var(--fs-xs); font-weight: 600; padding: 4px 10px;
+}
+.menu-status { font-size: var(--fs-xs); color: var(--text-faint); text-align: center; margin: -6px 0 var(--sp-3); }
+.menu button { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); }
+.menu button.close { justify-content: center; }
+.m-state { font-size: var(--fs-xs); font-weight: 600; color: var(--text-muted); white-space: nowrap; }
+.menu-sec { border-top: 1px solid var(--line); }
+.menu-sec > summary { list-style: none; cursor: pointer; display: flex; justify-content: space-between; align-items: center; padding: var(--sp-3) 2px; margin: 0; }
+.menu-sec > summary::-webkit-details-marker { display: none; }
+.menu-sec > summary::after { content: '⌄'; font-size: 16px; color: var(--text-faint); transition: transform .15s var(--ease); transform: rotate(-90deg); }
+.menu-sec[open] > summary::after { transform: none; }
+.main-menu > button:not(.close) { font-weight: 600; }
+.main-menu .close { margin-top: var(--sp-3); }
+.hint-clamp { cursor: pointer; text-align: left !important; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+.hint-clamp::before { content: 'ⓘ '; color: var(--gold); font-style: normal; }
+.hint-clamp.open { display: block; -webkit-line-clamp: unset; overflow: visible; }

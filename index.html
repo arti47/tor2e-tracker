@@ -475,7 +475,7 @@
     <div class="field"><label class="locked-label">Cultural Blessing</label><input data-field="blessing" readonly placeholder="Set from Build tab"></div>
     <div class="field"><label class="locked-label">Calling</label><input data-field="calling" readonly placeholder="Set from Build tab"></div>
     <div class="field"><label class="locked-label">Shadow Path</label><input data-field="shadowPath" readonly placeholder="Set from Build tab"></div>
-    <button id="moria-madness-btn" onclick="toggleMoriaMadnessPath()" class="add-row-btn" style="display:none;width:100%;font-size:var(--fs-xs);padding:5px 10px;margin-bottom:8px;background:var(--btn-secondary-bg)" title="Moria-madness afflicts Dwarves in Moria — see Moria solo rules p.43"></button>
+    <button id="moria-madness-btn" onclick="toggleMoriaMadnessPath()" class="add-row-btn" style="display:none;width:100%;font-size:var(--fs-xs);padding:5px 10px;margin-bottom:8px;background:var(--btn-secondary-bg)" title="Moria-madness afflicts Dwarves in Moria"></button>
     <div class="field"><label class="locked-label">Patron</label><input data-field="patron" readonly placeholder="Set from Build tab"></div>
     <div class="field">
       <label data-hint="Standard of Living">Standard of Living</label>
@@ -602,7 +602,7 @@
       <button onclick="takeProlongedRest()" style="background:var(--rest-blue);color:white;border:none;border-radius:var(--r-sm);padding:8px 10px;font-size:var(--fs-sm);font-weight:600;cursor:pointer">🌙 Prolonged Rest <small style="font-weight:400;opacity:0.9">full End</small></button>
     </div>
     <p class="hint" id="rest-day-status" style="margin-top:6px;font-weight:600"></p>
-    <p class="hint">Weary when Current ≤ Load + Fatigue · Wounded → Short = 0; Prolonged = +Str only · 0 Hope → +1 on Prolonged Rest · Safe Haven Prolonged Rest → −1 Fatigue · Prolonged Rest ends the day (−1 injury day)</p>
+    <p class="hint">Resting: a short rest restores Strength in Endurance; a night’s sleep restores it all (only Strength if Wounded).</p>
   </div>
 
   <div class="card">
@@ -649,9 +649,9 @@
     <div style="margin-top:8px;display:flex;align-items:center;gap:8px;justify-content:center;padding:8px;background:var(--gold-soft);border:1px solid var(--gold);border-radius:var(--r-sm);flex-wrap:wrap">
       <span style="font-size:var(--fs-xs);color:var(--red-dark);font-weight:600">🔥 Harden Will:</span>
       <button onclick="hardenWill()" id="harden-will-btn" style="background:var(--gold);color:white;border:none;border-radius:var(--r-sm);padding:6px 12px;font-size:var(--fs-xs);font-weight:600;cursor:pointer">Clear Shadow → +1 Scar</button>
-      <small style="color:var(--text-muted);font-size:var(--fs-xs);text-align:left;flex-basis:100%">Available when Shadow > 0 and (Shadow + Scars) < Max Hope</small>
+      <small style="color:var(--text-muted);font-size:var(--fs-xs);text-align:left;flex-basis:100%">Turn all your Shadow into one permanent Scar.</small>
     </div>
-    <p class="hint">Miserable when Shadow + Scars ≥ Current Hope · Bout of Madness when Shadow + Scars ≥ Max Hope</p>
+    <p class="hint">When Shadow reaches your Hope you are Miserable; when it reaches your maximum Hope, madness takes hold.</p>
     <div id="bout-due" style="display:none;margin-top:8px;padding:8px;border:1px solid var(--red-dark);border-radius:var(--r-sm);background:var(--red-soft)"></div>
   </div>
 
@@ -719,7 +719,7 @@
     <div style="margin-top:14px;padding:10px;background:var(--bg-deep);border:1px solid var(--border);border-radius:var(--r-sm)">
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
         <strong style="flex:1;color:var(--red-dark);font-size:var(--fs-sm)">📜 End Session</strong>
-        <small style="color:var(--text-muted);font-size:var(--fs-xs)">RAW p.55: +3 SP + 3 AP per session</small>
+        <small style="color:var(--text-muted);font-size:var(--fs-xs)">+3 SP + 3 AP per session</small>
       </div>
       <button onclick="awardSessionXP()" id="xp-session-btn" class="add-row-btn" style="background:var(--red);width:100%;margin-top:6px">Award Session XP (+3 SP / +3 AP)</button>
       <button onclick="openMilestonePicker()" id="xp-milestone-btn" class="add-row-btn" style="background:var(--btn-secondary-bg);width:100%;margin-top:4px;font-size:var(--fs-xs)">🏆 Award Milestone XP (Strider Mode alternative)</button>
@@ -1036,7 +1036,7 @@
     <button data-hint-btn="Opening Volley" id="opening-volley-btn" onclick="toggleOpeningVolley()" style="width:100%;margin-top:10px;background:var(--btn-secondary-bg);color:white;border:none;border-radius:var(--r-sm);padding:8px 10px;font-size:var(--fs-sm);font-weight:600;cursor:pointer">🏹 Opening Volley (aware) — off</button>
     <div id="opening-volley-info" style="display:none;margin-top:8px;padding:8px;background:var(--gold-soft);border:1px solid var(--gold);border-radius:var(--r-sm);font-size:var(--fs-sm);text-align:center">
       Parry <strong>vs ranged</strong> this exchange: <strong id="parry-ranged-v" style="color:var(--red-dark)">0</strong>
-      <div class="hint" style="margin:2px 0 0">shield Parry bonus doubled (aware of the volley) — Core Rules p.93</div>
+      <div class="hint" style="margin:2px 0 0">shield Parry bonus doubled (aware of the volley)</div>
     </div>
   </div>
 </section>
@@ -1136,7 +1136,7 @@
         <span style="flex:1;font-size:var(--fs-sm);font-weight:600">⚠️ Perilous Location: <span id="j-peril-remaining">0</span> peril event(s) remaining</span>
         <button class="add-row-btn" onclick="resolveJourneyEvent(true)" style="background:var(--pure-white);color:var(--btn-alert-bg);font-weight:700">🎲 Resolve Peril Event</button>
       </div>
-      <p style="margin:6px 0 0;font-size:var(--fs-xs);opacity:0.9">A Perilous Location forces one extra Journey Event per point of Peril, regardless of the hex path (Core Rules p.114).</p>
+      <p style="margin:6px 0 0;font-size:var(--fs-xs);opacity:0.9">A Perilous Location forces one extra Journey Event per point of Peril, regardless of the hex path.</p>
     </div>
     <button class="add-row-btn" onclick="arriveAtDestination()" style="width:100%;margin-top:8px;background:var(--gold)">🏁 Arrive at Destination</button>
     <button class="add-row-btn" onclick="endJourney()" id="j-cancel-btn" style="width:100%;margin-top:6px;background:var(--btn-secondary-bg);color:white">✖ Abandon this journey</button>
@@ -1507,7 +1507,7 @@
 
     <div id="combat-tasks-card" style="margin-top:12px;display:none;padding:10px;background:var(--bg-deep);border:1px solid var(--border);border-radius:var(--r-sm)">
       <label style="font-size:var(--fs-xs);color:var(--red-dark);text-transform:uppercase;letter-spacing:0.5px;font-weight:600">Combat Tasks <span style="font-size:var(--fs-xs);color:var(--text-faint);text-transform:none;letter-spacing:0;font-weight:400">— main action, gated by stance</span></label>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px" id="combat-tasks-grid">
+      <div style="display:grid;grid-template-columns:1fr;gap:6px;margin-top:6px" id="combat-tasks-grid">
         <button class="quick-skill" data-task="intimidate" data-stance-req="forward" data-skill="Awe" onclick="rollCombatTask(this)" style="text-align:center;padding:8px 4px">
           <strong>🗣️ Intimidate Foe</strong><br>
           <span style="font-size:var(--fs-xs);color:var(--text-muted)">Forward · AWE</span><br>
@@ -2056,49 +2056,61 @@
   </div>
 </div>
 
-<div class="menu-overlay" id="menu-overlay">
-  <div class="menu">
+<div class="menu-overlay" id="menu-overlay" onclick="if(event.target===this)toggleMenu()">
+  <div class="menu main-menu">
     <h3>Menu</h3>
-    <div id="sync-status-line" style="font-size:var(--fs-xs);color:var(--text-muted);text-align:center;margin:-4px 0 8px">📴 Local only</div>
-    <div class="menu-group">New here?</div>
-    <button onclick="openTutorial()" style="background:var(--gold);color:var(--ink);border-color:var(--gold)">📖 Tutorial — Learn the Game</button>
-    <button onclick="openPregens()">✨ Pre-generated Heroes — play in one tap</button>
-    <button onclick="openReferenceTab()">📖 Rules Reference — look up any term</button>
+    <div id="sync-status-line" class="menu-status">Saved locally on this device.</div>
+    <button onclick="openRoster()"><span>Your heroes</span><span class="m-state">switch · new · share</span></button>
+    <button onclick="openTutorial()"><span>Learn to play (tutorial)</span></button>
+    <button onclick="openReferenceTab()"><span>Rules reference</span></button>
 
-    <div class="menu-group">Play on your own (no Game Master)</div>
-    <button onclick="toggleStriderMode()" id="strider-mode-btn">🗡️ Solo Play: Strider Mode</button>
-    <button onclick="toggleMoriaMode()" id="moria-mode-btn">⛏️ Solo Play: Moria campaign</button>
+    <details class="menu-sec" open>
+      <summary class="menu-group">Play on your own</summary>
+      <button onclick="toggleStriderMode()" id="strider-mode-btn">Solo Play: Strider Mode</button>
+      <button onclick="toggleMoriaMode()" id="moria-mode-btn">Solo Play: Moria campaign</button>
+    </details>
 
-    <div class="menu-group">Heroes</div>
-    <button onclick="openRoster()">👥 Characters…</button>
-    <button onclick="newCharacter();toggleMenu()">➕ New Character</button>
-    <button onclick="openShare()">🔗 Share Character</button>
+    <details class="menu-sec">
+      <summary class="menu-group">Heroes</summary>
+      <button onclick="openPregens()">Ready-made heroes</button>
+      <button onclick="newCharacter();toggleMenu()">New blank hero</button>
+      <button onclick="openShare()">Share this hero (link / QR)</button>
+      <button onclick="openTimeline()">Campaign timeline</button>
+    </details>
 
-    <div class="menu-group">Play with others</div>
-    <button onclick="openCampaign()">🏰 Fellowship Campaign…</button>
-    <button onclick="openPartyView()">🛡️ Party View</button>
-    <button onclick="openTableMode()">📺 Table Mode (big screen)</button>
-    <button onclick="openTimeline()">📜 Campaign Timeline</button>
-    <button onclick="toggleGmScreen()" id="gm-mode-btn">🎲 Enable GM Screen</button>
+    <details class="menu-sec">
+      <summary class="menu-group">Play with others</summary>
+      <button onclick="openCampaign()">Fellowship campaign…</button>
+      <button onclick="openPartyView()">Party view</button>
+      <button onclick="openTableMode()">Table mode (big screen)</button>
+      <button onclick="toggleGmScreen()" id="gm-mode-btn">Enable GM Screen</button>
+    </details>
 
-    <div class="menu-group">Appearance</div>
-    <button onclick="cycleTheme()" id="dark-mode-btn">🎨 Theme: Auto</button>
-    <button onclick="cycleTextSize()" id="textsize-btn">🔠 Text Size: Normal</button>
-    <button onclick="toggleCompactMode()" id="compact-mode-btn">📏 Compact Mode</button>
-    <button onclick="window.print();toggleMenu()">🖨️ Print / Save PDF</button>
+    <details class="menu-sec">
+      <summary class="menu-group">Appearance</summary>
+      <button onclick="cycleTheme()" id="dark-mode-btn">Theme</button>
+      <button onclick="cycleTextSize()" id="textsize-btn">Text size</button>
+      <button onclick="toggleCompactMode()" id="compact-mode-btn">Compact spacing</button>
+      <button onclick="resetTips()">Show the tips again</button>
+      <button onclick="window.print();toggleMenu()">Print the character sheet</button>
+    </details>
 
-    <div class="menu-group">Backup &amp; restore</div>
-    <button onclick="exportData()">📤 Export Character (JSON)</button>
-    <button onclick="document.getElementById('import-file').click()">📥 Import Character</button>
-    <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)">
-    <button onclick="exportAllHeroes()">📦 Export ALL Heroes (backup)</button>
-    <button onclick="document.getElementById('import-all-file').click()">📦 Restore Heroes (backup)</button>
-    <input type="file" id="import-all-file" accept=".json" style="display:none" onchange="importAllHeroes(event)">
-    <button onclick="openRestorePoints()">♻️ Restore Points (auto-backups)</button>
-    <button onclick="Sync.linkGoogle()">☁️ Link Google Account (cloud backup)</button>
+    <details class="menu-sec">
+      <summary class="menu-group">Backup &amp; restore</summary>
+      <button onclick="exportData()">Export this hero (file)</button>
+      <button onclick="document.getElementById('import-file').click()">Import a hero (file)</button>
+      <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)">
+      <button onclick="exportAllHeroes()">Back up all heroes (file)</button>
+      <button onclick="document.getElementById('import-all-file').click()">Restore heroes from a backup</button>
+      <input type="file" id="import-all-file" accept=".json" style="display:none" onchange="importAllHeroes(event)">
+      <button onclick="openRestorePoints()">Restore points (automatic)</button>
+      <button onclick="Sync.linkGoogle()">Link a Google account (cloud backup)</button>
+    </details>
 
-    <div class="menu-group">Danger zone</div>
-    <button class="danger" onclick="resetCharacter()">🔄 Reset This Character</button>
+    <details class="menu-sec">
+      <summary class="menu-group">Danger zone</summary>
+      <button class="danger" onclick="resetCharacter()">Reset this hero to blank</button>
+    </details>
     <button class="close" onclick="toggleMenu()">Close</button>
   </div>
 </div>
@@ -2187,7 +2199,7 @@
   <div class="menu" style="max-width:520px;width:95%;max-height:90vh;overflow-y:auto">
     <h3>🎲 Hoard Roller</h3>
     <div id="hoard-setup">
-      <p class="hint" style="text-align:left;margin-bottom:10px;line-height:1.5">Roll a hoard per Core Rules p.158. Treasure value = roll Success dice × party size. Magical Treasure = roll Feat dice; each Eye or Rune indicates a magical find.</p>
+      <p class="hint" style="text-align:left;margin-bottom:10px;line-height:1.5">Roll a hoard. Treasure value = roll Success dice × party size. Magical Treasure = roll Feat dice; each Eye or Rune indicates a magical find.</p>
       <div style="margin-bottom:10px">
         <label style="font-size:var(--fs-xs);color:var(--red-dark);text-transform:uppercase;letter-spacing:0.5px;font-weight:600">Hoard Tier</label>
         <div class="seg-btns" id="hoard-tier-pick" style="margin-top:4px">
@@ -2321,7 +2333,7 @@
     <!-- Step 3: XP Reminders -->
     <div class="fp-step" id="fp-step-3" style="display:none">
       <h4 style="margin:0 0 8px;color:var(--red-dark);font-size:var(--fs-md)">Perform Updates — Training & Growth</h4>
-      <p class="hint" style="text-align:left;line-height:1.6">Spend your accumulated Skill Points and Adventure Points using the existing Spend XP modals on the Character tab. <strong>RAW limits:</strong></p>
+      <p class="hint" style="text-align:left;line-height:1.6">Spend your accumulated Skill Points and Adventure Points using the existing Spend XP modals on the Character tab. <strong>The rules:</strong></p>
       <ul style="font-size:var(--fs-sm);line-height:1.7;padding-left:18px">
         <li>Max <strong>1 rank</strong> per Skill per phase</li>
         <li>Max <strong>1 rank</strong> per Combat Proficiency per phase</li>

@@ -168,7 +168,7 @@ function rollFirstAid() {
     return;
   }
   if (char.firstAidUsed) {
-    alert('First Aid already attempted on this injury.\n\nPer RAW: a failed HEALING roll cannot be repeated until at least a day has passed. Tap "Reset (next day)" if a day has passed in fiction.');
+    alert('First Aid already attempted on this injury.\n\na failed HEALING roll cannot be repeated until at least a day has passed. Tap "Reset (next day)" if a day has passed in fiction.');
     return;
   }
   const s = char.skills['Healing'] || { rating: 0, favoured: false };
@@ -1504,7 +1504,7 @@ function renderQuickSkills() {
     const btn = document.createElement('div');
     btn.className = 'quick-skill' + (s.favoured || blessingFav ? ' fav' : '');
     if (item.isMeta) btn.style.background = 'var(--gold-soft)';
-    if (item.isDerived) btn.title = 'Brawling: derived from your highest combat prof, minus 1 (RAW p.45). Use for Unarmed/Dagger/Cudgel/Club.';
+    if (item.isDerived) btn.title = 'Brawling: derived from your highest combat prof, minus 1. Use for Unarmed/Dagger/Cudgel/Club.';
     const star = blessingFav ? ' ★' : '';
     const derivedTag = item.isDerived ? ' <small style="color:var(--text-faint);font-size:var(--fs-xs)">(der)</small>' : '';
     btn.innerHTML = `${item.name}${star}${derivedTag}<br><span class="rating">${s.rating}d · ${item.attr.toUpperCase()}</span>`;
@@ -2470,18 +2470,18 @@ function fpSpendBlocker(group, label) {
   if (!char.fpModeActive) return null;
   if (!char.fpSpend) char.fpSpend = { skills: {}, profs: {}, valour: 0, wisdom: 0 };
   if (group === 'skill' && char.fpSpend.skills[label]) {
-    return `Already raised "${label}" this Fellowship Phase (1 rank per Skill per FP — RAW p.119).`;
+    return `Already raised "${label}" this Fellowship Phase (1 rank per Skill per FP).`;
   }
   if (group === 'prof' && char.fpSpend.profs[label]) {
     return `Already raised "${label}" this Fellowship Phase (1 rank per Combat Proficiency per FP).`;
   }
   if (group === 'valour') {
-    if (char.fpSpend.valour > 0) return `Already raised Valour this Fellowship Phase — one rank per phase (RAW p.119).`;
-    if (char.fpSpend.wisdom > 0) return `Already raised Wisdom this Fellowship Phase — Valour and Wisdom are exclusive per phase (RAW p.119).`;
+    if (char.fpSpend.valour > 0) return `Already raised Valour this Fellowship Phase — one rank per phase.`;
+    if (char.fpSpend.wisdom > 0) return `Already raised Wisdom this Fellowship Phase — Valour and Wisdom are exclusive per phase.`;
   }
   if (group === 'wisdom') {
-    if (char.fpSpend.wisdom > 0) return `Already raised Wisdom this Fellowship Phase — one rank per phase (RAW p.119).`;
-    if (char.fpSpend.valour > 0) return `Already raised Valour this Fellowship Phase — Valour and Wisdom are exclusive per phase (RAW p.119).`;
+    if (char.fpSpend.wisdom > 0) return `Already raised Wisdom this Fellowship Phase — one rank per phase.`;
+    if (char.fpSpend.valour > 0) return `Already raised Valour this Fellowship Phase — Valour and Wisdom are exclusive per phase.`;
   }
   return null;
 }
@@ -2504,7 +2504,7 @@ function renderSpendXP(mode) {
   const available = mode === 'skill' ? sp : ap;
   const fpHint = char.fpModeActive
     ? `<br><small style="color:var(--gold);font-weight:600">⚠️ Fellowship Phase mode: 1 rank max per Skill/Prof per FP; Valour XOR Wisdom per FP. Already spent: ${Object.keys(char.fpSpend?.skills || {}).length} skill rank(s), ${Object.keys(char.fpSpend?.profs || {}).length} prof rank(s)${char.fpSpend?.valour ? ', Valour' : ''}${char.fpSpend?.wisdom ? ', Wisdom' : ''}.</small>`
-    : `<br><small style="color:var(--text-muted)">Spending outside Fellowship Phase (no caps enforced; per RAW XP is only spent in FP — use the FP wizard for rule-correct play).</small>`;
+    : `<br><small style="color:var(--text-muted)">Spending outside Fellowship Phase (no caps enforced; by the rules XP is only spent in a Fellowship Phase — use the FP wizard for rule-correct play).</small>`;
   budgetEl.innerHTML = (mode === 'skill' ? `Available: ${sp} Skill Points` : `Available: ${ap} Adventure Points`) + fpHint;
 
   const makeRow = (label, currentRank, maxRank, onUpgrade, group) => {
