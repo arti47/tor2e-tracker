@@ -1359,3 +1359,8 @@ button.s-stat:hover { background: color-mix(in srgb, var(--gold) 10%, transparen
 .s-rollhint { font-size: var(--fs-xs); color: var(--text-muted); margin: -4px 0 6px; }
 #edit-mode-card.on { border-color: var(--red); }
 #skills-edit:not(.notes-on) .skill-note:placeholder-shown:not(:focus) { display: none; }
+
+/* "Your campaign" is a quiet link row, not a card competing with the scene. */
+.campaign-box:not([open]) > summary { flex-direction: row; align-items: baseline; gap: 10px; padding: 10px var(--sp-2); background: none; border: 0; box-shadow: none; border-top: 1px solid var(--line); border-radius: 0; }
+.campaign-box:not([open]) > summary span { font-size: var(--fs-md); color: var(--red); }
+.campaign-box:not([open]) > summary span::after { content: ' ›'; }

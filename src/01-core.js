@@ -1240,7 +1240,12 @@ async function requireStep(message, tabId, cardId, title) {
     if (t) t.click();
     if (cardId && tabId === 'build' && typeof buildGoToCard === 'function') buildGoToCard(cardId);
     if (cardId && tabId === 'character' && typeof setCharEditing === 'function') { const c = document.getElementById(cardId); if (c && c.closest('#char-edit')) setCharEditing(true); }
-    if (cardId) setTimeout(() => { const c = document.getElementById(cardId); if (c) c.scrollIntoView({ block: 'center' }); }, 60);
+    if (cardId) setTimeout(() => {
+      const c = document.getElementById(cardId); if (!c) return;
+      const card = c.closest('.card');   // an accordion (Band) may have the target folded shut
+      if (card && typeof openCard === 'function' && card.classList.contains('collapsed')) openCard(card);
+      c.scrollIntoView({ block: 'center' });
+    }, 60);
   }
   return false;
 }

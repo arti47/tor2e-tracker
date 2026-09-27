@@ -142,7 +142,7 @@ function renderJumpBar(panelId) {
     const label = t.childNodes[0] && t.childNodes[0].nodeType === 3 ? t.childNodes[0].textContent : t.textContent;
     const b = document.createElement('button'); b.type = 'button'; b.className = 'jump-chip';
     b.textContent = label.replace(/[⌄▾▸?]/g, '').replace(/—.*$/, '').trim().slice(0, 26);
-    b.onclick = () => { c.classList.remove('collapsed'); c.scrollIntoView({ block: 'start', behavior: 'auto' }); };
+    b.onclick = () => openCard(c);
     bar.appendChild(b);
   });
 }
@@ -1811,22 +1811,50 @@ function initCollapsibleCards() {
     const h = card.querySelector(':scope > h2, :scope > h3.card-title');
     if (!h || h.classList.contains('collapsible')) return;
     const panel = card.closest('.panel');
-    const key = (panel ? panel.id : '?') + '|' + h.textContent.trim().slice(0, 40);
+    card.dataset.ckey = (panel ? panel.id : '?') + '|' + h.textContent.trim().slice(0, 40);
     h.classList.add('collapsible');
     h.setAttribute('role', 'button');
     h.setAttribute('tabindex', '0');
-    if (saved[key]) card.classList.add('collapsed');
+    if (saved[card.dataset.ckey]) card.classList.add('collapsed');
     h.setAttribute('aria-expanded', card.classList.contains('collapsed') ? 'false' : 'true');
     const toggle = () => {
-      const on = card.classList.toggle('collapsed');
-      h.setAttribute('aria-expanded', on ? 'false' : 'true');
-      const s = loadCollapsed();
-      if (on) s[key] = 1; else delete s[key];
-      try { localStorage.setItem(COLLAPSE_KEY, JSON.stringify(s)); } catch (e) {}
+      const on = !card.classList.contains('collapsed');
+      setCardCollapsed(card, on);
+      if (!on) _accordionOnly(card);
     };
     h.addEventListener('click', e => { if (e.target.closest('button, input, select, a')) return; toggle(); });
     h.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
   });
+  // Accordion tabs (Band): one step open at a time. First visit opens only the first step.
+  document.querySelectorAll('.panel.accordion').forEach(panel => {
+    const open = _accCards(panel).filter(c => !c.classList.contains('collapsed'));
+    if (open.length > 1) open.slice(1).forEach(c => setCardCollapsed(c, true));
+    if (!open.length && _accCards(panel)[0]) setCardCollapsed(_accCards(panel)[0], false);
+  });
+}
+function setCardCollapsed(card, on) {
+  const h = card.querySelector(':scope > h2, :scope > h3.card-title');
+  card.classList.toggle('collapsed', on);
+  if (h) h.setAttribute('aria-expanded', on ? 'false' : 'true');
+  const key = card.dataset.ckey; if (!key) return;
+  const s = loadCollapsed();
+  if (on) s[key] = 1; else delete s[key];
+  try { localStorage.setItem(COLLAPSE_KEY, JSON.stringify(s)); } catch (e) {}
+}
+function _accCards(panel) {
+  return [...panel.querySelectorAll(':scope > .card:not(.tab-intro)')].filter(c => c.dataset.ckey && c.style.display !== 'none');
+}
+/** In an accordion tab, opening one card closes the others — so the Band reads as one step
+    at a time instead of a 3,600px scroll. */
+function _accordionOnly(card) {
+  const panel = card.closest('.panel.accordion'); if (!panel) return;
+  _accCards(panel).forEach(c => { if (c !== card && !c.classList.contains('collapsed')) setCardCollapsed(c, true); });
+}
+/** Open a card (expanding it in an accordion, closing its siblings) and bring it into view. */
+function openCard(card) {
+  if (!card) return;
+  setCardCollapsed(card, false); _accordionOnly(card);
+  card.scrollIntoView({ block: 'start', behavior: 'auto' });
 }
 
 /* ---------- U7: contextual (?) hints on key Character-tab labels ---------- */
