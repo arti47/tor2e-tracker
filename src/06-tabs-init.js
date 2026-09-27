@@ -2100,8 +2100,13 @@ const _EMOJI_LEAD = /^\s*(\p{Extended_Pictographic})️?\s*/u;
 const _EMOJI_KEEP = new Set(['⚔', '✦', '★', '▶', '↺', '✓', '✗', '×', '©', '®', '™', '↩', '↶']);
 function iconifyButtons(root) {
   (root || document).querySelectorAll('button').forEach(b => {
-    const first = [...b.childNodes].find(n => n.nodeType === 3 ? n.textContent.trim() : true);
-    if (!first || first.nodeType !== 3) return;
+    // the first words on the button, even when they sit inside a <strong> or <span>
+    const tw = document.createTreeWalker(b, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT, {
+      acceptNode: n => n.nodeType === 1 ? (n.tagName.toLowerCase() === 'svg' ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_SKIP)
+        : (n.textContent.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP) });
+    const first = tw.nextNode();
+    if (!first) return;
+    if (first.previousSibling && first.previousSibling.nodeName.toLowerCase() === 'svg') return;
     const m = first.textContent.match(_EMOJI_LEAD); if (!m || _EMOJI_KEEP.has(m[1])) return;
     const id = EMOJI_ICON[m[1]];
     first.textContent = first.textContent.slice(m[0].length);
@@ -2110,7 +2115,7 @@ function iconifyButtons(root) {
       const ns = 'http://www.w3.org/2000/svg';
       const svg = document.createElementNS(ns, 'svg'); svg.setAttribute('class', 'b-ic'); svg.setAttribute('aria-hidden', 'true');
       const use = document.createElementNS(ns, 'use'); use.setAttribute('href', '#' + id); svg.appendChild(use);
-      b.insertBefore(svg, first);
+      first.parentNode.insertBefore(svg, first);
     }
   });
 }

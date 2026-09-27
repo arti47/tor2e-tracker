@@ -371,6 +371,231 @@ module.exports = {
     });
     checks.push({ ok: jump.length >= 5 && jump.some(c => /Tests/.test(c)), msg: `Band has a jump bar (${jump.join(' · ')})` });
 
+    // =================== ROUND 3 ===================
+    const tab3 = (g, t) => page.evaluate(([g, t]) => { openNavGroup(g); const b = document.querySelector(`.tab[data-tab="${t}"]`); if (b) b.click(); }, [g, t]);
+    const vis3 = sel => page.evaluate(s => [...document.querySelectorAll(s)].filter(e => e.checkVisibility()).length, sel);
+
+    // ---- Band never widens the phone page, even with its Fellowship Phase step open ----
+    const band = await page.evaluate(async () => {
+      char.moriaMode = true; saveCharacter(); refreshStriderUI();
+      openNavGroup('adventure'); document.querySelector('.tab[data-tab="band"]').click();
+      const fp = [...document.querySelectorAll('#panel-band > .card')].find(c => /Fellowship Phase/.test(c.textContent));
+      openCard(fp); await new Promise(r => setTimeout(r, 60));
+      const w = document.documentElement.scrollWidth;
+      // accordion: opening Fellowship Phase closed every other step
+      const open = [...document.querySelectorAll('#panel-band > .card:not(.tab-intro)')].filter(c => c.dataset.ckey && !c.classList.contains('collapsed') && c.style.display !== 'none').length;
+      char.moriaMode = false; saveCharacter(); refreshStriderUI();
+      return { w, open };
+    });
+    checks.push({ ok: band.w <= 390, msg: `Band's Fellowship Phase step fits a 390px phone (page ${band.w}px)` });
+    checks.push({ ok: band.open === 1, msg: `Band is an accordion — one step open at a time (open ${band.open})` });
+
+    // ---- Quiet help: first full sentence, "More" for the rest; never a mid-word cut ----
+    const qh = await page.evaluate(async () => {
+      openNavGroup('adventure'); document.querySelector('.tab[data-tab="journey"]').click(); clampLongHints();
+      const h = [...document.querySelectorAll('.panel.active .hint-clamp')].find(e => e.checkVisibility());
+      if (!h) return { found: false };
+      const rest = h.querySelector('.hint-rest'), more = h.querySelector('.hint-more');
+      const firstVisible = [...h.childNodes].filter(n => n !== rest && n !== more).map(n => n.textContent).join('').trim();
+      const restHidden = !rest.checkVisibility();
+      h.click(); await new Promise(r => setTimeout(r, 30));
+      const restShown = rest.checkVisibility();
+      h.click();
+      return { found: true, endsSentence: /[.!?]$/.test(firstVisible), restHidden, restShown, more: !!more && more.checkVisibility() };
+    });
+    checks.push({ ok: qh.found && qh.endsSentence && qh.restHidden && qh.more && qh.restShown, msg: 'a long hint shows its first full sentence + "More"; tapping reveals the rest' });
+
+    // ---- A card title explains itself when you tap the words; no (?) circle beside it ----
+    const tt = await page.evaluate(async () => {
+      openNavGroup('adventure'); document.querySelector('.tab[data-tab="combat"]').click(); initHintButtons();
+      const term = document.querySelector('#panel-combat .title-term'); if (!term) return { found: false };
+      const q = term.querySelector('.hint-q');
+      const invisible = getComputedStyle(q).opacity === '0';
+      const card = term.closest('.card'); const r = term.getBoundingClientRect();
+      document.elementFromPoint(r.left + 8, r.top + r.height / 2).click();
+      await new Promise(r => setTimeout(r, 80));
+      const opened = document.getElementById('styled-modal-overlay').classList.contains('show');
+      const ok = document.querySelector('#styled-modal-buttons button'); if (ok) ok.click();
+      return { found: true, invisible, opened, stillOpen: !card.classList.contains('collapsed') };
+    });
+    checks.push({ ok: tt.found && tt.invisible && tt.opened && tt.stillOpen, msg: 'tapping a card title’s words opens its explanation (no visible ? circle, card stays open)' });
+
+    // ---- One tip per session ----
+    const tips1 = await page.evaluate(() => {
+      localStorage.removeItem('tor2e-tips'); sessionStorage.removeItem('tor2e-tip-session');
+      const shown = [];
+      [['adventure', 'journey'], ['adventure', 'council'], ['roll', 'dice']].forEach(([g, t]) => {
+        document.querySelector(`.tab[data-tab="${t}"]`).click();
+        const i = document.querySelector('#panel-' + t + ' .tab-intro'); if (i && i.checkVisibility()) shown.push(t);
+      });
+      return shown;
+    });
+    checks.push({ ok: tips1.length === 1, msg: `at most one tab tip per session (shown: ${tips1.join(', ') || 'none'})` });
+
+    // ---- Tiered: one primary per screen; the gilt frame only on the hero, scene, result ----
+    const tier = await page.evaluate(() => {
+      const red = t => [...document.querySelectorAll('#panel-' + t + ' button')].filter(e => {
+        if (!e.checkVisibility()) return false; const m = getComputedStyle(e).backgroundColor.match(/\d+/g).map(Number);
+        return m[0] > 110 && m[1] < 80 && m[2] < 80 && !e.classList.contains('bs-dot'); }).length;
+      const out = {};
+      [['adventure', 'journey'], ['roll', 'dice'], ['roll', 'oracle'], ['hero', 'gear']].forEach(([g, t]) => { openNavGroup(g); document.querySelector(`.tab[data-tab="${t}"]`).click(); out[t] = red(t); });
+      const framed = [...document.querySelectorAll('.panel .card')].filter(c => getComputedStyle(c, '::before').backgroundImage.includes('svg') && !c.classList.contains('ornate')).length;
+      return { out, framed };
+    });
+    checks.push({ ok: Object.values(tier.out).every(n => n <= 1), msg: `one primary (red) button per screen (${JSON.stringify(tier.out)})` });
+    checks.push({ ok: tier.framed === 0, msg: `the gilt frame is reserved for ornate cards (tool cards framed: ${tier.framed})` });
+
+    // ---- Buttons carry drawn icons, not emoji ----
+    const emo = await page.evaluate(async () => {
+      await new Promise(r => requestAnimationFrame(() => setTimeout(r, 30)));
+      const re = /^\s*\p{Extended_Pictographic}/u, keep = /^\s*[⚔✦★▶↺✓✗×↩↶]/;
+      return [...document.querySelectorAll('.panel button, .menu button')].filter(b => re.test(b.textContent) && !keep.test(b.textContent)).map(b => b.textContent.trim().slice(0, 20)).slice(0, 4);
+    });
+    checks.push({ ok: emo.length === 0, msg: `no button leads with an emoji (${emo.join(' | ') || 'none'})` });
+
+    // ---- Skills live on the sheet: tap one to roll ----
+    const tap = await page.evaluate(async () => {
+      openNavGroup('hero'); document.querySelector('.tab[data-tab="character"]').click(); setCharEditing(false);
+      const before = history.length;
+      const row = [...document.querySelectorAll('#hero-sheet button.s-skill')].find(b => /Travel/.test(b.textContent));
+      if (row) row.click(); await new Promise(r => setTimeout(r, 120));
+      const drawer = document.getElementById('roll-drawer').classList.contains('open');
+      closeRollDrawer();
+      return { row: !!row, rolled: history.length > before, drawer, skillsTab: !!document.querySelector('.tab[data-tab="skills"]') };
+    });
+    checks.push({ ok: tap.row && tap.rolled && tap.drawer && !tap.skillsTab, msg: 'tapping a skill on the hero sheet rolls it (and there is no separate Skills tab)' });
+
+    // ---- Pickers: the whole choice is shown, and choosing drives the real select ----
+    const pick = await page.evaluate(async () => {
+      openNavGroup('adventure'); document.querySelector('.tab[data-tab="journey"]').click();
+      await new Promise(r => requestAnimationFrame(() => setTimeout(r, 30)));
+      const sel = document.getElementById('j-region'), btn = sel && sel._pickBtn;
+      if (!btn) return { found: false };
+      const v = btn.querySelector('.pick-val');
+      const whole = v.scrollWidth <= v.clientWidth + 1 && v.textContent === sel.options[sel.selectedIndex].textContent.trim();
+      let fired = 0; const h = () => fired++; sel.addEventListener('change', h);
+      btn.click();
+      const opts = [...document.querySelectorAll('#pick-list .pick-opt')];
+      const target = opts.find(o => !o.classList.contains('on'));
+      const want = target.textContent; target.click();
+      await new Promise(r => requestAnimationFrame(() => setTimeout(r, 30)));
+      sel.removeEventListener('change', h);
+      return { found: true, whole, native: getComputedStyle(sel).opacity === '0', fired, changed: sel.options[sel.selectedIndex].textContent.trim() === want, label: v.textContent === want };
+    });
+    checks.push({ ok: pick.found && pick.whole && pick.native && pick.fired === 1 && pick.changed && pick.label, msg: 'a select is a tap-to-pick button showing the whole choice; picking drives the real select' });
+
+    // ---- Steppers ----
+    const step3 = await page.evaluate(() => {
+      const inp = document.getElementById('j-totalHexes'); inp.value = '';
+      const plus = inp.parentNode.querySelector('.step-btn:last-child');
+      if (!plus) return { found: false };
+      plus.click(); const a = inp.value; plus.click(); const b = inp.value;
+      inp.parentNode.querySelector('.step-btn:first-child').click(); inp.parentNode.querySelector('.step-btn:first-child').click();
+      return { found: true, a, b, floor: inp.value };
+    });
+    checks.push({ ok: step3.found && step3.a === '1' && step3.b === '2' && step3.floor === '1', msg: `number boxes have − / + steppers that respect min (1 → 2 → floor ${step3.floor})` });
+
+    // ---- Menu search finds and runs an action ----
+    const ms = await page.evaluate(async () => {
+      toggleMenu(); const s = document.getElementById('menu-search'); s.value = 'stealth'; menuSearch('stealth');
+      const hits = [...document.querySelectorAll('#menu-search-results .menu-hit')].map(b => b.textContent);
+      const hidden = [...document.querySelectorAll('.main-menu > details')].every(d => !d.checkVisibility());
+      const before = history.length;
+      const hit = document.querySelector('#menu-search-results .menu-hit'); if (hit) hit.click();
+      await new Promise(r => setTimeout(r, 150)); closeRollDrawer();
+      return { hits, hidden, rolled: history.length > before, closed: !document.getElementById('menu-overlay').classList.contains('show') };
+    });
+    checks.push({ ok: ms.hits[0] === 'Roll Stealth' && ms.hidden && ms.rolled && ms.closed, msg: `menu search finds "Roll Stealth" and running it rolls (${ms.hits.join(', ')})` });
+
+    // ---- Play: pinned quick rolls, with "Again" for the last roll ----
+    const qr = await page.evaluate(() => {
+      char.saga = Object.assign(char.saga || {}, { started: true, premise: 'x', step: 'haven' }); saveCharacter();
+      openNavGroup('play'); renderPlay();
+      const chips = [...document.querySelectorAll('#play-body .qchip')].map(c => c.querySelector('strong').textContent);
+      return chips;
+    });
+    checks.push({ ok: qr.length >= 2 && /^Again: /.test(qr[0]), msg: `Play pins quick rolls, led by "Again" for the last roll (${qr.join(', ')})` });
+
+    // ---- Spend XP buttons say what they buy; FP phase type is a ticked choice ----
+    const xp = await page.evaluate(() => {
+      char.advPts = 10; saveCharacter(); openSpendXP('adv'); renderSpendXP('adv');
+      const t = [...document.querySelectorAll('#spend-xp-list .xp-buy')].map(b => b.textContent);
+      closeSpendXP && closeSpendXP();
+      openFPWizard(); fpSetPhaseType('yule');
+      const y = document.getElementById('fp-type-yule').getAttribute('aria-pressed'), o = document.getElementById('fp-type-ord').getAttribute('aria-pressed');
+      fpClose();
+      return { t, y, o };
+    });
+    checks.push({ ok: xp.t.some(x => /^Raise to \d+ · \d+ pts$/.test(x)), msg: `Spend XP buttons say what they buy ("${xp.t[0]}")` });
+    checks.push({ ok: xp.y === 'true' && xp.o === 'false', msg: 'Fellowship Phase: the chosen phase type is marked, the other is not' });
+
+    // ---- Engraved dice ----
+    const dice3 = await page.evaluate(async () => {
+      rollFromSheet('Travel'); await new Promise(r => setTimeout(r, 100));
+      const f = document.querySelector('#roll-result .feat-die');
+      const s = document.querySelector('#roll-result .success-die');
+      const out = { feat: f ? getComputedStyle(f).backgroundImage : '', succ: s ? getComputedStyle(s).backgroundImage : '' };
+      closeRollDrawer(); return out;
+    });
+    checks.push({ ok: /polygon/.test(dice3.feat) && /gradient/.test(dice3.succ), msg: 'the Feat die is a drawn d12 face and Success dice are engraved bone faces' });
+
+    // ---- Scene art: a vignette that fits the place; the silhouette on the sheet ----
+    const art = await page.evaluate(() => {
+      const s = sagaState(); s.step = 'haven'; saveCharacter(); openNavGroup('play'); renderPlay();
+      const haven = document.querySelector('#play-body .scene-art') && document.querySelector('#play-body .scene-art').className;
+      s.step = 'journey'; char.journey = Object.assign(char.journey || {}, { active: true, totalHexes: 6, currentHex: 1, destination: 'the eaves of Mirkwood', region: 'wild' });
+      saveCharacter(); renderPlay();
+      const road = document.querySelector('#play-body .scene-art').className;
+      char.journey.active = false; s.step = 'haven'; saveCharacter(); renderPlay();
+      openNavGroup('hero'); document.querySelector('.tab[data-tab="character"]').click();
+      return { haven, road, sil: !!document.querySelector('#hero-sheet .silhouette') };
+    });
+    checks.push({ ok: /t-haven/.test(art.haven) && /t-forest/.test(art.road), msg: `Play draws the place: a Safe Haven at home, a forest on the road to Mirkwood (${art.haven} / ${art.road})` });
+    checks.push({ ok: art.sil, msg: 'the hero sheet carries the culture’s drawn silhouette' });
+
+    // ---- Oracle Ask box: a written answer slip, logged like any oracle roll ----
+    const ask = await page.evaluate(() => {
+      char.striderMode = true; saveCharacter(); refreshStriderUI();
+      openNavGroup('roll'); document.querySelector('.tab[data-tab="oracle"]').click();
+      const before = (typeof oracleHistory !== 'undefined' ? oracleHistory.length : JSON.parse(localStorage.getItem('tor2e-oracle-history') || '[]').length);
+      document.getElementById('ask-q').value = 'Is the gate guarded?'; askYesNo();
+      const slip = document.getElementById('ask-slip');
+      const after = (typeof oracleHistory !== 'undefined' ? oracleHistory.length : JSON.parse(localStorage.getItem('tor2e-oracle-history') || '[]').length);
+      const a = slip.querySelector('.slip-a') ? slip.querySelector('.slip-a').textContent : '';
+      askWords(); const words = slip.querySelectorAll('.slip-words span').length;
+      char.striderMode = false; saveCharacter(); refreshStriderUI();
+      return { shown: !slip.hidden, a, logged: after > before, words };
+    });
+    checks.push({ ok: ask.shown && /^(Yes|No)$/.test(ask.a) && ask.logged && ask.words >= 3, msg: `Ask the Oracle writes the answer on a slip (${ask.a}; ${ask.words} words) and logs it` });
+
+    // ---- Sound is off unless asked for ----
+    const snd = await page.evaluate(() => {
+      localStorage.removeItem('tor2e-sound'); refreshSoundLabel();
+      const off = document.getElementById('sound-btn').textContent;
+      return { off: /Off/.test(off), quiet: !soundOn() };
+    });
+    checks.push({ ok: snd.off && snd.quiet, msg: 'sound effects are off by default and say so in the menu' });
+
+    // ---- Wayfinding colour follows the group ----
+    const acc = await page.evaluate(async () => {
+      const wait = () => new Promise(r => setTimeout(r, 450));   // let the colour transition finish
+      openNavGroup('hero'); await wait(); const a = getComputedStyle(document.querySelector('.bn-item.active')).color;
+      openNavGroup('adventure'); await wait(); const b = getComputedStyle(document.querySelector('.bn-item.active')).color;
+      return { a, b };
+    });
+    checks.push({ ok: acc.a !== acc.b, msg: `each nav group has its own accent (${acc.a} vs ${acc.b})` });
+
+    // ---- Tablet: Play in two panes ----
+    await page.setViewportSize({ width: 1180, height: 820 });
+    const two = await page.evaluate(async () => {
+      openNavGroup('play'); renderPlay(); await new Promise(r => setTimeout(r, 60));
+      const sc = document.querySelector('#play-body .play-scene').getBoundingClientRect();
+      const ch = document.querySelector('#play-body .play-choices').getBoundingClientRect();
+      return { side: ch.left >= sc.right - 1, top: Math.abs(ch.top - sc.top) < 40 };
+    });
+    await page.setViewportSize({ width: 390, height: 844 });
+    checks.push({ ok: two.side && two.top, msg: 'on a tablet, Play shows the story and the choices side by side' });
+
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length}${errors.length ? ': ' + errors[0] : ''})` });
     await context.close();
     return { checks };
