@@ -1009,3 +1009,4 @@ body.dark .hud-eye { background: var(--card-bg); }
 /* Skill notes: a filled note always shows; empty ones only when the player asks to add one. */
 #panel-skills:not(.notes-on) .skill-note:placeholder-shown:not(:focus) { display: none; }
 .notes-toggle { float: right; margin: -42px 26px 0 0; padding: 4px 8px; min-height: 0; font-size: var(--fs-xs); }
+.menu .v-btn { display: inline-flex; align-items: center; justify-content: center; }
