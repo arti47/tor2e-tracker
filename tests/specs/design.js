@@ -379,9 +379,13 @@ module.exports = {
     const band = await page.evaluate(async () => {
       char.moriaMode = true; saveCharacter(); refreshStriderUI();
       openNavGroup('adventure'); document.querySelector('.tab[data-tab="band"]').click();
-      const fp = [...document.querySelectorAll('#panel-band > .card')].find(c => /Fellowship Phase/.test(c.textContent));
+      const fp = [...document.querySelectorAll('#panel-band > .card')].find(c => /^Fellowship Phase/.test((c.querySelector(':scope > .card-title') || {}).textContent || ''));
+      if (!fp) return { w: 9999, open: -1 };
       openCard(fp); await new Promise(r => setTimeout(r, 60));
-      const w = document.documentElement.scrollWidth;
+      // widest thing on the tab (the page itself may clip, so measure the elements, not scrollWidth);
+      // the jump bar is a horizontal scroller by design and is excluded.
+      const w = Math.max(document.documentElement.scrollWidth, ...[...document.querySelectorAll('#panel-band *')]
+        .filter(e => e.checkVisibility() && !e.closest('.jump-bar')).map(e => Math.round(e.getBoundingClientRect().right)));
       // accordion: opening Fellowship Phase closed every other step
       const open = [...document.querySelectorAll('#panel-band > .card:not(.tab-intro)')].filter(c => c.dataset.ckey && !c.classList.contains('collapsed') && c.style.display !== 'none').length;
       char.moriaMode = false; saveCharacter(); refreshStriderUI();
@@ -542,10 +546,11 @@ module.exports = {
     // ---- Scene art: a vignette that fits the place; the silhouette on the sheet ----
     const art = await page.evaluate(() => {
       const s = sagaState(); s.step = 'haven'; saveCharacter(); openNavGroup('play'); renderPlay();
-      const haven = document.querySelector('#play-body .scene-art') && document.querySelector('#play-body .scene-art').className;
+      const cls = () => (document.querySelector('#play-body .scene-art') || {}).className || 'none';
+      const haven = cls();
       s.step = 'journey'; char.journey = Object.assign(char.journey || {}, { active: true, totalHexes: 6, currentHex: 1, destination: 'the eaves of Mirkwood', region: 'wild' });
       saveCharacter(); renderPlay();
-      const road = document.querySelector('#play-body .scene-art').className;
+      const road = cls();
       char.journey.active = false; s.step = 'haven'; saveCharacter(); renderPlay();
       openNavGroup('hero'); document.querySelector('.tab[data-tab="character"]').click();
       return { haven, road, sil: !!document.querySelector('#hero-sheet .silhouette') };
