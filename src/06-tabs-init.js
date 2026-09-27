@@ -88,6 +88,37 @@ function restoreLastTab() {
   } catch (e) {}
 }
 
+/* ---------- DICE RESULT DRAWER ----------
+   A roll from ANY tab shows its result in a drawer that slides up from the bottom — dice,
+   outcome, and the follow-ups (Pierce, Fortune, Special Success) — instead of on the Dice tab
+   below the fold. #roll-result itself is moved into the drawer once at boot, so every renderer
+   and spec that addresses it by id is unchanged. Deliberately NOT a .menu-overlay: the Fortune
+   offer waits while one is open (GOTCHA 25), and the drawer must never block it. */
+function initRollDrawer() {
+  const res = document.getElementById('roll-result'); if (!res || document.getElementById('roll-drawer')) return;
+  const d = document.createElement('div');
+  d.id = 'roll-drawer'; d.className = 'roll-drawer'; d.setAttribute('aria-label', 'Roll result');
+  d.innerHTML = '<div class="rd-bar"><span class="rd-handle"></span><button class="rd-close" type="button" aria-label="Close the result">Done</button></div><div class="rd-body"></div>';
+  document.body.appendChild(d);
+  d.querySelector('.rd-body').appendChild(res);
+  res.style.marginTop = '0';
+  d.querySelector('.rd-close').onclick = closeRollDrawer;
+  // swipe down on the handle bar to dismiss
+  let y0 = null; const bar = d.querySelector('.rd-bar');
+  bar.addEventListener('touchstart', e => { y0 = e.touches[0].clientY; }, { passive: true });
+  bar.addEventListener('touchend', e => { if (y0 !== null && e.changedTouches[0].clientY - y0 > 50) closeRollDrawer(); y0 = null; }, { passive: true });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && d.classList.contains('open') && !document.querySelector('.menu-overlay.show')) closeRollDrawer(); });
+}
+function openRollDrawer() {
+  const d = document.getElementById('roll-drawer'); if (!d) return;
+  d.classList.add('open'); document.body.classList.add('drawer-open');
+  const b = d.querySelector('.rd-body'); if (b) b.scrollTop = 0;
+}
+function closeRollDrawer() {
+  const d = document.getElementById('roll-drawer'); if (!d) return;
+  d.classList.remove('open'); document.body.classList.remove('drawer-open');
+}
+
 /* ---------- ONE-TIME TIPS ----------
    Every tab opens with an explanation (.tab-intro — GOTCHA 14 keeps them). Shown every
    visit they became a wall of grey text; now each carries "Got it" and stays dismissed
@@ -832,6 +863,7 @@ function rollDice(skillLabel) {
   // Render result
   const resultEl = document.getElementById('roll-result');
   resultEl.style.display = 'block';
+  openRollDrawer();
   // Bring the result into view — quick-roll / Combat Task / Shadow Test buttons can sit well
   // above it on a phone. 'nearest' = no movement if already fully visible, else the minimal
   // jump. behavior:'auto' (instant) on purpose: 'smooth' never completes in some headless/older
@@ -1867,6 +1899,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initCollapsibleCards();   // U3: tap a card title to collapse (remembered per device)
   initHintButtons();        // U7/B: (?) hints app-wide (text-matched labels + data-hint)
   initTips();               // one-time tab tips (dismissable intros)
+  initRollDrawer();         // dice results slide up from the bottom on every tab
   clampLongHints();         // long explanations fold to one tappable line
   applyPlainGlosses();      // 'Shadow — creeping despair' under the first terms a newcomer meets
   renderNewcomerBanner();   // A: 'start here' card while the active hero is still blank

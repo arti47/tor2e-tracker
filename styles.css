@@ -1125,3 +1125,23 @@ body.dark .hud-eye { background: var(--card-bg); }
 .campaign-box > summary span { font-family: var(--font-display); font-size: var(--fs-lg); font-weight: 600; }
 .campaign-box > summary small { color: var(--text-muted); font-size: var(--fs-xs); }
 .campaign-box[open] > summary { margin-bottom: var(--sp-3); }
+
+/* Dice result drawer */
+.roll-drawer {
+  position: fixed; left: 0; right: 0; bottom: calc(var(--nav-h) + var(--safe-bot)); z-index: 160;
+  max-height: 72vh; display: flex; flex-direction: column;
+  background: var(--bg); border-radius: 20px 20px 0 0; box-shadow: 0 -10px 40px rgba(40,25,10,.28);
+  transform: translateY(110%); transition: transform .3s var(--ease); visibility: hidden;
+}
+.roll-drawer.open { transform: none; visibility: visible; }
+.rd-bar { display: flex; align-items: center; justify-content: center; position: relative; padding: 10px 16px 10px; min-height: 40px; }
+.rd-handle { width: 40px; height: 5px; border-radius: 3px; background: var(--border); }
+.rd-close { position: absolute; right: 12px; top: 6px; background: none; border: none; color: var(--red); font-weight: 700; font-size: var(--fs-sm); padding: 6px; }
+.rd-body { overflow-y: auto; padding: 4px var(--sp-4) var(--sp-4); -webkit-overflow-scrolling: touch; }
+.rd-body .roll-result { box-shadow: none; }
+@media (min-width: 900px) {
+  .roll-drawer { left: calc(var(--rail-w) + 50% - 280px - var(--rail-w) / 2); right: auto; width: 560px; bottom: 16px; border-radius: 20px; }
+}
+@media (prefers-reduced-motion: reduce) { .roll-drawer { transition: none; } }
+@media print { .roll-drawer { display: none !important; } }
+.rd-body .result-tag.tag-success, .rd-body .result-tag.tag-fail, .rd-body .result-tag.tag-great { font-size: var(--fs-md); padding: 4px 14px; }

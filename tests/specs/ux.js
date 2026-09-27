@@ -720,8 +720,9 @@ module.exports = {
       out.dice = at('id="quick-skills"') < at('id="dice-manual"') &&
                  at('id="dice-manual"') < at('id="hope-spend-btn"') &&
                  at('id="hope-spend-btn"') < at('rollDice()') &&
-                 at('rollDice()') < at('id="roll-result"') &&
-                 at('id="roll-result"') < at('id="combat-tasks-card"') &&
+                 at('rollDice()') < at('id="combat-tasks-card"') &&
+                 // the result no longer sits in the page: it slides up in the drawer from any tab
+                 !!document.querySelector('#roll-drawer #roll-result') &&
                  at('id="combat-tasks-card"') < at('id="shadow-test-card"');
       // Combat stays play-first by decision: stance and encounter above the one-time gear setup.
       const cb = titles('combat').join('|');
