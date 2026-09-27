@@ -500,16 +500,18 @@ function openPregens() {
   if (!ov) { ov = document.createElement('div'); ov.id = 'pregen-overlay'; ov.className = 'menu-overlay'; document.body.appendChild(ov); }
   let src = '', items = '';
   PREGENS.forEach((p, i) => {
-    if (p.src !== src) { src = p.src; items += `<div style="font-size:var(--fs-xs);font-weight:700;color:var(--gold);margin:10px 0 4px">${escapeHtml(src)}</div>`; }
+    if (p.src !== src) { src = p.src; items += `<div class="menu-group" style="margin-top:14px">${escapeHtml(src)}</div>`; }
     const sub = [p.culture, p.calling].filter(Boolean).join(' · ');
-    items += `<button onclick="loadPregen(${i})" class="add-row-btn" style="width:100%;text-align:left;margin-bottom:5px;background:var(--bg-deep);color:var(--ink);font-size:var(--fs-sm)">
-        <strong>${escapeHtml(p.name)}</strong><br><span style="font-size:var(--fs-xs);color:var(--text-muted)">${escapeHtml(sub)} · Str ${p.strRating} Hrt ${p.hrtRating} Wit ${p.witRating} · End ${p.endMax} Hope ${p.hopeMax}</span></button>`;
+    items += `<button onclick="loadPregen(${i})" class="hero-row">
+        ${cultureCrest(p.culture, 40, p.name)}
+        <span class="hr-txt"><strong>${escapeHtml(p.name)}</strong><small>${escapeHtml(sub)}</small>
+        <small class="hr-stats">Strength ${p.strRating} · Heart ${p.hrtRating} · Wits ${p.witRating} · Endurance ${p.endMax} · Hope ${p.hopeMax}</small></span></button>`;
   });
   ov.innerHTML = `<div class="menu" style="max-width:420px;width:93%;max-height:90vh;overflow-y:auto">
-      <h3 style="margin-top:0">✨ Pre-generated Heroes</h3>
+      <h3 style="margin-top:0">Ready-made heroes</h3>
       <p class="hint" style="text-align:left;margin:0 0 8px">Official ready-made heroes. Tap one to add it to your roster as a new character — your existing heroes aren't affected.</p>
       ${items}
-      <button onclick="document.getElementById('pregen-overlay').classList.remove('show')" class="add-row-btn" style="width:100%;margin-top:8px;background:var(--btn-secondary-bg);color:white">Close</button>
+      <button onclick="document.getElementById('pregen-overlay').classList.remove('show')" class="close" style="margin-top:8px">Close</button>
     </div>`;
   ov.classList.add('show');
 }
@@ -532,8 +534,9 @@ function renderRoster() {
     const data = (e.id === activeCharId) ? char : readSlot(e.id);
     const sub = data ? [data.culture, data.calling].filter(Boolean).join(' · ') : '';
     const endBit = data ? `End ${data.endCur ?? '?'}/${data.endMax ?? '?'} · Hope ${data.hopeCur ?? '?'}/${data.hopeMax ?? '?'}` : '';
-    return `<div style="border:1px solid ${isActive ? 'var(--gold)' : 'var(--border)'};border-radius:var(--r-sm);padding:10px;margin-bottom:8px;background:${isActive ? 'var(--gold-soft)' : 'var(--card-bg)'}">
-      <div style="display:flex;align-items:center;gap:8px">
+    return `<div class="roster-row${isActive ? ' active' : ''}">
+      <div style="display:flex;align-items:center;gap:10px">
+        ${cultureCrest(data && data.culture, 40, e.name)}
         <div style="flex:1;min-width:0">
           <strong style="font-size:var(--fs-md)">${escapeHtml(e.name || 'New Hero')}</strong>${isActive ? ' <span style="font-size:var(--fs-xs);background:var(--gold);color:#fff;padding:1px 6px;border-radius:var(--r-sm);vertical-align:middle">ACTIVE</span>' : ''}
           ${sub ? `<br><small style="color:var(--text-muted)">${escapeHtml(sub)}</small>` : ''}

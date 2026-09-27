@@ -1038,3 +1038,14 @@ body.dark .hud-eye { background: var(--card-bg); }
 .tabs { -webkit-mask-image: linear-gradient(90deg, #000 88%, transparent); mask-image: linear-gradient(90deg, #000 88%, transparent); padding-right: 28px; }
 .tabs.fits { -webkit-mask-image: none; mask-image: none; }
 [tabindex="-1"]:focus { outline: none; }
+/* Crests + hero rows (pregens, roster) */
+.crest { display: block; flex: 0 0 auto; filter: drop-shadow(0 1px 1.5px rgba(0,0,0,.25)); }
+.monogram { background: none !important; box-shadow: none !important; width: 36px; height: 36px; flex-basis: 36px; }
+.menu .hero-row { display: flex; align-items: center; gap: var(--sp-3); width: 100%; text-align: left; padding: 10px 12px; margin: 0 0 var(--sp-2); }
+.hero-row .hr-txt { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.hero-row .hr-txt strong { font-family: var(--font-display); font-size: var(--fs-lg); font-weight: 600; }
+.hero-row small { color: var(--text-muted); font-size: var(--fs-xs); }
+.hero-row .hr-stats { color: var(--text-faint); }
+.roster-row { border: 1px solid var(--line); border-radius: var(--r-md); padding: var(--sp-3); margin-bottom: var(--sp-2); background: var(--card-bg); }
+.roster-row.active { border-color: color-mix(in srgb, var(--gold) 60%, transparent); background: var(--gold-paler); }
+.roster-row .btn { width: auto; }

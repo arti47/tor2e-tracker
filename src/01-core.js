@@ -56,6 +56,55 @@ function applyTheme() {
   const btn = document.getElementById('dark-mode-btn');
   if (btn) setMenuLabel(btn, 'Theme', THEME_LABELS[pref]);
 }
+/* ---------- CULTURE CRESTS ----------
+   A heraldic device for each of the 11 heroic cultures, drawn as inline SVG (no images, works
+   offline). Field colour + a device in gold line-work on a shield. cultureCrest() falls back to
+   the hero's initial for anything unknown. Used in the header, the hero sheet, pickers and roster. */
+const CREST_FIELD = {
+  'Bardings': '#7a2a1f', "Dwarves of Durin's Folk": '#3a3f52', 'Elves of Lindon': '#1e4c5c',
+  'Hobbits of the Shire': '#3f5a28', 'Men of Bree': '#6b4a27', 'Rangers of the North': '#28362c',
+  'Beornings': '#5a3820', 'Elves of Mirkwood': '#2c4a27', 'Woodmen of Wilderland': '#4d5a26',
+  'Dwarves of Nogrod and Belegost': '#4b3a4c', 'High Elves of Rivendell': '#343b6c'
+};
+const _STAR8 = (cx, cy, r) => { let d = ''; for (let i = 0; i < 16; i++) { const a = Math.PI / 8 * i - Math.PI / 2, rr = i % 2 ? r * 0.42 : r; d += (i ? 'L' : 'M') + (cx + rr * Math.cos(a)).toFixed(1) + ' ' + (cy + rr * Math.sin(a)).toFixed(1); } return d + 'Z'; };
+const CREST_DEVICE = {
+  // a black arrow on a drawn bow
+  'Bardings': '<path d="M24 15 Q45 32 24 49" fill="none"/><path d="M24 15 V49" stroke-width="1.2"/><path d="M16 32 H47 M47 32 l-6 -4 M47 32 l-6 4 M16 32 l-3 -3 M16 32 l-3 3"/>',
+  // hammer beneath three stars (the crown of Durin)
+  "Dwarves of Durin's Folk": '<rect x="23" y="24" width="18" height="8" rx="1.5" fill="currentColor" stroke="none"/><path d="M32 32 V51"/><circle cx="24" cy="16" r="1.6" fill="currentColor"/><circle cx="32" cy="13" r="1.6" fill="currentColor"/><circle cx="40" cy="16" r="1.6" fill="currentColor"/>',
+  // a star over the western sea
+  'Elves of Lindon': '<path d="' + _STAR8(32, 25, 10) + '" fill="currentColor" stroke="none"/><path d="M14 44 q4.5 -4 9 0 t9 0 t9 0 t9 0 M18 50 q3.5 -3 7 0 t7 0 t7 0 t7 0" fill="none"/>',
+  // a round green door
+  'Hobbits of the Shire': '<circle cx="32" cy="33" r="13" fill="none"/><path d="M19 33 H45 M22 26 H42 M22 40 H42" stroke-width="1"/><circle cx="32" cy="33" r="2.2" fill="currentColor"/>',
+  // a tankard for the inn of the Prancing Pony
+  'Men of Bree': '<path d="M21 20 H39 V47 Q39 50 36 50 H24 Q21 50 21 47 Z" fill="none"/><path d="M39 26 Q47 26 47 33 Q47 40 39 40" fill="none"/><path d="M21 20 Q24 15 30 17 Q34 13 39 18" fill="none"/><path d="M26 27 V44 M31 27 V44 M36 27 V44" stroke-width="1"/>',
+  // the star of the Dúnedain
+  'Rangers of the North': '<path d="' + _STAR8(32, 32, 16) + '" fill="currentColor" stroke="none"/><circle cx="32" cy="32" r="3.5" fill="none"/>',
+  // a bear's paw
+  'Beornings': '<ellipse cx="32" cy="38" rx="10" ry="8.5" fill="currentColor" stroke="none"/><circle cx="20" cy="26" r="3.6" fill="currentColor" stroke="none"/><circle cx="27" cy="20" r="3.6" fill="currentColor" stroke="none"/><circle cx="37" cy="20" r="3.6" fill="currentColor" stroke="none"/><circle cx="44" cy="26" r="3.6" fill="currentColor" stroke="none"/>',
+  // a beech leaf
+  'Elves of Mirkwood': '<path d="M32 12 Q49 26 32 52 Q15 26 32 12 Z" fill="none"/><path d="M32 16 V52 M32 26 L25 21 M32 26 L39 21 M32 34 L24 28 M32 34 L40 28 M32 42 L26 37 M32 42 L38 37" stroke-width="1"/>',
+  // a woodsman's axe
+  'Woodmen of Wilderland': '<path d="M21 52 L41 14" stroke-width="3"/><path d="M34 13 Q52 12 51 32 Q43 25 31 29 Z" fill="currentColor" stroke="none"/><path d="M14 50 Q18 42 22 50 M44 50 Q48 42 52 50" fill="none" stroke-width="1.2"/>',
+  // twin mountains over an anvil
+  'Dwarves of Nogrod and Belegost': '<path d="M12 40 L23 21 L31 33 L40 18 L52 40 Z" fill="none"/><path d="M22 45 H42 L39 49 H25 Z" fill="currentColor" stroke="none"/>',
+  // a star over the hidden valley
+  'High Elves of Rivendell': '<path d="' + _STAR8(32, 22, 9) + '" fill="currentColor" stroke="none"/><path d="M12 50 Q22 34 32 42 Q42 34 52 50" fill="none"/><path d="M32 42 V52" stroke-width="1"/>'
+};
+function cultureCrest(culture, size, name) {
+  const px = size || 32;
+  const field = CREST_FIELD[culture] || '#6d5c4b';
+  const dev = CREST_DEVICE[culture];
+  const initial = String(name || culture || '?').trim().charAt(0).toUpperCase() || '?';
+  const body = dev
+    ? `<g stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" color="#f0d58f">${dev}</g>`
+    : `<text x="32" y="41" text-anchor="middle" font-family="EB Garamond, Georgia, serif" font-size="24" font-weight="700" fill="#f0d58f">${initial.replace(/[<&]/g, '')}</text>`;
+  return `<svg class="crest" width="${px}" height="${px}" viewBox="0 0 64 64" role="img" aria-label="${(culture || 'Hero').replace(/"/g, '')} crest">` +
+    `<path d="M32 3 L57 9 V29 C57 45 46 56 32 61 C18 56 7 45 7 29 V9 Z" fill="${field}" stroke="#c9a14a" stroke-width="2.5"/>` +
+    `<path d="M32 7.5 L53 12.5 V29 C53 42.5 43.5 51.5 32 56 C20.5 51.5 11 42.5 11 29 V12.5 Z" fill="none" stroke="#c9a14a" stroke-opacity=".45" stroke-width="1"/>` +
+    body + `</svg>`;
+}
+
 /* Menu rows: label on the left, current state on the right (no emoji soup). */
 function setMenuLabel(btn, label, state) {
   // DOM, not innerHTML+escapeHtml: this runs at boot from applyTheme, before 05-combat-build.js loads.

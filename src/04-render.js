@@ -4634,9 +4634,9 @@ function renderHud() {
   const built = !!char.culture;
   hud.style.display = built ? '' : 'none';
   if (mono) {
-    const n = (char.name || '').trim();
     mono.style.display = built ? '' : 'none';
-    mono.textContent = (n || char.culture || '?').charAt(0).toUpperCase();
+    const key = (char.culture || '') + '|' + (char.name || '');
+    if (mono.dataset.key !== key) { mono.dataset.key = key; mono.innerHTML = cultureCrest(char.culture, 36, char.name); }
   }
   if (!built) return;
   const end = parseInt(char.endCur) || 0, endMax = parseInt(char.endMax) || 0;
