@@ -72,39 +72,41 @@
   }
 
   /* Dark — the same system on warm charcoal. Activated by body.dark (menu) or prefers-color-scheme. */
+  /* Dark — "candlelight": warm leather, parchment-tinted ink, gold line-work, a faint glow from above.
+     Primary red is dark enough that WHITE text on it clears 4.5:1 (5.3:1). */
   body.dark {
-    --bg: #16120d;
-    --bg-deep: #1e1912;
-    --card-bg: #251f18;
-    --pure-white: #251f18;
-    --ink: #f0e4c8;
-    --ink-soft: #d3c19c;
-    --text-muted: #b5a27f;
-    --text-faint: #978566;
-    --red: #d0634f;
-    --red-dark: #ea8f7c;
-    --red-light: #f1ab9c;
-    --gold: #cfa04a;
-    --accent-ink: #1a120c;
-    --border: rgba(240, 220, 170, 0.14);
-    --line: rgba(240, 220, 170, 0.09);
-    --shadow: rgba(0, 0, 0, 0.5);
-    --elev-1: 0 1px 2px rgba(0,0,0,.35), 0 2px 12px rgba(0,0,0,.25);
-    --gold-soft: rgba(207, 160, 74, 0.16);
-    --gold-paler: rgba(207, 160, 74, 0.09);
-    --red-soft: rgba(208, 99, 79, 0.18);
-    --success-bg: rgba(110, 170, 80, 0.18);
-    --success-text: #b9dca7;
-    --error-bg: rgba(208, 99, 79, 0.2);
-    --error-text: #f2b5a8;
+    --bg: #1b130d;
+    --bg-deep: #140e09;
+    --card-bg: #281c13;
+    --pure-white: #281c13;
+    --ink: #f3e3c3;
+    --ink-soft: #dcc59c;
+    --text-muted: #c0a67e;
+    --text-faint: #9d8663;
+    --red: #b8452f;
+    --red-dark: #eba48d;
+    --red-light: #f1b8a6;
+    --gold: #d8aa55;
+    --accent-ink: #ffffff;
+    --border: rgba(216, 170, 85, 0.20);
+    --line: rgba(216, 170, 85, 0.11);
+    --shadow: rgba(0, 0, 0, 0.55);
+    --elev-1: 0 1px 2px rgba(0,0,0,.4), 0 4px 16px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,220,160,.04);
+    --gold-soft: rgba(216, 170, 85, 0.15);
+    --gold-paler: rgba(216, 170, 85, 0.08);
+    --red-soft: rgba(184, 69, 47, 0.2);
+    --success-bg: rgba(130, 170, 90, 0.18);
+    --success-text: #bddca6;
+    --error-bg: rgba(184, 69, 47, 0.22);
+    --error-text: #f2b3a3;
     --warn-orange: #e2a15e;
     --amber-soft: #d9b34a;
-    --green-soft: #93c06a;
-    --brown-soft: #bba080;
-    --rest-blue: #7896c2;
-    --warn-yellow: rgba(207, 160, 74, 0.16);
-    --btn-secondary-bg: #342a20;
-    --btn-alert-bg: #8e2c1f;
+    --green-soft: #9cc06f;
+    --brown-soft: #c2a37f;
+    --rest-blue: #86a3c9;
+    --warn-yellow: rgba(216, 170, 85, 0.15);
+    --btn-secondary-bg: #3a2a1c;
+    --btn-alert-bg: #b8452f;
     --btn-warn-bg: #8a5e18;
   }
   /* Sepia — deeper aged paper. */
@@ -156,7 +158,7 @@
       url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .35 0 0 0 0 .25 0 0 0 0 .12 0 0 0 .05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
       radial-gradient(ellipse at 50% -10%, rgba(255,255,255,.55), transparent 60%);
   }
-  body.dark { background-image: none; }
+  body.dark { background-image: radial-gradient(ellipse 80% 45% at 50% -8%, rgba(255, 170, 80, .13), transparent 70%), radial-gradient(ellipse at 50% 120%, rgba(0,0,0,.35), transparent 60%); background-attachment: fixed; }
 
   /* --- HEADER --- */
   .header {

@@ -52,7 +52,7 @@ function applyTheme() {
   else if (eff === 'hc') b.classList.add('theme-hc');
   // (light => no class)
   const tc = document.querySelector('meta[name="theme-color"]');
-  if (tc) tc.setAttribute('content', eff === 'dark' ? '#15110c' : (eff === 'sepia' ? '#ece0bf' : '#f5ecd9'));
+  if (tc) tc.setAttribute('content', eff === 'dark' ? '#1b130d' : (eff === 'sepia' ? '#e9dcb8' : '#f3ead8'));
   const btn = document.getElementById('dark-mode-btn');
   if (btn) setMenuLabel(btn, 'Theme', THEME_LABELS[pref]);
 }
