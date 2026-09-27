@@ -611,6 +611,10 @@ module.exports = {
     const emo4 = await safe(`
       const tabs = ['play','character','gear','build','journey','council','combat','dice','reference','chronicle','oracle'];
       char.striderMode = true; saveCharacter(); refreshStriderUI();
+      // a foe and a written scene put the small glyph buttons (edit, rename, describe) on screen
+      addFoeFromBestiary(allBestiary().findIndex(b => b.name === 'Orc Soldier'));
+      if (typeof loadSampleChronicle === 'function') { loadSampleChronicle(); renderChronicle(); }
+      await new Promise(r => setTimeout(r, 30));
       const blanks = new Set(), left = new Set();
       const pic = /\\p{Extended_Pictographic}/u;
       const scan = () => {
@@ -622,7 +626,7 @@ module.exports = {
       };
       for (const t of tabs) { const el = document.querySelector('.tab[data-tab="' + t + '"]'); if (el && el.style.display !== 'none') { openNavGroup(navGroupOf(t).id); el.click(); await new Promise(r => setTimeout(r, 40)); scan(); } }
       toggleMenu(); await new Promise(r => setTimeout(r, 40)); scan(); toggleMenu();
-      char.striderMode = false; saveCharacter(); refreshStriderUI();
+      char.striderMode = false; char.encounter = JSON.parse(JSON.stringify(DEFAULT_CHARACTER.encounter)); saveCharacter(); refreshStriderUI(); render();
       return { blanks: [...blanks], left: [...left] };`);
     checks.push({ ok: !emo4.err && emo4.blanks.length === 0 && emo4.left.length === 0, msg: `every button shows something and no colour emoji remain in the interface (${JSON.stringify(emo4)})` });
 
@@ -668,7 +672,7 @@ module.exports = {
       char = JSON.parse(JSON.stringify(DEFAULT_CHARACTER)); saveCharacter(); render();
       openNavGroup('play'); renderPlay(); await new Promise(r => setTimeout(r, 900));
       const dialog = !!document.querySelector('.menu-overlay.show');
-      const tut = [...document.querySelectorAll('#play-body button')].some(b => /tutorial/i.test(b.textContent));
+      const tut = [...document.querySelectorAll('#play-body button')].some(b => /tutorial/i.test(b.textContent) && b.checkVisibility());
       const box = document.getElementById('campaign-box').checkVisibility();
       localStorage.setItem('tor2e-tutorial', JSON.stringify({ offered: true }));
       return { dialog, tut, box };`);
