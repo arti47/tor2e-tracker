@@ -837,6 +837,85 @@ module.exports = {
     await hero();
 
 
+    // ================= The Middle-earth map =================
+    const mp = await safe(`
+      const out = {};
+      out.size = MAP_DATA.terrain.length === MAP_DATA.rows * MAP_DATA.cols;
+      out.areas = new Set(MAP_DATA.peril.map(p => p[3])).size;
+      out.badPlaces = MAP_DATA.places.filter(([n, r, c]) => !HexMap.passable(r, c)).map(p => p[0]);
+      const P = n => { const h = mapFindPlace(n)[0]; return [h[1], h[2]]; };
+      const R = HexMap.route([P('Bree'), P('Rivendell')]);
+      out.hexes = R && R.hexes; out.counted = R && R.path.length - 1 === R.hexes;
+      out.clean = R && R.path.every(([r, c]) => HexMap.passable(r, c));
+      out.steps = R && R.path.every((p, i) => !i || HexMap.neighbours(...R.path[i - 1]).some(q => q[0] === p[0] && q[1] === p[1]));
+      return out;`);
+    checks.push({ ok: !mp.err && mp.size && mp.areas >= 40 && mp.badPlaces.length === 0 && mp.hexes >= 12 && mp.hexes <= 20 && mp.counted && mp.clean && mp.steps,
+      msg: `the map knows its hexes, 40 perilous areas and its places; Bree → Rivendell is ${mp.hexes} hexes of passable, adjacent steps (${JSON.stringify(mp)})` });
+
+    const pk = await safe(`
+      localStorage.removeItem('tor2e-map-fixes'); HexMap._fixes = null;
+      Object.assign(MapPick, { from: null, to: null, via: null });
+      char.safeHaven = 'Bree'; char.journey = Object.assign({}, char.journey || {}, { active: false }); saveCharacter();
+      openNavGroup('adventure'); document.querySelector('.tab[data-tab="journey"]').click(); await new Promise(r => setTimeout(r, 450));
+      document.querySelector('#j-dist [data-hex="map"]').click();
+      const open = document.getElementById('map-overlay').classList.contains('show');
+      const fromGuess = document.getElementById('map-from').value;
+      const to = document.getElementById('map-to'); to.value = 'riv'; to.dispatchEvent(new Event('input'));
+      const sug = [...document.querySelectorAll('#map-sug .map-sug-row')].map(b => b.textContent);
+      document.querySelector('#map-sug .map-sug-row').click();
+      const sum = document.getElementById('map-summary').innerText;
+      const useOn = !document.getElementById('map-use').disabled;
+      document.getElementById('map-use').click();
+      const f = id => document.getElementById(id).value;
+      const filled = { o: f('j-origin'), d: f('j-destination'), h: f('j-totalHexes'), note: !document.getElementById('j-map-note').hidden, card: document.querySelector('#j-dist [data-hex="map"]').getAttribute('aria-pressed') };
+      startJourney();
+      const route = (char.journey.route || []).length;
+      return { open, fromGuess, sug, sum: /\\d+ hexes/.test(sum), useOn, filled, route, closed: !document.getElementById('map-overlay').classList.contains('show') };`);
+    checks.push({ ok: !pk.err && pk.open && pk.fromGuess === 'Bree' && pk.sug[0] === 'Rivendell' && pk.sum && pk.useOn && pk.closed && pk.filled.o === 'Bree' && pk.filled.d === 'Rivendell' && +pk.filled.h > 0 && pk.filled.note && pk.filled.card === 'true' && pk.route === +pk.filled.h + 1,
+      msg: `Pick on the map: starts from your Safe Haven, finds a place as you type, and fills the journey — which keeps its route (${JSON.stringify(pk)})` });
+
+    const ev = await safe(`
+      const j = char.journey; j.routeLands = 'l'.repeat(4) + 'd'.repeat(j.route.length - 4); j.nextEventHex = j.route.length - 2; j.currentHex = j.nextEventHex; j.active = true; saveCharacter();
+      const early = journeyRegionNow(j, 2), late = journeyRegionNow(j, j.route.length - 2);
+      const n = j.events.length; resolveJourneyEvent(); await new Promise(r => setTimeout(r, 30));
+      const txt = String((j.events[n] || {}).text || '');
+      document.querySelectorAll('.menu-overlay.show').forEach(o => o.classList.remove('show'));
+      return { early, late, txt: /Dark Land/.test(txt) };`);
+    checks.push({ ok: !ev.err && ev.early === 'Wild' && ev.late === 'Dark' && ev.txt, msg: `each Journey Event uses the land of the hex it strikes in (${JSON.stringify(ev)})` });
+
+    const lv = await safe(`
+      char.saga = Object.assign(char.saga || {}, { started: true, premise: 'x', step: 'journey' }); char.journey.currentHex = 5; saveCharacter();
+      openNavGroup('play'); renderPlay(); await new Promise(r => setTimeout(r, 450));
+      const m = document.querySelector('#play-body .live-map');
+      const out = { map: !!m, here: !!(m && m.querySelector('.lm-here')), cap: m ? /5 of \\d+ hexes/.test(m.textContent) : false };
+      if (m) m.click(); out.view = document.getElementById('map-overlay').classList.contains('view-only') && document.getElementById('map-overlay').classList.contains('show');
+      closeMapPicker(); char.journey.active = false; saveCharacter();
+      return out;`);
+    checks.push({ ok: !lv.err && lv.map && lv.here && lv.cap && lv.view, msg: `during a journey planned on the map, Play shows the real map with you on it (${JSON.stringify(lv)})` });
+
+    const fx = await safe(`
+      Object.assign(MapPick, { from: null, to: null, via: null });
+      const P = n => { const h = mapFindPlace(n)[0]; return [h[1], h[2]]; };
+      const destPeril = HexMap.route([P('Bree'), P('Barrow-downs')]).destPeril;
+      const R0 = HexMap.route([P('Bree'), P('Rivendell')]); const mid = R0.path[Math.floor(R0.path.length / 2)];
+      openHexFix(mid); hexFixLand('m'); saveHexFix();
+      const R1 = HexMap.route([P('Bree'), P('Rivendell')]);
+      const avoided = !R1.path.some(p => p[0] === mid[0] && p[1] === mid[1]);
+      const saved = /"land":"m"/.test(localStorage.getItem('tor2e-map-fixes') || '');
+      openHexFix(mid); resetHexFix(); closeMapPicker();
+      const back = HexMap.route([P('Bree'), P('Rivendell')]).hexes === R0.hexes;
+      return { destPeril, avoided, saved, back };`);
+    checks.push({ ok: !fx.err && fx.destPeril === 3 && fx.avoided && fx.saved && fx.back, msg: `a perilous destination sets the Peril; correcting a hex reroutes, is saved on the device, and undoes (${JSON.stringify(fx)})` });
+
+    const mo = await safe(`
+      char.moriaMode = true; saveCharacter(); refreshStriderUI(); jSyncGuided();
+      const hidden = document.querySelector('#j-dist [data-hex="map"]').hidden;
+      char.moriaMode = false; saveCharacter(); refreshStriderUI(); jSyncGuided();
+      return { hidden, back: !document.querySelector('#j-dist [data-hex="map"]').hidden };`);
+    checks.push({ ok: !mo.err && mo.hidden && mo.back, msg: `Moria (abstract distances) hides Pick on the map (${JSON.stringify(mo)})` });
+    await hero();
+
+
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length}${errors.length ? ': ' + errors[0] : ''})` });
     await context.close();
     return { checks };

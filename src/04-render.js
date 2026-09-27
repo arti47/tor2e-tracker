@@ -1571,7 +1571,8 @@ function startJourney() {
     },
     travelFatigue: 0, daysElapsed: 0, events: [], nextEventHex: null,
     perilRating: Math.max(0, parseInt(document.getElementById('j-perilRating').value) || 0),
-    perilEventsRemaining: Math.max(0, parseInt(document.getElementById('j-perilRating').value) || 0)
+    perilEventsRemaining: Math.max(0, parseInt(document.getElementById('j-perilRating').value) || 0),
+    ...(typeof takePendingRoute === 'function' ? takePendingRoute(total) : {})
   };
   saveCharacter();
   renderJourney();
@@ -2301,6 +2302,8 @@ async function reclaimSafeHavenUndertaking() {
 let _jExact = false;
 const J_REGION_SAY = { Free: 'Safe lands — the road tends to go your way.', Border: 'Border lands — events lean in your favour.', Wild: 'The wild — neither kind nor cruel.', Shadow: 'Shadow lands — events turn against you.', Dark: 'Dark lands — the Enemy’s own; every event goes hard.' };
 function jPickDist(v) {
+  if (v === 'map') { if (typeof openMapPicker === 'function') openMapPicker(); return; }
+  window._jPendingRoute = null;
   const inp = document.getElementById('j-totalHexes');
   if (v === 'exact') { _jExact = true; jSyncGuided(); if (inp) inp.focus(); return; }
   _jExact = false; if (inp) inp.value = v; jSyncGuided();
@@ -2311,9 +2314,12 @@ function jPickChip(selId, v) { const sel = document.getElementById(selId); if (!
 function jSyncGuided() {
   const inp = document.getElementById('j-totalHexes'); if (!inp) return;
   const hex = String(inp.value || '');
-  const preset = ['4', '9', '18'].includes(hex) && !_jExact;
-  document.querySelectorAll('#j-dist .opt-card').forEach(b => { const on = b.dataset.hex === 'exact' ? (!preset && (_jExact || !!hex)) : (preset && b.dataset.hex === hex); b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); });
-  const ex = document.getElementById('j-exact'); if (ex) ex.hidden = preset || (!_jExact && !hex);
+  const onMap = !!(window._jPendingRoute && String(window._jPendingRoute.hexes) === hex);
+  const preset = ['4', '9', '18'].includes(hex) && !_jExact && !onMap;
+  document.querySelectorAll('#j-dist .opt-card').forEach(b => { const on = b.dataset.hex === 'map' ? onMap : b.dataset.hex === 'exact' ? (!onMap && !preset && (_jExact || !!hex)) : (preset && b.dataset.hex === hex); b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); });
+  const ex = document.getElementById('j-exact'); if (ex) ex.hidden = onMap || preset || (!_jExact && !hex);
+  const mc = document.querySelector('#j-dist [data-hex="map"]'); if (mc) mc.hidden = !!(typeof isMoria === 'function' && isMoria());
+  if (typeof renderMapRouteNote === 'function') renderMapRouteNote();
   const mounted = !!(document.getElementById('j-mounted') || {}).checked, forced = !!(document.getElementById('j-forcedMarch') || {}).checked;
   document.querySelectorAll('#j-travel .opt-card').forEach(b => { const on = b.dataset.mode === 'forced' ? forced : (b.dataset.mode === 'mounted') === mounted; b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); });
   const vr = document.getElementById('j-vigour-row'); if (vr) vr.hidden = !mounted;
@@ -2888,13 +2894,15 @@ function resolveJourneyEvent(isPeril) {
     else { targetRole = 'Hunter'; targetSkill = 'Hunting'; roleKey = 'hunter'; }
   }
 
-  // Step 2: event Feat die, region-modified.
+  // Step 2: event Feat die, region-modified. With a map route the land is the hex the event
+  // strikes in, so the danger rises as the road goes deeper (journeyRegionNow, src/10-map.js).
+  const region = (!moria && typeof journeyRegionNow === 'function') ? journeyRegionNow(j, isPeril ? j.currentHex : (j.nextEventHex || j.currentHex)) : j.region;
   let featFav = 'normal';
   if (moria) {
     // Moria is a Dark Land → Ill-Favoured, unless a foothold makes this leg a Border region.
     featFav = (j.region === 'Border') ? 'normal' : 'ill';
-  } else if (j.region === 'Free' || j.region === 'Border') featFav = 'fav';
-  else if (j.region === 'Shadow' || j.region === 'Dark') featFav = 'ill';
+  } else if (region === 'Free' || region === 'Border') featFav = 'fav';
+  else if (region === 'Shadow' || region === 'Dark') featFav = 'ill';
   // The EVENT feat die is the table's own die, not a roll the hero made — an Eye here selects
   // "Terrible Misfortune", it is not the player drawing the Eye's attention.
   _suspendInlineEye(true);
@@ -2993,7 +3001,7 @@ function resolveJourneyEvent(isPeril) {
   j.events.push({
     day: j.daysElapsed,
     hex: isPeril ? j.currentHex : j.nextEventHex,
-    text: `${perilPrefix}🎲 <strong>${event.name}</strong> (Feat ${featSym}${ponderTag}, region ${j.region}). ${rollClause} <strong>+${event.fatigue} Travel Fatigue</strong>. <em>${event.effect}</em>${detailSuffix}${playerHint}`
+    text: `${perilPrefix}🎲 <strong>${event.name}</strong> (Feat ${featSym}${ponderTag}, ${region} Land). ${rollClause} <strong>+${event.fatigue} Travel Fatigue</strong>. <em>${event.effect}</em>${detailSuffix}${playerHint}`
   });
   if (isPeril) {
     j.perilEventsRemaining = Math.max(0, (parseInt(j.perilEventsRemaining) || 0) - 1);
@@ -4985,8 +4993,10 @@ function renderPlay() {
 
   const jr = char.journey || {};
   const terrain = typeof sceneTerrain === 'function' ? sceneTerrain() : 'road';
+  // A journey planned on the map shows the real map, with you on it; others keep the drawn strip.
   const road = (jr.active && parseInt(jr.totalHexes) > 0)
-    ? (typeof routeMap === 'function'
+    ? (Array.isArray(jr.route) && typeof liveRouteMap === 'function') ? liveRouteMap(jr)
+    : (typeof routeMap === 'function'
         ? routeMap(parseInt(jr.currentHex) || 0, parseInt(jr.totalHexes), jr.nextEventHex, jr.origin || char.safeHaven, jr.destination, terrain, { log: jr.events, days: parseInt(jr.daysElapsed) || 0 })
         : _roadStrip(parseInt(jr.currentHex) || 0, parseInt(jr.totalHexes), jr.nextEventHex)) : '';
   host.innerHTML =
