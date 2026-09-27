@@ -194,10 +194,11 @@ module.exports = {
 
     // P8-minor — generated weapon reorder/remove buttons carry aria-labels.
     const wAria = await page.evaluate(() => {
-      char.weapons = [{ name: 'Spear', dmg: '4', inj: '14', picked: true }];
+      // round 4: weapons are item cards; reorder shows once there are two to order
+      char.weapons = [{ name: 'Spear', dmg: '4', inj: '14', picked: true }, { name: 'Spear', dmg: '4', inj: '14', picked: true }];
       renderWeapons();
       const btns = Array.from(document.querySelectorAll('#weapon-tbody button'));
-      const ok = btns.length >= 3 && btns.every(b => (b.getAttribute('aria-label') || '').includes('Spear'));
+      const ok = btns.length >= 6 && btns.every(b => (b.getAttribute('aria-label') || '').includes('Spear'));
       char.weapons = []; saveCharacter(); renderWeapons();
       return ok;
     });

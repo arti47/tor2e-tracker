@@ -1321,27 +1321,17 @@
   <div class="card">
     <h3 class="card-title" id="war-gear-card" data-hint="Damage">War Gear</h3>
     <p class="hint" id="gear-count-hint" style="text-align:left;margin:0 0 8px 0;font-style:normal;color:var(--red-dark)"></p>
-    <table class="gear-table">
-      <thead>
-        <tr>
-          <th class="name-col">Weapon</th>
-          <th class="num-col">Dmg</th>
-          <th class="num-col">Inj</th>
-          <th class="num-col">Load</th>
-          <th>Notes</th>
-          <th class="del-col"></th>
-        </tr>
-      </thead>
-      <tbody id="weapon-tbody"></tbody>
-    </table>
+    <div id="weapon-tbody" class="item-cards" aria-live="polite"></div>
     <div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;">
-      <button class="add-row-btn" onclick="openWeaponPicker()">+ Pick Weapon</button>
-      <button class="add-row-btn" onclick="addWeapon()" style="background:var(--btn-secondary-bg)">+ Custom Row</button>
+      <button class="add-row-btn" onclick="openWeaponPicker()">+ Choose a weapon</button>
+      <button class="add-row-btn quiet" onclick="addWeapon()">Write in your own</button>
     </div>
   </div>
 
   <div class="card">
     <h3 class="card-title" data-hint="Protection">Armour & Helm</h3>
+    <div id="armour-items" class="item-cards"></div>
+    <div class="raw-gear">
 
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
       <strong style="flex:1;color:var(--red-dark);font-size:var(--fs-sm)">Body Armour</strong>
@@ -1380,10 +1370,13 @@
       </div>
     </div>
     <p class="hint" id="dwarf-load-hint" style="display:none">Dwarven Redoubtable: Load halved automatically</p>
+    </div>
   </div>
 
   <div class="card">
     <h3 class="card-title" data-hint="Parry Total">Shield</h3>
+    <div id="shield-items" class="item-cards"></div>
+    <div class="raw-gear">
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
       <strong style="flex:1;color:var(--red-dark);font-size:var(--fs-sm)">Shield</strong>
       <button class="add-row-btn" onclick="openShieldPicker()" style="padding:6px 12px;font-size:var(--fs-xs);">Pick</button>
@@ -1408,6 +1401,7 @@
       <input data-field="shieldNotes">
     </div>
     <p class="hint">Base = shield's parry bonus · Total = Base + Reward upgrades (e.g. Reinforced +1)</p>
+    </div>
   </div>
 
   <div class="card">

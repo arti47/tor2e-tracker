@@ -554,28 +554,72 @@ function bindPipEvents() {
   });
 }
 
+/* ---------- Gear as item cards (round 4) ----------
+   Each weapon, armour, helm and shield is a read-only card: a drawn icon, its numbers in words,
+   its Rewards as badges, and Change / Remove. The raw fields sit behind the pencil. */
+const _gearEditing = new Set();
+const _PROF_ICON = { Swords: 'i-swords', Bows: 'i-bow', Spears: 'i-point', Axes: 'i-pick', Brawling: 'i-arm' };
+function _gearBadges(list) { return (list || []).map(r => `<span class="item-badge">${escapeHtml(r)}</span>`).join(''); }
+function _itemCard({ icon, title, nums, badges, note, ctl, edit, key }) {
+  const open = key && _gearEditing.has(key);
+  return `<div class="item-card${open ? ' editing' : ''}">
+    <svg class="ic item-ic" aria-hidden="true"><use href="#${icon}"/></svg>
+    <div class="item-body"><strong>${title}</strong>${nums ? `<span class="item-nums">${nums}</span>` : ''}${badges ? `<span class="item-badges">${badges}</span>` : ''}${note ? `<small>${note}</small>` : ''}</div>
+    <div class="item-ctl">${ctl || ''}</div>
+    ${open && edit ? `<div class="item-edit">${edit}</div>` : ''}
+  </div>`;
+}
+function toggleGearEdit(key) { _gearEditing.has(key) ? _gearEditing.delete(key) : _gearEditing.add(key); renderWeapons(); renderGearItems(); }
 function renderWeapons() {
-  const tbody = document.getElementById('weapon-tbody');
-  tbody.innerHTML = '';
+  const host = document.getElementById('weapon-tbody'); if (!host) return;
   if (!char.weapons) char.weapons = [];
-  char.weapons.forEach((w, i) => {
+  const last = char.weapons.length - 1;
+  host.innerHTML = char.weapons.map((w, i) => {
     _ensureGripData(w);
-    const ro = w.picked ? 'readonly' : '';
+    const nm = escapeHtml(w.name || 'weapon');
+    const prof = w.prof || (typeof _weaponProf === 'function' ? _weaponProf(w) : '');
     const versatile = !!(w.inj1h && w.inj2h);
-    const gripBtn = versatile
-      ? `<button onclick="toggleWeaponGrip(${i})" aria-label="Switch ${escapeHtml(w.name || 'weapon')} between one-handed and two-handed grip" title="Switch between 1-handed (lower Injury, can use shield) and 2-handed (higher Injury, no shield Parry bonus)" style="background:${w.grip==='2h'?'var(--red)':'var(--bg-deep)'};color:${w.grip==='2h'?'white':'var(--ink)'};border:1px solid var(--border);border-radius:var(--r-sm);font-size:var(--fs-xs);font-weight:600;padding:2px 6px;margin-top:2px;cursor:pointer;width:100%">${w.grip || '1h'}</button>`
-      : '';
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td class="wc-name" data-label="Weapon"><input value="${escapeHtml(w.name || '')}" oninput="updateWeapon(${i},'name',this.value)" aria-label="Weapon name">${gripBtn}</td>
-      <td class="wc-num" data-label="Damage"><input value="${escapeHtml(w.dmg || '')}" oninput="updateWeapon(${i},'dmg',this.value)" ${ro} aria-label="Damage"></td>
-      <td class="wc-num" data-label="Injury"><input value="${escapeHtml(w.inj || '')}" oninput="updateWeapon(${i},'inj',this.value)" ${ro} aria-label="Injury"></td>
-      <td class="wc-num" data-label="Load"><input value="${escapeHtml(w.load || '')}" oninput="updateWeapon(${i},'load',this.value)" ${ro} aria-label="Load"></td>
-      <td class="wc-notes" data-label="Notes"><input value="${escapeHtml(w.notes || '')}" oninput="updateWeapon(${i},'notes',this.value)" placeholder="Notes" aria-label="Notes"></td>
-      <td class="wc-ctl" style="white-space:nowrap"><button class="del-btn" onclick="moveWeapon(${i},-1)" title="Move up" aria-label="Move ${escapeHtml(w.name || 'weapon')} up" style="padding:2px 5px">▲</button><button class="del-btn" onclick="moveWeapon(${i},1)" title="Move down" aria-label="Move ${escapeHtml(w.name || 'weapon')} down" style="padding:2px 5px">▼</button><button class="del-btn" onclick="removeWeapon(${i})" aria-label="Remove ${escapeHtml(w.name || 'weapon')}">×</button></td>
-    `;
-    tbody.appendChild(tr);
-  });
+    const grip = versatile ? `<button class="chip-btn" onclick="toggleWeaponGrip(${i})" aria-label="Hold ${nm} ${w.grip === '2h' ? 'in one hand' : 'in both hands'}" title="One hand keeps your shield; two hands hit harder">${w.grip === '2h' ? 'Two hands' : 'One hand'}</button>` : '';
+    const ro = w.picked ? 'readonly' : '';
+    const f = (fld, lab, extra) => `<label class="ie-f"><span>${lab}</span><input value="${escapeHtml(w[fld] || '')}" oninput="updateWeapon(${i},'${fld}',this.value)" ${extra || ''} aria-label="${lab} of ${nm}"></label>`;
+    const edit = f('name', 'Name') + f('dmg', 'Damage', ro) + f('inj', 'Injury', ro) + f('load', 'Load', ro) + f('notes', 'Notes') +
+      (w.picked ? '<p class="hint" style="margin:4px 0 0">Numbers come from the weapon; Rewards change them for you.</p>' : '');
+    const ctl = grip +
+      `<button class="icon-btn" onclick="toggleGearEdit('w${i}')" aria-label="Edit ${nm}" title="Edit"><svg class="ic"><use href="#i-pencil"/></svg></button>` +
+      (last > 0 ? `<button class="icon-btn" onclick="moveWeapon(${i},-1)" aria-label="Move ${nm} up" title="Move up">▲</button><button class="icon-btn" onclick="moveWeapon(${i},1)" aria-label="Move ${nm} down" title="Move down">▼</button>` : '') +
+      `<button class="icon-btn" onclick="removeWeapon(${i})" aria-label="Remove ${nm}" title="Remove"><svg class="ic"><use href="#i-x"/></svg></button>`;
+    const nums = [w.dmg !== '' && w.dmg != null ? `Damage ${escapeHtml(String(w.dmg))}` : '', w.inj ? `Injury ${escapeHtml(String(w.inj))}` : '', w.load !== '' && w.load != null ? `Load ${escapeHtml(String(w.load))}` : ''].filter(Boolean).join(' · ');
+    const note = String(w.notes || '').replace(/\s*\(currently \dh\)/g, '').trim();
+    return _itemCard({ icon: _PROF_ICON[prof] || 'i-swords', title: w.name ? nm : '<em>Unnamed weapon</em>', nums: nums || 'Tap the pencil to fill in its numbers',
+      badges: _gearBadges(w.rewards), note: escapeHtml(note), ctl, edit, key: 'w' + i });
+  }).join('') || '<p class="s-empty">No weapons yet. You may take one weapon for each rank of its Combat Proficiency.</p>';
+  // Any edit box just opened takes the focus of a player who tapped the pencil
+  if (typeof renderGearItems === 'function') renderGearItems();
+}
+function renderGearItems() {
+  const ah = document.getElementById('armour-items'), sh = document.getElementById('shield-items');
+  if (!ah || !sh) return;
+  const n = v => parseInt(v) || 0;
+  const pencil = (key, what) => `<button class="icon-btn" onclick="toggleGearEdit('${key}')" aria-label="Edit ${what} by hand" title="Edit"><svg class="ic"><use href="#i-pencil"/></svg></button>`;
+  let h = '';
+  if (n(char.armourProt) || char.armourNotes) {
+    h += _itemCard({ icon: 'i-shield', title: escapeHtml(char.armourNotes || 'Body armour'), nums: `Protection ${n(char.armourProt)} dice · Load ${n(char.armourLoad)}`,
+      badges: _gearBadges(char.armourRewards), key: 'armour',
+      ctl: `<button class="chip-btn" onclick="openArmourPicker()">Change</button>${pencil('armour', 'armour')}<button class="icon-btn" onclick="clearArmour()" aria-label="Remove armour" title="Remove"><svg class="ic"><use href="#i-x"/></svg></button>` });
+  } else h += `<div class="item-card empty"><svg class="ic item-ic" aria-hidden="true"><use href="#i-shield"/></svg><div class="item-body"><strong>No body armour</strong><small>Armour adds dice to your Protection roll when a blow pierces.</small></div><div class="item-ctl"><button class="chip-btn" onclick="openArmourPicker()">Choose armour</button></div></div>`;
+  if (n(char.helmProt)) {
+    h += _itemCard({ icon: 'i-helm', title: 'Helm', nums: `Protection +${n(char.helmProt)} die · Load ${n(char.helmLoad)}`, badges: _gearBadges(char.helmRewards), key: 'helm',
+      ctl: `<button class="icon-btn" onclick="toggleHelm()" aria-label="Take off the helm" title="Remove"><svg class="ic"><use href="#i-x"/></svg></button>` });
+  } else h += `<div class="item-card empty"><svg class="ic item-ic" aria-hidden="true"><use href="#i-helm"/></svg><div class="item-body"><strong>No helm</strong><small>+1 Protection die, Load ${halveForDwarf(4)}.</small></div><div class="item-ctl"><button class="chip-btn" onclick="toggleHelm()">Put on a helm</button></div></div>`;
+  ah.innerHTML = h;
+  ah.closest('.card').classList.toggle('show-raw', _gearEditing.has('armour'));
+  if (n(char.shieldBase) || char.shieldNotes) {
+    const bonus = n(char.shieldTotal) - n(char.shieldBase);
+    sh.innerHTML = _itemCard({ icon: 'i-shield', title: escapeHtml(char.shieldNotes || 'Shield'), nums: `Parry +${n(char.shieldTotal)}${bonus ? ` (${n(char.shieldBase)} + ${bonus} from Rewards)` : ''} · Load ${n(char.shieldLoad)}`,
+      badges: _gearBadges(char.shieldRewards), key: 'shield',
+      ctl: `<button class="chip-btn" onclick="openShieldPicker()">Change</button>${pencil('shield', 'shield')}<button class="icon-btn" onclick="clearShield()" aria-label="Remove shield" title="Remove"><svg class="ic"><use href="#i-x"/></svg></button>` });
+  } else sh.innerHTML = `<div class="item-card empty"><svg class="ic item-ic" aria-hidden="true"><use href="#i-shield"/></svg><div class="item-body"><strong>No shield</strong><small>A shield raises your Parry — foes need a higher roll to hit you.</small></div><div class="item-ctl"><button class="chip-btn" onclick="openShieldPicker()">Choose a shield</button></div></div>`;
+  sh.closest('.card').classList.toggle('show-raw', _gearEditing.has('shield'));
 }
 // U3 — reorder War Gear rows (touch-friendly ▲/▼; HTML5 drag is unreliable on iOS).
 function moveWeapon(i, dir) {
@@ -702,8 +746,11 @@ function updateWeapon(i, field, val) {
 }
 
 function removeWeapon(i) {
-  char.weapons.splice(i, 1);
+  const w = char.weapons[i]; if (!w) return;
+  if (typeof snapshot === 'function') snapshot();
+  char.weapons.splice(i, 1); _gearEditing.clear();
   saveCharacter(); renderWeapons();
+  if (typeof showToast === 'function') showToast(`${w.name || 'Weapon'} removed`, typeof undoLast === 'function' ? { label: 'Undo', fn: () => { undoLast(); renderWeapons(); } } : undefined);
 }
 
 function renderProtectionParry() {
@@ -735,6 +782,7 @@ function renderProtectionParry() {
   // Dwarven hint
   const dwarfHint = document.getElementById('dwarf-load-hint');
   if (dwarfHint) dwarfHint.style.display = isDwarfCulture() ? 'block' : 'none';
+  renderGearItems();
 }
 
 /** Is this adversary attack a ranged one? Their attacks are free text, so go by the name —
