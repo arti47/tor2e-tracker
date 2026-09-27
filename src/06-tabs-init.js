@@ -1539,7 +1539,7 @@ function renderNewcomerBanner() {
   host.style.display = 'block';
   host.innerHTML =
     '<div class="card" style="border-color:var(--gold);background:linear-gradient(180deg,var(--gold-paler) 0%,var(--card-bg) 100%)">' +
-      '<h3 class="card-title" style="color:var(--gold)">👋 Start here</h3>' +
+      '<h3 class="card-title" style="color:var(--gold)">Start here</h3>' +
       '<p class="hint" style="text-align:left;line-height:1.55;margin:0 0 10px 0">' +
         'This hero is empty. Nothing on this page can be edited yet — almost every number here is ' +
         '<strong>calculated for you</strong> once you pick a culture and a calling.' +

@@ -115,11 +115,11 @@ function renderGmCampaign() {
     </div>`;
   }).join('');
   box.innerHTML = `<div class="card" style="border-color:var(--gold)">
-    <h3 class="card-title">🏰 Campaign Fellowship (live)</h3>
+    <h3 class="card-title">Campaign Fellowship (live)</h3>
     <div>${rows || '<div class="hint">No members yet.</div>'}</div>
   </div>
   <div class="card">
-    <h3 class="card-title">📢 Broadcast to the party</h3>
+    <h3 class="card-title">Broadcast to the party</h3>
     <textarea id="gm-bcast-text" rows="2" placeholder="Message every player sees as a toast + in their Loremaster Feed…" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--card-bg);color:var(--ink);font-size:var(--fs-sm)"></textarea>
     <button onclick="gmBroadcastSend()" style="width:100%;margin-top:6px">📢 Send</button>
     <div id="gm-bcast-feed" style="margin-top:8px"></div>

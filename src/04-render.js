@@ -3878,7 +3878,7 @@ function renderSaga() {
 
   if (!s.started) {
     host.innerHTML =
-      '<h3 class="card-title" data-hint="Your saga">🗺️ Your saga — not yet begun</h3>' +
+      '<h3 class="card-title" data-hint="Your saga">Your saga — not yet begun</h3>' +
       '<p class="hint" style="text-align:left;line-height:1.55;margin:0 0 8px">' +
       'A hero sheet is not a game. A game needs a <strong>reason to leave home</strong>. ' +
       'This sets one, opens your first scene, and tells you exactly what to do next.</p>' +
@@ -3887,7 +3887,7 @@ function renderSaga() {
   }
   if (s.ended) {
     host.innerHTML =
-      '<h3 class="card-title" data-hint="Your saga">🏁 Your saga — ended</h3>' +
+      '<h3 class="card-title" data-hint="Your saga">Your saga — ended</h3>' +
       `<p class="hint" style="text-align:left;line-height:1.55;margin:0 0 8px"><em>${escapeHtml(s.endedHow)}</em><br><br>` +
       `${s.sessions || 0} session${s.sessions === 1 ? '' : 's'} · ${s.adventures || 0} adventure${s.adventures === 1 ? '' : 's'}.</p>` +
       B('sagaReopen()', '↩ Actually, continue it', 'background:var(--btn-secondary-bg);color:white');
@@ -3895,7 +3895,7 @@ function renderSaga() {
   }
   const signals = sagaEndSignals();
   host.innerHTML =
-    '<h3 class="card-title" data-hint="Your saga">🗺️ Your saga</h3>' +
+    '<h3 class="card-title" data-hint="Your saga">Your saga</h3>' +
     `<p class="hint" style="text-align:left;line-height:1.55;margin:0 0 4px"><em>${escapeHtml(s.premise || '—')}</em></p>` +
     `<p class="hint" style="text-align:left;margin:0 0 8px;color:var(--text-faint)">Session ${s.sessions || 0}</p>` +
     B('sagaStartSession()', '📖 Start a session') +
@@ -3977,7 +3977,7 @@ function renderAdventureLoop() {
       : 'background:var(--bg-deep);color:var(--text-muted);cursor:pointer') + '"' +
     (x.id === cur.id ? '' : ` onclick="advGoTo('${x.id}')"`) + `>${x.n} ${escapeHtml(x.name)}</span>`).join('');
   host.innerHTML =
-    '<h3 class="card-title" data-hint="The adventure loop">🧭 Where you are in the adventure</h3>' +
+    '<h3 class="card-title" data-hint="The adventure loop">Where you are in the adventure</h3>' +
     `<div style="margin:0 0 8px">${dots}</div>` +
     `<p class="hint" style="text-align:left;line-height:1.55;margin:0 0 6px"><strong>${cur.n} · ${escapeHtml(cur.name)}</strong><br>${cur.what}</p>` +
     `<p class="hint" style="text-align:left;line-height:1.5;margin:0 0 8px"><strong>Do now:</strong> ${cur.doNow}</p>` +
@@ -4681,7 +4681,31 @@ function _playConditionBanner() {
   </div>`;
 }
 
+/* Wide screens (tablet landscape / desktop): the hero's key numbers beside the story, so a
+   player never has to leave Play to check a TN or a skill. Hidden by CSS below 1100px. */
+function renderPlayAside() {
+  const el = document.getElementById('play-aside'); if (!el) return;
+  if (!char.culture) { el.innerHTML = ''; return; }
+  const attr = (k, n) => `<div class="pa-attr"><span>${n}</span><strong>${parseInt(char[k + 'Rating']) || 0}</strong><small>TN ${parseInt(char[k + 'TN']) || 0}</small></div>`;
+  const skills = Object.entries(char.skills || {})
+    .map(([n, v]) => ({ n, r: parseInt(v && v.rating) || 0, f: !!(v && v.favoured) }))
+    .filter(s => s.r > 0 || s.f).sort((a, b) => b.r - a.r || a.n.localeCompare(b.n)).slice(0, 10);
+  const weapons = (char.weapons || []).filter(w => w && w.name);
+  el.innerHTML = `<div class="card">
+    <div class="eyebrow">Your hero</div>
+    <h3 class="card-title">${escapeHtml(heroLabel(char))}</h3>
+    <p class="pa-sub">${escapeHtml([char.culture, char.calling].filter(Boolean).join(' · '))}</p>
+    <div class="pa-attrs">${attr('str', 'Strength')}${attr('hrt', 'Heart')}${attr('wit', 'Wits')}</div>
+    <div class="pa-line"><span>Parry</span><strong>${(parseInt(char.parry) || 0) + (parseInt(char.shieldTotal) || 0)}</strong>
+      <span>Armour</span><strong>${(parseInt(char.armourProt) || 0) + (parseInt(char.helmProt) || 0)}d</strong>
+      <span>Valour</span><strong>${parseInt(char.valour) || 0}</strong><span>Wisdom</span><strong>${parseInt(char.wisdom) || 0}</strong></div>
+    ${skills.length ? `<div class="pa-h">Best skills</div><ul class="pa-skills">${skills.map(s => `<li>${s.f ? '★ ' : ''}${escapeHtml(s.n)}<span>${'◆'.repeat(s.r)}</span></li>`).join('')}</ul>` : ''}
+    ${weapons.length ? `<div class="pa-h">Weapons</div><ul class="pa-skills">${weapons.map(w => `<li>${escapeHtml(w.name)}<span>${w.dmg || '–'} / ${w.inj || '–'}</span></li>`).join('')}</ul>` : ''}
+  </div>`;
+}
+
 function renderPlay() {
+  renderPlayAside();
   const host = document.getElementById('play-body'); if (!host) return;
   const s = sagaState();
 

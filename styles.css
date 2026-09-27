@@ -910,7 +910,7 @@ body.dark .m-bar > i.shadow { background: repeating-linear-gradient(135deg, #000
 /* Hand-edit mode: rule-owned −/+ appear only when asked for. */
 body:not(.adjust-mode) .adj-lock, body:not(.adjust-mode) .adj-only { display: none !important; }
 body.adjust-mode .adj-lock { background: var(--gold-soft); border-color: var(--gold); }
-.adjust-toggle { float: right; margin: -44px 0 0; padding: 4px 8px; min-height: 0; font-size: var(--fs-xs); }
+.adjust-toggle { float: right; margin: -42px 26px 0 0; padding: 4px 8px; min-height: 0; font-size: var(--fs-xs); }
 .menu .btn { background: var(--red); color: var(--accent-ink); border: 1px solid var(--red); justify-content: center; text-align: center; font-weight: 600; margin: 0; }
 .menu .btn-secondary { background: var(--card-bg); color: var(--ink); border-color: var(--border); }
 .menu .btn-quiet { background: transparent; color: var(--red); border-color: transparent; }
@@ -969,3 +969,40 @@ body.adjust-mode .adj-lock { background: var(--gold-soft); border-color: var(--g
 .bn-item:active .ic { transform: scale(.9); }
 body.dark input.char-name { background: transparent !important; border-color: transparent !important; }
 body.dark .hud-eye { background: var(--card-bg); }
+
+/* ==========================================================================
+   TABLET / DESKTOP — tuned, not just stretched
+   ========================================================================== */
+.play-aside { display: none; }
+@media (min-width: 900px) {
+  .panel { max-width: 1180px; padding: var(--sp-5); }
+  .header { padding-left: var(--sp-5); padding-right: var(--sp-5); }
+  /* Sheet-style tabs flow their cards into two columns (reading order: down, then across). */
+  #panel-character.active, #panel-combat.active, #panel-gear.active, #panel-oracle.active,
+  #panel-band.active, #panel-gm.active, #panel-dice.active, #panel-council.active {
+    column-count: 2; column-gap: var(--sp-4);
+  }
+  .panel .card { break-inside: avoid; -webkit-column-break-inside: avoid; }
+  .panel .tab-intro, #newcomer-banner, #adjust-banner, #saga-card { column-span: all; -webkit-column-span: all; }
+  .hud { max-width: 760px; }
+  .menu { max-width: 560px; }
+  /* Journey / Build / Play / Reference / Chronicle stay single-column: they are read in sequence. */
+  #panel-play, #panel-build, #panel-journey, #panel-chronicle, #panel-reference { max-width: 860px; }
+}
+@media (min-width: 1100px) {
+  #panel-play { max-width: 1180px; }
+  .play-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: var(--sp-5); align-items: start; }
+  .play-aside { display: block; position: sticky; top: 150px; }
+}
+.pa-sub { margin: -6px 0 var(--sp-3); color: var(--text-muted); font-size: var(--fs-sm); }
+.pa-attrs { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-2); margin-bottom: var(--sp-3); }
+.pa-attr { background: var(--bg); border-radius: var(--r-sm); padding: var(--sp-2); text-align: center; display: flex; flex-direction: column; }
+.pa-attr span { font-size: var(--fs-xs); color: var(--text-muted); }
+.pa-attr strong { font-family: var(--font-display); font-size: 26px; font-weight: 600; line-height: 1.1; }
+.pa-attr small { font-size: var(--fs-xs); color: var(--text-faint); }
+.pa-line { display: grid; grid-template-columns: auto 1fr auto 1fr; gap: 4px var(--sp-2); font-size: var(--fs-sm); margin-bottom: var(--sp-2); }
+.pa-line span { color: var(--text-muted); } .pa-line strong { font-family: var(--font-display); font-size: var(--fs-lg); }
+.pa-h { font-size: var(--fs-xs); font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--text-muted); margin: var(--sp-3) 0 var(--sp-1); }
+.pa-skills { list-style: none; margin: 0; padding: 0; }
+.pa-skills li { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid var(--line); font-size: var(--fs-sm); }
+.pa-skills li span { color: var(--red); letter-spacing: 1px; font-size: var(--fs-xs); }

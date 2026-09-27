@@ -703,7 +703,7 @@ function renderCampaign() {
         ${Sync.isCampaignOwner() ? '<button onclick="campaignDelete()" style="background:var(--btn-alert-bg);color:#fff;margin-left:6px">Delete campaign</button>' : ''}
       </div>
       <div class="card"><h3 class="card-title">Party (live)</h3><div id="campaign-members"><div class="hint">Loading…</div></div></div>
-      <div class="card"><h3 class="card-title">📢 Loremaster Feed</h3><div id="campaign-bcast"><div class="hint">No broadcasts yet.</div></div>
+      <div class="card"><h3 class="card-title">Loremaster Feed</h3><div id="campaign-bcast"><div class="hint">No broadcasts yet.</div></div>
         ${Sync.isLoremaster && Sync.isLoremaster() ? '<p class="hint" style="text-align:left;margin-top:6px">Send broadcasts from the 🎲 GM tab.</p>' : ''}</div>`;
     Sync.subscribeParty(renderCampaignMembers);
     renderBroadcastFeed(Sync.lastBroadcasts ? Sync.lastBroadcasts() : []);
