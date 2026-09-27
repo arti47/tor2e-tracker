@@ -500,24 +500,11 @@ let editMode = false;
 function toggleEditMode() {
   editMode = !editMode;
   const btn = document.getElementById('edit-mode-btn');
-  const state = document.getElementById('edit-mode-state');
   const card = document.getElementById('edit-mode-card');
   const instructions = document.getElementById('edit-mode-instructions');
-  if (editMode) {
-    btn.textContent = '🔒 Lock';
-    btn.style.background = 'var(--ink)';
-    state.textContent = 'UNLOCKED';
-    state.style.background = 'var(--red)';
-    card.style.borderColor = 'var(--red)';
-    instructions.style.display = 'block';
-  } else {
-    btn.textContent = '🔓 Unlock';
-    btn.style.background = 'var(--red)';
-    state.textContent = 'LOCKED';
-    state.style.background = 'var(--ink)';
-    card.style.borderColor = 'var(--gold)';
-    instructions.style.display = 'none';
-  }
+  if (btn) btn.textContent = editMode ? 'Done correcting' : 'Allow changes';
+  if (card) card.classList.toggle('on', editMode);
+  if (instructions) instructions.style.display = editMode ? 'block' : 'none';
   // Re-render skills/profs to refresh interactive state
   renderSkills();
   renderProfs();
@@ -1478,6 +1465,22 @@ function _renderFoeEdit(f) {
       </div>`;
   });
   return h + `</div>`;
+}
+
+/** Roll a skill / proficiency / Valour / Wisdom straight from the hero sheet (round 3 — the
+    sheet replaced the Skills tab, so a skill you can read is a skill you can tap to roll). */
+function rollFromSheet(name) {
+  let item, s;
+  if (name === 'Valour' || name === 'Wisdom') {
+    item = { name, attr: name === 'Valour' ? 'hrt' : 'wit', isMeta: true, ratingSrc: name.toLowerCase() };
+    s = { rating: parseInt(char[item.ratingSrc]) || 1, favoured: false };
+  } else if (COMBAT_PROFS.includes(name)) {
+    item = { name, attr: 'str', isProf: true }; s = { rating: char.profs[name] || 0, favoured: false };
+  } else {
+    const attr = ['str', 'hrt', 'wit'].find(a => SKILLS[a].includes(name)); if (!attr) return;
+    item = { name, attr }; s = char.skills[name] || { rating: 0, favoured: false };
+  }
+  quickRoll(item, s);
 }
 
 function renderQuickSkills() {

@@ -4624,7 +4624,11 @@ function setCharEditing(on) {
   const p = document.getElementById('panel-character'); if (!p) return;
   p.classList.toggle('editing', !!on);
   if (on) { const e = document.getElementById('char-edit'); if (e) e.scrollIntoView({ block: 'start' }); }
-  else { if (typeof adjustMode !== 'undefined' && adjustMode) toggleAdjustMode(false); window.scrollTo(0, 0); }
+  else {
+    if (typeof adjustMode !== 'undefined' && adjustMode) toggleAdjustMode(false);
+    if (typeof editMode !== 'undefined' && editMode) toggleEditMode();   // Done also locks skill corrections
+    window.scrollTo(0, 0);
+  }
   renderHeroSheet();
 }
 function _chips(txt, cls) {
@@ -4641,15 +4645,17 @@ function renderHeroSheet() {
     char.standard && ['Living', char.standard], char.age && ['Age', char.age]
   ].filter(Boolean).map(([k, v]) => `<span class="meta"><small>${k}</small>${escapeHtml(String(v))}</span>`).join('');
   const attr = (k, label, gloss) => `<div class="s-attr"><span class="s-lab">${label}</span><strong>${n(char[k + 'Rating'])}</strong><span class="s-tn">TN ${n(char[k + 'TN'])}</span><span class="s-gl">${gloss}</span></div>`;
-  const stat = (label, v) => `<div class="s-stat"><strong>${v}</strong><span>${label}</span></div>`;
+  const stat = (label, v, roll) => roll
+    ? `<button type="button" class="s-stat s-roll" onclick="rollFromSheet('${label}')" aria-label="Roll ${label}"><strong>${v}</strong><span>${label}</span></button>`
+    : `<div class="s-stat"><strong>${v}</strong><span>${label}</span></div>`;
   const skillCol = (k, title) => `<div class="s-skillcol"><div class="s-h">${title}</div>` + SKILLS[k].map(sk => {
     const d = (char.skills || {})[sk] || {}; const r = n(d.rating);
-    return `<div class="s-skill${r ? '' : ' zero'}"><span>${d.favoured ? '<b class="fav" title="Favoured">★</b>' : ''}${escapeHtml(sk)}</span>${_pips(r)}</div>`;
+    return `<button type="button" class="s-skill${r ? '' : ' zero'}" onclick="rollFromSheet('${sk}')" aria-label="Roll ${escapeHtml(sk)}"><span>${d.favoured ? '<b class="fav" title="Favoured">★</b>' : ''}${escapeHtml(sk)}</span>${_pips(r)}</button>`;
   }).join('') + '</div>';
-  const profs = ['Axes', 'Bows', 'Spears', 'Swords'].map(pn => `<div class="s-skill${n((char.profs || {})[pn]) ? '' : ' zero'}"><span>${pn}</span>${_pips(n((char.profs || {})[pn]))}</div>`).join('');
+  const profs = ['Axes', 'Bows', 'Spears', 'Swords'].map(pn => `<button type="button" class="s-skill${n((char.profs || {})[pn]) ? '' : ' zero'}" onclick="rollFromSheet('${pn}')" aria-label="Roll ${pn}"><span>${pn}</span>${_pips(n((char.profs || {})[pn]))}</button>`).join('');
   const weapons = (char.weapons || []).filter(w => w && w.name).map(w =>
     `<div class="s-weapon"><strong>${escapeHtml(w.name)}</strong><span>Damage ${escapeHtml(String(w.dmg ?? '–'))} · Injury ${escapeHtml(String(w.inj ?? '–'))}</span></div>`).join('')
-    || '<p class="s-empty">No weapon yet — <a href="#" onclick="document.querySelector(\'.tab[data-tab=combat]\').click();return false">equip one</a>.</p>';
+    || '<p class="s-empty">No weapon yet — <a href="#" onclick="openEquipment();return false">equip one</a>.</p>';
   const protection = n(char.armourProt) + n(char.helmProt);
   const armourBits = [char.armourNotes && escapeHtml(char.armourNotes), n(char.helmProt) ? 'helm' : '', char.shieldNotes && escapeHtml(char.shieldNotes)].filter(Boolean).join(' · ');
   const eye = isSolo() ? `<div class="s-eye">Eye of Mordor <strong>${n(char.eyeAwareness)}</strong> / ${typeof huntThreshold === 'function' ? huntThreshold(char) : 16}</div>` : '';
@@ -4669,10 +4675,11 @@ function renderHeroSheet() {
   </div>
   <div class="card">
     <div class="s-attrs">${attr('str', 'Strength', 'body')}${attr('hrt', 'Heart', 'spirit')}${attr('wit', 'Wits', 'mind')}</div>
-    <div class="s-stats">${stat('Parry', n(char.parry) + n(char.shieldTotal))}${stat('Armour', protection + 'd')}${stat('Valour', n(char.valour))}${stat('Wisdom', n(char.wisdom))}${stat('Fellowship', n(char.fellowshipRating))}</div>
+    <div class="s-stats">${stat('Parry', n(char.parry) + n(char.shieldTotal))}${stat('Armour', protection + 'd')}${stat('Valour', n(char.valour), 1)}${stat('Wisdom', n(char.wisdom), 1)}${stat('Fellowship', n(char.fellowshipRating))}</div>
   </div>
   <div class="card">
     <h3 class="card-title">Skills</h3>
+    <p class="s-rollhint">Tap any skill to roll it.</p>
     <div class="s-skills">${skillCol('str', 'Strength')}${skillCol('hrt', 'Heart')}${skillCol('wit', 'Wits')}</div>
     <div class="s-h">Combat</div><div class="s-profs">${profs}</div>
   </div>

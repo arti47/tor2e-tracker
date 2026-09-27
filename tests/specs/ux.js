@@ -144,7 +144,7 @@ module.exports = {
       document.querySelector('.tab[data-tab="character"]').click();
       return { after };
     });
-    checks.push({ ok: swipe.after === 'skills', msg: `swipe left advances to next visible tab (got ${swipe.after})` });
+    checks.push({ ok: swipe.after === 'gear', msg: `swipe left advances to next visible tab (got ${swipe.after})` });
 
     // U3-collapse — tap a card title toggles + persists; aria-expanded flips.
     const col = await page.evaluate(() => {
@@ -274,7 +274,8 @@ module.exports = {
       out.hintIdempotent = (initHintButtons(), document.querySelectorAll('[data-hint] .hint-q').length) === out.hintBtns;
 
       // D: every tab opens with an explanation — all 14, not just the 5 that were bare.
-      const ALL_TABS = ['character','skills','combat','journey','council','gear','dice','reference','oracle','band','battle','chronicle','build','gm'];
+      // Round 3 folded Skills into the hero sheet; ▶ Play is the 14th tab.
+      const ALL_TABS = ['play','character','combat','journey','council','gear','dice','reference','oracle','band','battle','chronicle','build','gm'];
       out.intros = ['character','combat','journey','dice','chronicle']
         .filter(t => document.querySelector('#panel-' + t + ' .tab-intro')).length;
       out.introsAll = ALL_TABS.filter(t => {
@@ -510,7 +511,7 @@ module.exports = {
         // every data-hint element must actually carry a rendered (?) button
         allRendered: all.every(e => !!e.querySelector('.hint-q')),
         combat: rendered('combat'), gear: rendered('gear'), gm: rendered('gm'),
-        thinTabs: ['character','skills','combat','journey','council','dice','oracle','band','battle','chronicle','build','gm']
+        thinTabs: ['character','gear','combat','journey','council','dice','oracle','band','battle','chronicle','build','gm']
           .filter(t => rendered(t) === 0),
         stanceResolves: !!hintRow('Stance') && !!hintRow('Forward') && !!hintRow('forward')
       };
@@ -833,7 +834,7 @@ module.exports = {
     checks.push({ ok: reach.groupShowsPicker, msg: 'group play shows the Fellowship Focus picker' });
     checks.push({ ok: reach.soloHidesPicker, msg: 'solo hides the Focus picker and shows the explanatory note' });
     checks.push({ ok: reach.restores, msg: 'leaving solo restores the Focus picker' });
-    checks.push({ ok: reach.tabCount === 15 && reach.allPanelsExist, msg: `every declared tab has a panel (${reach.tabCount} tabs)` });
+    checks.push({ ok: reach.tabCount === 14 && reach.allPanelsExist, msg: `every declared tab has a panel (Skills folded into the sheet) (${reach.tabCount} tabs)` });
 
     // ---- Reachability pass 2: content, conditional features, and graceful cloud degradation ----
     const reach2 = await page.evaluate(async () => {
@@ -894,8 +895,8 @@ module.exports = {
 
       // All 18 skills and 4 proficiencies must render their pip rows.
       render();
-      out.skillPips = document.querySelectorAll('#panel-skills [data-skill]').length;
-      out.profPips = document.querySelectorAll('#panel-skills [data-prof]').length;
+      out.skillPips = document.querySelectorAll('#skills-edit [data-skill]').length;
+      out.profPips = document.querySelectorAll('#skills-edit [data-prof]').length;
 
       // Every culture must have cultural virtues to unlock at Wisdom 2+.
       out.culturesWithoutVirtues = Object.keys(CULTURES).filter(k => !(CULTURAL_VIRTUES[k] || []).length);

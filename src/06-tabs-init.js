@@ -9,7 +9,7 @@ function bindTabs() {
       document.getElementById('panel-' + t.dataset.tab).classList.add('active');
       try { localStorage.setItem('tor2e-lasttab', t.dataset.tab); } catch (e) {}  // U4: remember last tab
       // Auto-lock Skills tab when leaving it (extra safety against accidental edits)
-      if (t.dataset.tab !== 'skills' && editMode) {
+      if (t.dataset.tab !== 'character' && editMode) {   // skill corrections live in the sheet's Edit now
         toggleEditMode();
       }
       if (t.dataset.tab !== 'character' && typeof adjustMode !== 'undefined' && adjustMode) toggleAdjustMode(false);
@@ -39,7 +39,7 @@ function bindTabs() {
    hidden when none of its tabs is visible. */
 const NAV_GROUPS = [
   { id: 'play',      tabs: ['play'] },
-  { id: 'hero',      tabs: ['character', 'skills', 'gear', 'build'] },
+  { id: 'hero',      tabs: ['character', 'gear', 'build'] },
   { id: 'adventure', tabs: ['journey', 'council', 'combat', 'band', 'battle', 'gm'] },
   { id: 'roll',      tabs: ['dice', 'oracle'] },
   { id: 'journal',   tabs: ['chronicle', 'reference'] },

@@ -31,7 +31,7 @@ module.exports = {
     });
     checks.push({ ok: nav.groups === 5, msg: `bottom bar shows 5 groups, not 14 tabs (got ${nav.groups})` });
     checks.push({ ok: nav.topTabsOnPlay === 0, msg: `Play shows no sub-tab strip (got ${nav.topTabsOnPlay})` });
-    checks.push({ ok: nav.heroActive === 'hero' && nav.heroTabs.join() === 'character,skills,gear,build', msg: `Hero group shows only its own sub-tabs (${nav.heroTabs.join(',')})` });
+    checks.push({ ok: nav.heroActive === 'hero' && nav.heroTabs.join() === 'character,gear,build', msg: `Hero group shows only its own sub-tabs (${nav.heroTabs.join(',')})` });
     checks.push({ ok: nav.journalLabel === 'Rules', msg: `Journal group reads "Rules" when there is no Chronicle (got "${nav.journalLabel}")` });
 
     // ---- Vitals bar: on every tab, true numbers, tap to adjust through adj() ----
@@ -66,7 +66,7 @@ module.exports = {
       const hiddenByDefault = getComputedStyle(b).display === 'none';
       document.querySelector('.adjust-toggle').click();
       const shownInMode = getComputedStyle(b).display !== 'none';
-      document.querySelector('.tab[data-tab="skills"]').click();
+      document.querySelector('.tab[data-tab="gear"]').click();
       const offAfterLeaving = getComputedStyle(b).display === 'none';
       return { hiddenByDefault, shownInMode, offAfterLeaving };
     });

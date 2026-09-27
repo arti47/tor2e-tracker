@@ -79,7 +79,6 @@
   <nav class="tabs" aria-label="Section">
     <button class="tab active" data-tab="play">Play</button>
     <button class="tab" data-tab="character">Character</button>
-    <button class="tab" data-tab="skills">Skills</button>
     <button class="tab" data-tab="gear">Gear</button>
     <button class="tab" data-tab="build">Build</button>
     <button class="tab" data-tab="journey">Journey</button>
@@ -865,20 +864,16 @@
     <h3 class="card-title">History</h3>
     <textarea class="full" data-field="history" style="min-height:120px"></textarea>
   </div>
-  </div><!-- /char-edit -->
 
-</section>
-
-<!-- ============ SKILLS ============ -->
-<section class="panel" id="panel-skills">
+  <div id="skills-edit">
 
   <div class="card" id="edit-mode-card">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
       <div>
-        <strong style="color:var(--red-dark);font-size:var(--fs-md)">Edit Mode <span id="edit-mode-state" style="font-size:var(--fs-xs);background:var(--btn-secondary-bg);color:white;padding:2px 8px;border-radius:10px;margin-left:6px">LOCKED</span></strong>
-        <p class="hint" style="text-align:left;margin:6px 0 0 0">Pips and Favoured boxes are <strong>locked by default</strong> to prevent accidental edits during play. Tap the button to unlock manual editing.</p>
+        <strong style="font-size:var(--fs-md)">Correct a rating by hand</strong>
+        <p class="hint" style="text-align:left;margin:6px 0 0 0">Skill diamonds and Favoured marks stay put during play. Allow changes only to fix a mistake.</p>
       </div>
-      <button onclick="toggleEditMode()" id="edit-mode-btn" class="add-row-btn" style="padding:10px 14px;flex-shrink:0">🔓 Unlock</button>
+      <button onclick="toggleEditMode()" id="edit-mode-btn" class="add-row-btn" style="padding:10px 14px;flex-shrink:0">Allow changes</button>
     </div>
     <div id="edit-mode-instructions" style="display:none;margin-top:10px;padding:10px;background:var(--bg-deep);border-radius:var(--r-sm);font-size:var(--fs-xs);color:var(--ink);line-height:1.5">
       <strong>While unlocked:</strong><br>
@@ -891,8 +886,8 @@
 
   <div class="card">
     <h3 class="card-title" data-hint="Favoured">Skills</h3>
-    <button class="btn btn-quiet notes-toggle" onclick="const p=document.getElementById('panel-skills');const on=p.classList.toggle('notes-on');this.textContent=on?'Hide empty notes':'Add notes';this.setAttribute('aria-pressed',on)" aria-pressed="false">Add notes</button>
-    <p class="hint">🔒 Locked — toggle Edit Mode above to change manually, or use Spend XP on Character tab</p>
+    <button class="btn btn-quiet notes-toggle" onclick="const p=document.getElementById('skills-edit');const on=p.classList.toggle('notes-on');this.textContent=on?'Hide empty notes':'Add notes';this.setAttribute('aria-pressed',on)" aria-pressed="false">Add notes</button>
+    <p class="hint">Ratings rise with Skill Points (Spend on the sheet). Allow changes above only to correct a mistake.</p>
     <div class="skill-cols">
       <div id="skills-str"></div>
       <div id="skills-hrt"></div>
@@ -906,7 +901,12 @@
   </div>
 
   <div id="fav-overcount" style="display:none;background:var(--warn-yellow);border:1px solid var(--gold);border-radius:var(--r-sm);padding:10px;font-size:var(--fs-xs);color:var(--ink);margin-bottom:14px"></div>
+  </div>
+  </div><!-- /char-edit -->
+
 </section>
+
+
 
 <!-- ============ COMBAT ============ -->
 <section class="panel" id="panel-combat">
