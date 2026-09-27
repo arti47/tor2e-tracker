@@ -846,7 +846,8 @@ module.exports = {
       const P = n => { const h = mapFindPlace(n)[0]; return [h[1], h[2]]; };
       const R = HexMap.route([P('Bree'), P('Rivendell')]);
       out.hexes = R && R.hexes; out.counted = R && R.path.length - 1 === R.hexes;
-      out.clean = R && R.path.every(([r, c]) => HexMap.passable(r, c));
+      const X = HexMap.route([P('Rivendell'), P("Beorn's House")]);   // over the Misty Mountains: must find a pass
+      out.clean = R && X && [...R.path, ...X.path].every(([r, c]) => HexMap.passable(r, c));
       out.steps = R && R.path.every((p, i) => !i || HexMap.neighbours(...R.path[i - 1]).some(q => q[0] === p[0] && q[1] === p[1]));
       return out;`);
     checks.push({ ok: !mp.err && mp.size && mp.areas >= 40 && mp.badPlaces.length === 0 && mp.hexes >= 12 && mp.hexes <= 20 && mp.counted && mp.clean && mp.steps,
