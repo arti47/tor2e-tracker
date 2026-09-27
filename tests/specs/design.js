@@ -290,10 +290,11 @@ module.exports = {
       const hs = document.getElementById('hero-sheet'), form = document.getElementById('char-edit');
       const r = { crest: !!hs.querySelector('svg.crest'), tn: /TN 15/.test(hs.innerText), skills: hs.querySelectorAll('.s-skill').length,
                   formHidden: getComputedStyle(form).display === 'none', sheetInputs: hs.querySelectorAll('input, textarea, select').length };
-      [...hs.querySelectorAll('button')].find(b => /^Edit$/.test(b.textContent.trim())).click();
-      r.editShowsForm = getComputedStyle(form).display !== 'none' && getComputedStyle(hs).display === 'none';
-      [...form.querySelectorAll('.edit-bar button')][0].click();
-      r.doneReturns = getComputedStyle(form).display === 'none';
+      const edit = [...hs.querySelectorAll('button')].find(b => /^Edit$/.test(b.textContent.trim()));
+      if (edit) edit.click();
+      r.editShowsForm = !!edit && getComputedStyle(form).display !== 'none' && getComputedStyle(hs).display === 'none';
+      const done = form.querySelector('.edit-bar button'); if (done) done.click();
+      r.doneReturns = !!done && getComputedStyle(form).display === 'none';
       return r;
     });
     checks.push({ ok: sheet.crest && sheet.tn && sheet.skills === 22 && sheet.sheetInputs === 0, msg: `Character opens on a read-only sheet: crest, TNs, 18 skills + 4 profs, no inputs (${JSON.stringify(sheet)})` });
@@ -301,7 +302,8 @@ module.exports = {
 
     // ---- Crests: eleven distinct devices ----
     const crests = await page.evaluate(() => {
-      const set = new Set(Object.keys(CULTURES).map(c => cultureCrest(c, 32)));
+      // compare the drawn DEVICE (the <g> inside the shield), not the whole SVG — field colours alone differ
+      const set = new Set(Object.keys(CULTURES).map(c => (cultureCrest(c, 32).match(/<g [^>]*>.*<\/g>/) || [''])[0]));
       return { cultures: Object.keys(CULTURES).length, distinct: set.size, header: !!document.querySelector('#hdr-monogram svg.crest') };
     });
     checks.push({ ok: crests.distinct === crests.cultures && crests.cultures === 11 && crests.header, msg: `each of the 11 cultures has its own crest, and the header shows it (${crests.distinct}/${crests.cultures})` });
