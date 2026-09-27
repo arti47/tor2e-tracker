@@ -792,10 +792,10 @@ function rollDice(skillLabel) {
       : `No reduction — full Shadow gain applies`;
     summary += `<br><span class="result-tag" style="background:var(--btn-alert-bg);color:white">🌑 ${diceState.shadowTest} test: ${verdict}</span>`;
     // One-tap apply: enter the Loremaster's incoming Shadow, apply (incoming − reduction).
-    summary += `<div id="shadow-apply-row" style="margin-top:6px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:12px">
+    summary += `<div id="shadow-apply-row" style="margin-top:6px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:var(--fs-xs)">
       <span>Incoming Shadow:</span>
-      <input id="shadow-incoming" type="number" min="0" value="${diceState.shadowTest === 'Sorcery' ? 2 : 1}" style="width:48px;padding:3px 5px;border:1px solid var(--border);border-radius:4px;background:var(--bg-deep);color:var(--ink)">
-      <button onclick="applyShadowTestResult(${reduction})" style="background:var(--btn-alert-bg);color:white;border:none;border-radius:5px;padding:5px 10px;font-weight:600;cursor:pointer">Apply Shadow</button>
+      <input id="shadow-incoming" type="number" min="0" value="${diceState.shadowTest === 'Sorcery' ? 2 : 1}" style="width:48px;padding:3px 5px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--bg-deep);color:var(--ink)">
+      <button onclick="applyShadowTestResult(${reduction})" style="background:var(--btn-alert-bg);color:white;border:none;border-radius:var(--r-sm);padding:5px 10px;font-weight:600;cursor:pointer">Apply Shadow</button>
     </div>`;
   }
   if (diceState.firstAid) {
@@ -838,7 +838,7 @@ function rollDice(skillLabel) {
       };
       const newFeat = Math.min(10, chosenFeat.value + pierceBonus);
       const piercedNow = newFeat === 10 ? ' = <strong>Piercing Blow!</strong>' : '';
-      pierceDiv.innerHTML = `<button onclick="applyPierce()" style="background:var(--warn-orange);color:white;border:none;border-radius:6px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer">🗡️ Pierce: spend 1 ✦ (${diceState.lastAttackProf} +${pierceBonus}) → Feat ${chosenFeat.value}→${newFeat}${piercedNow}</button>`;
+      pierceDiv.innerHTML = `<button onclick="applyPierce()" style="background:var(--warn-orange);color:white;border:none;border-radius:var(--r-sm);padding:8px 14px;font-size:var(--fs-sm);font-weight:600;cursor:pointer">🗡️ Pierce: spend 1 ✦ (${diceState.lastAttackProf} +${pierceBonus}) → Feat ${chosenFeat.value}→${newFeat}${piercedNow}</button>`;
     } else {
       pierceDiv.innerHTML = '';
       diceState.pendingPierce = null;
@@ -890,7 +890,7 @@ function rollDice(skillLabel) {
       btn.id = 'strider-fortune-action';
       btn.style.cssText = 'margin-top:8px;text-align:center';
       const isIll = fortuneType === 'illfortune';
-      btn.innerHTML = `<button onclick="rollAutoFortune('${fortuneType}')" style="background:${isIll?'var(--btn-alert-bg)':'var(--gold)'};color:white;border:none;border-radius:6px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer">${isIll?'🎲 Roll Ill-Fortune Table (Eye)':'🎲 Roll Fortune Table (Rune)'}</button><div class="hint" style="margin-top:4px">Optional — for a worthy challenge or a key action, not every routine roll.</div>`;
+      btn.innerHTML = `<button onclick="rollAutoFortune('${fortuneType}')" style="background:${isIll?'var(--btn-alert-bg)':'var(--gold)'};color:white;border:none;border-radius:var(--r-sm);padding:8px 14px;font-size:var(--fs-sm);font-weight:600;cursor:pointer">${isIll?'🎲 Roll Ill-Fortune Table (Eye)':'🎲 Roll Fortune Table (Rune)'}</button><div class="hint" style="margin-top:4px">Optional — for a worthy challenge or a key action, not every routine roll.</div>`;
       summaryEl.parentElement.appendChild(btn);
     }
   }
@@ -976,7 +976,7 @@ function renderRollStats() {
   const withIcons = history.filter(h => (h.icons || 0) >= 1).length;
   const great = history.filter(h => (h.icons || 0) >= 2).length;
   const rate = Math.round(succ / n * 100);
-  el.innerHTML = `<div style="font-size:11px;color:var(--text-muted);background:var(--bg-deep);border:1px solid var(--border);border-radius:6px;padding:6px 9px;margin-bottom:8px;display:flex;flex-wrap:wrap;gap:4px 12px">
+  el.innerHTML = `<div style="font-size:var(--fs-xs);color:var(--text-muted);background:var(--bg-deep);border:1px solid var(--border);border-radius:var(--r-sm);padding:6px 9px;margin-bottom:8px;display:flex;flex-wrap:wrap;gap:4px 12px">
     <span>📊 <strong>${n}</strong> rolls</span>
     <span>✅ <strong>${succ}</strong> (<strong>${rate}%</strong>)</span>
     <span>❌ ${n - succ}</span>
@@ -989,7 +989,7 @@ function renderHistory() {
   if (!div) return;
   div.innerHTML = '';
   if (history.length === 0) {
-    div.innerHTML = '<div style="text-align:center;color:var(--text-faint);padding:10px;font-size:12px">No rolls yet</div>';
+    div.innerHTML = '<div style="text-align:center;color:var(--text-faint);padding:10px;font-size:var(--fs-xs)">No rolls yet</div>';
     return;
   }
   // Filters
@@ -1000,7 +1000,7 @@ function renderHistory() {
   if (outFilter === 'success') rows = rows.filter(h => h.outcome.startsWith('SUCCESS'));
   else if (outFilter === 'fail') rows = rows.filter(h => !h.outcome.startsWith('SUCCESS'));
   if (rows.length === 0) {
-    div.innerHTML = '<div style="text-align:center;color:var(--text-faint);padding:10px;font-size:12px">No matching rolls</div>';
+    div.innerHTML = '<div style="text-align:center;color:var(--text-faint);padding:10px;font-size:var(--fs-xs)">No matching rolls</div>';
     return;
   }
   rows.slice(0, 20).forEach(h => {
@@ -1012,7 +1012,7 @@ function renderHistory() {
     item.innerHTML = `
       <span><strong>${h.label}</strong> · ${h.total} vs ${h.tn}</span>
       <span style="color:${color}">${h.outcome}${h.icons ? ' · '+h.icons+'⬢' : ''} · ${h.time}
-        <button onclick="deleteRollAt(${realIdx})" aria-label="Delete this roll" title="Delete this roll" style="background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:14px;padding:0 0 0 6px;vertical-align:middle">×</button></span>
+        <button onclick="deleteRollAt(${realIdx})" aria-label="Delete this roll" title="Delete this roll" style="background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:var(--fs-md);padding:0 0 0 6px;vertical-align:middle">×</button></span>
     `;
     div.appendChild(item);
   });
@@ -1091,7 +1091,7 @@ async function _tutExitSandbox() {
     message: `What should happen to your practice hero, <strong>${escapeHtml(char.name || 'the hero')}</strong>?<br><br>Either way, the character you were playing before comes back.`,
     buttons: [
       { label: '💾 Keep — add to my roster', value: true },
-      { label: '🗑 Discard the practice hero', value: false, style: 'background:var(--btn-secondary-bg);color:white;border:none;border-radius:5px;padding:10px;font-size:14px;cursor:pointer' }
+      { label: '🗑 Discard the practice hero', value: false, style: 'background:var(--btn-secondary-bg);color:white;border:none;border-radius:var(--r-sm);padding:10px;font-size:var(--fs-md);cursor:pointer' }
     ]
   }) === true;
   if (keep) {
@@ -1154,10 +1154,10 @@ function renderTutMenu() {
     const done = prog.completed && prog.completed[l.id];
     const resume = prog.resume && prog.resume.lessonId === l.id;
     const tag = done ? '✓ done' : (resume ? 'Resume' : 'Start');
-    return `<button onclick="tutStartLesson('${l.id}')" class="add-row-btn" style="width:100%;text-align:left;margin-bottom:6px;background:var(--bg-deep);color:var(--ink);font-size:13px;display:flex;align-items:center;gap:9px;padding:9px 10px">
-        <span style="font-size:18px;flex:0 0 auto">${l.icon}</span>
-        <span style="flex:1;min-width:0"><strong>${escapeHtml(l.title)}</strong><br><span style="font-size:11px;color:var(--text-muted)">${escapeHtml(l.sub || '')}</span></span>
-        <span style="font-size:11px;font-weight:600;color:${done ? 'var(--gold)' : 'var(--text-faint)'}">${tag}</span>
+    return `<button onclick="tutStartLesson('${l.id}')" class="add-row-btn" style="width:100%;text-align:left;margin-bottom:6px;background:var(--bg-deep);color:var(--ink);font-size:var(--fs-sm);display:flex;align-items:center;gap:9px;padding:9px 10px">
+        <span style="font-size:var(--fs-lg);flex:0 0 auto">${l.icon}</span>
+        <span style="flex:1;min-width:0"><strong>${escapeHtml(l.title)}</strong><br><span style="font-size:var(--fs-xs);color:var(--text-muted)">${escapeHtml(l.sub || '')}</span></span>
+        <span style="font-size:var(--fs-xs);font-weight:600;color:${done ? 'var(--gold)' : 'var(--text-faint)'}">${tag}</span>
       </button>`;
   }).join('');
   ov.innerHTML = `<div class="menu" style="max-width:400px;width:93%;max-height:90vh;overflow-y:auto">
@@ -1165,7 +1165,7 @@ function renderTutMenu() {
       <p class="hint" style="text-align:left;margin:0 0 10px">Lessons run on a safe <strong>practice hero</strong> — your real characters aren't touched. Pick any topic.</p>
       ${items}
       <button onclick="tutDone()" class="close add-row-btn" style="width:100%;margin-top:8px;background:var(--btn-secondary-bg);color:white">Done — exit tutorial</button>
-      <button onclick="resetTutorial()" class="add-row-btn" style="width:100%;margin-top:6px;background:none;border:1px solid var(--border);color:var(--text-muted);font-size:12px">↺ Reset tutorial progress</button>
+      <button onclick="resetTutorial()" class="add-row-btn" style="width:100%;margin-top:6px;background:none;border:1px solid var(--border);color:var(--text-muted);font-size:var(--fs-xs)">↺ Reset tutorial progress</button>
     </div>`;
   ov.classList.add('show');
 }
@@ -1223,14 +1223,14 @@ function _tutEnsureDom() {
   const hole = document.createElement('div'); hole.id = 'tut-hole';
   hole.style.cssText = 'position:fixed;left:50%;top:50%;width:0;height:0;border-radius:12px;border:3px solid var(--gold);box-shadow:0 0 0 3px rgba(212,166,53,.30), 0 0 16px rgba(212,166,53,.55);pointer-events:none;transition:all .18s ease;display:none';
   const card = document.createElement('div'); card.id = 'tut-card';
-  card.style.cssText = 'position:fixed;max-width:340px;width:88%;background:var(--bg);border:2px solid var(--gold);border-radius:12px;padding:0 16px 14px;box-shadow:0 10px 38px rgba(0,0,0,.5);font-size:14px;color:var(--ink);box-sizing:border-box;pointer-events:auto';
+  card.style.cssText = 'position:fixed;max-width:340px;width:88%;background:var(--bg);border:2px solid var(--gold);border-radius:12px;padding:0 16px 14px;box-shadow:0 10px 38px rgba(0,0,0,.5);font-size:var(--fs-md);color:var(--ink);box-sizing:border-box;pointer-events:auto';
   ov.appendChild(hole); ov.appendChild(card);
   document.body.appendChild(ov);
   // Floating "Return to tutorial" pill, shown while the tour has stepped aside (hands-on mode).
   if (!document.getElementById('tut-pill')) {
     const pill = document.createElement('button'); pill.id = 'tut-pill';
     pill.onclick = tutReturn;
-    pill.style.cssText = 'position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:1001;display:none;background:var(--gold);color:var(--ink);border:2px solid var(--gold);border-radius:24px;padding:11px 20px;font-size:14px;font-weight:700;box-shadow:0 4px 18px rgba(0,0,0,.45);cursor:pointer;max-width:90%';
+    pill.style.cssText = 'position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:1001;display:none;background:var(--gold);color:var(--ink);border:2px solid var(--gold);border-radius:24px;padding:11px 20px;font-size:var(--fs-md);font-weight:700;box-shadow:0 4px 18px rgba(0,0,0,.45);cursor:pointer;max-width:90%';
     document.body.appendChild(pill);
   }
 }
@@ -1278,36 +1278,36 @@ function tutReturn() {
 }
 function _tutCardHtml(step, s, wasDone) {
   const n = s.step + 1, total = s.steps.length;
-  const intro = step.intro ? `<div style="font-style:italic;color:var(--gold);margin-bottom:8px;font-size:13px;line-height:1.5">${step.intro}</div>` : '';
+  const intro = step.intro ? `<div style="font-style:italic;color:var(--gold);margin-bottom:8px;font-size:var(--fs-sm);line-height:1.5">${step.intro}</div>` : '';
   const title = step.title ? `<div style="font-weight:700;margin-bottom:4px">${step.title}</div>` : '';
-  const more = step.more ? `<details style="margin-top:8px"><summary style="cursor:pointer;color:var(--gold);font-size:12px">Tell me more</summary><div style="margin-top:6px;font-size:12.5px;color:var(--text-muted);line-height:1.55">${step.more}</div></details>` : '';
+  const more = step.more ? `<details style="margin-top:8px"><summary style="cursor:pointer;color:var(--gold);font-size:var(--fs-xs)">Tell me more</summary><div style="margin-top:6px;font-size:var(--fs-sm);color:var(--text-muted);line-height:1.55">${step.more}</div></details>` : '';
   // Interactive steps have a `done` predicate. The "Try it" button steps the tutorial fully aside
   // (clears the dim + card) so you can act on the real page; a Return pill brings it back, and it
   // also auto-returns the moment the action is done. Already-satisfied steps just say so.
   const cue = step.done
     ? (wasDone
-      ? `<div style="margin-top:9px;font-size:12px;color:var(--text-muted);background:var(--bg-deep);border-radius:6px;padding:6px 8px">✓ Already done — tap <strong>Next</strong> to go on.</div>`
-      : `<button onclick="tutStepAside()" class="add-row-btn" style="width:100%;margin-top:10px;background:var(--gold);font-size:14px;font-weight:700">👉 Try it on the page →</button>
-         <div style="margin-top:5px;font-size:11px;color:var(--text-muted);text-align:center">The tutorial steps aside so you can do it. It pops back automatically when you finish — or tap the ↩ Return pill.</div>`)
+      ? `<div style="margin-top:9px;font-size:var(--fs-xs);color:var(--text-muted);background:var(--bg-deep);border-radius:var(--r-sm);padding:6px 8px">✓ Already done — tap <strong>Next</strong> to go on.</div>`
+      : `<button onclick="tutStepAside()" class="add-row-btn" style="width:100%;margin-top:10px;background:var(--gold);font-size:var(--fs-md);font-weight:700">👉 Try it on the page →</button>
+         <div style="margin-top:5px;font-size:var(--fs-xs);color:var(--text-muted);text-align:center">The tutorial steps aside so you can do it. It pops back automatically when you finish — or tap the ↩ Return pill.</div>`)
     : '';
   const nextLabel = s.step === total - 1 ? 'Finish ✓' : (step.done && !wasDone ? 'Skip ›' : 'Next ›');
   return `<div id="tut-drag" style="display:flex;align-items:center;gap:6px;margin:0 -16px 6px;padding:10px 16px 6px;cursor:grab;border-bottom:1px dashed var(--border)" title="Drag to move this window">
-      <span style="color:var(--text-faint);font-size:13px;letter-spacing:1px">⠿</span>
-      <span style="font-size:11px;font-weight:700;color:var(--gold);flex:1;min-width:0">${escapeHtml(s.lessonTitle)}</span>
-      <span style="font-size:11px;color:var(--text-faint)">${n}/${total}</span>
-      <button onclick="tutExit()" title="Exit" style="background:none;border:none;color:var(--text-faint);font-size:17px;cursor:pointer;line-height:1">×</button>
+      <span style="color:var(--text-faint);font-size:var(--fs-sm);letter-spacing:1px">⠿</span>
+      <span style="font-size:var(--fs-xs);font-weight:700;color:var(--gold);flex:1;min-width:0">${escapeHtml(s.lessonTitle)}</span>
+      <span style="font-size:var(--fs-xs);color:var(--text-faint)">${n}/${total}</span>
+      <button onclick="tutExit()" title="Exit" style="background:none;border:none;color:var(--text-faint);font-size:var(--fs-lg);cursor:pointer;line-height:1">×</button>
     </div>
     ${intro}${title}
     <div style="line-height:1.55">${step.body}</div>
     ${cue}
     ${more}
     <div style="display:flex;gap:6px;margin-top:12px">
-      <button onclick="tutPrev()" class="add-row-btn" style="background:var(--btn-secondary-bg);color:white;font-size:13px;${s.step === 0 ? 'opacity:0.4;pointer-events:none' : ''}">‹ Back</button>
-      <button id="tut-next-btn" onclick="tutNext()" class="add-row-btn" style="flex:1;background:var(--gold);font-size:14px">${nextLabel}</button>
+      <button onclick="tutPrev()" class="add-row-btn" style="background:var(--btn-secondary-bg);color:white;font-size:var(--fs-sm);${s.step === 0 ? 'opacity:0.4;pointer-events:none' : ''}">‹ Back</button>
+      <button id="tut-next-btn" onclick="tutNext()" class="add-row-btn" style="flex:1;background:var(--gold);font-size:var(--fs-md)">${nextLabel}</button>
     </div>
     <div style="display:flex;gap:10px;justify-content:center;margin-top:7px">
-      <button onclick="tutStepAside()" style="background:none;border:none;color:var(--text-faint);font-size:11px;cursor:pointer;text-decoration:underline">🔍 Look around the app</button>
-      <button onclick="tutExit()" style="background:none;border:none;color:var(--text-faint);font-size:11px;cursor:pointer;text-decoration:underline">Skip / back to lessons</button>
+      <button onclick="tutStepAside()" style="background:none;border:none;color:var(--text-faint);font-size:var(--fs-xs);cursor:pointer;text-decoration:underline">🔍 Look around the app</button>
+      <button onclick="tutExit()" style="background:none;border:none;color:var(--text-faint);font-size:var(--fs-xs);cursor:pointer;text-decoration:underline">Skip / back to lessons</button>
     </div>`;
 }
 function _tutClearPoll() { if (_tutState && _tutState._poll) { clearInterval(_tutState._poll); _tutState._poll = null; } }
@@ -1397,7 +1397,7 @@ function maybeOfferTutorial() {
                `<span style="opacity:.8">You can start it any time from ☰ Menu → 📖 Tutorial.</span>`,
       buttons: [
         { label: '📖 Start the tutorial', value: 'go' },
-        { label: 'Not now', value: 'later', style: 'background:var(--btn-secondary-bg);color:white;border:1px solid var(--btn-secondary-bg);border-radius:5px;padding:10px;font-size:14px;cursor:pointer' }
+        { label: 'Not now', value: 'later', style: 'background:var(--btn-secondary-bg);color:white;border:1px solid var(--btn-secondary-bg);border-radius:var(--r-sm);padding:10px;font-size:var(--fs-md);cursor:pointer' }
       ]
     });
     if (choice) { const q = loadTutProgress(); q.offered = true; saveTutProgress(q); }

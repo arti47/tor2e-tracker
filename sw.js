@@ -9,7 +9,7 @@
 //     This keeps clients from getting stuck on a stale build.
 // Bump CACHE_VERSION on any deploy so old caches are garbage-collected on activate.
 
-const CACHE_VERSION = 'tor2e-v129';
+const CACHE_VERSION = 'tor2e-v130';
 const PRECACHE = [
   './',
   './index.html',
@@ -28,7 +28,11 @@ const PRECACHE = [
   './manifest.json',
   './icon-192.png',
   './icon-512.png',
-  './icon.svg'
+  './icon.svg',
+  './fonts/eb-garamond-latin-500-normal.woff2',
+  './fonts/eb-garamond-latin-600-normal.woff2',
+  './fonts/eb-garamond-latin-700-normal.woff2',
+  './fonts/eb-garamond-latin-500-italic.woff2'
 ];
 
 self.addEventListener('install', (event) => {

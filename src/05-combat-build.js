@@ -22,14 +22,14 @@ function renderSpecialSuccessPanel(iconsAvailable) {
   panel.dataset.iconsLeft = String(iconsAvailable);
   const grid = panel.querySelector('div[style*="grid-template-columns"]');
   grid.innerHTML = SPECIAL_SUCCESS_SPENDS.map(s => {
-    return `<button onclick="applySpecialSuccess('${s.id}')" title="${escapeHtml(s.desc)}" style="background:var(--card-bg);color:var(--ink);border:1px solid var(--border);border-radius:4px;padding:5px 6px;font-size:11px;cursor:pointer;text-align:left;line-height:1.3"><strong>${s.label}</strong><br><small style="color:var(--text-muted);font-size:10px">${escapeHtml(s.desc.substring(0, 60))}${s.desc.length>60?'…':''}</small></button>`;
+    return `<button onclick="applySpecialSuccess('${s.id}')" title="${escapeHtml(s.desc)}" style="background:var(--card-bg);color:var(--ink);border:1px solid var(--border);border-radius:var(--r-sm);padding:5px 6px;font-size:var(--fs-xs);cursor:pointer;text-align:left;line-height:1.3"><strong>${s.label}</strong><br><small style="color:var(--text-muted);font-size:var(--fs-xs)">${escapeHtml(s.desc.substring(0, 60))}${s.desc.length>60?'…':''}</small></button>`;
   }).join('');
   // Status line
   let status = panel.querySelector('.spend-status');
   if (!status) {
     status = document.createElement('div');
     status.className = 'spend-status';
-    status.style.cssText = 'margin-top:6px;font-size:10px;color:var(--text-muted);text-align:center';
+    status.style.cssText = 'margin-top:6px;font-size:var(--fs-xs);color:var(--text-muted);text-align:center';
     panel.appendChild(status);
   }
   status.textContent = `${iconsAvailable} ✦ icon${iconsAvailable>1?'s':''} available to spend`;
@@ -146,7 +146,7 @@ function applyPierce() {
     diceState.pendingPierce = { ...p, oldFeat: newFeat, oldTotal: newTotal, oldIcons: newIcons };
     const next = Math.min(10, newFeat + p.bonus);
     const piercedNext = next === 10 ? ' = <strong>Piercing Blow!</strong>' : '';
-    pierceDiv.innerHTML = `<button onclick="applyPierce()" style="background:var(--warn-orange);color:white;border:none;border-radius:6px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer">🗡️ Pierce again: spend 1 ✦ → Feat ${newFeat}→${next}${piercedNext}</button>`;
+    pierceDiv.innerHTML = `<button onclick="applyPierce()" style="background:var(--warn-orange);color:white;border:none;border-radius:var(--r-sm);padding:8px 14px;font-size:var(--fs-sm);font-weight:600;cursor:pointer">🗡️ Pierce again: spend 1 ✦ → Feat ${newFeat}→${next}${piercedNext}</button>`;
   } else {
     diceState.pendingPierce = null;
     pierceDiv.innerHTML = '';
@@ -579,7 +579,7 @@ function renderWeapons() {
     const ro = w.picked ? 'readonly' : '';
     const versatile = !!(w.inj1h && w.inj2h);
     const gripBtn = versatile
-      ? `<button onclick="toggleWeaponGrip(${i})" aria-label="Switch ${escapeHtml(w.name || 'weapon')} between one-handed and two-handed grip" title="Switch between 1-handed (lower Injury, can use shield) and 2-handed (higher Injury, no shield Parry bonus)" style="background:${w.grip==='2h'?'var(--red)':'var(--bg-deep)'};color:${w.grip==='2h'?'white':'var(--ink)'};border:1px solid var(--border);border-radius:4px;font-size:10px;font-weight:600;padding:2px 6px;margin-top:2px;cursor:pointer;width:100%">${w.grip || '1h'}</button>`
+      ? `<button onclick="toggleWeaponGrip(${i})" aria-label="Switch ${escapeHtml(w.name || 'weapon')} between one-handed and two-handed grip" title="Switch between 1-handed (lower Injury, can use shield) and 2-handed (higher Injury, no shield Parry bonus)" style="background:${w.grip==='2h'?'var(--red)':'var(--bg-deep)'};color:${w.grip==='2h'?'white':'var(--ink)'};border:1px solid var(--border);border-radius:var(--r-sm);font-size:var(--fs-xs);font-weight:600;padding:2px 6px;margin-top:2px;cursor:pointer;width:100%">${w.grip || '1h'}</button>`
       : '';
     const tr = document.createElement('tr');
     tr.innerHTML = `
@@ -658,16 +658,16 @@ function openWeaponPicker() {
   });
   Object.keys(groups).forEach(prof => {
     const h = document.createElement('div');
-    h.style.cssText = 'font-size:11px;color:var(--red);text-transform:uppercase;letter-spacing:1px;font-weight:700;padding:6px 2px 2px;';
+    h.style.cssText = 'font-size:var(--fs-xs);color:var(--red);text-transform:uppercase;letter-spacing:1px;font-weight:700;padding:6px 2px 2px;';
     h.textContent = prof;
     list.appendChild(h);
     groups[prof].forEach(w => {
       const restriction = isWeaponRestricted(w.name, char.culture);
       const btn = document.createElement('button');
-      btn.style.cssText = `background:${restriction?'var(--red-soft)':'var(--pure-white)'};color:${restriction?'#888':'var(--ink)'};text-align:left;padding:10px 12px;font-size:13px;border:1px solid ${restriction?'var(--border)':'var(--border)'};border-radius:6px;cursor:pointer;display:block;width:100%;line-height:1.4;`;
+      btn.style.cssText = `background:${restriction?'var(--red-soft)':'var(--pure-white)'};color:${restriction?'#888':'var(--ink)'};text-align:left;padding:10px 12px;font-size:var(--fs-sm);border:1px solid ${restriction?'var(--border)':'var(--border)'};border-radius:var(--r-sm);cursor:pointer;display:block;width:100%;line-height:1.4;`;
       btn.innerHTML =
-        `<strong>${w.name}</strong>${restriction ? ' <span style="color:var(--red);font-size:10px">⚠ restricted</span>' : ''}` +
-        `<span style="float:right;color:var(--red);font-weight:600;font-size:12px">Dmg ${w.dmg} · Inj ${w.inj}</span><br>` +
+        `<strong>${w.name}</strong>${restriction ? ' <span style="color:var(--red);font-size:var(--fs-xs)">⚠ restricted</span>' : ''}` +
+        `<span style="float:right;color:var(--red);font-weight:600;font-size:var(--fs-xs)">Dmg ${w.dmg} · Inj ${w.inj}</span><br>` +
         `<small style="color:var(--text-muted)">Load ${w.load}${w.notes ? ' · ' + w.notes : ''}</small>`;
       btn.onclick = () => pickWeapon(w.idx);
       list.appendChild(btn);
@@ -799,12 +799,12 @@ function openArmourPicker() {
   list.appendChild(legend);
   ARMOURS.forEach((a, i) => {
     const btn = document.createElement('button');
-    btn.style.cssText = 'background:var(--card-bg);color:var(--ink);text-align:left;padding:10px 12px;font-size:13px;border:1px solid var(--border);border-radius:6px;cursor:pointer;display:block;width:100%;line-height:1.4;';
+    btn.style.cssText = 'background:var(--card-bg);color:var(--ink);text-align:left;padding:10px 12px;font-size:var(--fs-sm);border:1px solid var(--border);border-radius:var(--r-sm);cursor:pointer;display:block;width:100%;line-height:1.4;';
     const dwarven = isDwarfCulture();
     const shownLoad = dwarven ? Math.ceil(a.load / 2) : a.load;
     btn.innerHTML =
       `<strong>${a.name}</strong>` +
-      `<span style="float:right;color:var(--red);font-weight:600;font-size:12px">${a.prot}d · Load ${shownLoad}${dwarven ? ' (½)' : ''}</span><br>` +
+      `<span style="float:right;color:var(--red);font-weight:600;font-size:var(--fs-xs)">${a.prot}d · Load ${shownLoad}${dwarven ? ' (½)' : ''}</span><br>` +
       `<small style="color:var(--text-muted)">${a.type}${a.min ? ' · min: ' + a.min : ''}</small>`;
     btn.onclick = () => pickArmour(i);
     list.appendChild(btn);
@@ -850,10 +850,10 @@ function openShieldPicker() {
   list.innerHTML = '';
   SHIELDS.forEach((s, i) => {
     const btn = document.createElement('button');
-    btn.style.cssText = 'background:var(--card-bg);color:var(--ink);text-align:left;padding:10px 12px;font-size:13px;border:1px solid var(--border);border-radius:6px;cursor:pointer;display:block;width:100%;line-height:1.4;';
+    btn.style.cssText = 'background:var(--card-bg);color:var(--ink);text-align:left;padding:10px 12px;font-size:var(--fs-sm);border:1px solid var(--border);border-radius:var(--r-sm);cursor:pointer;display:block;width:100%;line-height:1.4;';
     btn.innerHTML =
       `<strong>${s.name}</strong>` +
-      `<span style="float:right;color:var(--red);font-weight:600;font-size:12px">Parry +${s.parry} · Load ${s.load}</span>` +
+      `<span style="float:right;color:var(--red);font-weight:600;font-size:var(--fs-xs)">Parry +${s.parry} · Load ${s.load}</span>` +
       (s.min ? `<br><small style="color:var(--text-muted)">min: ${s.min}</small>` : '');
     btn.onclick = () => pickShield(i);
     list.appendChild(btn);
@@ -1077,8 +1077,8 @@ function renderBestiaryList() {
   let html = '<p class="hint" style="text-align:left;margin:0 0 8px 0;line-height:1.45">Each foe reads <strong>End</strong> (endurance) · <strong>Parry</strong> (how hard to hit) · <strong>Armour</strong> (their Protection dice) · <strong>Might</strong> (how monstrous). An attack like “sword 2d (5/16)” = 2 dice, Damage 5, Injury 16. Every number is editable after you add them.</p>', src = '';
   allBestiary().forEach((b, idx) => {
     if (!b.name.toLowerCase().includes(q)) return;
-    if (b.source !== src) { src = b.source; html += `<div style="font-size:11px;font-weight:700;color:var(--text-muted);margin:8px 0 4px">${src}</div>`; }
-    html += `<button onclick="addFoeFromBestiary(${idx})" class="add-row-btn" style="width:100%;text-align:left;margin-bottom:4px;background:var(--bg-deep);color:var(--ink);font-size:12px">
+    if (b.source !== src) { src = b.source; html += `<div style="font-size:var(--fs-xs);font-weight:700;color:var(--text-muted);margin:8px 0 4px">${src}</div>`; }
+    html += `<button onclick="addFoeFromBestiary(${idx})" class="add-row-btn" style="width:100%;text-align:left;margin-bottom:4px;background:var(--bg-deep);color:var(--ink);font-size:var(--fs-xs)">
       <strong>${escapeHtml(b.name)}</strong> — End ${b.end}, Parry ${b.parry}, Armour ${b.armour}${b.might ? `, Might ${b.might}` : ''}<br>
       <span style="color:var(--text-muted)">${b.attacks.map(a => `${escapeHtml(a.name)} ${a.dice}d (${a.dmg}/${a.inj})`).join(' · ')}</span></button>`;
   });
@@ -1377,7 +1377,7 @@ function renderEncounter() {
   if (!card) return;
   const e = enc();
   const shared = encShared(), canGm = encCanGm();
-  const sharedBanner = shared ? `<p class="hint" style="text-align:left;margin:0 0 8px;border:1px solid var(--gold);border-radius:6px;padding:5px 8px">🏰 <b>Shared campaign encounter</b> — every member sees this fight live.${canGm ? ' You run it (Loremaster).' : ' The Loremaster runs the foes; roll your own attacks and defences.'}</p>` : '';
+  const sharedBanner = shared ? `<p class="hint" style="text-align:left;margin:0 0 8px;border:1px solid var(--gold);border-radius:var(--r-sm);padding:5px 8px">🏰 <b>Shared campaign encounter</b> — every member sees this fight live.${canGm ? ' You run it (Loremaster).' : ' The Loremaster runs the foes; roll your own attacks and defences.'}</p>` : '';
   if (!e.active && (!e.foes || e.foes.length === 0)) {
     card.innerHTML = sharedBanner + (canGm
       ? `<p class="hint" style="text-align:left;margin:0 0 8px">Key in adversaries, roll your attacks and theirs, and apply damage — all here. Works in solo or group play.</p>
@@ -1389,25 +1389,25 @@ function renderEncounter() {
   const wIdx = Math.min(e.weaponIdx || 0, Math.max(0, wpns.length - 1));
   const a = e.adv;
   let html = sharedBanner + `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:8px">
-      <strong style="font-size:14px">Round ${e.round}</strong>
-      ${canGm ? `<button onclick="nextRound()" class="add-row-btn" style="font-size:11px;padding:3px 8px;background:var(--btn-secondary-bg);color:white">Next round ▸</button>` : ''}
+      <strong style="font-size:var(--fs-md)">Round ${e.round}</strong>
+      ${canGm ? `<button onclick="nextRound()" class="add-row-btn" style="font-size:var(--fs-xs);padding:3px 8px;background:var(--btn-secondary-bg);color:white">Next round ▸</button>` : ''}
     </div>
-    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:12px;margin-bottom:6px">
+    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:var(--fs-xs);margin-bottom:6px">
       <span>Attack with:</span>
-      <select onchange="setEncWeapon(this.value)" style="flex:1;min-width:130px;padding:4px;border:1px solid var(--border);border-radius:5px;background:var(--bg-deep);color:var(--ink)">
+      <select onchange="setEncWeapon(this.value)" style="flex:1;min-width:130px;padding:4px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--bg-deep);color:var(--ink)">
         ${wpns.length ? wpns.map((w, i) => `<option value="${i}" ${i === wIdx ? 'selected' : ''}>${escapeHtml(w.name)} (${w.dmg}/${w.inj}, ${w.prof || 'Brawling'})</option>`).join('') : '<option>— no weapon equipped —</option>'}
       </select>
-      <button onclick="toggleEncAdv()" class="add-row-btn" style="font-size:11px;padding:3px 8px;background:${a.open ? 'var(--gold)' : 'var(--btn-secondary-bg)'};color:${a.open ? 'var(--ink)' : 'white'}">⚙ Advanced</button>
+      <button onclick="toggleEncAdv()" class="add-row-btn" style="font-size:var(--fs-xs);padding:3px 8px;background:${a.open ? 'var(--gold)' : 'var(--btn-secondary-bg)'};color:${a.open ? 'var(--ink)' : 'white'}">⚙ Advanced</button>
     </div>`;
   if (a.open) {
-    html += `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12px;margin:0 0 8px;padding:6px;background:var(--bg-deep);border-radius:6px">
+    html += `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:var(--fs-xs);margin:0 0 8px;padding:6px;background:var(--bg-deep);border-radius:var(--r-sm)">
         <label><input type="checkbox" ${a.hope ? 'checked' : ''} onchange="setEncAdv('hope')"> Spend Hope (+1d)</label>
-        <label>Roll <select onchange="setEncAdv('fav',this.value)" style="padding:2px 4px;border:1px solid var(--border);border-radius:4px;background:var(--bg);color:var(--ink)">
+        <label>Roll <select onchange="setEncAdv('fav',this.value)" style="padding:2px 4px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--bg);color:var(--ink)">
           <option value="normal" ${a.fav === 'normal' ? 'selected' : ''}>Normal</option>
           <option value="fav" ${a.fav === 'fav' ? 'selected' : ''}>Favoured</option>
           <option value="ill" ${a.fav === 'ill' ? 'selected' : ''}>Ill-Favoured</option>
         </select></label>
-        <label>±dice <input type="number" value="${a.extra || 0}" onchange="setEncAdv('extra',this.value)" style="width:42px;padding:2px;border:1px solid var(--border);border-radius:4px;background:var(--bg);color:var(--ink)"></label>
+        <label>±dice <input type="number" value="${a.extra || 0}" onchange="setEncAdv('extra',this.value)" style="width:42px;padding:2px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--bg);color:var(--ink)"></label>
         <label><input type="checkbox" ${a.keen ? 'checked' : ''} onchange="setEncAdv('keen')"> Keen (PB 9+)</label>
       </div>`;
   }
@@ -1420,49 +1420,49 @@ function renderEncounter() {
 }
 function _renderFoeCard(f, canGm = true) {
   const slain = f.slain;
-  const step = (field, d, lbl) => canGm ? `<button onclick="adjFoe('${f.id}','${field}',${d})" style="width:24px;height:24px;border:1px solid var(--border);background:var(--card-bg);color:var(--ink);border-radius:4px;cursor:pointer">${lbl}</button>` : '';
-  let h = `<div style="border:1px solid var(--border);border-radius:8px;padding:8px;margin-bottom:8px;${slain ? 'opacity:0.55' : ''}">
+  const step = (field, d, lbl) => canGm ? `<button onclick="adjFoe('${f.id}','${field}',${d})" style="width:24px;height:24px;border:1px solid var(--border);background:var(--card-bg);color:var(--ink);border-radius:var(--r-sm);cursor:pointer">${lbl}</button>` : '';
+  let h = `<div style="border:1px solid var(--border);border-radius:var(--r-sm);padding:8px;margin-bottom:8px;${slain ? 'opacity:0.55' : ''}">
     <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-      <strong style="font-size:14px">${escapeHtml(f.name)}</strong>
+      <strong style="font-size:var(--fs-md)">${escapeHtml(f.name)}</strong>
       ${slain ? '<span class="result-tag tag-fail">SLAIN</span>' : (f.wounded ? '<span class="result-tag" style="background:var(--btn-warn-bg);color:white">WOUNDED</span>' : '')}
-      <span style="font-size:10px;color:var(--text-faint)">${escapeHtml(f.source || '')}</span>
+      <span style="font-size:var(--fs-xs);color:var(--text-faint)">${escapeHtml(f.source || '')}</span>
       <span style="flex:1"></span>
       ${canGm ? `<button onclick="toggleFoeEdit('${f.id}')" title="Edit stats" style="background:none;border:none;cursor:pointer;color:var(--text-faint)">✎</button>
       <button onclick="removeFoe('${f.id}')" title="Remove" style="background:none;border:none;cursor:pointer;color:var(--text-faint)">×</button>` : ''}
     </div>
-    <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;font-size:13px;margin-top:5px">
+    <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;font-size:var(--fs-sm);margin-top:5px">
       <span>End <strong>${f.endCur}/${f.endMax}</strong></span>${step('endCur', -1, '−')}${step('endCur', 1, '+')}
       <span style="margin-left:6px">Hate <strong>${f.hateCur}/${f.hateMax}</strong></span>${step('hateCur', -1, '−')}${step('hateCur', 1, '+')}
       <span style="margin-left:6px;color:var(--text-muted)">Parry ${f.parry} · Armour ${f.armour}${f.might ? ` · Might ${f.might}` : ''}</span>
     </div>
-    ${f.fell ? `<div style="font-size:11px;color:var(--text-muted);margin-top:3px">⚜ ${escapeHtml(f.fell)}</div>` : ''}`;
+    ${f.fell ? `<div style="font-size:var(--fs-xs);color:var(--text-muted);margin-top:3px">⚜ ${escapeHtml(f.fell)}</div>` : ''}`;
   if (!slain) {
     h += `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
         <button onclick="heroAttackFoe('${f.id}')" class="add-row-btn" style="flex:1;min-width:110px;background:var(--gold)">⚔️ Attack</button>
         ${(f.attacks || []).map((atk, i) => `<button onclick="foeAttackHero('${f.id}',${i})" class="add-row-btn" style="flex:1;min-width:110px;background:var(--btn-alert-bg)">🗡️ ${escapeHtml(atk.name)} ${atk.dice}d</button>`).join('')}
       </div>`;
   }
-  if (_encResults[f.id]) h += `<div style="font-size:12px;margin-top:6px;padding:6px;background:var(--bg-deep);border-radius:6px;line-height:1.45">${_encResults[f.id]}</div>`;
+  if (_encResults[f.id]) h += `<div style="font-size:var(--fs-xs);margin-top:6px;padding:6px;background:var(--bg-deep);border-radius:var(--r-sm);line-height:1.45">${_encResults[f.id]}</div>`;
   const ps = _encPierceState[f.id];
   if (ps && !f.slain) {
     const next = Math.min(10, ps.feat + ps.bonus);
-    h += `<button onclick="encPierce('${f.id}')" aria-label="Spend one success icon to Pierce" style="margin-top:6px;width:100%;background:var(--warn-orange);color:white;border:none;border-radius:6px;padding:8px;font-size:12px;font-weight:600;cursor:pointer">`
+    h += `<button onclick="encPierce('${f.id}')" aria-label="Spend one success icon to Pierce" style="margin-top:6px;width:100%;background:var(--warn-orange);color:white;border:none;border-radius:var(--r-sm);padding:8px;font-size:var(--fs-xs);font-weight:600;cursor:pointer">`
       + `🗡️ Pierce: spend 1 ✦ (${ps.prof} +${ps.bonus}) → Feat ${ps.feat}→${next}${next === 10 ? ' = <strong>Piercing Blow!</strong>' : ''} · ${ps.icons} ✦ left</button>`;
   }
   if (f._edit && canGm) h += _renderFoeEdit(f);
   return h + `</div>`;
 }
 function _renderFoeEdit(f) {
-  const inp = (field, val, w) => `<input value="${val}" onchange="setFoeField('${f.id}','${field}',this.value)" style="width:${w || 44}px;padding:2px 4px;border:1px solid var(--border);border-radius:4px;background:var(--bg-deep);color:var(--ink);font-size:12px">`;
-  let h = `<div style="margin-top:8px;padding-top:6px;border-top:1px dashed var(--border);font-size:12px">
+  const inp = (field, val, w) => `<input value="${val}" onchange="setFoeField('${f.id}','${field}',this.value)" style="width:${w || 44}px;padding:2px 4px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--bg-deep);color:var(--ink);font-size:var(--fs-xs)">`;
+  let h = `<div style="margin-top:8px;padding-top:6px;border-top:1px dashed var(--border);font-size:var(--fs-xs)">
       <div style="margin-bottom:5px">Name ${inp('name', escapeHtml(f.name), 120)}</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
         End ${inp('endMax', f.endMax)} Might ${inp('might', f.might)} Hate ${inp('hateMax', f.hateMax)} Parry ${inp('parry', f.parry)} Armour ${inp('armour', f.armour)} atkTN ${inp('atkTN', f.atkTN)}
       </div>
       <div style="margin-top:5px">Fell ${inp('fell', escapeHtml(f.fell || ''), 210)}</div>
-      <div style="margin-top:6px;font-weight:600">Attacks <button onclick="addFoeAttack('${f.id}')" style="font-size:11px;border:1px solid var(--border);border-radius:4px;background:var(--bg-deep);color:var(--ink);cursor:pointer">+ add</button></div>`;
+      <div style="margin-top:6px;font-weight:600">Attacks <button onclick="addFoeAttack('${f.id}')" style="font-size:var(--fs-xs);border:1px solid var(--border);border-radius:var(--r-sm);background:var(--bg-deep);color:var(--ink);cursor:pointer">+ add</button></div>`;
   (f.attacks || []).forEach((atk, i) => {
-    const ai = (field, val, w) => `<input value="${val}" onchange="setFoeAttack('${f.id}',${i},'${field}',this.value)" style="width:${w || 40}px;padding:2px 4px;border:1px solid var(--border);border-radius:4px;background:var(--bg-deep);color:var(--ink);font-size:12px">`;
+    const ai = (field, val, w) => `<input value="${val}" onchange="setFoeAttack('${f.id}',${i},'${field}',this.value)" style="width:${w || 40}px;padding:2px 4px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--bg-deep);color:var(--ink);font-size:var(--fs-xs)">`;
     h += `<div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;margin-top:4px">
         ${ai('name', escapeHtml(atk.name), 86)} ${ai('dice', atk.dice, 32)}d Dmg ${ai('dmg', atk.dmg, 32)} Inj ${ai('inj', atk.inj, 32)} ${ai('special', escapeHtml(atk.special || ''), 78)}
         <button onclick="delFoeAttack('${f.id}',${i})" style="background:none;border:none;color:var(--text-faint);cursor:pointer">×</button>
@@ -1506,13 +1506,13 @@ function renderQuickSkills() {
     if (item.isMeta) btn.style.background = 'var(--gold-soft)';
     if (item.isDerived) btn.title = 'Brawling: derived from your highest combat prof, minus 1 (RAW p.45). Use for Unarmed/Dagger/Cudgel/Club.';
     const star = blessingFav ? ' ★' : '';
-    const derivedTag = item.isDerived ? ' <small style="color:var(--text-faint);font-size:9px">(der)</small>' : '';
+    const derivedTag = item.isDerived ? ' <small style="color:var(--text-faint);font-size:var(--fs-xs)">(der)</small>' : '';
     btn.innerHTML = `${item.name}${star}${derivedTag}<br><span class="rating">${s.rating}d · ${item.attr.toUpperCase()}</span>`;
     btn.onclick = () => quickRoll(item, s);
     container.appendChild(btn);
   });
   if (container.children.length === 0) {
-    container.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--text-faint);font-size:12px;padding:10px">Set skill ratings to see quick-roll buttons</div>';
+    container.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--text-faint);font-size:var(--fs-xs);padding:10px">Set skill ratings to see quick-roll buttons</div>';
   }
 }
 
@@ -1760,12 +1760,12 @@ function renderUsefulItemsPicker() {
     const disabled = !isOn && picked.length >= allowed;
     const skillTag = item.skillAlt ? `${item.skill} or ${item.skillAlt}` : item.skill;
     const row = document.createElement('div');
-    row.style.cssText = `display:flex;align-items:flex-start;gap:10px;padding:10px;cursor:${disabled?'not-allowed':'pointer'};border:1px solid ${isOn?'var(--red)':'var(--border)'};border-radius:6px;margin-bottom:6px;background:${isOn?'var(--gold-soft)':disabled?'var(--bg-deep)':'var(--pure-white)'};opacity:${disabled?0.5:1}`;
+    row.style.cssText = `display:flex;align-items:flex-start;gap:10px;padding:10px;cursor:${disabled?'not-allowed':'pointer'};border:1px solid ${isOn?'var(--red)':'var(--border)'};border-radius:var(--r-sm);margin-bottom:6px;background:${isOn?'var(--gold-soft)':disabled?'var(--bg-deep)':'var(--pure-white)'};opacity:${disabled?0.5:1}`;
     row.innerHTML = `
       <div class="fav-check ${isOn ? 'checked' : ''}" style="flex-shrink:0;margin-top:2px"></div>
       <div style="flex:1">
-        <strong>${item.name}</strong> <span style="color:var(--red);font-size:11px;font-weight:600">+1d ${skillTag}</span><br>
-        <small style="color:var(--text-muted);font-size:12px">${item.desc}</small>
+        <strong>${item.name}</strong> <span style="color:var(--red);font-size:var(--fs-xs);font-weight:600">+1d ${skillTag}</span><br>
+        <small style="color:var(--text-muted);font-size:var(--fs-xs)">${item.desc}</small>
       </div>
     `;
     if (!disabled) row.onclick = () => toggleUsefulItem(item.name);
@@ -1795,7 +1795,7 @@ function renderUsefulItemsDisplay() {
   if (!div) return;
   const owned = Array.isArray(char.usefulItems) ? char.usefulItems : [];
   if (owned.length === 0) {
-    div.innerHTML = '<p style="color:var(--text-faint);font-size:12px;text-align:center;padding:10px">No Useful Items picked yet. Pick some on the Build tab.</p>';
+    div.innerHTML = '<p style="color:var(--text-faint);font-size:var(--fs-xs);text-align:center;padding:10px">No Useful Items picked yet. Pick some on the Build tab.</p>';
     return;
   }
   div.innerHTML = owned.map(entry => {
@@ -1803,9 +1803,9 @@ function renderUsefulItemsDisplay() {
     const item = isObj ? entry : USEFUL_ITEMS.find(x => x.name === entry);
     if (!item) return '';
     const skillTag = item.skillAlt ? `${item.skill} or ${item.skillAlt}` : (item.skill || '');
-    return `<div style="padding:10px;border:1px solid var(--border);border-radius:6px;margin-bottom:6px;background:var(--gold-soft)">
-      <strong>${escapeHtml(item.name)}</strong> ${skillTag ? `<span style="color:var(--red);font-size:11px;font-weight:600">+1d ${skillTag}</span>` : ''}<br>
-      <small style="color:var(--text-muted);font-size:12px">${escapeHtml(item.desc || '')}</small>
+    return `<div style="padding:10px;border:1px solid var(--border);border-radius:var(--r-sm);margin-bottom:6px;background:var(--gold-soft)">
+      <strong>${escapeHtml(item.name)}</strong> ${skillTag ? `<span style="color:var(--red);font-size:var(--fs-xs);font-weight:600">+1d ${skillTag}</span>` : ''}<br>
+      <small style="color:var(--text-muted);font-size:var(--fs-xs)">${escapeHtml(item.desc || '')}</small>
     </div>`;
   }).join('');
 }
@@ -1863,7 +1863,7 @@ function renderLifepathCard() {
         <strong>Suggested:</strong> Str ${lp.attrs.str} · Hrt ${lp.attrs.hrt} · Wit ${lp.attrs.wit}<br>
         <strong>Favoured skill:</strong> ${lp.favouredSkill}<br>
         <strong>Distinctive features:</strong> ${lp.features.join(', ')}<br>
-        <button class="add-row-btn" onclick="applyBackstory(${lp.die})" style="padding:6px 12px;font-size:12px;margin-top:8px">✓ Apply Suggested Stats</button>
+        <button class="add-row-btn" onclick="applyBackstory(${lp.die})" style="padding:6px 12px;font-size:var(--fs-xs);margin-top:8px">✓ Apply Suggested Stats</button>
       `;
     }
   } else {
@@ -1880,7 +1880,7 @@ function renderLifepathCard() {
       div.innerHTML = `
         <strong style="color:var(--red-dark)">Feat die ${me.die === 'eye' ? '👁' : me.die === 'rune' ? 'ᚱ' : me.die}: ...${me.name}</strong><br>
         <em style="color:var(--text-muted)">${me.short}</em><br>
-        <button class="add-row-btn" onclick="applyMajorEvent('${me.die}')" style="padding:6px 12px;font-size:12px;margin-top:8px">✓ Apply Effects</button>
+        <button class="add-row-btn" onclick="applyMajorEvent('${me.die}')" style="padding:6px 12px;font-size:var(--fs-xs);margin-top:8px">✓ Apply Effects</button>
       `;
     }
   } else {
@@ -2037,21 +2037,21 @@ function renderCombatProfsPicker() {
 
   let html = `
     <div style="margin-bottom:14px">
-      <strong style="color:var(--red-dark);font-size:13px">Rank 2 — pick 1 of: ${primaryOpts.join(' OR ')}</strong>
+      <strong style="color:var(--red-dark);font-size:var(--fs-sm)">Rank 2 — pick 1 of: ${primaryOpts.join(' OR ')}</strong>
       <div style="display:flex;gap:8px;margin-top:6px">
         ${primaryOpts.map(p => {
           const isOn = primary === p;
-          return `<button onclick="setCombatProfs('${p}', '${secondary}')" style="flex:1;padding:10px;border:1px solid ${isOn?'var(--red)':'var(--border)'};background:${isOn?'var(--gold-soft)':'var(--pure-white)'};border-radius:6px;cursor:pointer;font-weight:${isOn?700:400}">${p} ◆◆${isOn?' ✓':''}</button>`;
+          return `<button onclick="setCombatProfs('${p}', '${secondary}')" style="flex:1;padding:10px;border:1px solid ${isOn?'var(--red)':'var(--border)'};background:${isOn?'var(--gold-soft)':'var(--pure-white)'};border-radius:var(--r-sm);cursor:pointer;font-weight:${isOn?700:400}">${p} ◆◆${isOn?' ✓':''}</button>`;
         }).join('')}
       </div>
     </div>
     <div>
-      <strong style="color:var(--red-dark);font-size:13px">+1 — choose any Combat Proficiency</strong>
+      <strong style="color:var(--red-dark);font-size:var(--fs-sm)">+1 — choose any Combat Proficiency</strong>
       <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:6px">
         ${COMBAT_PROFS.map(p => {
           const isOn = secondary === p;
           const stackNote = (p === primary) ? ' <small style="color:var(--text-faint)">(stacks → ◆◆◆)</small>' : '';
-          return `<button onclick="setCombatProfs('${primary}', '${p}')" style="padding:10px;border:1px solid ${isOn?'var(--red)':'var(--border)'};background:${isOn?'var(--gold-soft)':'var(--pure-white)'};border-radius:6px;cursor:pointer;font-weight:${isOn?700:400}">${p} ◆${isOn?' ✓':''}${stackNote}</button>`;
+          return `<button onclick="setCombatProfs('${primary}', '${p}')" style="padding:10px;border:1px solid ${isOn?'var(--red)':'var(--border)'};background:${isOn?'var(--gold-soft)':'var(--pure-white)'};border-radius:var(--r-sm);cursor:pointer;font-weight:${isOn?700:400}">${p} ◆${isOn?' ✓':''}${stackNote}</button>`;
         }).join('')}
       </div>
     </div>
@@ -2116,18 +2116,18 @@ function renderPECard() {
     const row = document.createElement('div');
     row.style.cssText = 'display:flex;align-items:center;gap:6px;padding:6px 8px;border-bottom:1px solid rgba(0,0,0,0.05)';
     row.innerHTML = `
-      <div style="flex:1;font-size:13px"><strong>${name}</strong></div>
-      <button onclick="adjPE('${kind}','${name}',-1)" ${canMinus?'':'disabled'} style="width:28px;height:28px;border:1px solid var(--red);background:${canMinus?'var(--pure-white)':'var(--bg-deep)'};color:${canMinus?'var(--red)':'var(--text-faint)'};border-radius:4px;font-weight:700;cursor:${canMinus?'pointer':'not-allowed'}">−</button>
-      <span style="min-width:50px;text-align:center;font-size:13px;color:var(--red-dark)">${'◆'.repeat(cur) || '—'}</span>
-      <button onclick="adjPE('${kind}','${name}',1)" ${canPlus?'':'disabled'} style="width:28px;height:28px;border:1px solid var(--red);background:${canPlus?'var(--pure-white)':'var(--bg-deep)'};color:${canPlus?'var(--red)':'var(--text-faint)'};border-radius:4px;font-weight:700;cursor:${canPlus?'pointer':'not-allowed'}">+</button>
-      <span style="min-width:42px;font-size:10px;color:var(--text-faint);text-align:right">${nextCost ? `${nextCost}pt` : 'MAX'}</span>
+      <div style="flex:1;font-size:var(--fs-sm)"><strong>${name}</strong></div>
+      <button onclick="adjPE('${kind}','${name}',-1)" ${canMinus?'':'disabled'} style="width:28px;height:28px;border:1px solid var(--red);background:${canMinus?'var(--pure-white)':'var(--bg-deep)'};color:${canMinus?'var(--red)':'var(--text-faint)'};border-radius:var(--r-sm);font-weight:700;cursor:${canMinus?'pointer':'not-allowed'}">−</button>
+      <span style="min-width:50px;text-align:center;font-size:var(--fs-sm);color:var(--red-dark)">${'◆'.repeat(cur) || '—'}</span>
+      <button onclick="adjPE('${kind}','${name}',1)" ${canPlus?'':'disabled'} style="width:28px;height:28px;border:1px solid var(--red);background:${canPlus?'var(--pure-white)':'var(--bg-deep)'};color:${canPlus?'var(--red)':'var(--text-faint)'};border-radius:var(--r-sm);font-weight:700;cursor:${canPlus?'pointer':'not-allowed'}">+</button>
+      <span style="min-width:42px;font-size:var(--fs-xs);color:var(--text-faint);text-align:right">${nextCost ? `${nextCost}pt` : 'MAX'}</span>
     `;
     list.appendChild(row);
   };
 
   const header = (text) => {
     const h = document.createElement('div');
-    h.style.cssText = 'font-size:11px;color:var(--red);text-transform:uppercase;letter-spacing:1px;font-weight:700;padding:10px 2px 4px';
+    h.style.cssText = 'font-size:var(--fs-xs);color:var(--red);text-transform:uppercase;letter-spacing:1px;font-weight:700;padding:10px 2px 4px';
     h.textContent = text;
     list.appendChild(h);
   };
@@ -2244,8 +2244,8 @@ function promptApplyReward(rewardName, source) {
   list.innerHTML = '';
   targets.forEach(t => {
     const btn = document.createElement('button');
-    btn.style.cssText = 'background:var(--card-bg);color:var(--ink);text-align:left;padding:10px 12px;font-size:13px;border:1px solid var(--border);border-radius:6px;cursor:pointer;display:block;width:100%';
-    btn.innerHTML = `<strong>${t.label}</strong> <span style="float:right;color:var(--red);font-size:11px">${t.info}</span><br><small style="color:var(--text-faint);text-transform:uppercase">${t.kind}</small>`;
+    btn.style.cssText = 'background:var(--card-bg);color:var(--ink);text-align:left;padding:10px 12px;font-size:var(--fs-sm);border:1px solid var(--border);border-radius:var(--r-sm);cursor:pointer;display:block;width:100%';
+    btn.innerHTML = `<strong>${t.label}</strong> <span style="float:right;color:var(--red);font-size:var(--fs-xs)">${t.info}</span><br><small style="color:var(--text-faint);text-transform:uppercase">${t.kind}</small>`;
     btn.onclick = () => confirmApplyReward(t);
     list.appendChild(btn);
   });
@@ -2380,10 +2380,10 @@ function renderFavouredPicker() {
   // Culture: pick 1 of 2 underlined
   if (char.culture && CULTURES[char.culture]) {
     const opts = CULTURES[char.culture].favouredChoice;
-    html += `<div style="margin-bottom:12px"><strong style="color:var(--red-dark);font-size:13px">Culture Favoured (pick 1)</strong><div style="display:flex;gap:8px;margin-top:6px">`;
+    html += `<div style="margin-bottom:12px"><strong style="color:var(--red-dark);font-size:var(--fs-sm)">Culture Favoured (pick 1)</strong><div style="display:flex;gap:8px;margin-top:6px">`;
     opts.forEach(s => {
       const picked = char.cultureFavoured === s;
-      html += `<button onclick="setCultureFavoured('${s}')" style="flex:1;padding:10px;border:1px solid ${picked?'var(--red)':'var(--border)'};background:${picked?'var(--gold-soft)':'var(--pure-white)'};border-radius:6px;cursor:pointer;font-weight:${picked?700:400}">${s}${picked?' ✓':''}</button>`;
+      html += `<button onclick="setCultureFavoured('${s}')" style="flex:1;padding:10px;border:1px solid ${picked?'var(--red)':'var(--border)'};background:${picked?'var(--gold-soft)':'var(--pure-white)'};border-radius:var(--r-sm);cursor:pointer;font-weight:${picked?700:400}">${s}${picked?' ✓':''}</button>`;
     });
     html += `</div></div>`;
   }
@@ -2392,11 +2392,11 @@ function renderFavouredPicker() {
   if (char.calling && CALLINGS[char.calling]) {
     const opts = CALLINGS[char.calling].favoured;
     const picked = char.callingFavoured || [];
-    html += `<div style="margin-bottom:12px"><strong style="color:var(--red-dark);font-size:13px">Calling Favoured (pick 2)</strong><div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap">`;
+    html += `<div style="margin-bottom:12px"><strong style="color:var(--red-dark);font-size:var(--fs-sm)">Calling Favoured (pick 2)</strong><div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap">`;
     opts.forEach(s => {
       const isOn = picked.includes(s);
       const disabled = !isOn && picked.length >= 2;
-      html += `<button ${disabled?'disabled':''} onclick="toggleCallingFavoured('${s}')" style="flex:1;min-width:90px;padding:10px;border:1px solid ${isOn?'var(--red)':'var(--border)'};background:${isOn?'var(--gold-soft)':disabled?'var(--bg-deep)':'var(--pure-white)'};border-radius:6px;cursor:${disabled?'not-allowed':'pointer'};opacity:${disabled?0.5:1};font-weight:${isOn?700:400}">${s}${isOn?' ✓':''}</button>`;
+      html += `<button ${disabled?'disabled':''} onclick="toggleCallingFavoured('${s}')" style="flex:1;min-width:90px;padding:10px;border:1px solid ${isOn?'var(--red)':'var(--border)'};background:${isOn?'var(--gold-soft)':disabled?'var(--bg-deep)':'var(--pure-white)'};border-radius:var(--r-sm);cursor:${disabled?'not-allowed':'pointer'};opacity:${disabled?0.5:1};font-weight:${isOn?700:400}">${s}${isOn?' ✓':''}</button>`;
     });
     html += `</div><p class="hint" style="text-align:left;margin:6px 0">Selected: ${picked.length}/2</p></div>`;
   }
@@ -2404,11 +2404,11 @@ function renderFavouredPicker() {
   // Mastery: pick 2 of all 18 skills (only if Mastery virtue owned)
   if (Array.isArray(char.virtuesList) && char.virtuesList.some(v => v.name === 'Mastery')) {
     const picked = char.masteryFavoured || [];
-    html += `<div><strong style="color:var(--red-dark);font-size:13px">Mastery Virtue Favoured (pick 2)</strong><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:6px;margin-top:6px">`;
+    html += `<div><strong style="color:var(--red-dark);font-size:var(--fs-sm)">Mastery Virtue Favoured (pick 2)</strong><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:6px;margin-top:6px">`;
     [...SKILLS.str, ...SKILLS.hrt, ...SKILLS.wit].forEach(s => {
       const isOn = picked.includes(s);
       const disabled = !isOn && picked.length >= 2;
-      html += `<button ${disabled?'disabled':''} onclick="toggleMasteryFavoured('${s}')" style="padding:8px;border:1px solid ${isOn?'var(--red)':'var(--border)'};background:${isOn?'var(--gold-soft)':disabled?'var(--bg-deep)':'var(--pure-white)'};border-radius:6px;cursor:${disabled?'not-allowed':'pointer'};opacity:${disabled?0.5:1};font-size:12px;font-weight:${isOn?700:400}">${s}${isOn?' ✓':''}</button>`;
+      html += `<button ${disabled?'disabled':''} onclick="toggleMasteryFavoured('${s}')" style="padding:8px;border:1px solid ${isOn?'var(--red)':'var(--border)'};background:${isOn?'var(--gold-soft)':disabled?'var(--bg-deep)':'var(--pure-white)'};border-radius:var(--r-sm);cursor:${disabled?'not-allowed':'pointer'};opacity:${disabled?0.5:1};font-size:var(--fs-xs);font-weight:${isOn?700:400}">${s}${isOn?' ✓':''}</button>`;
     });
     html += `</div><p class="hint" style="text-align:left;margin:6px 0">Selected: ${picked.length}/2</p></div>`;
   }
@@ -2513,19 +2513,19 @@ function renderSpendXP(mode) {
     const fpBlock = cost !== null ? fpSpendBlocker(group, label) : null;
     const can = cost !== null && available >= cost && !fpBlock;
     const row = document.createElement('div');
-    row.style.cssText = `display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--border);border-radius:6px;background:var(--card-bg);${fpBlock ? 'opacity:0.6' : ''}`;
+    row.style.cssText = `display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--card-bg);${fpBlock ? 'opacity:0.6' : ''}`;
     let status;
     if (cost === null) status = 'MAX';
     else if (fpBlock) status = '🔒 FP';
     else status = `${cost} pts`;
-    const fpBlockHint = fpBlock ? `<div style="color:var(--red);font-size:10px;font-style:italic">${fpBlock}</div>` : '';
+    const fpBlockHint = fpBlock ? `<div style="color:var(--red);font-size:var(--fs-xs);font-style:italic">${fpBlock}</div>` : '';
     row.innerHTML = `
       <div style="flex:1">
-        <div style="font-size:13px"><strong>${label}</strong> <span style="color:var(--red);font-size:10px;text-transform:uppercase">${group}</span></div>
-        <div style="color:var(--text-muted);font-size:11px">Current: ${'◆'.repeat(currentRank) || '—'} → ${cost === null ? 'maxed' : '◆'.repeat(newRank)}</div>
+        <div style="font-size:var(--fs-sm)"><strong>${label}</strong> <span style="color:var(--red);font-size:var(--fs-xs);text-transform:uppercase">${group}</span></div>
+        <div style="color:var(--text-muted);font-size:var(--fs-xs)">Current: ${'◆'.repeat(currentRank) || '—'} → ${cost === null ? 'maxed' : '◆'.repeat(newRank)}</div>
         ${fpBlockHint}
       </div>
-      <button style="background:${can?'var(--red)':'#ccc'};color:white;border:none;border-radius:5px;padding:8px 12px;font-size:12px;font-weight:600;cursor:${can?'pointer':'not-allowed'}" ${can?'':'disabled'} title="${fpBlock || ''}">${status}</button>
+      <button style="background:${can?'var(--red)':'#ccc'};color:white;border:none;border-radius:var(--r-sm);padding:8px 12px;font-size:var(--fs-xs);font-weight:600;cursor:${can?'pointer':'not-allowed'}" ${can?'':'disabled'} title="${fpBlock || ''}">${status}</button>
     `;
     const btn = row.querySelector('button');
     if (can) btn.onclick = () => {
@@ -2544,7 +2544,7 @@ function renderSpendXP(mode) {
 
   const header = (txt) => {
     const h = document.createElement('div');
-    h.style.cssText = 'font-size:11px;color:var(--red);text-transform:uppercase;letter-spacing:1px;font-weight:700;padding:8px 2px 4px';
+    h.style.cssText = 'font-size:var(--fs-xs);color:var(--red);text-transform:uppercase;letter-spacing:1px;font-weight:700;padding:8px 2px 4px';
     h.textContent = txt;
     list.appendChild(h);
   };
@@ -2633,8 +2633,8 @@ function openNewReward() {
   list.innerHTML = '';
   REWARDS.forEach(r => {
     const row = document.createElement('button');
-    row.style.cssText = 'background:var(--card-bg);color:var(--ink);text-align:left;padding:10px 12px;font-size:13px;border:1px solid var(--border);border-radius:6px;cursor:pointer;display:block;width:100%;line-height:1.4;';
-    row.innerHTML = `<strong>${r.name}</strong> <span style="float:right;color:var(--red);font-size:11px">${r.type}</span><br><small style="color:var(--text-muted)">${r.desc}</small>`;
+    row.style.cssText = 'background:var(--card-bg);color:var(--ink);text-align:left;padding:10px 12px;font-size:var(--fs-sm);border:1px solid var(--border);border-radius:var(--r-sm);cursor:pointer;display:block;width:100%;line-height:1.4;';
+    row.innerHTML = `<strong>${r.name}</strong> <span style="float:right;color:var(--red);font-size:var(--fs-xs)">${r.type}</span><br><small style="color:var(--text-muted)">${r.desc}</small>`;
     row.onclick = () => pickNewReward(r.name);
     list.appendChild(row);
   });
@@ -2660,14 +2660,14 @@ function openNewVirtue() {
   list.innerHTML = '';
   const renderGroup = (label, items) => {
     const h = document.createElement('div');
-    h.style.cssText = 'font-size:11px;color:var(--red);text-transform:uppercase;letter-spacing:1px;font-weight:700;padding:6px 2px 2px';
+    h.style.cssText = 'font-size:var(--fs-xs);color:var(--red);text-transform:uppercase;letter-spacing:1px;font-weight:700;padding:6px 2px 2px';
     h.textContent = label;
     list.appendChild(h);
     items.forEach(v => {
       // Skip already-owned virtues
       if (Array.isArray(char.virtuesList) && char.virtuesList.some(x => x.name === v.name)) return;
       const row = document.createElement('button');
-      row.style.cssText = 'background:var(--card-bg);color:var(--ink);text-align:left;padding:10px 12px;font-size:13px;border:1px solid var(--border);border-radius:6px;cursor:pointer;display:block;width:100%;line-height:1.4;';
+      row.style.cssText = 'background:var(--card-bg);color:var(--ink);text-align:left;padding:10px 12px;font-size:var(--fs-sm);border:1px solid var(--border);border-radius:var(--r-sm);cursor:pointer;display:block;width:100%;line-height:1.4;';
       row.innerHTML = `<strong>${v.name}</strong><br><small style="color:var(--text-muted)">${v.desc}</small>`;
       row.onclick = () => pickNewVirtue(v.name);
       list.appendChild(row);
@@ -2723,7 +2723,7 @@ function renderFeaturesPicker() {
     row.style.cssText = `display:flex;align-items:center;gap:10px;padding:8px;cursor:${disabled?'not-allowed':'pointer'};opacity:${disabled?0.4:1}`;
     row.innerHTML = `
       <div class="fav-check ${isPicked ? 'checked' : ''}" style="cursor:${disabled?'not-allowed':'pointer'}"></div>
-      <span style="font-size:14px">${f}</span>
+      <span style="font-size:var(--fs-md)">${f}</span>
     `;
     if (!disabled) row.onclick = () => toggleFeature(f);
     list.appendChild(row);
@@ -2746,10 +2746,10 @@ function renderFeaturesPicker() {
   const eloContainer = document.getElementById('enemy-lore-picker');
   if (eloContainer) {
     if (char.calling === 'Champion') {
-      eloContainer.innerHTML = '<div style="margin-top:12px;padding:10px;background:var(--gold-soft);border:1px solid var(--gold);border-radius:6px"><strong style="color:var(--red-dark);font-size:13px">Champion — Enemy-Lore Subject (pick 1)</strong><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">' +
+      eloContainer.innerHTML = '<div style="margin-top:12px;padding:10px;background:var(--gold-soft);border:1px solid var(--gold);border-radius:var(--r-sm)"><strong style="color:var(--red-dark);font-size:var(--fs-sm)">Champion — Enemy-Lore Subject (pick 1)</strong><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">' +
         ENEMY_LORE_TYPES.map(e => {
           const isOn = char.enemyLore === e;
-          return `<button onclick="setEnemyLore('${e}')" style="padding:8px 10px;border:1px solid ${isOn?'var(--red)':'var(--border)'};background:${isOn?'var(--gold-soft)':'var(--pure-white)'};border-radius:5px;font-size:12px;font-weight:${isOn?700:400};cursor:pointer">${e}${isOn?' ✓':''}</button>`;
+          return `<button onclick="setEnemyLore('${e}')" style="padding:8px 10px;border:1px solid ${isOn?'var(--red)':'var(--border)'};background:${isOn?'var(--gold-soft)':'var(--pure-white)'};border-radius:var(--r-sm);font-size:var(--fs-xs);font-weight:${isOn?700:400};cursor:pointer">${e}${isOn?' ✓':''}</button>`;
         }).join('') + '</div></div>';
     } else {
       eloContainer.innerHTML = '';
@@ -2798,12 +2798,12 @@ function renderRewardsPicker() {
   REWARDS.forEach(r => {
     const picked = char.startingReward === r.name;
     const row = document.createElement('div');
-    row.style.cssText = `display:flex;align-items:flex-start;gap:10px;padding:10px;cursor:pointer;border:1px solid ${picked?'var(--red)':'var(--border)'};border-radius:6px;margin-bottom:6px;background:${picked?'var(--gold-soft)':'var(--pure-white)'}`;
+    row.style.cssText = `display:flex;align-items:flex-start;gap:10px;padding:10px;cursor:pointer;border:1px solid ${picked?'var(--red)':'var(--border)'};border-radius:var(--r-sm);margin-bottom:6px;background:${picked?'var(--gold-soft)':'var(--pure-white)'}`;
     row.innerHTML = `
       <div class="fav-check ${picked ? 'checked' : ''}" style="flex-shrink:0;margin-top:2px"></div>
       <div style="flex:1">
-        <strong>${r.name}</strong> <span style="color:var(--red);font-size:11px">(${r.type})</span><br>
-        <small style="color:var(--text-muted);font-size:12px">${r.desc}</small>
+        <strong>${r.name}</strong> <span style="color:var(--red);font-size:var(--fs-xs)">(${r.type})</span><br>
+        <small style="color:var(--text-muted);font-size:var(--fs-xs)">${r.desc}</small>
       </div>
     `;
     row.onclick = () => pickReward(r.name);
@@ -2840,18 +2840,18 @@ function renderVirtuesPicker() {
 
   const renderGroup = (label, virtues) => {
     const hdr = document.createElement('div');
-    hdr.style.cssText = 'font-size:11px;color:var(--red);text-transform:uppercase;letter-spacing:1px;font-weight:700;padding:8px 2px 4px';
+    hdr.style.cssText = 'font-size:var(--fs-xs);color:var(--red);text-transform:uppercase;letter-spacing:1px;font-weight:700;padding:8px 2px 4px';
     hdr.textContent = label;
     list.appendChild(hdr);
     virtues.forEach(v => {
       const picked = char.startingVirtue === v.name;
       const row = document.createElement('div');
-      row.style.cssText = `display:flex;align-items:flex-start;gap:10px;padding:10px;cursor:pointer;border:1px solid ${picked?'var(--red)':'var(--border)'};border-radius:6px;margin-bottom:6px;background:${picked?'var(--gold-soft)':'var(--pure-white)'}`;
+      row.style.cssText = `display:flex;align-items:flex-start;gap:10px;padding:10px;cursor:pointer;border:1px solid ${picked?'var(--red)':'var(--border)'};border-radius:var(--r-sm);margin-bottom:6px;background:${picked?'var(--gold-soft)':'var(--pure-white)'}`;
       row.innerHTML = `
         <div class="fav-check ${picked ? 'checked' : ''}" style="flex-shrink:0;margin-top:2px"></div>
         <div style="flex:1">
           <strong>${v.name}</strong><br>
-          <small style="color:var(--text-muted);font-size:12px">${v.desc}</small>
+          <small style="color:var(--text-muted);font-size:var(--fs-xs)">${v.desc}</small>
         </div>
       `;
       row.onclick = () => pickVirtue(v.name);
@@ -2864,7 +2864,7 @@ function renderVirtuesPicker() {
   // Per rules (book p.81): Cultural Virtues require Wisdom 2+. At creation Wisdom = 1.
   const note = document.createElement('p');
   note.className = 'hint';
-  note.style.cssText = 'text-align:left;margin-top:10px;padding:8px;background:var(--bg);border-radius:6px';
+  note.style.cssText = 'text-align:left;margin-top:10px;padding:8px;background:var(--bg);border-radius:var(--r-sm)';
   note.innerHTML = '<strong>🔒 Cultural Virtues</strong> (e.g. Dragon-Slayer, Baruk Khazâd!, Elvish Dreams) unlock at <strong>Wisdom 2+</strong>. After your first Wisdom rank-up via Spend XP, the new-Virtue picker will include your culture\'s 6 cultural virtues.';
   list.appendChild(note);
 }
@@ -3339,9 +3339,9 @@ function renderReference() {
   groups.forEach(([title, rows]) => {
     const matched = rows.filter(([t, d]) => !q || title.toLowerCase().includes(q) || (((t || '') + ' ' + (d || '')).toLowerCase().includes(q)));
     if (!matched.length) return;
-    html += `<h3 style="color:var(--red-dark);border-bottom:1px solid var(--border);padding-bottom:3px;margin:14px 0 6px;font-size:14px">${title}</h3>`;
+    html += `<h3 style="color:var(--red-dark);border-bottom:1px solid var(--border);padding-bottom:3px;margin:14px 0 6px;font-size:var(--fs-md)">${title}</h3>`;
     matched.forEach(([t, d]) => {
-      html += `<div style="margin:0 0 7px;font-size:13px;line-height:1.45;color:var(--ink)">${t ? `<strong>${escapeHtml(t)}</strong> — ` : ''}${d}</div>`;
+      html += `<div style="margin:0 0 7px;font-size:var(--fs-sm);line-height:1.45;color:var(--ink)">${t ? `<strong>${escapeHtml(t)}</strong> — ` : ''}${d}</div>`;
     });
   });
   body.innerHTML = html || '<div class="hint">No match.</div>';
@@ -3378,14 +3378,14 @@ function renderBuildChecklist() {
   const rows = steps.map(s => {
     const jump = s.tab ? ` <a href="#" onclick="document.querySelector('.tab[data-tab=${s.tab}]').click();return false" style="color:var(--gold)">${escapeHtml(s.where)} →</a>`
                        : ` <span style="color:var(--text-faint)">${escapeHtml(s.where)}</span>`;
-    return `<div style="margin:0 0 5px;font-size:13px;line-height:1.5;${s.done ? 'opacity:.55' : ''}">` +
+    return `<div style="margin:0 0 5px;font-size:var(--fs-sm);line-height:1.5;${s.done ? 'opacity:.55' : ''}">` +
            `<span style="color:${s.done ? 'var(--success-text,green)' : 'var(--text-faint)'};font-weight:700">${s.done ? '✓' : '○'}</span> ` +
            `${s.done ? '<s>' + s.label + '</s>' : s.label}${s.done ? '' : jump}</div>`;
   }).join('');
   host.innerHTML =
     `<p class="hint" style="text-align:left;margin:0 0 8px 0">The Build tab does most of character creation for you. This ticks itself off as you go — ` +
     `<strong>${done} of ${steps.length}</strong> done.</p>` +
-    `<div style="height:6px;background:var(--bg-deep);border-radius:3px;overflow:hidden;margin:0 0 10px">` +
+    `<div style="height:6px;background:var(--bg-deep);border-radius:var(--r-sm);overflow:hidden;margin:0 0 10px">` +
     `<div style="height:100%;width:${pct}%;background:var(--gold);transition:width .2s"></div></div>` +
     rows +
     (done === steps.length ? '<p class="hint" style="text-align:left;margin:8px 0 0 0;color:var(--success-text,green)"><strong>Your hero is ready.</strong> Go and play — the Dice tab is where most of it happens.</p>' : '');

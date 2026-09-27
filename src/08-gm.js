@@ -63,16 +63,16 @@ function renderGm() {
     if (!d) return '';
     const totalShadow = (parseInt(d.shadow) || 0) + (parseInt(d.scars) || 0);
     const dying = (parseInt(d.endCur) || 0) <= 0;
-    const cbtn = (cond, label) => `<button onclick="gmCond('${e.id}','${cond}')" aria-pressed="${!!d[cond]}" style="font-size:10px;padding:2px 7px;background:${d[cond] ? 'var(--btn-alert-bg)' : 'var(--bg-deep)'};color:${d[cond] ? '#fff' : 'var(--ink)'}">${label}</button>`;
+    const cbtn = (cond, label) => `<button onclick="gmCond('${e.id}','${cond}')" aria-pressed="${!!d[cond]}" style="font-size:var(--fs-xs);padding:2px 7px;background:${d[cond] ? 'var(--btn-alert-bg)' : 'var(--bg-deep)'};color:${d[cond] ? '#fff' : 'var(--ink)'}">${label}</button>`;
     return `<div class="card" style="padding:10px 12px;margin-bottom:8px">
       <div style="font-weight:700">${escapeHtml(heroLabel(d))}${e.id === activeCharId ? ' ★' : ''}${dying ? ' <span style="color:var(--error-text)">DYING</span>' : ''}</div>
-      <div style="font-size:12px;color:var(--text-muted);margin:2px 0 6px">❤ ${d.endCur ?? '?'}/${d.endMax ?? '?'} &middot; ✦ ${d.hopeCur ?? '?'}/${d.hopeMax ?? '?'} &middot; 🌑 ${totalShadow}</div>
+      <div style="font-size:var(--fs-xs);color:var(--text-muted);margin:2px 0 6px">❤ ${d.endCur ?? '?'}/${d.endMax ?? '?'} &middot; ✦ ${d.hopeCur ?? '?'}/${d.hopeMax ?? '?'} &middot; 🌑 ${totalShadow}</div>
       <div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center">
-        <button onclick="gmDamage('${e.id}',1)" style="font-size:11px;padding:2px 7px" aria-label="Deal 1 damage to ${escapeHtml(d.name || 'hero')}">−1 End</button>
-        <button onclick="gmDamage('${e.id}',3)" style="font-size:11px;padding:2px 7px">−3</button>
-        <button onclick="gmHeal('${e.id}',3)" style="font-size:11px;padding:2px 7px">+3</button>
+        <button onclick="gmDamage('${e.id}',1)" style="font-size:var(--fs-xs);padding:2px 7px" aria-label="Deal 1 damage to ${escapeHtml(d.name || 'hero')}">−1 End</button>
+        <button onclick="gmDamage('${e.id}',3)" style="font-size:var(--fs-xs);padding:2px 7px">−3</button>
+        <button onclick="gmHeal('${e.id}',3)" style="font-size:var(--fs-xs);padding:2px 7px">+3</button>
         ${cbtn('weary', 'Weary')} ${cbtn('miserable', 'Miserable')} ${cbtn('wounded', 'Wounded')}
-        <button onclick="gmShadow('${e.id}',1)" style="font-size:11px;padding:2px 7px">+Shadow</button>
+        <button onclick="gmShadow('${e.id}',1)" style="font-size:var(--fs-xs);padding:2px 7px">+Shadow</button>
       </div></div>`;
   }).join('');
   body.innerHTML = rows || '<div class="hint" style="text-align:center;padding:10px">No heroes on this device yet.</div>';
@@ -110,7 +110,7 @@ function renderGmCampaign() {
     return `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)">
       <span>${m.online ? '🟢' : '⚪'} <b>${escapeHtml(v.name || m.displayName || 'Hero')}</b>${uid === Sync.uid ? ' ★' : ''}
         <small style="color:var(--text-muted)">❤ ${v.endCur ?? '?'}/${v.endMax ?? '?'} · ✦ ${v.hopeCur ?? '?'}/${v.hopeMax ?? '?'} · 🌑 ${v.shadow ?? 0}${conds ? ' · <span style="color:var(--error-text)">' + conds + '</span>' : ''}</small></span>
-      ${m.characterId ? `<button onclick="gmPeek('${m.characterId}')" style="font-size:11px;padding:2px 9px" aria-label="Peek at ${escapeHtml(v.name || 'hero')}'s sheet">👁 Peek</button>` : ''}
+      ${m.characterId ? `<button onclick="gmPeek('${m.characterId}')" style="font-size:var(--fs-xs);padding:2px 9px" aria-label="Peek at ${escapeHtml(v.name || 'hero')}'s sheet">👁 Peek</button>` : ''}
     </div>`;
   }).join('');
   box.innerHTML = `<div class="card" style="border-color:var(--gold)">
@@ -119,7 +119,7 @@ function renderGmCampaign() {
   </div>
   <div class="card">
     <h3 class="card-title">📢 Broadcast to the party</h3>
-    <textarea id="gm-bcast-text" rows="2" placeholder="Message every player sees as a toast + in their Loremaster Feed…" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card-bg);color:var(--ink);font-size:13px"></textarea>
+    <textarea id="gm-bcast-text" rows="2" placeholder="Message every player sees as a toast + in their Loremaster Feed…" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--card-bg);color:var(--ink);font-size:var(--fs-sm)"></textarea>
     <button onclick="gmBroadcastSend()" style="width:100%;margin-top:6px">📢 Send</button>
     <div id="gm-bcast-feed" style="margin-top:8px"></div>
   </div>`;
@@ -143,7 +143,7 @@ async function gmPeek(characterId) {
   const profs = Object.keys(d.profs || {}).filter(p => (parseInt(d.profs[p]) || 0) > 0).map(p => `${escapeHtml(p)} ${d.profs[p]}`).join(' · ');
   const weapons = (d.weapons || []).map(w => escapeHtml(w.name)).filter(Boolean).join(', ');
   const conds = [d.weary && 'Weary', d.miserable && 'Miserable', d.wounded && 'Wounded'].filter(Boolean).join(', ') || '—';
-  const msg = `<div style="text-align:left;font-size:13px;line-height:1.55">
+  const msg = `<div style="text-align:left;font-size:var(--fs-sm);line-height:1.55">
     <b>${escapeHtml(d.name || 'Hero')}</b> — ${escapeHtml([d.culture, d.calling].filter(Boolean).join(' · ') || '')}<br>
     Str ${d.strRating ?? '?'} (TN ${d.strTN ?? '?'}) · Heart ${d.hrtRating ?? '?'} (TN ${d.hrtTN ?? '?'}) · Wits ${d.witRating ?? '?'} (TN ${d.witTN ?? '?'})<br>
     ❤ ${d.endCur ?? '?'}/${d.endMax ?? '?'} · ✦ ${d.hopeCur ?? '?'}/${d.hopeMax ?? '?'} · 🌑 ${(parseInt(d.shadow) || 0)}+${(parseInt(d.scars) || 0)}scar · Parry ${d.parry ?? '?'}<br>
@@ -169,8 +169,8 @@ function renderGmEye() {
     const over = ea >= hunt;
     return `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--border)">
       <span><b>${escapeHtml(heroLabel(d))}</b> <small style="color:${over ? 'var(--error-text)' : 'var(--text-muted)'}">👁 ${ea} / Hunt ${hunt}${over ? ' ⚠' : ''}</small></span>
-      <span><button onclick="gmEye('${e.id}',-1)" style="font-size:11px;padding:2px 9px" aria-label="Lower Eye Awareness for ${escapeHtml(d.name || 'hero')}">−</button>
-      <button onclick="gmEye('${e.id}',1)" style="font-size:11px;padding:2px 9px" aria-label="Raise Eye Awareness for ${escapeHtml(d.name || 'hero')}">+</button></span>
+      <span><button onclick="gmEye('${e.id}',-1)" style="font-size:var(--fs-xs);padding:2px 9px" aria-label="Lower Eye Awareness for ${escapeHtml(d.name || 'hero')}">−</button>
+      <button onclick="gmEye('${e.id}',1)" style="font-size:var(--fs-xs);padding:2px 9px" aria-label="Raise Eye Awareness for ${escapeHtml(d.name || 'hero')}">+</button></span>
     </div>`;
   }).join('') || '<div class="hint">No heroes.</div>';
 }
@@ -210,10 +210,10 @@ function renderGmNpc() {
     <div style="padding:6px 0;border-bottom:1px solid var(--border)">
       <b style="color:var(--gold-soft)">${escapeHtml(n.name)}</b>${n.role ? ` <small style="color:var(--text-muted)">(${escapeHtml(n.role)})</small>` : ''}
       ${custom
-      ? `<button onclick="gmDelNpc('${n.id}')" style="float:right;font-size:10px;padding:1px 7px;background:var(--btn-alert-bg);color:#fff" aria-label="Delete ${escapeHtml(n.name)}">×</button>`
-      : '<span style="float:right;font-size:9px;color:var(--gold)">Lore</span>'}
-      ${n.features ? `<div style="font-size:11px;color:var(--warn-orange)">Features: ${escapeHtml(n.features)}</div>` : ''}
-      ${n.notes ? `<div style="font-size:11px;color:var(--text-muted)">${escapeHtml(n.notes)}</div>` : ''}
+      ? `<button onclick="gmDelNpc('${n.id}')" style="float:right;font-size:var(--fs-xs);padding:1px 7px;background:var(--btn-alert-bg);color:#fff" aria-label="Delete ${escapeHtml(n.name)}">×</button>`
+      : '<span style="float:right;font-size:var(--fs-xs);color:var(--gold)">Lore</span>'}
+      ${n.features ? `<div style="font-size:var(--fs-xs);color:var(--warn-orange)">Features: ${escapeHtml(n.features)}</div>` : ''}
+      ${n.notes ? `<div style="font-size:var(--fs-xs);color:var(--text-muted)">${escapeHtml(n.notes)}</div>` : ''}
     </div>`).join('') || '<div class="hint">No matching NPCs.</div>';
 }
 
@@ -257,7 +257,7 @@ function gmGroupShadowTest(type) {
     const res = _gmRollHero(d, dice, tn);
     const featTxt = res.feat.special === 'rune' ? 'ᚱ' : (res.feat.special === 'eye' ? '👁' : res.total);
     const flags = (res.despair ? ' ⚠Despair' : '') + (res.weary ? ' ·Weary' : '');
-    const failBtn = res.pass ? '' : `<button onclick="gmShadow('${e.id}',${amount})" style="font-size:10px;padding:2px 7px;background:var(--btn-alert-bg);color:#fff" aria-label="Add ${amount} Shadow to ${escapeHtml(d.name || 'hero')}">+${amount} Shadow</button>`;
+    const failBtn = res.pass ? '' : `<button onclick="gmShadow('${e.id}',${amount})" style="font-size:var(--fs-xs);padding:2px 7px;background:var(--btn-alert-bg);color:#fff" aria-label="Add ${amount} Shadow to ${escapeHtml(d.name || 'hero')}">+${amount} Shadow</button>`;
     return `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--border)">
       <span><b>${escapeHtml(heroLabel(d))}</b> <small style="color:var(--text-muted)">${cfg.label} ${dice}d vs ${tn}${flags}</small></span>
       <span><b style="color:${res.pass ? 'var(--success-text)' : 'var(--error-text)'}">${res.pass ? 'PASS' : 'FAIL'}</b> <small style="color:var(--text-muted)">(${featTxt})</small> ${failBtn}</span>
@@ -383,7 +383,7 @@ function _gmFeatRow(table) {
 function _gmShowRoll(elId, title, label, row) {
   const el = document.getElementById(elId); if (!el) return;
   el.innerHTML = row
-    ? `<div style="border:1px solid var(--gold);border-radius:8px;padding:8px 10px;margin-top:6px;font-size:12px"><strong>${title} — ${label}: ${escapeHtml(row.name)}</strong><br>${escapeHtml(row.desc)}</div>`
+    ? `<div style="border:1px solid var(--gold);border-radius:var(--r-sm);padding:8px 10px;margin-top:6px;font-size:var(--fs-xs)"><strong>${title} — ${label}: ${escapeHtml(row.name)}</strong><br>${escapeHtml(row.desc)}</div>`
     : `<div class="hint">${title}: no row for ${label}.</div>`;
 }
 // 🃏 Combat Action Deck — draw a card (avoids repeating the last one), decks: standard/orc/troll/undead.
@@ -399,7 +399,7 @@ function gmDrawActionCard() {
   while (_gmLastCard && card.title === _gmLastCard && deck.length > 1 && tries++ < 10) card = deck[Math.floor(Math.random() * deck.length)];
   _gmLastCard = card.title;
   const el = document.getElementById('gm-deck-result'); if (!el) return;
-  el.innerHTML = `<div style="border:1px solid var(--gold);border-radius:8px;padding:8px 10px;margin-top:6px;font-size:12px"><strong>${escapeHtml(card.title)}</strong><br><em>${escapeHtml(card.description)}</em><br>${escapeHtml(card.effect)}</div>`;
+  el.innerHTML = `<div style="border:1px solid var(--gold);border-radius:var(--r-sm);padding:8px 10px;margin-top:6px;font-size:var(--fs-xs)"><strong>${escapeHtml(card.title)}</strong><br><em>${escapeHtml(card.description)}</em><br>${escapeHtml(card.effect)}</div>`;
 }
 function gmRollWaterPeril() { const r = _gmFeatRow(WATER_PERILS); _gmShowRoll('gm-tables-result', '🌊 Water Peril', r.label, r.row); }
 function gmRollRumour(kind) { const t = kind === 'genuine' ? GENUINE_RUMOURS : FALSE_RUMOURS; const r = _gmFeatRow(t); _gmShowRoll('gm-tables-result', kind === 'genuine' ? '🗣 Genuine Rumour' : '🗣 False Rumour', r.label, r.row); }

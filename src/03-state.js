@@ -315,7 +315,7 @@ function renderRestorePoints() {
   if (!list.length) { body.innerHTML = '<div class="hint" style="text-align:center;padding:10px">No snapshots yet for this hero.</div>'; return; }
   body.innerHTML = list.map((s, i) =>
     `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)">
-      <span style="font-size:12px"><strong>${escapeHtml(_backupHeroName(s))}</strong><br><span style="color:var(--text-muted)">${new Date(s.ts).toLocaleString()} · ${escapeHtml(_backupReasonLabel(s.reason))}${_backupStateLabel(s.data)}</span></span>
+      <span style="font-size:var(--fs-xs)"><strong>${escapeHtml(_backupHeroName(s))}</strong><br><span style="color:var(--text-muted)">${new Date(s.ts).toLocaleString()} · ${escapeHtml(_backupReasonLabel(s.reason))}${_backupStateLabel(s.data)}</span></span>
       <button onclick="restoreSnapshot(${i})" style="flex:0 0 auto">Restore</button></div>`).join('');
 }
 async function restoreSnapshot(idx) {
@@ -500,10 +500,10 @@ function openPregens() {
   if (!ov) { ov = document.createElement('div'); ov.id = 'pregen-overlay'; ov.className = 'menu-overlay'; document.body.appendChild(ov); }
   let src = '', items = '';
   PREGENS.forEach((p, i) => {
-    if (p.src !== src) { src = p.src; items += `<div style="font-size:12px;font-weight:700;color:var(--gold);margin:10px 0 4px">${escapeHtml(src)}</div>`; }
+    if (p.src !== src) { src = p.src; items += `<div style="font-size:var(--fs-xs);font-weight:700;color:var(--gold);margin:10px 0 4px">${escapeHtml(src)}</div>`; }
     const sub = [p.culture, p.calling].filter(Boolean).join(' · ');
-    items += `<button onclick="loadPregen(${i})" class="add-row-btn" style="width:100%;text-align:left;margin-bottom:5px;background:var(--bg-deep);color:var(--ink);font-size:13px">
-        <strong>${escapeHtml(p.name)}</strong><br><span style="font-size:11px;color:var(--text-muted)">${escapeHtml(sub)} · Str ${p.strRating} Hrt ${p.hrtRating} Wit ${p.witRating} · End ${p.endMax} Hope ${p.hopeMax}</span></button>`;
+    items += `<button onclick="loadPregen(${i})" class="add-row-btn" style="width:100%;text-align:left;margin-bottom:5px;background:var(--bg-deep);color:var(--ink);font-size:var(--fs-sm)">
+        <strong>${escapeHtml(p.name)}</strong><br><span style="font-size:var(--fs-xs);color:var(--text-muted)">${escapeHtml(sub)} · Str ${p.strRating} Hrt ${p.hrtRating} Wit ${p.witRating} · End ${p.endMax} Hope ${p.hopeMax}</span></button>`;
   });
   ov.innerHTML = `<div class="menu" style="max-width:420px;width:93%;max-height:90vh;overflow-y:auto">
       <h3 style="margin-top:0">✨ Pre-generated Heroes</h3>
@@ -532,19 +532,19 @@ function renderRoster() {
     const data = (e.id === activeCharId) ? char : readSlot(e.id);
     const sub = data ? [data.culture, data.calling].filter(Boolean).join(' · ') : '';
     const endBit = data ? `End ${data.endCur ?? '?'}/${data.endMax ?? '?'} · Hope ${data.hopeCur ?? '?'}/${data.hopeMax ?? '?'}` : '';
-    return `<div style="border:1px solid ${isActive ? 'var(--gold)' : 'var(--border)'};border-radius:8px;padding:10px;margin-bottom:8px;background:${isActive ? 'var(--gold-soft)' : 'var(--card-bg)'}">
+    return `<div style="border:1px solid ${isActive ? 'var(--gold)' : 'var(--border)'};border-radius:var(--r-sm);padding:10px;margin-bottom:8px;background:${isActive ? 'var(--gold-soft)' : 'var(--card-bg)'}">
       <div style="display:flex;align-items:center;gap:8px">
         <div style="flex:1;min-width:0">
-          <strong style="font-size:15px">${escapeHtml(e.name || 'New Hero')}</strong>${isActive ? ' <span style="font-size:10px;background:var(--gold);color:#fff;padding:1px 6px;border-radius:8px;vertical-align:middle">ACTIVE</span>' : ''}
+          <strong style="font-size:var(--fs-md)">${escapeHtml(e.name || 'New Hero')}</strong>${isActive ? ' <span style="font-size:var(--fs-xs);background:var(--gold);color:#fff;padding:1px 6px;border-radius:var(--r-sm);vertical-align:middle">ACTIVE</span>' : ''}
           ${sub ? `<br><small style="color:var(--text-muted)">${escapeHtml(sub)}</small>` : ''}
           ${endBit ? `<br><small style="color:var(--text-faint)">${escapeHtml(endBit)}</small>` : ''}
         </div>
         ${isActive ? '' : `<button class="add-row-btn" onclick="switchCharacter('${e.id}')" style="background:var(--gold);flex:0 0 auto">Switch</button>`}
       </div>
       <div style="display:flex;gap:6px;margin-top:8px">
-        <button class="add-row-btn" onclick="renameCharacter('${e.id}')" style="flex:1;background:var(--btn-secondary-bg);font-size:12px">✏️ Rename</button>
-        <button class="add-row-btn" onclick="duplicateCharacter('${e.id}')" style="flex:1;background:var(--btn-secondary-bg);font-size:12px">⧉ Duplicate</button>
-        <button class="add-row-btn" onclick="deleteCharacter('${e.id}')"${r.list.length === 1 ? ' disabled' : ''} style="flex:1;background:var(--btn-alert-bg);font-size:12px${r.list.length === 1 ? ';opacity:.4' : ''}">🗑️ Delete</button>
+        <button class="add-row-btn" onclick="renameCharacter('${e.id}')" style="flex:1;background:var(--btn-secondary-bg);font-size:var(--fs-xs)">✏️ Rename</button>
+        <button class="add-row-btn" onclick="duplicateCharacter('${e.id}')" style="flex:1;background:var(--btn-secondary-bg);font-size:var(--fs-xs)">⧉ Duplicate</button>
+        <button class="add-row-btn" onclick="deleteCharacter('${e.id}')"${r.list.length === 1 ? ' disabled' : ''} style="flex:1;background:var(--btn-alert-bg);font-size:var(--fs-xs)${r.list.length === 1 ? ';opacity:.4' : ''}">🗑️ Delete</button>
       </div>
     </div>`;
   }).join('');
@@ -588,7 +588,7 @@ function renderPartyViewLive(members, err) {
     </tr>`;
   }).join('');
   body.innerHTML = `<p class="hint" style="text-align:left;margin:0 0 8px">🏰 Live campaign party — updates in real time (🟢 online · ⚪ offline).</p>
-    <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:480px">
+    <table style="width:100%;border-collapse:collapse;font-size:var(--fs-xs);min-width:480px">
     <thead><tr><th ${th}>Hero</th><th ${th}>End</th><th ${th}>Hope</th><th ${th}>Shadow</th><th ${th}>V/W</th><th ${th}>Conditions</th></tr></thead>
     <tbody>${rows || `<tr><td ${td} colspan="6">No members yet.</td></tr>`}</tbody></table>`;
 }
@@ -616,7 +616,7 @@ function renderPartyView() {
       <td ${td}>${escapeHtml(conds)}</td>
     </tr>`;
   }).join('');
-  body.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:12px;min-width:480px">
+  body.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:var(--fs-xs);min-width:480px">
     <thead><tr>
       <th ${th}>Hero</th><th ${th}>End</th><th ${th}>Hope</th><th ${th}>Shadow</th><th ${th}>V/W</th><th ${th}>Conditions</th>
     </tr></thead><tbody>${rows}</tbody></table>`;
@@ -633,7 +633,7 @@ function showToast(msg) {
   }
   const t = document.createElement('div');
   t.setAttribute('role', 'status');
-  t.style.cssText = 'background:var(--btn-secondary-bg);color:#fff;padding:9px 16px;border-radius:10px;font-size:13px;max-width:86vw;box-shadow:0 4px 14px rgba(0,0,0,.35);opacity:0;transition:opacity .25s';
+  t.style.cssText = 'background:var(--btn-secondary-bg);color:#fff;padding:9px 16px;border-radius:10px;font-size:var(--fs-sm);max-width:86vw;box-shadow:0 4px 14px rgba(0,0,0,.35);opacity:0;transition:opacity .25s';
   t.textContent = String(msg);
   wrap.appendChild(t);
   requestAnimationFrame(() => { t.style.opacity = '1'; });
@@ -641,7 +641,7 @@ function showToast(msg) {
 }
 
 /* ---------- FELLOWSHIP CAMPAIGN (P4) — create/join/leave + live party ---------- */
-const _CAMP_INPUT = 'width:100%;padding:7px 9px;margin:4px 0;border:1px solid var(--border);border-radius:8px;background:var(--card-bg);color:var(--ink);font-size:14px';
+const _CAMP_INPUT = 'width:100%;padding:7px 9px;margin:4px 0;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--card-bg);color:var(--ink);font-size:var(--fs-md)';
 function openCampaign() {
   document.getElementById('menu-overlay').classList.remove('show');
   document.getElementById('campaign-overlay').classList.add('show');
@@ -689,8 +689,8 @@ function renderCampaign() {
     body.innerHTML = `
       <div class="card" style="border-color:var(--gold)">
         <div style="font-weight:700">You are in a campaign.</div>
-        <div style="margin:6px 0">Join code: <b style="letter-spacing:1px;font-size:15px">${escapeHtml(code || '—')}</b>
-          ${code ? `<button onclick="navigator.clipboard&&navigator.clipboard.writeText('${code}');alertStyled('Copied ${code}')" style="font-size:11px;padding:2px 8px;margin-left:8px">Copy</button>` : ''}</div>
+        <div style="margin:6px 0">Join code: <b style="letter-spacing:1px;font-size:var(--fs-md)">${escapeHtml(code || '—')}</b>
+          ${code ? `<button onclick="navigator.clipboard&&navigator.clipboard.writeText('${code}');alertStyled('Copied ${code}')" style="font-size:var(--fs-xs);padding:2px 8px;margin-left:8px">Copy</button>` : ''}</div>
         <button onclick="campaignLeave()" style="background:var(--btn-secondary-bg);color:#fff">Leave campaign</button>
         ${Sync.isCampaignOwner() ? '<button onclick="campaignDelete()" style="background:var(--btn-alert-bg);color:#fff;margin-left:6px">Delete campaign</button>' : ''}
       </div>
@@ -704,16 +704,16 @@ function renderCampaign() {
       <div class="card">
         <h3 class="card-title">Create a campaign</h3>
         <input type="text" id="camp-name" placeholder="Campaign name" style="${_CAMP_INPUT}">
-        <div style="margin:6px 0;font-size:13px">Your role:
-          <select id="camp-role" style="padding:4px 8px;border-radius:6px;background:var(--card-bg);color:var(--ink);border:1px solid var(--border)">
+        <div style="margin:6px 0;font-size:var(--fs-sm)">Your role:
+          <select id="camp-role" style="padding:4px 8px;border-radius:var(--r-sm);background:var(--card-bg);color:var(--ink);border:1px solid var(--border)">
             <option value="player">Player</option><option value="loremaster">Loremaster</option></select></div>
         <button onclick="campaignCreate()" style="width:100%">Create + get a join code</button>
       </div>
       <div class="card">
         <h3 class="card-title">Join a campaign</h3>
         <input type="text" id="camp-code" placeholder="Join code (e.g. SHADOW-DURIN-42)" style="${_CAMP_INPUT}">
-        <div style="margin:6px 0;font-size:13px">Your role:
-          <select id="camp-role" style="padding:4px 8px;border-radius:6px;background:var(--card-bg);color:var(--ink);border:1px solid var(--border)">
+        <div style="margin:6px 0;font-size:var(--fs-sm)">Your role:
+          <select id="camp-role" style="padding:4px 8px;border-radius:var(--r-sm);background:var(--card-bg);color:var(--ink);border:1px solid var(--border)">
             <option value="player">Player</option><option value="loremaster">Loremaster</option></select></div>
         <button onclick="campaignJoin()" style="width:100%">Join</button>
       </div>`;
@@ -743,8 +743,8 @@ function renderBroadcastFeed(msgs) {
   if (!boxes.length) return;
   const html = (msgs && msgs.length)
     ? msgs.slice().reverse().map(m => `<div style="padding:5px 0;border-bottom:1px solid var(--border)">
-        <span style="font-size:11px;color:var(--text-muted)">${m.ts ? new Date(m.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''} · ${escapeHtml(m.from || 'Loremaster')}</span><br>
-        <span style="font-size:13px">${escapeHtml(m.text || '')}</span></div>`).join('')
+        <span style="font-size:var(--fs-xs);color:var(--text-muted)">${m.ts ? new Date(m.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''} · ${escapeHtml(m.from || 'Loremaster')}</span><br>
+        <span style="font-size:var(--fs-sm)">${escapeHtml(m.text || '')}</span></div>`).join('')
     : '<div class="hint">No broadcasts yet.</div>';
   boxes.forEach(b => { b.innerHTML = html; });
 }
@@ -785,7 +785,7 @@ function closeTableMode() {
 function renderTableMode() {
   const body = document.getElementById('table-mode-body'); if (!body) return;
   const r = loadRoster() || { activeId: activeCharId, list: [] };
-  const pill = (t, bg) => `<span style="background:${bg};color:#fff;padding:3px 11px;border-radius:7px;font-size:.5em;font-weight:800;letter-spacing:1px">${t}</span>`;
+  const pill = (t, bg) => `<span style="background:${bg};color:#fff;padding:3px 11px;border-radius:var(--r-sm);font-size:.5em;font-weight:800;letter-spacing:1px">${t}</span>`;
   const card = (title, endCur, endMax, hopeCur, hopeMax, shadow, conds) =>
     `<div style="border:3px solid #d4a635;border-radius:14px;padding:14px 18px;background:#1a1612">
       <div style="font-size:1.25em;font-weight:800;color:#f1e4c4">${title}</div>
@@ -831,7 +831,7 @@ function renderTableMode() {
           <div style="font-size:1.45em;font-weight:800;color:#7ed07e;margin-top:4px">&#10084; ${f.endCur}/${f.endMax}</div>
           ${f.wounded ? pill('WOUNDED', '#7a1a1a') : ''}</div>`).join('')}</div>`
     : '';
-  body.innerHTML = `<div style="font-size:20px"><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px">${heroCards}</div>${foeHtml}</div>`;
+  body.innerHTML = `<div style="font-size:var(--fs-lg)"><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px">${heroCards}</div>${foeHtml}</div>`;
 }
 
 /* ---------- CAMPAIGN TIMELINE (U15) ----------
@@ -861,7 +861,7 @@ function renderTimeline() {
   const list = Array.isArray(char.timeline) ? char.timeline : [];
   if (!list.length) { body.innerHTML = '<div class="hint" style="text-align:center;padding:10px">No events yet. Session XP, Shadow/Scar gains, Valour/Wisdom rank-ups and Fellowship Phases will appear here.</div>'; return; }
   body.innerHTML = list.map(ev =>
-    `<div style="display:flex;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px">
+    `<div style="display:flex;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:var(--fs-xs)">
       <span style="flex:0 0 auto">${TIMELINE_ICON[ev.type] || '•'}</span>
       <span style="flex:1">${escapeHtml(ev.text)}<br><small style="color:var(--text-muted)">${new Date(ev.ts).toLocaleString()}</small></span></div>`).join('');
 }
@@ -956,17 +956,17 @@ function renderShareQR(link, bytes) {
   // QR realistically scans only for modest payloads; beyond that the code is too dense.
   const MAX_QR = 1200;
   if (bytes > MAX_QR) {
-    wrap.innerHTML = `<div style="padding:14px;border:1px dashed var(--border);border-radius:8px;font-size:12px;color:var(--text-muted)">
+    wrap.innerHTML = `<div style="padding:14px;border:1px dashed var(--border);border-radius:var(--r-sm);font-size:var(--fs-xs);color:var(--text-muted)">
       📷 This character is too detailed for a scannable QR code (${bytes} chars). Use <strong>Copy Link</strong> or <strong>Copy Code Only</strong> instead — paste it on the other device's import screen.</div>`;
     return;
   }
   if (typeof QRCode === 'undefined') {
-    wrap.innerHTML = `<div style="padding:14px;border:1px dashed var(--border);border-radius:8px;font-size:12px;color:var(--text-muted)">QR generator unavailable — use the link or code.</div>`;
+    wrap.innerHTML = `<div style="padding:14px;border:1px dashed var(--border);border-radius:var(--r-sm);font-size:var(--fs-xs);color:var(--text-muted)">QR generator unavailable — use the link or code.</div>`;
     return;
   }
   try {
     const box = document.createElement('div');
-    box.style.cssText = 'display:inline-block;padding:10px;background:#fff;border-radius:8px';
+    box.style.cssText = 'display:inline-block;padding:10px;background:#fff;border-radius:var(--r-sm)';
     wrap.appendChild(box);
     // Error-correction level L — lowest redundancy → smallest, most-scannable code for link payloads.
     new QRCode(box, {
@@ -978,11 +978,11 @@ function renderShareQR(link, bytes) {
       correctLevel: QRCode.CorrectLevel.L
     });
     const cap = document.createElement('div');
-    cap.style.cssText = 'font-size:11px;color:var(--text-muted);margin-top:6px';
+    cap.style.cssText = 'font-size:var(--fs-xs);color:var(--text-muted);margin-top:6px';
     cap.textContent = 'Scan to import on another device.';
     wrap.appendChild(cap);
   } catch (e) {
-    wrap.innerHTML = `<div style="padding:14px;border:1px dashed var(--border);border-radius:8px;font-size:12px;color:var(--text-muted)">This character is too detailed for a scannable QR code — use the link or code instead.</div>`;
+    wrap.innerHTML = `<div style="padding:14px;border:1px dashed var(--border);border-radius:var(--r-sm);font-size:var(--fs-xs);color:var(--text-muted)">This character is too detailed for a scannable QR code — use the link or code instead.</div>`;
   }
 }
 
@@ -1417,26 +1417,26 @@ function renderChronicleTimeline() {
   const countEl = document.getElementById('ch-count');
   if (countEl) countEl.textContent = journal.scenes.length ? `(${journal.scenes.length} scene${journal.scenes.length === 1 ? '' : 's'})` : '';
   if (journal.scenes.length === 0) {
-    wrap.innerHTML = `<div style="text-align:center;color:var(--text-faint);padding:14px;font-size:12px">No scenes yet — tap “+ New Scene”, or just start writing below.<br><br>
-      <button class="add-row-btn" onclick="loadSampleChronicle()" style="background:var(--btn-secondary-bg);font-size:12px">Load an example scene</button></div>`;
+    wrap.innerHTML = `<div style="text-align:center;color:var(--text-faint);padding:14px;font-size:var(--fs-xs)">No scenes yet — tap “+ New Scene”, or just start writing below.<br><br>
+      <button class="add-row-btn" onclick="loadSampleChronicle()" style="background:var(--btn-secondary-bg);font-size:var(--fs-xs)">Load an example scene</button></div>`;
     return;
   }
   // Jump-to-scene selector (only worth showing past a couple of scenes).
   let html = '';
   if (journal.scenes.length > 2) {
-    html += `<select onchange="jumpToScene(this.value);this.selectedIndex=0" style="width:100%;margin-bottom:8px;font-size:12px;padding:4px 6px;border:1px solid var(--border);border-radius:5px;background:var(--bg-deep);color:var(--ink)">
+    html += `<select onchange="jumpToScene(this.value);this.selectedIndex=0" style="width:100%;margin-bottom:8px;font-size:var(--fs-xs);padding:4px 6px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--bg-deep);color:var(--ink)">
       <option value="">↪ Jump to scene…</option>
       ${journal.scenes.slice().reverse().map(s => `<option value="${s.id}">${escapeHtml(s.title)}</option>`).join('')}
     </select>`;
   }
   const editTextarea = (b) => `<div style="padding:4px 8px">
-      <textarea id="ch-edit-${b.id}" rows="3" style="width:100%;padding:6px;border:1px solid var(--gold);border-radius:6px;background:var(--bg-deep);color:var(--ink);font-size:14px;line-height:1.5">${escapeHtml(b.text)}</textarea>
+      <textarea id="ch-edit-${b.id}" rows="3" style="width:100%;padding:6px;border:1px solid var(--gold);border-radius:var(--r-sm);background:var(--bg-deep);color:var(--ink);font-size:var(--fs-md);line-height:1.5">${escapeHtml(b.text)}</textarea>
       <div style="display:flex;gap:6px;margin-top:4px">
-        <button onclick="saveBlockEdit('${b.id}')" class="add-row-btn" style="background:var(--gold);font-size:12px;flex:1">Save</button>
-        <button onclick="cancelBlockEdit()" class="add-row-btn" style="background:var(--btn-secondary-bg);font-size:12px;flex:1">Cancel</button>
+        <button onclick="saveBlockEdit('${b.id}')" class="add-row-btn" style="background:var(--gold);font-size:var(--fs-xs);flex:1">Save</button>
+        <button onclick="cancelBlockEdit()" class="add-row-btn" style="background:var(--btn-secondary-bg);font-size:var(--fs-xs);flex:1">Cancel</button>
       </div>
     </div>`;
-  const moveBtns = (id) => `<button onclick="moveBlock('${id}',-1)" title="Move up" style="flex:0 0 auto;background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:11px">▲</button><button onclick="moveBlock('${id}',1)" title="Move down" style="flex:0 0 auto;background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:11px">▼</button>`;
+  const moveBtns = (id) => `<button onclick="moveBlock('${id}',-1)" title="Move up" style="flex:0 0 auto;background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:var(--fs-xs)">▲</button><button onclick="moveBlock('${id}',1)" title="Move down" style="flex:0 0 auto;background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:var(--fs-xs)">▼</button>`;
   // Newest scene first; blocks within a scene stay in chronological (written) order.
   journal.scenes.slice().reverse().forEach(sc => {
     const blocks = journal.entries.filter(e => e.sceneId === sc.id);
@@ -1445,20 +1445,20 @@ function renderChronicleTimeline() {
     const active = sc.id === journal.activeSceneId;
     const collapsed = !!sc.collapsed;
     const sceneCombats = (journal.combats || []).filter(c => c.sceneId === sc.id && !c.active);
-    html += `<div id="ch-scene-${sc.id}" style="margin:10px 0 4px;padding:6px 8px;background:var(--gold-soft);border-radius:6px;display:flex;align-items:center;gap:6px">
-      <button onclick="toggleSceneCollapse('${sc.id}')" title="${collapsed ? 'Expand' : 'Collapse'}" style="flex:0 0 auto;background:none;border:none;cursor:pointer;color:var(--ink);font-size:12px">${collapsed ? '▸' : '▾'}</button>
+    html += `<div id="ch-scene-${sc.id}" style="margin:10px 0 4px;padding:6px 8px;background:var(--gold-soft);border-radius:var(--r-sm);display:flex;align-items:center;gap:6px">
+      <button onclick="toggleSceneCollapse('${sc.id}')" title="${collapsed ? 'Expand' : 'Collapse'}" style="flex:0 0 auto;background:none;border:none;cursor:pointer;color:var(--ink);font-size:var(--fs-xs)">${collapsed ? '▸' : '▾'}</button>
       <div style="flex:1;min-width:0">
-        <div style="font-weight:700;color:var(--ink);font-size:13px">${escapeHtml(sc.title)}${active ? ' <span style="font-size:9px;background:var(--gold);color:#fff;padding:1px 5px;border-radius:6px;vertical-align:middle">OPEN</span>' : ''}${collapsed ? ` <span style="font-size:10px;color:var(--text-faint);font-weight:400">(${blocks.length})</span>` : ''}</div>
-        <div style="font-size:10px;color:var(--text-faint)">${dateLabel(sc.date)}${sc.state ? ' · ' + stateLabel(sc.state) : ''}</div>
+        <div style="font-weight:700;color:var(--ink);font-size:var(--fs-sm)">${escapeHtml(sc.title)}${active ? ' <span style="font-size:var(--fs-xs);background:var(--gold);color:#fff;padding:1px 5px;border-radius:var(--r-sm);vertical-align:middle">OPEN</span>' : ''}${collapsed ? ` <span style="font-size:var(--fs-xs);color:var(--text-faint);font-weight:400">(${blocks.length})</span>` : ''}</div>
+        <div style="font-size:var(--fs-xs);color:var(--text-faint)">${dateLabel(sc.date)}${sc.state ? ' · ' + stateLabel(sc.state) : ''}</div>
       </div>
-      ${active ? '' : `<button onclick="setActiveScene('${sc.id}')" title="Write here" style="background:none;border:1px solid var(--border);border-radius:4px;font-size:10px;padding:2px 6px;cursor:pointer;color:var(--ink)">Write here</button>`}
-      <button onclick="renameScene('${sc.id}')" title="Rename" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:13px">✎</button>
-      <button onclick="deleteScene('${sc.id}')" title="Delete scene" style="background:none;border:none;cursor:pointer;color:var(--text-faint);font-size:14px">×</button>
+      ${active ? '' : `<button onclick="setActiveScene('${sc.id}')" title="Write here" style="background:none;border:1px solid var(--border);border-radius:var(--r-sm);font-size:var(--fs-xs);padding:2px 6px;cursor:pointer;color:var(--ink)">Write here</button>`}
+      <button onclick="renameScene('${sc.id}')" title="Rename" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:var(--fs-sm)">✎</button>
+      <button onclick="deleteScene('${sc.id}')" title="Delete scene" style="background:none;border:none;cursor:pointer;color:var(--text-faint);font-size:var(--fs-md)">×</button>
     </div>`;
     if (collapsed) return;
     // Interleaved play-log: blocks in written order — a dimmed roll result, then its description.
     if (shown.length === 0 && sceneCombats.length === 0) {
-      html += `<div style="padding:6px 10px;font-size:12px;color:var(--text-faint)">${q ? '(no matching lines)' : 'Empty scene — write the first line below, or make a roll on the Oracle/Dice tabs.'}</div>`;
+      html += `<div style="padding:6px 10px;font-size:var(--fs-xs);color:var(--text-faint)">${q ? '(no matching lines)' : 'Empty scene — write the first line below, or make a roll on the Oracle/Dice tabs.'}</div>`;
     }
     // Render a single block (prose or dimmed auto line), incl. its inline edit/describe boxes.
     const renderOne = (b) => {
@@ -1467,25 +1467,25 @@ function renderChronicleTimeline() {
         return `<div style="display:flex;gap:4px;padding:2px 10px 6px;align-items:flex-start">
           <div style="flex:1;min-width:0;line-height:1.55;white-space:pre-wrap">${escapeHtml(b.text)}</div>
           ${moveBtns(b.id)}
-          <button onclick="editBlock('${b.id}')" title="Edit" style="flex:0 0 auto;background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:12px">✎</button>
-          <button onclick="deleteChronicleEntry('${b.id}')" title="Delete" style="flex:0 0 auto;background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:13px">×</button>
+          <button onclick="editBlock('${b.id}')" title="Edit" style="flex:0 0 auto;background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:var(--fs-xs)">✎</button>
+          <button onclick="deleteChronicleEntry('${b.id}')" title="Delete" style="flex:0 0 auto;background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:var(--fs-sm)">×</button>
         </div>`;
       }
       const t = JOURNAL_TYPES[b.type] || JOURNAL_TYPES.note;
       let h = `<div style="display:flex;gap:6px;padding:5px 10px 1px;align-items:baseline;opacity:0.72">
-          <span style="flex:0 0 auto;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted)">${t.label}</span>
-          <span style="flex:1;min-width:0;font-size:12px;font-style:italic;color:var(--text-muted)">${escapeHtml(b.text)}</span>
+          <span style="flex:0 0 auto;font-size:var(--fs-xs);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted)">${t.label}</span>
+          <span style="flex:1;min-width:0;font-size:var(--fs-xs);font-style:italic;color:var(--text-muted)">${escapeHtml(b.text)}</span>
           ${moveBtns(b.id)}
-          <button onclick="describeBlock('${b.id}')" title="Describe below" style="flex:0 0 auto;background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:11px">✎ describe</button>
-          <button onclick="editBlock('${b.id}')" title="Edit line" style="flex:0 0 auto;background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:11px">edit</button>
-          <button onclick="deleteChronicleEntry('${b.id}')" title="Delete" style="flex:0 0 auto;background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:13px">×</button>
+          <button onclick="describeBlock('${b.id}')" title="Describe below" style="flex:0 0 auto;background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:var(--fs-xs)">✎ describe</button>
+          <button onclick="editBlock('${b.id}')" title="Edit line" style="flex:0 0 auto;background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:var(--fs-xs)">edit</button>
+          <button onclick="deleteChronicleEntry('${b.id}')" title="Delete" style="flex:0 0 auto;background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:var(--fs-sm)">×</button>
         </div>`;
       if (_describingId === b.id) {
         h += `<div style="padding:2px 10px 6px 22px">
-            <textarea id="ch-desc-${b.id}" rows="2" placeholder="Describe what happens…" style="width:100%;padding:6px;border:1px solid var(--gold);border-radius:6px;background:var(--bg-deep);color:var(--ink);font-size:14px;line-height:1.5"></textarea>
+            <textarea id="ch-desc-${b.id}" rows="2" placeholder="Describe what happens…" style="width:100%;padding:6px;border:1px solid var(--gold);border-radius:var(--r-sm);background:var(--bg-deep);color:var(--ink);font-size:var(--fs-md);line-height:1.5"></textarea>
             <div style="display:flex;gap:6px;margin-top:4px">
-              <button onclick="saveDescribe('${b.id}')" class="add-row-btn" style="background:var(--gold);font-size:12px;flex:1">Add description</button>
-              <button onclick="cancelDescribe()" class="add-row-btn" style="background:var(--btn-secondary-bg);font-size:12px;flex:1">Cancel</button>
+              <button onclick="saveDescribe('${b.id}')" class="add-row-btn" style="background:var(--gold);font-size:var(--fs-xs);flex:1">Add description</button>
+              <button onclick="cancelDescribe()" class="add-row-btn" style="background:var(--btn-secondary-bg);font-size:var(--fs-xs);flex:1">Cancel</button>
             </div>
           </div>`;
       }
@@ -1504,14 +1504,14 @@ function renderChronicleTimeline() {
         const hasOpen = run.some(rb => rb.id === _editingBlockId || rb.id === _describingId);
         const showCollapsed = (g ? g.collapsed !== false : true) && !hasOpen;
         const summary = g && !g.ongoing && g.summary ? g.summary : '';
-        html += `<div style="margin:5px 0;border:1px solid var(--gold-soft);border-radius:7px;overflow:hidden">
+        html += `<div style="margin:5px 0;border:1px solid var(--gold-soft);border-radius:var(--r-sm);overflow:hidden">
             <div style="display:flex;align-items:center;gap:6px;padding:5px 8px;background:var(--gold-soft);cursor:pointer" onclick="toggleCombatGroup('${cid}')">
-              <span style="font-size:11px;color:var(--ink)">${showCollapsed ? '▸' : '▾'}</span>
-              <span style="flex:1;min-width:0;font-weight:700;font-size:12px;color:var(--ink)">${escapeHtml(title)}${g && g.ongoing ? ' <span style="font-size:9px;background:var(--red);color:#fff;padding:1px 5px;border-radius:6px;vertical-align:middle">LIVE</span>' : ''}</span>
-              ${summary ? `<span style="font-size:10px;color:var(--text-muted);text-align:right">${escapeHtml(summary)}</span>` : ''}
-              <button onclick="event.stopPropagation();renameCombatGroup('${cid}')" title="Rename" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:12px">✎</button>
+              <span style="font-size:var(--fs-xs);color:var(--ink)">${showCollapsed ? '▸' : '▾'}</span>
+              <span style="flex:1;min-width:0;font-weight:700;font-size:var(--fs-xs);color:var(--ink)">${escapeHtml(title)}${g && g.ongoing ? ' <span style="font-size:var(--fs-xs);background:var(--red);color:#fff;padding:1px 5px;border-radius:var(--r-sm);vertical-align:middle">LIVE</span>' : ''}</span>
+              ${summary ? `<span style="font-size:var(--fs-xs);color:var(--text-muted);text-align:right">${escapeHtml(summary)}</span>` : ''}
+              <button onclick="event.stopPropagation();renameCombatGroup('${cid}')" title="Rename" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:var(--fs-xs)">✎</button>
             </div>`;
-        if (showCollapsed) html += `<div style="padding:3px 10px;font-size:11px;color:var(--text-faint)">${run.length} line${run.length !== 1 ? 's' : ''} — tap to expand</div>`;
+        if (showCollapsed) html += `<div style="padding:3px 10px;font-size:var(--fs-xs);color:var(--text-faint)">${run.length} line${run.length !== 1 ? 's' : ''} — tap to expand</div>`;
         else { html += `<div style="padding:2px 0">`; run.forEach(rb => { html += renderOne(rb); }); html += `</div>`; }
         html += `</div>`;
         bi = bj;
@@ -1522,7 +1522,7 @@ function renderChronicleTimeline() {
     }
     sceneCombats.forEach(c => { html += renderCombatBlock(c); });
   });
-  wrap.innerHTML = html || `<div style="text-align:center;color:var(--text-faint);padding:14px;font-size:12px">No matching entries.</div>`;
+  wrap.innerHTML = html || `<div style="text-align:center;color:var(--text-faint);padding:14px;font-size:var(--fs-xs)">No matching entries.</div>`;
 }
 /* ----- combat log ----- */
 function activeCombat() { return (journal.combats || []).find(c => c.active) || null; }
@@ -1656,11 +1656,11 @@ async function deleteCombat(id) {
 }
 // Read-only combat summary shown inside a scene's Rules Bits (for ended/other-scene combats).
 function renderCombatBlock(c) {
-  let h = `<div style="padding:3px 6px;font-size:12px">
+  let h = `<div style="padding:3px 6px;font-size:var(--fs-xs)">
     <div style="font-weight:700;color:var(--text-muted)">⚔️ ${escapeHtml(c.foeName)} — End ${c.endCur}/${c.endMax}, Hate ${c.hateCur}/${c.hateMax}${c.outcome ? ' · ' + escapeHtml(c.outcome) : ''}${c.active ? ' · <em>ongoing</em>' : ''}
-      <button onclick="deleteCombat('${c.id}')" title="Delete" style="background:none;border:none;color:var(--text-faint);cursor:pointer;float:right;font-size:13px">×</button></div>`;
+      <button onclick="deleteCombat('${c.id}')" title="Delete" style="background:none;border:none;color:var(--text-faint);cursor:pointer;float:right;font-size:var(--fs-sm)">×</button></div>`;
   (c.rounds || []).forEach((r, i) => {
-    h += `<div style="font-style:italic;color:var(--text-muted);padding-left:8px;font-size:11px">R${i + 1}: ${escapeHtml(r.hero || '—')}${r.foe ? ' | ' + escapeHtml(r.foe) : ''}</div>`;
+    h += `<div style="font-style:italic;color:var(--text-muted);padding-left:8px;font-size:var(--fs-xs)">R${i + 1}: ${escapeHtml(r.hero || '—')}${r.foe ? ' | ' + escapeHtml(r.foe) : ''}</div>`;
   });
   return h + `</div>`;
 }
@@ -1673,14 +1673,14 @@ function renderChronicleCombat() {
     card.innerHTML = `<button class="add-row-btn" onclick="newCombat()" style="width:100%;background:var(--btn-alert-bg)">⚔️ New Combat</button>`;
     return;
   }
-  const step = (id, f, d, lbl) => `<button onclick="adjCombat('${id}','${f}',${d})" style="width:26px;height:26px;border:1px solid var(--border);background:var(--card-bg);color:var(--ink);border-radius:4px;cursor:pointer">${lbl}</button>`;
-  const eaStep = (d, lbl) => `<button onclick="adjCombatEye(${d})" style="width:26px;height:26px;border:1px solid var(--border);background:var(--card-bg);color:var(--ink);border-radius:4px;cursor:pointer">${lbl}</button>`;
+  const step = (id, f, d, lbl) => `<button onclick="adjCombat('${id}','${f}',${d})" style="width:26px;height:26px;border:1px solid var(--border);background:var(--card-bg);color:var(--ink);border-radius:var(--r-sm);cursor:pointer">${lbl}</button>`;
+  const eaStep = (d, lbl) => `<button onclick="adjCombatEye(${d})" style="width:26px;height:26px;border:1px solid var(--border);background:var(--card-bg);color:var(--ink);border-radius:var(--r-sm);cursor:pointer">${lbl}</button>`;
   const ea = parseInt(char.eyeAwareness) || 0;
   const hunt = (HUNT_THRESHOLDS[char.huntRegion] || 16) + (parseInt(char.huntMod) || 0);
   const f = c.foe || (c.foe = { atkDice: 2, atkDmg: 4, atkInj: 14, atkTN: 14 });
   const heroParry = (parseInt(char.parry) || 0) + (parseInt(char.shieldTotal) || 0);
-  const fIn = (field, val) => `<input type="number" min="0" value="${val}" onchange="setFoeProfile('${c.id}','${field}',this.value)" style="width:38px;padding:3px 4px;border:1px solid var(--border);border-radius:4px;background:var(--bg-deep);color:var(--ink);font-size:12px">`;
-  let rounds = (c.rounds || []).map((r, i) => `<div style="display:flex;gap:6px;padding:3px 0;border-top:1px solid var(--border);font-size:12px">
+  const fIn = (field, val) => `<input type="number" min="0" value="${val}" onchange="setFoeProfile('${c.id}','${field}',this.value)" style="width:38px;padding:3px 4px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--bg-deep);color:var(--ink);font-size:var(--fs-xs)">`;
+  let rounds = (c.rounds || []).map((r, i) => `<div style="display:flex;gap:6px;padding:3px 0;border-top:1px solid var(--border);font-size:var(--fs-xs)">
       <span style="flex:0 0 26px;color:var(--text-faint)">R${i + 1}</span>
       <span style="flex:1;min-width:0"><span style="color:var(--ink)">${escapeHtml(r.hero || '—')}</span>${r.foe ? `<br><span style="color:var(--red-dark)">${escapeHtml(r.foe)}</span>` : ''}</span>
       <button onclick="editCombatRound('${c.id}',${i})" title="Edit this round" style="background:none;border:none;color:var(--text-faint);cursor:pointer">✎</button>
@@ -1688,16 +1688,16 @@ function renderChronicleCombat() {
     </div>`).join('');
   card.innerHTML = `
     <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
-      <strong style="flex:1;font-size:14px">⚔️ ${escapeHtml(c.foeName)}</strong>
-      <button onclick="endCombat('${c.id}')" class="add-row-btn" style="font-size:11px;background:var(--btn-secondary-bg);padding:3px 8px">End combat</button>
+      <strong style="flex:1;font-size:var(--fs-md)">⚔️ ${escapeHtml(c.foeName)}</strong>
+      <button onclick="endCombat('${c.id}')" class="add-row-btn" style="font-size:var(--fs-xs);background:var(--btn-secondary-bg);padding:3px 8px">End combat</button>
     </div>
-    <div class="row-2" style="gap:10px;font-size:13px">
+    <div class="row-2" style="gap:10px;font-size:var(--fs-sm)">
       <div style="display:flex;align-items:center;gap:4px">End <strong style="min-width:42px;text-align:center">${c.endCur}/${c.endMax}</strong>${step(c.id,'endCur',-1,'−')}${step(c.id,'endCur',1,'+')}</div>
       <div style="display:flex;align-items:center;gap:4px">Hate <strong style="min-width:36px;text-align:center">${c.hateCur}/${c.hateMax}</strong>${step(c.id,'hateCur',-1,'−')}${step(c.id,'hateCur',1,'+')}</div>
     </div>
-    <div style="display:flex;align-items:center;gap:4px;font-size:13px;margin-top:6px">👁️ Eye <strong style="min-width:42px;text-align:center;color:${ea >= hunt ? 'var(--red-dark)' : 'var(--ink)'}">${ea} / ${hunt}</strong>${eaStep(-1,'−')}${eaStep(1,'+')}<span style="font-size:10px;color:var(--text-faint)">vs Hunt</span></div>
+    <div style="display:flex;align-items:center;gap:4px;font-size:var(--fs-sm);margin-top:6px">👁️ Eye <strong style="min-width:42px;text-align:center;color:${ea >= hunt ? 'var(--red-dark)' : 'var(--ink)'}">${ea} / ${hunt}</strong>${eaStep(-1,'−')}${eaStep(1,'+')}<span style="font-size:var(--fs-xs);color:var(--text-faint)">vs Hunt</span></div>
     <div style="margin-top:8px;padding-top:7px;border-top:1px solid var(--border)">
-      <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;font-size:12px;color:var(--ink)">
+      <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;font-size:var(--fs-xs);color:var(--ink)">
         <span style="font-weight:600;color:var(--red-dark)">🗡️ Foe attack:</span>
         ${fIn('atkDice', f.atkDice)}<span>dice</span>
         <span>Dmg</span>${fIn('atkDmg', f.atkDmg)}
@@ -1707,8 +1707,8 @@ function renderChronicleCombat() {
       <button onclick="foeAttacks('${c.id}')" class="add-row-btn" style="width:100%;margin-top:6px;background:var(--btn-alert-bg)">🗡️ ${escapeHtml(c.foeName)} Attacks — roll vs TN ${(parseInt(f.atkTN)||0) + heroParry} (foe ${f.atkTN} + your Parry ${heroParry})</button>
     </div>
     <p class="hint" style="text-align:left;margin:8px 0 2px;color:var(--text-faint)">⚔️ Your attack rolls on the Dice/Combat tab auto-add a round and subtract weapon Damage. 🗡️ Foe Attacks rolls the foe's hit (Feat + dice) and subtracts its Damage from <em>your</em> Endurance. Use the fields below for a manual/narrative round; tap ✎ to edit any round.</p>
-    <input id="ch-rd-hero" placeholder="Your round — stance · weapon · roll · result" style="width:100%;margin-top:4px;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg-deep);color:var(--ink);font-size:13px">
-    <input id="ch-rd-foe" placeholder="Foe — attacks · result (Piercing Blow, etc.)" style="width:100%;margin-top:4px;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg-deep);color:var(--ink);font-size:13px">
+    <input id="ch-rd-hero" placeholder="Your round — stance · weapon · roll · result" style="width:100%;margin-top:4px;padding:6px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--bg-deep);color:var(--ink);font-size:var(--fs-sm)">
+    <input id="ch-rd-foe" placeholder="Foe — attacks · result (Piercing Blow, etc.)" style="width:100%;margin-top:4px;padding:6px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--bg-deep);color:var(--ink);font-size:var(--fs-sm)">
     <button onclick="addCombatRound('${c.id}')" class="add-row-btn" style="width:100%;margin-top:6px;background:var(--gold)">Log Round ${(c.rounds || []).length + 1} manually</button>
     <div style="margin-top:6px">${rounds}</div>`;
 }

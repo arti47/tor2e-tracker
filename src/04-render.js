@@ -232,7 +232,7 @@ async function checkAutoTriggers() {
             '<br><br>Which Flaw does this bout leave you with?',
           buttons: available.map(f => ({ label: f, value: f }))
             .concat([{ label: 'Skip — just clear the Shadow', value: null,
-                       style: 'background:var(--btn-secondary-bg);color:white;border:none;border-radius:5px;padding:10px;font-size:14px;cursor:pointer' }])
+                       style: 'background:var(--btn-secondary-bg);color:white;border:none;border-radius:var(--r-sm);padding:10px;font-size:var(--fs-md);cursor:pointer' }])
         });
         if (picked && !flawsField.includes(picked)) {
           taken = picked;
@@ -608,8 +608,8 @@ function fpRenderStep3() {
   document.getElementById('fp-xp-summary').innerHTML = `
     Skill Points: <strong>${sp}</strong> · Adventure Points: <strong>${ap}</strong>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px">
-      <button class="add-row-btn" style="font-size:12px" onclick="fpSpendFromWizard('skill')">Spend Skill Points</button>
-      <button class="add-row-btn" style="font-size:12px" onclick="fpSpendFromWizard('adv')">Spend Adventure Points</button>
+      <button class="add-row-btn" style="font-size:var(--fs-xs)" onclick="fpSpendFromWizard('skill')">Spend Skill Points</button>
+      <button class="add-row-btn" style="font-size:var(--fs-xs)" onclick="fpSpendFromWizard('adv')">Spend Adventure Points</button>
     </div>
   `;
 }
@@ -636,14 +636,14 @@ function fpRenderStep4() {
     const isFree = u.freeCalling === calling;
     const selected = fpState.selectedUndertakings.includes(u.id);
     const row = document.createElement('div');
-    row.style.cssText = `padding:8px;border:1px solid ${selected ? 'var(--gold)' : 'var(--border)'};border-radius:6px;background:${selected ? 'var(--gold-soft)' : (disabled ? 'var(--bg-deep)' : 'var(--pure-white)')};${disabled ? 'opacity:0.4;' : 'cursor:pointer;'}`;
+    row.style.cssText = `padding:8px;border:1px solid ${selected ? 'var(--gold)' : 'var(--border)'};border-radius:var(--r-sm);background:${selected ? 'var(--gold-soft)' : (disabled ? 'var(--bg-deep)' : 'var(--pure-white)')};${disabled ? 'opacity:0.4;' : 'cursor:pointer;'}`;
     if (!disabled) row.onclick = () => fpToggleUndertaking(u.id);
     row.innerHTML = `
       <div style="display:flex;align-items:center;gap:8px">
         <input type="checkbox" ${selected ? 'checked' : ''} ${disabled ? 'disabled' : ''} style="margin:0">
-        <strong style="font-size:13px">${u.name}</strong>
-        ${isFree ? '<span style="background:var(--gold);color:white;padding:1px 6px;border-radius:8px;font-size:10px">FREE — ' + calling + '</span>' : ''}
-        ${u.yuleOnly ? '<span style="background:var(--brown-soft);color:white;padding:1px 6px;border-radius:8px;font-size:10px">YULE</span>' : ''}
+        <strong style="font-size:var(--fs-sm)">${u.name}</strong>
+        ${isFree ? '<span style="background:var(--gold);color:white;padding:1px 6px;border-radius:var(--r-sm);font-size:var(--fs-xs)">FREE — ' + calling + '</span>' : ''}
+        ${u.yuleOnly ? '<span style="background:var(--brown-soft);color:white;padding:1px 6px;border-radius:var(--r-sm);font-size:var(--fs-xs)">YULE</span>' : ''}
       </div>
       <p class="hint" style="text-align:left;margin:4px 0 0 0">${soloWord(u.desc, u.descSolo || u.desc)}</p>
     `;
@@ -687,33 +687,33 @@ function fpRenderFollowup() {
 
   if (has('write-a-song')) {
     wrap.innerHTML += `
-      <div style="padding:10px;background:var(--bg-deep);border-radius:6px;margin-top:6px">
-        <strong style="font-size:12px;color:var(--red-dark)">Write a Song — details</strong>
+      <div style="padding:10px;background:var(--bg-deep);border-radius:var(--r-sm);margin-top:6px">
+        <strong style="font-size:var(--fs-xs);color:var(--red-dark)">Write a Song — details</strong>
         <div style="display:flex;gap:6px;margin-top:6px">
-          <select id="fp-song-type" style="flex:0 0 110px;padding:4px;font-size:12px">
+          <select id="fp-song-type" style="flex:0 0 110px;padding:4px;font-size:var(--fs-xs)">
             <option>Lay</option><option>Song of Victory</option><option>Walking-song</option>
           </select>
-          <input id="fp-song-title" placeholder="Title" style="flex:1;padding:4px;font-size:12px">
+          <input id="fp-song-title" placeholder="Title" style="flex:1;padding:4px;font-size:var(--fs-xs)">
         </div>
-        <input id="fp-song-lyrics" placeholder="Lyrics or theme (optional)" style="width:100%;margin-top:6px;padding:4px;font-size:12px">
+        <input id="fp-song-lyrics" placeholder="Lyrics or theme (optional)" style="width:100%;margin-top:6px;padding:4px;font-size:var(--fs-xs)">
       </div>`;
   }
   if (has('raise-heir')) {
     wrap.innerHTML += `
-      <div style="padding:10px;background:var(--bg-deep);border-radius:6px;margin-top:6px">
-        <strong style="font-size:12px;color:var(--red-dark)">Raise an Heir — spend</strong>
+      <div style="padding:10px;background:var(--bg-deep);border-radius:var(--r-sm);margin-top:6px">
+        <strong style="font-size:var(--fs-xs);color:var(--red-dark)">Raise an Heir — spend</strong>
         <div style="display:flex;gap:6px;margin-top:6px;align-items:center">
-          <input id="fp-heir-name" placeholder="Heir name" value="${(char.heir && char.heir.name) || ''}" style="flex:1;padding:4px;font-size:12px">
-          <label style="font-size:11px">AP & Treasure to spend:</label>
-          <input id="fp-heir-ap" type="number" min="0" max="5" value="${fpState.heirInput.ap || 0}" style="width:50px;padding:4px;font-size:12px">
+          <input id="fp-heir-name" placeholder="Heir name" value="${(char.heir && char.heir.name) || ''}" style="flex:1;padding:4px;font-size:var(--fs-xs)">
+          <label style="font-size:var(--fs-xs)">AP & Treasure to spend:</label>
+          <input id="fp-heir-ap" type="number" min="0" max="5" value="${fpState.heirInput.ap || 0}" style="width:50px;padding:4px;font-size:var(--fs-xs)">
         </div>
         <p class="hint" style="text-align:left;margin:6px 0 0 0">Equal Treasure + AP. Each AP grants +1 PE to heir (current: ${(char.heir && char.heir.pe) || 0}).</p>
       </div>`;
   }
   if (has('recount-story')) {
     wrap.innerHTML += `
-      <div style="padding:10px;background:var(--bg-deep);border-radius:6px;margin-top:6px">
-        <strong style="font-size:12px;color:var(--red-dark)">Recount a Story</strong>
+      <div style="padding:10px;background:var(--bg-deep);border-radius:var(--r-sm);margin-top:6px">
+        <strong style="font-size:var(--fs-xs);color:var(--red-dark)">Recount a Story</strong>
         <p class="hint" style="text-align:left;margin:4px 0 0 0">After completing the phase, edit your Distinctive Features on the Character tab to swap one out.</p>
       </div>`;
   }
@@ -942,7 +942,7 @@ function renderSkillEndeavour() {
       const sk = char.skills[s.name] || { rating: 0, favoured: false };
       const fav = sk.favoured ? ' style="background:var(--gold-soft);border-color:var(--gold)"' : '';
       return `<button class="quick-skill" onclick="rollSkillEndeavourAttempt('${s.name}')"${fav} style="padding:6px 4px;text-align:center">
-        <strong>${s.name}</strong><br><span style="font-size:9px;color:var(--text-muted)">${sk.rating}d · ${s.attr.toUpperCase()}</span>
+        <strong>${s.name}</strong><br><span style="font-size:var(--fs-xs);color:var(--text-muted)">${sk.rating}d · ${s.attr.toUpperCase()}</span>
       </button>`;
     }).join('');
 
@@ -1004,14 +1004,14 @@ function renderSkillEndeavourLog() {
   if (!log || !char.skillEndeavour) return;
   const rolls = char.skillEndeavour.rolls || [];
   if (rolls.length === 0) {
-    log.innerHTML = '<div style="text-align:center;color:var(--text-faint);padding:10px;font-size:12px">No attempts yet.</div>';
+    log.innerHTML = '<div style="text-align:center;color:var(--text-faint);padding:10px;font-size:var(--fs-xs)">No attempts yet.</div>';
     return;
   }
   log.innerHTML = rolls.slice().reverse().map((r, i) => {
     const num = rolls.length - i;
     const tag = r.contributed > 0
-      ? `<span style="background:var(--success-text);color:white;padding:1px 6px;border-radius:8px;font-size:10px">+${r.contributed}</span>`
-      : (r.woeApplied ? `<span style="background:var(--btn-warn-bg);color:white;padding:1px 6px;border-radius:8px;font-size:10px">WOE</span>` : '');
+      ? `<span style="background:var(--success-text);color:white;padding:1px 6px;border-radius:var(--r-sm);font-size:var(--fs-xs)">+${r.contributed}</span>`
+      : (r.woeApplied ? `<span style="background:var(--btn-warn-bg);color:white;padding:1px 6px;border-radius:var(--r-sm);font-size:var(--fs-xs)">WOE</span>` : '');
     const tagColor = r.contributed > 0 ? 'var(--success-text)' : 'var(--error-text)';
     return `<div style="padding:6px 8px;border-bottom:1px solid var(--border)">
       <strong>#${num} ${r.skill}</strong> ${tag} — ${r.detail} <span style="color:${tagColor};font-weight:600">${r.success ? 'SUCCESS' : 'FAIL'}</span>${r.bonus ? ` <small style="color:var(--gold)">(roleplay +${r.bonus}d)</small>` : ''}
@@ -1277,16 +1277,16 @@ function renderCouncilLog() {
   if (!log || !char.council) return;
   const rolls = char.council.rolls || [];
   if (rolls.length === 0) {
-    log.innerHTML = '<div style="text-align:center;color:var(--text-faint);padding:10px;font-size:12px">No rolls yet — make the Introduction roll to begin.</div>';
+    log.innerHTML = '<div style="text-align:center;color:var(--text-faint);padding:10px;font-size:var(--fs-xs)">No rolls yet — make the Introduction roll to begin.</div>';
     return;
   }
   log.innerHTML = rolls.slice().reverse().map((r, i) => {
     const num = rolls.length - i;
     const tagColor = r.contributed > 0 ? 'var(--success-text)' : (r.success ? '#666' : 'var(--error-text)');
     const tag = r.intro
-      ? `<span style="background:var(--gold);color:white;padding:1px 6px;border-radius:8px;font-size:10px">INTRO</span>`
+      ? `<span style="background:var(--gold);color:white;padding:1px 6px;border-radius:var(--r-sm);font-size:var(--fs-xs)">INTRO</span>`
       : (r.contributed > 0
-          ? `<span style="background:var(--success-text);color:white;padding:1px 6px;border-radius:8px;font-size:10px">+${r.contributed}</span>`
+          ? `<span style="background:var(--success-text);color:white;padding:1px 6px;border-radius:var(--r-sm);font-size:var(--fs-xs)">+${r.contributed}</span>`
           : '');
     return `<div style="padding:6px 8px;border-bottom:1px solid var(--border)">
       <strong>#${num} ${r.skill}</strong> ${tag} — ${r.detail} <span style="color:${tagColor};font-weight:600">${r.success ? 'SUCCESS' : 'FAIL'}</span>${r.bonus ? ` <small style="color:var(--gold)">(roleplay +${r.bonus}d)</small>` : ''}
@@ -1480,7 +1480,7 @@ function _soloFortuneOffer(r) {
           '<br><br><em>Optional — for worthy challenges and key actions.</em>',
         buttons: [
           { label: isIll ? '🎲 Roll Ill-Fortune' : '🎲 Roll Fortune', value: 'roll' },
-          { label: 'Not this time', value: null, style: 'background:var(--btn-secondary-bg);color:white;border:none;border-radius:5px;padding:10px;font-size:14px;cursor:pointer' }
+          { label: 'Not this time', value: null, style: 'background:var(--btn-secondary-bg);color:white;border:none;border-radius:var(--r-sm);padding:10px;font-size:var(--fs-md);cursor:pointer' }
         ]
       });
       if (go === 'roll' && typeof fortuneTableRoll === 'function') {
@@ -1604,15 +1604,15 @@ function renderJourneyEventRoll() {
   const effect = JOURNEY_EVENT_ROLL_EFFECT[pend.eventKey];
   row.style.display = 'block';
   row.innerHTML =
-    `<div style="font-size:12px;font-weight:600;color:var(--red-dark);margin-bottom:4px">▶ ${escapeHtml(pend.eventName)} — roll ${escapeHtml(pend.skill)}</div>` +
-    `<p class="hint" style="text-align:left;margin:0 0 6px;font-size:11px;line-height:1.4">` +
+    `<div style="font-size:var(--fs-xs);font-weight:600;color:var(--red-dark);margin-bottom:4px">▶ ${escapeHtml(pend.eventName)} — roll ${escapeHtml(pend.skill)}</div>` +
+    `<p class="hint" style="text-align:left;margin:0 0 6px;font-size:var(--fs-xs);line-height:1.4">` +
     `${escapeHtml(pend.skill)} ${'◆'.repeat(sk.rating)}${'◇'.repeat(Math.max(0, 6 - sk.rating))} vs TN ${sk.tn}` +
     `${sk.favoured ? ' · ★ Favoured' : ''}${pend.hard ? ' · hard terrain −1d' : ''}` +
     `${effect ? `<br>On a success: <strong>${escapeHtml(effect.label)}</strong>` : ''}` +
     `${effect && effect.onFail ? `<br>On a failure, the app applies the event's cost for you.` : ''}</p>` +
     `<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">` +
-    `<button class="add-row-btn" style="font-size:12px;background:var(--red)" onclick="rollJourneyEvent()">🎲 Roll ${escapeHtml(pend.skill)}</button>` +
-    `<button class="add-row-btn" style="font-size:12px;background:var(--btn-secondary-bg);color:white" onclick="skipJourneyEventRoll()">Skip this roll</button>` +
+    `<button class="add-row-btn" style="font-size:var(--fs-xs);background:var(--red)" onclick="rollJourneyEvent()">🎲 Roll ${escapeHtml(pend.skill)}</button>` +
+    `<button class="add-row-btn" style="font-size:var(--fs-xs);background:var(--btn-secondary-bg);color:white" onclick="skipJourneyEventRoll()">Skip this roll</button>` +
     `</div>`;
 }
 
@@ -1710,7 +1710,7 @@ function renderJourneyLog() {
   const log = document.getElementById('j-event-log');
   if (!log || !char.journey || !char.journey.events) return;
   if (char.journey.events.length === 0) {
-    log.innerHTML = '<div style="text-align:center;color:var(--text-faint);padding:10px;font-size:12px">No events yet — make a Marching Test to begin.</div>';
+    log.innerHTML = '<div style="text-align:center;color:var(--text-faint);padding:10px;font-size:var(--fs-xs)">No events yet — make a Marching Test to begin.</div>';
     return;
   }
   log.innerHTML = char.journey.events.slice().reverse().map(e =>
@@ -1998,15 +1998,15 @@ function renderClashSpend() {
   if (n <= 0) { el.innerHTML = ''; return; }
   const hasObj = b.objectiveResMax > 0 && b.objectiveRes > 0;
   const hasPersistComp = (b.complications || []).some(c => c.persistent);
-  el.innerHTML = `<div style="background:var(--gold-soft);border:1px solid var(--gold);border-radius:6px;padding:8px">
-    <strong style="font-size:12px">Spend successes: ${n}</strong>
+  el.innerHTML = `<div style="background:var(--gold-soft);border:1px solid var(--gold);border-radius:var(--r-sm);padding:8px">
+    <strong style="font-size:var(--fs-xs)">Spend successes: ${n}</strong>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:6px">
-      <button class="add-row-btn" style="font-size:11px" onclick="clashSpend('foe')">⚔ −1 Foe Resistance</button>
-      ${hasObj ? `<button class="add-row-btn" style="font-size:11px" onclick="clashSpend('obj')">🎯 −1 Objective</button>` : ''}
-      <button class="add-row-btn" style="font-size:11px;background:var(--btn-secondary-bg)" onclick="clashSpend('adv')">▲ Gain Advantage</button>
-      ${n >= 2 ? `<button class="add-row-btn" style="font-size:11px;background:var(--btn-secondary-bg)" onclick="clashSpend('advP')">▲⚓ Persistent (2)</button>` : ''}
-      ${hasPersistComp ? `<button class="add-row-btn" style="font-size:11px;background:var(--btn-secondary-bg)" onclick="clashSpend('comp')">✓ Remove Complication</button>` : ''}
-      ${b.archfoe !== 'none' ? `<button class="add-row-btn" style="font-size:11px;background:var(--btn-secondary-bg)" onclick="clashSpend('harry')">☠ Harry Archfoe (+1d duel${(parseInt(b.harried) || 0) ? ` · banked +${b.harried}d` : ''})</button>` : ''}
+      <button class="add-row-btn" style="font-size:var(--fs-xs)" onclick="clashSpend('foe')">⚔ −1 Foe Resistance</button>
+      ${hasObj ? `<button class="add-row-btn" style="font-size:var(--fs-xs)" onclick="clashSpend('obj')">🎯 −1 Objective</button>` : ''}
+      <button class="add-row-btn" style="font-size:var(--fs-xs);background:var(--btn-secondary-bg)" onclick="clashSpend('adv')">▲ Gain Advantage</button>
+      ${n >= 2 ? `<button class="add-row-btn" style="font-size:var(--fs-xs);background:var(--btn-secondary-bg)" onclick="clashSpend('advP')">▲⚓ Persistent (2)</button>` : ''}
+      ${hasPersistComp ? `<button class="add-row-btn" style="font-size:var(--fs-xs);background:var(--btn-secondary-bg)" onclick="clashSpend('comp')">✓ Remove Complication</button>` : ''}
+      ${b.archfoe !== 'none' ? `<button class="add-row-btn" style="font-size:var(--fs-xs);background:var(--btn-secondary-bg)" onclick="clashSpend('harry')">☠ Harry Archfoe (+1d duel${(parseInt(b.harried) || 0) ? ` · banked +${b.harried}d` : ''})</button>` : ''}
     </div>
   </div>`;
 }
@@ -2128,10 +2128,10 @@ function renderBattle() {
 function renderBattleChips() {
   const b = char.battle, el = document.getElementById('b-chips');
   if (!el) return;
-  const adv = (b.advantages || []).map((a, i) => `<span style="display:inline-block;background:var(--success-bg);color:var(--success-text);border-radius:8px;padding:2px 8px;font-size:11px;margin:2px">▲ ${escapeHtml(a.name)}${a.persistent ? ' ⚓' : ''} <span onclick="removeAdv(${i})" style="cursor:pointer;font-weight:700">×</span></span>`).join('');
-  const comp = (b.complications || []).map((c, i) => `<span style="display:inline-block;background:var(--error-bg);color:var(--error-text);border-radius:8px;padding:2px 8px;font-size:11px;margin:2px">▼ ${escapeHtml(c.name)}${c.persistent ? ' ⚓' : ''} <span onclick="removeComp(${i})" style="cursor:pointer;font-weight:700">×</span></span>`).join('');
-  const af = (b.archfoe && b.archfoe !== 'none') ? `<span style="display:inline-block;background:var(--btn-alert-bg);color:white;border-radius:8px;padding:2px 8px;font-size:11px;margin:2px">☠ ${b.archfoe} Archfoe (−1d)</span>` : '';
-  const insp = b.inspired ? `<span style="display:inline-block;background:var(--green-soft);color:white;border-radius:8px;padding:2px 8px;font-size:11px;margin:2px">✨ Inspired</span>` : '';
+  const adv = (b.advantages || []).map((a, i) => `<span style="display:inline-block;background:var(--success-bg);color:var(--success-text);border-radius:var(--r-sm);padding:2px 8px;font-size:var(--fs-xs);margin:2px">▲ ${escapeHtml(a.name)}${a.persistent ? ' ⚓' : ''} <span onclick="removeAdv(${i})" style="cursor:pointer;font-weight:700">×</span></span>`).join('');
+  const comp = (b.complications || []).map((c, i) => `<span style="display:inline-block;background:var(--error-bg);color:var(--error-text);border-radius:var(--r-sm);padding:2px 8px;font-size:var(--fs-xs);margin:2px">▼ ${escapeHtml(c.name)}${c.persistent ? ' ⚓' : ''} <span onclick="removeComp(${i})" style="cursor:pointer;font-weight:700">×</span></span>`).join('');
+  const af = (b.archfoe && b.archfoe !== 'none') ? `<span style="display:inline-block;background:var(--btn-alert-bg);color:white;border-radius:var(--r-sm);padding:2px 8px;font-size:var(--fs-xs);margin:2px">☠ ${b.archfoe} Archfoe (−1d)</span>` : '';
+  const insp = b.inspired ? `<span style="display:inline-block;background:var(--green-soft);color:white;border-radius:var(--r-sm);padding:2px 8px;font-size:var(--fs-xs);margin:2px">✨ Inspired</span>` : '';
   el.innerHTML = adv + comp + af + insp || '<span class="hint">No advantages or complications.</span>';
 }
 function renderBattleLog() {
@@ -2429,8 +2429,8 @@ function rollHeroOrBand() {
 async function desperateStand() {
   const living = missionAllies().filter(a => !a.outOfAction);
   if (!living.length) { await alertStyled('No living ally on the mission to make a Desperate Stand.', '🛡️ Desperate Stand'); return; }
-  const buttons = living.map((a, i) => ({ label: `${escapeHtml(a.name)} — ${escapeHtml(a.gift)}`, value: i, style: 'background:var(--card-bg);color:var(--ink);border:1px solid var(--border);border-radius:5px;padding:8px 10px;font-size:12px;cursor:pointer;text-align:left' }));
-  buttons.push({ label: 'Cancel', value: -1, style: 'background:var(--btn-secondary-bg);color:white;border:none;border-radius:5px;padding:10px;font-size:14px;cursor:pointer' });
+  const buttons = living.map((a, i) => ({ label: `${escapeHtml(a.name)} — ${escapeHtml(a.gift)}`, value: i, style: 'background:var(--card-bg);color:var(--ink);border:1px solid var(--border);border-radius:var(--r-sm);padding:8px 10px;font-size:var(--fs-xs);cursor:pointer;text-align:left' }));
+  buttons.push({ label: 'Cancel', value: -1, style: 'background:var(--btn-secondary-bg);color:white;border:none;border-radius:var(--r-sm);padding:10px;font-size:var(--fs-md);cursor:pointer' });
   const pick = await showModal({ title: '🛡️ Desperate Stand', message: 'After a failed roll, an Ally steps into the fray. The re-roll is <strong>Favoured & Inspired</strong>; if an 👁 appears the Ally survives, otherwise they are lost — the ultimate sacrifice. Choose who steps forward:', buttons });
   if (pick === -1 || pick == null) return;
   const a = living[pick];
@@ -2593,8 +2593,8 @@ async function giveKinglyGift(id) {
   const a = char.band.allies.find(x => x.id === id); if (!a) return;
   const famous = (char.magicalItems || []).filter(mi => mi.type === 'Famous Weapon' || mi.type === 'Famous Armour');
   if (!famous.length) { await alertStyled('No Famous Weapons or Armour in your Magical Treasure (Gear tab) to give. Recover one first, then grant it here.', '👑 Kingly Gift'); return; }
-  const buttons = famous.map((mi, i) => ({ label: `${mi.type === 'Famous Armour' ? '🛡️' : '⚔️'} ${mi.name}`, value: i, style: 'background:var(--card-bg);color:var(--ink);border:1px solid var(--border);border-radius:5px;padding:8px 10px;font-size:12px;cursor:pointer;text-align:left' }));
-  buttons.push({ label: 'Cancel', value: -1, style: 'background:var(--btn-secondary-bg);color:white;border:none;border-radius:5px;padding:10px;font-size:14px;cursor:pointer' });
+  const buttons = famous.map((mi, i) => ({ label: `${mi.type === 'Famous Armour' ? '🛡️' : '⚔️'} ${mi.name}`, value: i, style: 'background:var(--card-bg);color:var(--ink);border:1px solid var(--border);border-radius:var(--r-sm);padding:8px 10px;font-size:var(--fs-xs);cursor:pointer;text-align:left' }));
+  buttons.push({ label: 'Cancel', value: -1, style: 'background:var(--btn-secondary-bg);color:white;border:none;border-radius:var(--r-sm);padding:10px;font-size:var(--fs-md);cursor:pointer' });
   const pick = await showModal({ title: '👑 Kingly Gift', message: `Grant a Famous item to <strong>${escapeHtml(a.name)}</strong>. It becomes a second Gift (a (1d) bonus when it aids the Band) and wards against the Shadow — re-roll one 👁 on the Feat die when the gift aids a roll.<br><br>Note: a Famous item carried by an ally also raises your starting Eye Awareness on a mission (+1 each).`, buttons });
   if (pick === -1 || pick == null) return;
   a.kinglyGift = { name: famous[pick].name };
@@ -2717,12 +2717,12 @@ function renderBand() {
       const isFocus = char.band.dispositionFocus === d.key;
       return `<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)">
         <div style="flex:1">
-          <strong>${d.name}</strong>${isFocus ? ' <span style="color:var(--gold)">★</span>' : ''} <span style="color:var(--text-muted);font-size:11px">${d.sub}</span>
+          <strong>${d.name}</strong>${isFocus ? ' <span style="color:var(--gold)">★</span>' : ''} <span style="color:var(--text-muted);font-size:var(--fs-xs)">${d.sub}</span>
         </div>
-        <button class="counter-buttons-btn" onclick="adjDisposition('${d.key}',-1)" style="width:26px;height:26px;border:1px solid var(--red);background:var(--pure-white);color:var(--red);border-radius:4px;font-weight:700;cursor:pointer">−</button>
-        <span style="min-width:18px;text-align:center;font-weight:700;font-size:16px">${rating}</span>
-        <button class="counter-buttons-btn" onclick="adjDisposition('${d.key}',1)" style="width:26px;height:26px;border:1px solid var(--red);background:var(--pure-white);color:var(--red);border-radius:4px;font-weight:700;cursor:pointer">+</button>
-        <button class="add-row-btn" onclick="rollDisposition('${d.key}')" style="padding:6px 10px;font-size:12px">🎲</button>
+        <button class="counter-buttons-btn" onclick="adjDisposition('${d.key}',-1)" style="width:26px;height:26px;border:1px solid var(--red);background:var(--pure-white);color:var(--red);border-radius:var(--r-sm);font-weight:700;cursor:pointer">−</button>
+        <span style="min-width:18px;text-align:center;font-weight:700;font-size:var(--fs-md)">${rating}</span>
+        <button class="counter-buttons-btn" onclick="adjDisposition('${d.key}',1)" style="width:26px;height:26px;border:1px solid var(--red);background:var(--pure-white);color:var(--red);border-radius:var(--r-sm);font-weight:700;cursor:pointer">+</button>
+        <button class="add-row-btn" onclick="rollDisposition('${d.key}')" style="padding:6px 10px;font-size:var(--fs-xs)">🎲</button>
       </div>`;
     }).join('');
   }
@@ -2745,24 +2745,24 @@ function renderBand() {
         const onMission = !roster.length || roster.includes(a.id);
         const kg = a.kinglyGift;
         const kgLine = kg
-          ? `<div style="font-size:12px;margin-top:2px;background:var(--gold-soft);border-radius:4px;padding:3px 6px"><strong style="color:var(--gold)">👑 Kingly Gift:</strong> ${escapeHtml(kg.name)} <span style="color:var(--text-muted)">— 2nd Gift (+1d) &amp; ward: re-roll one 👁 when it aids a roll</span> <span onclick="removeKinglyGift('${a.id}')" style="cursor:pointer;color:var(--red);font-weight:700;float:right">×</span></div>`
+          ? `<div style="font-size:var(--fs-xs);margin-top:2px;background:var(--gold-soft);border-radius:var(--r-sm);padding:3px 6px"><strong style="color:var(--gold)">👑 Kingly Gift:</strong> ${escapeHtml(kg.name)} <span style="color:var(--text-muted)">— 2nd Gift (+1d) &amp; ward: re-roll one 👁 when it aids a roll</span> <span onclick="removeKinglyGift('${a.id}')" style="cursor:pointer;color:var(--red);font-weight:700;float:right">×</span></div>`
           : '';
-        const kgBtn = (a.hardened && !kg) ? `<button onclick="giveKinglyGift('${a.id}')" style="font-size:11px;background:var(--gold-soft);border:1px solid var(--gold);color:var(--ink);border-radius:5px;padding:3px 8px;cursor:pointer">👑 Kingly Gift</button>` : '';
-        return `<div style="border:1.5px solid ${border};border-radius:6px;padding:8px;margin-bottom:8px;${a.outOfAction ? 'opacity:0.6' : ''}${!onMission ? ';opacity:0.5' : ''}">
+        const kgBtn = (a.hardened && !kg) ? `<button onclick="giveKinglyGift('${a.id}')" style="font-size:var(--fs-xs);background:var(--gold-soft);border:1px solid var(--gold);color:var(--ink);border-radius:var(--r-sm);padding:3px 8px;cursor:pointer">👑 Kingly Gift</button>` : '';
+        return `<div style="border:1.5px solid ${border};border-radius:var(--r-sm);padding:8px;margin-bottom:8px;${a.outOfAction ? 'opacity:0.6' : ''}${!onMission ? ';opacity:0.5' : ''}">
           <div style="display:flex;align-items:center;gap:6px">
-            <input value="${escapeHtml(a.name)}" onchange="setAllyField('${a.id}','name',this.value)" style="flex:1;font-weight:700;border:none;background:transparent;color:var(--ink);font-size:14px">
-            ${a.hardened ? '<span style="background:var(--gold);color:white;font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px">HARDENED</span>' : ''}
-            <button onclick="removeAlly('${a.id}')" style="background:none;border:none;color:var(--red);font-size:16px;cursor:pointer">×</button>
+            <input value="${escapeHtml(a.name)}" onchange="setAllyField('${a.id}','name',this.value)" style="flex:1;font-weight:700;border:none;background:transparent;color:var(--ink);font-size:var(--fs-md)">
+            ${a.hardened ? '<span style="background:var(--gold);color:white;font-size:var(--fs-xs);font-weight:700;padding:1px 6px;border-radius:var(--r-sm)">HARDENED</span>' : ''}
+            <button onclick="removeAlly('${a.id}')" style="background:none;border:none;color:var(--red);font-size:var(--fs-md);cursor:pointer">×</button>
           </div>
-          <div style="font-size:12px;margin-top:2px"><strong style="color:var(--gold)">Gift:</strong> ${escapeHtml(a.gift)} <span style="color:var(--text-muted)">— ${escapeHtml(a.giftDesc || '')}</span>${a.giftWasted ? ' <span style="background:var(--btn-warn-bg);color:white;font-size:9px;font-weight:700;padding:1px 5px;border-radius:7px;cursor:pointer" onclick="setAllyField(\'' + a.id + '\',\'giftWasted\',false)">WASTED ✕</span>' : ''}</div>
-          <div style="font-size:12px"><strong style="color:var(--red-dark)">Quirk:</strong> <span style="color:var(--text-muted)">${escapeHtml(a.quirk)}</span></div>
+          <div style="font-size:var(--fs-xs);margin-top:2px"><strong style="color:var(--gold)">Gift:</strong> ${escapeHtml(a.gift)} <span style="color:var(--text-muted)">— ${escapeHtml(a.giftDesc || '')}</span>${a.giftWasted ? ' <span style="background:var(--btn-warn-bg);color:white;font-size:var(--fs-xs);font-weight:700;padding:1px 5px;border-radius:var(--r-sm);cursor:pointer" onclick="setAllyField(\'' + a.id + '\',\'giftWasted\',false)">WASTED ✕</span>' : ''}</div>
+          <div style="font-size:var(--fs-xs)"><strong style="color:var(--red-dark)">Quirk:</strong> <span style="color:var(--text-muted)">${escapeHtml(a.quirk)}</span></div>
           ${kgLine}
           <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;align-items:center">
-            <select onchange="setAllyField('${a.id}','injury',this.value)" style="font-size:11px;padding:3px 4px">${injSel}</select>
-            <select onchange="setAllyField('${a.id}','fatigue',this.value)" style="font-size:11px;padding:3px 4px">${fatSel}</select>
-            <label style="font-size:11px;display:flex;align-items:center;gap:3px"><input type="checkbox"${onMission ? ' checked' : ''} onchange="setAllyOnMission('${a.id}',this.checked)" style="width:auto">On mission</label>
-            <label style="font-size:11px;display:flex;align-items:center;gap:3px"><input type="checkbox"${a.hardened ? ' checked' : ''} onchange="setAllyField('${a.id}','hardened',this.checked)" style="width:auto">Hardened</label>
-            <label style="font-size:11px;display:flex;align-items:center;gap:3px"><input type="checkbox"${a.outOfAction ? ' checked' : ''} onchange="setAllyField('${a.id}','outOfAction',this.checked)" style="width:auto">Out of action</label>
+            <select onchange="setAllyField('${a.id}','injury',this.value)" style="font-size:var(--fs-xs);padding:3px 4px">${injSel}</select>
+            <select onchange="setAllyField('${a.id}','fatigue',this.value)" style="font-size:var(--fs-xs);padding:3px 4px">${fatSel}</select>
+            <label style="font-size:var(--fs-xs);display:flex;align-items:center;gap:3px"><input type="checkbox"${onMission ? ' checked' : ''} onchange="setAllyOnMission('${a.id}',this.checked)" style="width:auto">On mission</label>
+            <label style="font-size:var(--fs-xs);display:flex;align-items:center;gap:3px"><input type="checkbox"${a.hardened ? ' checked' : ''} onchange="setAllyField('${a.id}','hardened',this.checked)" style="width:auto">Hardened</label>
+            <label style="font-size:var(--fs-xs);display:flex;align-items:center;gap:3px"><input type="checkbox"${a.outOfAction ? ' checked' : ''} onchange="setAllyField('${a.id}','outOfAction',this.checked)" style="width:auto">Out of action</label>
             ${kgBtn}
           </div>
         </div>`;
@@ -2859,7 +2859,7 @@ function resolveJourneyEvent(isPeril) {
       targetSkill = detail.skill;
     }
     const noteworthyTag = detail.outcome === 'Noteworthy Encounter'
-      ? `<br><span style="background:var(--btn-alert-bg);color:white;padding:1px 6px;border-radius:8px;font-size:10px;font-weight:700">⭐ NOTEWORTHY ENCOUNTER</span> resolve as an extended scene (multiple rolls, possibly combat / council / endeavour). Award XP as a milestone afterwards.`
+      ? `<br><span style="background:var(--btn-alert-bg);color:white;padding:1px 6px;border-radius:var(--r-sm);font-size:var(--fs-xs);font-weight:700">⭐ NOTEWORTHY ENCOUNTER</span> resolve as an extended scene (multiple rolls, possibly combat / council / endeavour). Award XP as a milestone afterwards.`
       : `<br><small style="color:var(--text-muted)">Sub-event roll: ${die} · Skill: ${detail.skill || targetSkill}</small>`;
     detailLine = `<br><em>${escapeHtml(detail.event)}</em> — <small>${escapeHtml(detail.outcome)}</small>${noteworthyTag}`;
   }
@@ -3233,9 +3233,9 @@ function rollHoard() {
   if (finds.length > 0) {
     mhtml += '<div style="margin-top:8px;display:flex;flex-direction:column;gap:6px">';
     finds.forEach((f, i) => {
-      mhtml += `<div style="padding:8px;background:var(--gold-soft);border:1px solid var(--gold);border-radius:6px">
+      mhtml += `<div style="padding:8px;background:var(--gold-soft);border:1px solid var(--gold);border-radius:var(--r-sm)">
         <strong>✨ ${f.type}</strong> <small style="color:var(--text-muted)">(Feat ${f.featLabel})</small>
-        <button onclick="hoardTakeMagicalItem('${f.type}', ${tainted})" style="background:var(--gold);color:white;border:none;border-radius:4px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;margin-left:8px">Take Item</button>
+        <button onclick="hoardTakeMagicalItem('${f.type}', ${tainted})" style="background:var(--gold);color:white;border:none;border-radius:var(--r-sm);padding:4px 8px;font-size:var(--fs-xs);font-weight:600;cursor:pointer;margin-left:8px">Take Item</button>
       </div>`;
     });
     mhtml += '</div>';
@@ -3290,7 +3290,7 @@ function openTreasureIndexPicker() {
     const typeEmoji = entry.type === 'Marvellous Artefact' ? '✨' : (entry.type === 'Wondrous Item' ? '💎' : '⚔️');
     const subline = entry.blessings ? `Blessings: ${entry.blessings.join(', ')}` :
                      (entry.qualities ? `${entry.qualities.length} qualit${entry.qualities.length===1?'y':'ies'}` : '');
-    return `<button onclick="applyTreasureIndex(${idx})" style="background:var(--card-bg);color:var(--ink);text-align:left;padding:10px 12px;font-size:13px;border:1px solid var(--border);border-radius:6px;cursor:pointer;display:block;width:100%;line-height:1.4">
+    return `<button onclick="applyTreasureIndex(${idx})" style="background:var(--card-bg);color:var(--ink);text-align:left;padding:10px 12px;font-size:var(--fs-sm);border:1px solid var(--border);border-radius:var(--r-sm);cursor:pointer;display:block;width:100%;line-height:1.4">
       <strong>${typeEmoji} ${escapeHtml(entry.name)}</strong> <small style="color:var(--text-muted)">${entry.type} · ${entry.craft || ''}</small>
       <br><small style="color:var(--gold);font-weight:600">${subline}</small>
       <br><small style="color:var(--text-muted)">${escapeHtml(entry.notes || '')}</small>
@@ -3361,11 +3361,11 @@ function renderMagicalItemForm() {
       ENCHANTED_REWARDS.map(r => `<option value="${r.name}" data-desc="${escapeHtml(r.desc)}">${r.enchanted ? '✨ ' : ''}${r.name}</option>`).join('');
     section.innerHTML = `<p class="hint" style="text-align:left;line-height:1.5;margin-bottom:8px">Famous Weapons/Armour have up to <strong>3 qualities</strong>, with at least 1 Enchanted Reward (per RAW p.162). Only the <strong>first is active</strong> when found; the rest unlock via new Valour rank or the Visiting the Treasury undertaking.</p>` +
       [1,2,3].map(n => `
-        <div style="padding:8px;background:${n===1?'var(--gold-soft)':'var(--bg-deep)'};border:1px solid ${n===1?'var(--gold)':'var(--border)'};border-radius:6px;margin-bottom:6px">
-          <strong style="font-size:12px;color:var(--red-dark)">Quality ${n} ${n===1 ? '<span style="background:var(--gold);color:white;padding:1px 6px;border-radius:8px;font-size:10px">ACTIVE on find</span>' : '<span style="background:var(--btn-secondary-bg);color:white;padding:1px 6px;border-radius:8px;font-size:10px">DORMANT</span>'}</strong>
-          <select id="mi-q${n}-pick" onchange="fpFamousQualityPicked(${n})" style="width:100%;margin-top:4px;padding:4px;font-size:12px">${rewardOpts}</select>
-          <input id="mi-q${n}-name" placeholder="Name (custom if not in dropdown)" style="width:100%;margin-top:4px;padding:4px;font-size:12px">
-          <input id="mi-q${n}-desc" placeholder="Description (auto-filled from dropdown)" style="width:100%;margin-top:4px;padding:4px;font-size:11px">
+        <div style="padding:8px;background:${n===1?'var(--gold-soft)':'var(--bg-deep)'};border:1px solid ${n===1?'var(--gold)':'var(--border)'};border-radius:var(--r-sm);margin-bottom:6px">
+          <strong style="font-size:var(--fs-xs);color:var(--red-dark)">Quality ${n} ${n===1 ? '<span style="background:var(--gold);color:white;padding:1px 6px;border-radius:var(--r-sm);font-size:var(--fs-xs)">ACTIVE on find</span>' : '<span style="background:var(--btn-secondary-bg);color:white;padding:1px 6px;border-radius:var(--r-sm);font-size:var(--fs-xs)">DORMANT</span>'}</strong>
+          <select id="mi-q${n}-pick" onchange="fpFamousQualityPicked(${n})" style="width:100%;margin-top:4px;padding:4px;font-size:var(--fs-xs)">${rewardOpts}</select>
+          <input id="mi-q${n}-name" placeholder="Name (custom if not in dropdown)" style="width:100%;margin-top:4px;padding:4px;font-size:var(--fs-xs)">
+          <input id="mi-q${n}-desc" placeholder="Description (auto-filled from dropdown)" style="width:100%;margin-top:4px;padding:4px;font-size:var(--fs-xs)">
         </div>
       `).join('');
   }
@@ -3487,29 +3487,29 @@ function renderMagicalItems() {
           const border = q.active ? 'var(--gold)' : 'var(--border)';
           const color = q.active ? 'var(--red-dark)' : '#888';
           const badge = q.active
-            ? '<span style="background:var(--gold);color:white;padding:1px 6px;border-radius:8px;font-size:9px;font-weight:700">ACTIVE</span>'
-            : '<span style="background:var(--text-faint);color:white;padding:1px 6px;border-radius:8px;font-size:9px;font-weight:700">DORMANT</span>';
+            ? '<span style="background:var(--gold);color:white;padding:1px 6px;border-radius:var(--r-sm);font-size:var(--fs-xs);font-weight:700">ACTIVE</span>'
+            : '<span style="background:var(--text-faint);color:white;padding:1px 6px;border-radius:var(--r-sm);font-size:var(--fs-xs);font-weight:700">DORMANT</span>';
           const descLine = q.description ? `<br><small style="color:var(--text-muted)">${escapeHtml(q.description)}</small>` : '';
-          return `<div style="padding:5px 8px;background:${bg};border:1px solid ${border};border-radius:4px;font-size:11px;color:${color}"><strong>${escapeHtml(q.name)}</strong> ${badge}${descLine}</div>`;
+          return `<div style="padding:5px 8px;background:${bg};border:1px solid ${border};border-radius:var(--r-sm);font-size:var(--fs-xs);color:${color}"><strong>${escapeHtml(q.name)}</strong> ${badge}${descLine}</div>`;
         }).join('') +
         '</div>';
       if (dormantCount > 0) {
-        qualitiesBlock += `<button onclick="unlockDormantQuality(${i})" style="background:var(--gold);color:white;border:none;border-radius:4px;padding:5px 10px;font-size:11px;font-weight:600;cursor:pointer;margin-top:6px;width:100%">🔓 Unlock Next Dormant Quality (${dormantCount} left)</button>`;
+        qualitiesBlock += `<button onclick="unlockDormantQuality(${i})" style="background:var(--gold);color:white;border:none;border-radius:var(--r-sm);padding:5px 10px;font-size:var(--fs-xs);font-weight:600;cursor:pointer;margin-top:6px;width:100%">🔓 Unlock Next Dormant Quality (${dormantCount} left)</button>`;
       }
     }
 
     const cursedBorder = item.cursed ? 'var(--red-dark)' : 'var(--gold)';
     const cursedBadge = item.cursed
-      ? `<span style="background:var(--btn-alert-bg);color:white;padding:1px 6px;border-radius:8px;font-size:9px;font-weight:700;margin-left:4px">⚠️ CURSED · ${escapeHtml(item.curseType || 'Cursed')}</span>`
+      ? `<span style="background:var(--btn-alert-bg);color:white;padding:1px 6px;border-radius:var(--r-sm);font-size:var(--fs-xs);font-weight:700;margin-left:4px">⚠️ CURSED · ${escapeHtml(item.curseType || 'Cursed')}</span>`
       : '';
 
-    return `<div style="padding:8px;background:var(--card-bg);border:${item.cursed ? '2px' : '1px'} solid ${cursedBorder};border-radius:6px;margin-bottom:6px;display:flex;align-items:flex-start;gap:8px">
+    return `<div style="padding:8px;background:var(--card-bg);border:${item.cursed ? '2px' : '1px'} solid ${cursedBorder};border-radius:var(--r-sm);margin-bottom:6px;display:flex;align-items:flex-start;gap:8px">
       <div style="flex:1">
         <strong>${typeEmoji} ${escapeHtml(item.name || 'Unnamed')}</strong>${cursedBadge}
         <small style="color:var(--text-muted)">— ${item.type}${craft}</small>${blessingsTag}${notes}
         ${qualitiesBlock}
       </div>
-      <button onclick="removeMagicalItem(${i})" class="del-btn" style="font-size:14px">×</button>
+      <button onclick="removeMagicalItem(${i})" class="del-btn" style="font-size:var(--fs-md)">×</button>
     </div>`;
   }).join('');
 }
@@ -3950,7 +3950,7 @@ function renderAdventureLoop() {
   host.style.display = 'block';
   const cur = advStep();
   const dots = ADVENTURE_STEPS.map(x =>
-    `<span style="font-size:11px;padding:2px 7px;border-radius:9px;margin:0 3px 4px 0;display:inline-block;` +
+    `<span style="font-size:var(--fs-xs);padding:2px 7px;border-radius:var(--r-sm);margin:0 3px 4px 0;display:inline-block;` +
     (x.id === cur.id
       ? 'background:var(--gold);color:var(--ink);font-weight:700'
       : 'background:var(--bg-deep);color:var(--text-muted);cursor:pointer') + '"' +
@@ -4257,7 +4257,7 @@ async function playAttempt() {
     title: '🎯 What do you do?',
     message: 'Pick the closest thing. The app works out which dice to roll.',
     buttons: PLAY_ATTEMPTS.map(a => ({ label: a.label, value: a.skill })).concat([
-      { label: 'Never mind', value: null, style: 'background:var(--btn-secondary-bg);color:white;border:1px solid var(--btn-secondary-bg);border-radius:5px;padding:10px;font-size:14px;cursor:pointer' }
+      { label: 'Never mind', value: null, style: 'background:var(--btn-secondary-bg);color:white;border:1px solid var(--btn-secondary-bg);border-radius:var(--r-sm);padding:10px;font-size:var(--fs-md);cursor:pointer' }
     ])
   });
   if (!pick) return;
@@ -4632,7 +4632,7 @@ function renderPlay() {
   const sit = char.retired ? _playRetiredSituation() : _playSituation();
   const choices = _playChoices();
   const feed = _playFeed.length
-    ? _playFeed.slice(-8).map(f => `<p style="margin:0 0 8px;line-height:1.6;font-size:13px;${f.kind === 'aside' ? 'color:var(--text-muted);font-size:12px' : 'color:var(--ink)'}">${f.text}</p>`).join('')
+    ? _playFeed.slice(-8).map(f => `<p style="margin:0 0 8px;line-height:1.6;font-size:var(--fs-sm);${f.kind === 'aside' ? 'color:var(--text-muted);font-size:var(--fs-xs)' : 'color:var(--ink)'}">${f.text}</p>`).join('')
     : '<p class="hint" style="text-align:left;margin:0">Pick something below. Whatever you choose, the app rolls what needs rolling and tells you what happened.</p>';
 
   host.innerHTML =
@@ -4640,7 +4640,7 @@ function renderPlay() {
     `<div class="card" style="border-color:var(--gold)">
        <h3 class="card-title" style="color:var(--gold)">${escapeHtml(sit.title)}</h3>
        <p class="hint" style="text-align:left;line-height:1.6;margin:0 0 10px">${sit.text}</p>
-       <div style="background:var(--bg-deep);border-radius:8px;padding:10px;margin-bottom:10px;max-height:260px;overflow-y:auto">${feed}</div>
+       <div style="background:var(--bg-deep);border-radius:var(--r-sm);padding:10px;margin-bottom:10px;max-height:260px;overflow-y:auto">${feed}</div>
        ${choices.map(c =>
          `<button class="add-row-btn" style="width:100%;margin-bottom:6px;text-align:left;padding:11px 12px" onclick="${c.fn}">
             <strong>${escapeHtml(c.label)}</strong>${c.hint ? `<br><small style="opacity:.75;font-weight:400">${escapeHtml(c.hint)}</small>` : ''}

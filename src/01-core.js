@@ -103,7 +103,7 @@ function showModal(opts) {
     (opts.buttons || [{label:'OK', value:true}]).forEach(b => {
       const btn = document.createElement('button');
       btn.textContent = b.label;
-      btn.style.cssText = b.style || 'background:var(--red);color:white;border:1px solid var(--red-dark);border-radius:5px;padding:10px;font-size:14px;font-weight:500;cursor:pointer';
+      btn.style.cssText = b.style || 'background:var(--red);color:white;border:1px solid var(--red-dark);border-radius:var(--r-sm);padding:10px;font-size:var(--fs-md);font-weight:500;cursor:pointer';
       btn.onclick = () => {
         ov.classList.remove('show');
         if (opts.input) {
@@ -127,7 +127,7 @@ async function confirmStyled(message, title) {
     message,
     buttons: [
       {label:'OK', value:true},
-      {label:'Cancel', value:false, style:'background:var(--btn-secondary-bg);color:white;border:1px solid var(--btn-secondary-bg);border-radius:5px;padding:10px;font-size:14px;cursor:pointer'}
+      {label:'Cancel', value:false, style:'background:var(--btn-secondary-bg);color:white;border:1px solid var(--btn-secondary-bg);border-radius:var(--r-sm);padding:10px;font-size:var(--fs-md);cursor:pointer'}
     ]
   });
   return !!result;
@@ -151,7 +151,7 @@ async function promptStyled(message, defaultValue, title, placeholder) {
     inputPlaceholder: placeholder || '',
     buttons: [
       {label:'OK'},
-      {label:'Cancel', cancel: true, style:'background:var(--btn-secondary-bg);color:white;border:1px solid var(--btn-secondary-bg);border-radius:5px;padding:10px;font-size:14px;cursor:pointer'}
+      {label:'Cancel', cancel: true, style:'background:var(--btn-secondary-bg);color:white;border:1px solid var(--btn-secondary-bg);border-radius:var(--r-sm);padding:10px;font-size:var(--fs-md);cursor:pointer'}
     ]
   });
 }
@@ -294,7 +294,7 @@ async function toggleStriderMode() {
   document.getElementById('menu-overlay').classList.remove('show');  // close menu so the dialog + result are visible
   const turningOn = !char.striderMode;
   const msg = turningOn
-    ? `<strong>Play on your own, with no Game Master?</strong><br><br>Normally one player is the <em>Loremaster</em>, who describes the world and decides what happens. In Strider Mode <strong>you play both parts</strong>: you act as your hero, and you ask the <strong>Oracle</strong> whenever you don't know what the world does.<br><br>New to solo play? Read <strong>📖 Ref → Playing Solo</strong> — it walks through a whole session step by step.<br><br>Rules changes:<ul style="text-align:left;font-size:12px;padding-left:18px;margin:6px 0"><li>PE budget: 10 → <strong>15</strong></li><li>Attribute TN: <strong>18 − Rating</strong> (was 20 − Rating)</li><li>Fellowship Rating starts at <strong>3</strong></li><li>Adds free <strong>Strider</strong> Distinctive Feature (Inspired while journeying)</li><li>Unlocks <strong>Oracle tab</strong> (Telling / Lore / Fortune / Ill-Fortune tables)</li><li>Unlocks <strong>Skirmish stance</strong> + <strong>Gain Ground</strong> combat task</li><li>Unlocks <strong>Eye of Mordor</strong> tracking</li></ul>You can switch back any time. Attribute TNs will recalculate.`
+    ? `<strong>Play on your own, with no Game Master?</strong><br><br>Normally one player is the <em>Loremaster</em>, who describes the world and decides what happens. In Strider Mode <strong>you play both parts</strong>: you act as your hero, and you ask the <strong>Oracle</strong> whenever you don't know what the world does.<br><br>New to solo play? Read <strong>📖 Ref → Playing Solo</strong> — it walks through a whole session step by step.<br><br>Rules changes:<ul style="text-align:left;font-size:var(--fs-xs);padding-left:18px;margin:6px 0"><li>PE budget: 10 → <strong>15</strong></li><li>Attribute TN: <strong>18 − Rating</strong> (was 20 − Rating)</li><li>Fellowship Rating starts at <strong>3</strong></li><li>Adds free <strong>Strider</strong> Distinctive Feature (Inspired while journeying)</li><li>Unlocks <strong>Oracle tab</strong> (Telling / Lore / Fortune / Ill-Fortune tables)</li><li>Unlocks <strong>Skirmish stance</strong> + <strong>Gain Ground</strong> combat task</li><li>Unlocks <strong>Eye of Mordor</strong> tracking</li></ul>You can switch back any time. Attribute TNs will recalculate.`
     : `<strong>Disable Strider Mode?</strong><br><br>Revert to standard play. PE budget → 10, TN → 20 − Rating, Strider Distinctive Feature can be removed manually. Oracle tab + Skirmish stance + Eye of Mordor will hide.`;
   if (!await confirmStyled(msg, turningOn ? '🗡️ Strider Mode' : 'Disable Strider Mode')) return;
   char.striderMode = turningOn;
@@ -328,7 +328,7 @@ async function toggleMoriaMode() {
   document.getElementById('menu-overlay').classList.remove('show');  // close menu so the dialog + result are visible
   const turningOn = !char.moriaMode;
   const msg = turningOn
-    ? `<strong>Play the Moria campaign on your own?</strong><br><br>A second solo mode — no Game Master needed. You lead a <strong>Band</strong> of dwarf allies into Moria under Balin's expedition, with its own journey, battle and oracle tables.<br><br>New to solo play? Read <strong>📖 Ref → Playing Solo</strong> first.<br><br>Rules changes:<ul style="text-align:left;font-size:12px;padding-left:18px;margin:6px 0"><li>PE budget: 10 → <strong>15</strong> (solo)</li><li><strong>+5 max Hope</strong> (support of your Band)</li><li>Patron becomes <strong>Balin</strong> — <em>Balin's Counsel</em>: spend Fellowship to make a combat/battle roll Favoured. Your current Patron is remembered and restored if you switch back.</li><li>Fellowship Rating starts at <strong>3</strong> (+1 from Balin)</li><li>Safe Haven → <strong>Moria — First Hall</strong> (likewise restored)</li><li>Journeys use the <strong>Moria</strong> event table (Dark Land, Ill-Favoured)</li><li>Unlocks <strong>Oracle tab</strong> + <strong>Eye of Mordor</strong> (Moria: Dark Land, Hunt 12)</li><li>Unlocks the <strong>Band</strong> and <strong>Battle</strong> tabs, and the Moria oracle tables (chambers, orc-bands, Moria Lore)</li></ul>You can switch back any time.`
+    ? `<strong>Play the Moria campaign on your own?</strong><br><br>A second solo mode — no Game Master needed. You lead a <strong>Band</strong> of dwarf allies into Moria under Balin's expedition, with its own journey, battle and oracle tables.<br><br>New to solo play? Read <strong>📖 Ref → Playing Solo</strong> first.<br><br>Rules changes:<ul style="text-align:left;font-size:var(--fs-xs);padding-left:18px;margin:6px 0"><li>PE budget: 10 → <strong>15</strong> (solo)</li><li><strong>+5 max Hope</strong> (support of your Band)</li><li>Patron becomes <strong>Balin</strong> — <em>Balin's Counsel</em>: spend Fellowship to make a combat/battle roll Favoured. Your current Patron is remembered and restored if you switch back.</li><li>Fellowship Rating starts at <strong>3</strong> (+1 from Balin)</li><li>Safe Haven → <strong>Moria — First Hall</strong> (likewise restored)</li><li>Journeys use the <strong>Moria</strong> event table (Dark Land, Ill-Favoured)</li><li>Unlocks <strong>Oracle tab</strong> + <strong>Eye of Mordor</strong> (Moria: Dark Land, Hunt 12)</li><li>Unlocks the <strong>Band</strong> and <strong>Battle</strong> tabs, and the Moria oracle tables (chambers, orc-bands, Moria Lore)</li></ul>You can switch back any time.`
     : `<strong>Disable Moria Solo Mode?</strong><br><br>Revert to standard play. The +5 Hope band bonus is removed; journeys/oracle return to normal (or Strider, if that's still on).`;
   if (!await confirmStyled(msg, turningOn ? '⛏️ Moria Solo Mode' : 'Disable Moria Solo Mode')) return;
   char.moriaMode = turningOn;
@@ -806,10 +806,10 @@ async function openMilestonePicker() {
     return {
       label: `${m.name} (${award})`,
       value: i,
-      style: 'background:var(--card-bg);color:var(--ink);border:1px solid var(--border);border-radius:5px;padding:8px 10px;font-size:12px;font-weight:500;cursor:pointer;text-align:left'
+      style: 'background:var(--card-bg);color:var(--ink);border:1px solid var(--border);border-radius:var(--r-sm);padding:8px 10px;font-size:var(--fs-xs);font-weight:500;cursor:pointer;text-align:left'
     };
   });
-  buttons.push({ label: 'Cancel', value: -1, style: 'background:var(--btn-secondary-bg);color:white;border:1px solid var(--btn-secondary-bg);border-radius:5px;padding:10px;font-size:14px;cursor:pointer' });
+  buttons.push({ label: 'Cancel', value: -1, style: 'background:var(--btn-secondary-bg);color:white;border:1px solid var(--btn-secondary-bg);border-radius:var(--r-sm);padding:10px;font-size:var(--fs-md);cursor:pointer' });
   const pick = await showModal({
     title: '🏆 Award Milestone XP',
     message: (isMoria() ? 'Moria solo campaign milestones. ' : 'Per Strider Mode supplement. ') + 'Pick the milestone your hero achieved. <strong>Pick only one per scene/challenge.</strong>',
@@ -1009,10 +1009,10 @@ function renderOracleHistory() {
   const el = document.getElementById('oracle-history');
   if (!el) return;
   if (oracleHistory.length === 0) {
-    el.innerHTML = '<div style="text-align:center;color:var(--text-faint);padding:10px;font-size:12px">No rolls yet.</div>';
+    el.innerHTML = '<div style="text-align:center;color:var(--text-faint);padding:10px;font-size:var(--fs-xs)">No rolls yet.</div>';
     return;
   }
-  el.innerHTML = oracleHistory.map((h, i) => `<div style="padding:5px 8px;border-bottom:1px solid var(--border)"><strong>${h.label}</strong> · ${h.result} <span style="float:right;color:var(--text-muted);font-size:11px">${h.time} <button onclick="deleteOracleRollAt(${i})" aria-label="Delete this oracle roll" title="Delete this roll" style="background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:14px;padding:0 0 0 4px;vertical-align:middle">×</button></span></div>`).join('');
+  el.innerHTML = oracleHistory.map((h, i) => `<div style="padding:5px 8px;border-bottom:1px solid var(--border)"><strong>${h.label}</strong> · ${h.result} <span style="float:right;color:var(--text-muted);font-size:var(--fs-xs)">${h.time} <button onclick="deleteOracleRollAt(${i})" aria-label="Delete this oracle roll" title="Delete this roll" style="background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:var(--fs-md);padding:0 0 0 4px;vertical-align:middle">×</button></span></div>`).join('');
 }
 // Delete one oracle roll (× on a row). Rows render in array order, so the index is direct.
 function deleteOracleRollAt(i) {
@@ -1052,7 +1052,7 @@ function rollTellingTable() {
   resultEl.style.display = 'block';
   resultEl.innerHTML = `<strong>Q:</strong> ${escapeHtml(q || '(no question entered)')}<br>` +
     `<strong>Feat die:</strong> ${res.r.label} · chance: ${chance} (yes if ≥ ${res.threshold})<br>` +
-    `<strong style="color:${res.answer==='YES'?'var(--success-text)':'var(--error-text)'};font-size:18px">→ ${res.answer}${res.twist}</strong>`;
+    `<strong style="color:${res.answer==='YES'?'var(--success-text)':'var(--error-text)'};font-size:var(--fs-lg)">→ ${res.answer}${res.twist}</strong>`;
 }
 // A random Lore row (Action/Aspect/Focus) from the active table — used by Chronicle Lore + random events.
 function _randomLoreRow() {
@@ -1163,7 +1163,7 @@ async function requireStep(message, tabId, cardId, title) {
     message,
     buttons: [
       { label: 'Take me there →', value: 'go' },
-      { label: 'Stay here', value: null, style: 'background:var(--btn-secondary-bg);color:white;border:1px solid var(--btn-secondary-bg);border-radius:5px;padding:10px;font-size:14px;cursor:pointer' }
+      { label: 'Stay here', value: null, style: 'background:var(--btn-secondary-bg);color:white;border:1px solid var(--btn-secondary-bg);border-radius:var(--r-sm);padding:10px;font-size:var(--fs-md);cursor:pointer' }
     ]
   });
   if (go === 'go') {
@@ -1257,7 +1257,7 @@ function _eyeThresholdReached() {
           '<br><br>Until you resolve it, the Eye cannot rise any further.',
         buttons: [
           { label: '🎲 Roll the Revelation Episode', value: 'roll' },
-          { label: 'Later — I will roll it from the Eye card', value: null, style: 'background:var(--btn-secondary-bg);color:white;border:none;border-radius:5px;padding:10px;font-size:14px;cursor:pointer' }
+          { label: 'Later — I will roll it from the Eye card', value: null, style: 'background:var(--btn-secondary-bg);color:white;border:none;border-radius:var(--r-sm);padding:10px;font-size:var(--fs-md);cursor:pointer' }
         ]
       });
       if (go === 'roll') await rollRevelationEpisode();
@@ -1317,7 +1317,7 @@ async function rollRevelationEpisode() {
              `<br><br>Play this out. Once it is resolved, Eye Awareness resets and the tally begins again.`,
     buttons: [
       { label: '↺ Resolved — reset the Eye', value: 'reset' },
-      { label: 'Not yet', value: null, style: 'background:var(--btn-secondary-bg);color:white;border:1px solid var(--btn-secondary-bg);border-radius:5px;padding:10px;font-size:14px;cursor:pointer' }
+      { label: 'Not yet', value: null, style: 'background:var(--btn-secondary-bg);color:white;border:1px solid var(--btn-secondary-bg);border-radius:var(--r-sm);padding:10px;font-size:var(--fs-md);cursor:pointer' }
     ]
   });
   if (doReset === 'reset' && typeof resetEyeAwarenessToStarting === 'function') resetEyeAwarenessToStarting();
@@ -1340,7 +1340,7 @@ async function rollMoriaRevelation(forceCat) {
              (r.special === 'eye' ? `<br><br><small>An Eye here escalates your <em>next</em> Revelation to the Ghâsh! table.</small>` : ''),
     buttons: [
       { label: '↺ Resolved — reset the Eye', value: 'reset' },
-      { label: 'Not yet', value: null, style: 'background:var(--btn-secondary-bg);color:white;border:1px solid var(--btn-secondary-bg);border-radius:5px;padding:10px;font-size:14px;cursor:pointer' }
+      { label: 'Not yet', value: null, style: 'background:var(--btn-secondary-bg);color:white;border:1px solid var(--btn-secondary-bg);border-radius:var(--r-sm);padding:10px;font-size:var(--fs-md);cursor:pointer' }
     ]
   });
   if (doReset === 'reset' && typeof resetEyeAwarenessToStarting === 'function') resetEyeAwarenessToStarting();
@@ -1377,7 +1377,7 @@ function rollOrcBand() {
   const el = document.getElementById('orcband-result');
   el.style.display = 'block';
   el.innerHTML = `<strong>Leader:</strong> ${leader}<br><strong>The band (${n} Success ${n === 1 ? 'die' : 'dice'}):</strong><br>` + lines.join('<br>')
-    + `<br><button class="add-row-btn" style="width:100%;margin-top:8px;font-size:12px" onclick="orcBandToEncounter()">⚔️ Put this band into the Encounter</button>`;
+    + `<br><button class="add-row-btn" style="width:100%;margin-top:8px;font-size:var(--fs-xs)" onclick="orcBandToEncounter()">⚔️ Put this band into the Encounter</button>`;
   logOracleRoll('Orc-Band', leader + ' + ' + lines.join(', ').replace(/•\s*/g, ''));
 }
 
