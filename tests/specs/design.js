@@ -235,6 +235,140 @@ module.exports = {
     checks.push({ ok: wide.shown && wide.hasTN && narrow === 0, msg: 'on a tablet, Play shows the hero at a glance (hidden on phones)' });
     checks.push({ ok: wide.rail === 'column', msg: `on a tablet the nav is a side rail (flex-direction ${wide.rail})` });
 
+    // ================= ROUND 2 (audit 2) =================
+    await hero();
+    // ---- Pickers: no text squeezed into a sliver (the leaked .menu flex rule did exactly this) ----
+    const squeeze = await page.evaluate(async () => {
+      const bad = [];
+      const scan = (name) => {
+        const m = [...document.querySelectorAll('.menu-overlay.show .menu')].pop(); if (!m) { bad.push(name + ': not open'); return; }
+        m.querySelectorAll('strong, span, small, b').forEach(el => {
+          const t = (el.textContent || '').trim(); if (t.length < 14 || !el.checkVisibility()) return;
+          if (el.closest('svg')) return;
+          const w = el.getBoundingClientRect().width;
+          if (w > 0 && w < 70) bad.push(`${name}: "${t.slice(0, 24)}" is ${Math.round(w)}px wide`);
+        });
+        document.querySelectorAll('.menu-overlay.show').forEach(o => o.classList.remove('show'));
+      };
+      openPregens(); scan('pregens');
+      openRoster(); scan('roster');
+      openBestiary(); scan('bestiary');
+      char.advPts = 12; openSpendXP('adv'); scan('spend-xp');
+      openWeaponPicker(); scan('weapons');
+      return bad;
+    });
+    checks.push({ ok: squeeze.length === 0, msg: `no picker squeezes its text into a sliver (${squeeze.slice(0, 3).join('; ') || 'none'})` });
+
+    // ---- Contrast: primary buttons and body text clear 4.5:1 in every theme ----
+    const contrast = await page.evaluate(() => {
+      const lum = c => { const m = c.match(/[\d.]+/g).map(Number); const f = v => { v /= 255; return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); }; return .2126 * f(m[0]) + .7152 * f(m[1]) + .0722 * f(m[2]); };
+      const ratio = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + .05) / (Math.min(x, y) + .05); };
+      const probe = document.createElement('div'); document.body.appendChild(probe);
+      probe.innerHTML = '<button class="btn">Go</button><div class="card"><span class="t1">ink</span><span class="t2">muted</span></div>';
+      const out = {};
+      for (const th of ['light', 'dark', 'sepia', 'hc']) {
+        if (th === 'light') localStorage.removeItem('tor2e-theme'); else localStorage.setItem('tor2e-theme', th);
+        document.body.classList.remove('dark', 'theme-sepia', 'theme-hc'); if (typeof applyTheme === 'function') applyTheme();
+        if (th === 'light') document.body.classList.remove('dark');
+        const b = probe.querySelector('.btn'), card = probe.querySelector('.card');
+        const cs = getComputedStyle(b), cc = getComputedStyle(card);
+        out[th] = { btn: +ratio(cs.color, cs.backgroundColor).toFixed(2),
+                    ink: +ratio(getComputedStyle(probe.querySelector('.t1')).color, cc.backgroundColor).toFixed(2) };
+        probe.querySelector('.t2').style.color = 'var(--text-muted)';
+        out[th].muted = +ratio(getComputedStyle(probe.querySelector('.t2')).color, cc.backgroundColor).toFixed(2);
+      }
+      probe.remove(); localStorage.removeItem('tor2e-theme'); document.body.classList.remove('dark', 'theme-sepia', 'theme-hc'); applyTheme();
+      return out;
+    });
+    const lowC = Object.entries(contrast).filter(([, v]) => v.btn < 4.5 || v.ink < 4.5 || v.muted < 4.5).map(([k, v]) => `${k} ${JSON.stringify(v)}`);
+    checks.push({ ok: lowC.length === 0, msg: `buttons, body and muted text clear 4.5:1 in all four themes (${lowC.join('; ') || JSON.stringify(contrast.dark)})` });
+
+    // ---- Hero sheet: one screen of read-only values; Edit opens the form, Done closes it ----
+    const sheet = await page.evaluate(() => {
+      document.querySelector('.bn-item[data-group="hero"]').click();
+      document.querySelector('.tab[data-tab="character"]').click();
+      const hs = document.getElementById('hero-sheet'), form = document.getElementById('char-edit');
+      const r = { crest: !!hs.querySelector('svg.crest'), tn: /TN 15/.test(hs.innerText), skills: hs.querySelectorAll('.s-skill').length,
+                  formHidden: getComputedStyle(form).display === 'none', sheetInputs: hs.querySelectorAll('input, textarea, select').length };
+      [...hs.querySelectorAll('button')].find(b => /^Edit$/.test(b.textContent.trim())).click();
+      r.editShowsForm = getComputedStyle(form).display !== 'none' && getComputedStyle(hs).display === 'none';
+      [...form.querySelectorAll('.edit-bar button')][0].click();
+      r.doneReturns = getComputedStyle(form).display === 'none';
+      return r;
+    });
+    checks.push({ ok: sheet.crest && sheet.tn && sheet.skills === 22 && sheet.sheetInputs === 0, msg: `Character opens on a read-only sheet: crest, TNs, 18 skills + 4 profs, no inputs (${JSON.stringify(sheet)})` });
+    checks.push({ ok: sheet.formHidden && sheet.editShowsForm && sheet.doneReturns, msg: 'Edit reveals the form and Done returns to the sheet' });
+
+    // ---- Crests: eleven distinct devices ----
+    const crests = await page.evaluate(() => {
+      const set = new Set(Object.keys(CULTURES).map(c => cultureCrest(c, 32)));
+      return { cultures: Object.keys(CULTURES).length, distinct: set.size, header: !!document.querySelector('#hdr-monogram svg.crest') };
+    });
+    checks.push({ ok: crests.distinct === crests.cultures && crests.cultures === 11 && crests.header, msg: `each of the 11 cultures has its own crest, and the header shows it (${crests.distinct}/${crests.cultures})` });
+
+    // ---- A roll from any tab opens the result drawer ----
+    const drawer = await page.evaluate(() => {
+      closeRollDrawer(); openNavGroup('play');
+      diceState.success = 2; rollDice('Awe');
+      const d = document.getElementById('roll-drawer');
+      const r = d.getBoundingClientRect();
+      return { open: d.classList.contains('open'), onScreen: r.top < innerHeight && r.bottom > 0, hasResult: !!d.querySelector('#roll-result .result-total'),
+               notOverlay: !d.classList.contains('menu-overlay') };
+    });
+    await page.waitForTimeout(400);
+    const drawerVisible = await page.evaluate(() => { const r = document.getElementById('roll-drawer').getBoundingClientRect(); closeRollDrawer(); return r.top < innerHeight - 60; });
+    checks.push({ ok: drawer.open && drawer.hasResult && drawerVisible && drawer.notOverlay, msg: 'a roll from Play slides the result up in the drawer (and the drawer never counts as a dialog)' });
+
+    // ---- Vitals sheet: conditions work through the real toggle; moved actions are there ----
+    const vit = await page.evaluate(async () => {
+      char.weary = false; char.wounded = false; saveCharacter(); render();
+      openVitals();
+      const before = !!char.weary;
+      document.querySelector('#vitals-body .v-cond').click();
+      await new Promise(r => setTimeout(r, 120));
+      const acts = [...document.querySelectorAll('#vitals-body .v-act strong')].map(x => x.textContent);
+      closeVitals();
+      return { toggled: !before && !!char.weary, acts };
+    });
+    checks.push({ ok: vit.toggled, msg: 'Weary can be set from the vitals sheet (through the real condition toggle)' });
+    checks.push({ ok: ['Support an ally', 'Fellowship Phase'].every(a => vit.acts.includes(a)) && vit.acts.some(a => /session|milestone/i.test(a)), msg: `in-play actions live in the vitals sheet (${vit.acts.join(', ')})` });
+
+    // ---- Combat: your attack and theirs look different ----
+    const foe = await page.evaluate(() => {
+      openNavGroup('adventure'); document.querySelector('.tab[data-tab="combat"]').click();
+      addFoeFromBestiary(0);
+      const card = document.querySelector('.foe-card');
+      const you = card && card.querySelector('button[onclick^="heroAttackFoe"]');
+      const them = card && card.querySelector('button[onclick^="foeAttackHero"]');
+      const r = { you: you && you.textContent.trim(), youPrimary: you && !you.classList.contains('btn-secondary'), themSecondary: them && them.classList.contains('btn-secondary'),
+                  label: card && /attacks you/i.test(card.innerText) };
+      endEncounter && (char.encounter = JSON.parse(JSON.stringify(DEFAULT_CHARACTER.encounter))); saveCharacter(); render();
+      return r;
+    });
+    checks.push({ ok: /^⚔ You attack/.test(foe.you || '') && foe.youPrimary && foe.themSecondary && foe.label, msg: `"You attack X" is primary; the foe's attacks sit under "attacks you" (${foe.you})` });
+
+    // ---- Play: road strip + roll pills ----
+    const road = await page.evaluate(() => {
+      char.saga = Object.assign(char.saga || {}, { started: true, premise: 'x', step: 'journey' });
+      char.journey = Object.assign(char.journey || {}, { active: true, totalHexes: 9, currentHex: 3, nextEventHex: 5 });
+      saveCharacter(); openNavGroup('play');
+      _playFeed.push({ text: 'Hard going. (Travel roll 6 vs 15 — failure.) Two stretches.' }); renderPlay();
+      const r = { here: document.querySelectorAll('#play-body .road-track i.here').length, pill: !!document.querySelector('#play-body .roll-pill.fail') };
+      _playFeed.pop(); char.journey.active = false; saveCharacter(); renderPlay();
+      return r;
+    });
+    checks.push({ ok: road.here === 1 && road.pill, msg: 'on the road, Play draws the road with your marker and shows rolls as dice pills' });
+
+    // ---- Jump bar on the long tabs ----
+    const jump = await page.evaluate(() => {
+      char.moriaMode = true; saveCharacter(); refreshStriderUI();
+      openNavGroup('adventure'); document.querySelector('.tab[data-tab="band"]').click();
+      const chips = [...document.querySelectorAll('#panel-band .jump-bar .jump-chip')].map(c => c.textContent);
+      char.moriaMode = false; saveCharacter(); refreshStriderUI();
+      return chips;
+    });
+    checks.push({ ok: jump.length >= 5 && jump.some(c => /Tests/.test(c)), msg: `Band has a jump bar (${jump.join(' · ')})` });
+
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length}${errors.length ? ': ' + errors[0] : ''})` });
     await context.close();
     return { checks };
