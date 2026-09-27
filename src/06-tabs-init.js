@@ -857,6 +857,11 @@ function rollDice(skillLabel) {
   });
 
   document.getElementById('result-total').textContent = isAutoSuccess ? '★' : (isAutoFail ? '✗' : total);
+  // Feel: the dice tumble in, the card takes the outcome's colour, and phones that can buzz do.
+  diceDiv.classList.remove('dice-tumble'); void diceDiv.offsetWidth; diceDiv.classList.add('dice-tumble');
+  resultEl.classList.toggle('res-success', outcome.startsWith('SUCCESS'));
+  resultEl.classList.toggle('res-fail', !outcome.startsWith('SUCCESS'));
+  try { if (navigator.vibrate) navigator.vibrate(outcome.startsWith('SUCCESS') ? 12 : [8, 40, 8]); } catch (e) {}
 
   const tnLabel = foeParryBonus > 0 ? `${tn} (${baseTn} Str + ${foeParryBonus} Foe Parry)` : `${tn}`;
   // Lead with WHAT was rolled (quick rolls pass the skill/prof name; manual rolls have none).

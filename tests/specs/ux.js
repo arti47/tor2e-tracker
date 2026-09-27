@@ -343,7 +343,7 @@ module.exports = {
       // card titles are CSS-uppercased, so match case-insensitively
       out.eyeAfterHope = ch.findIndex(t => /eye of mordor/i.test(t)) === ch.findIndex(t => /^hope/i.test(t)) + 1;
       out.eyePill = document.getElementById('eye-pill').style.display !== 'none'
-                    && /^👁 \d+\/\d+/.test(document.getElementById('eye-pill').textContent);
+                    && /^(👁|Eye) \d+\/\d+/.test(document.getElementById('eye-pill').textContent);
 
       // One XP scheme live at a time; one Fellowship Phase route at a time.
       char.experienceMode = 'session'; refreshXpMode();

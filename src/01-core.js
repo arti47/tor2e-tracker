@@ -1306,11 +1306,14 @@ function updateEyePill(ea, threshold) {
   if (!isSolo()) { pill.style.display = 'none'; return; }
   pill.style.display = '';
   const hit = ea >= threshold;
-  pill.textContent = '👁 ' + ea + '/' + threshold + (hit ? ' ⚠' : '');
+  pill.textContent = 'Eye ' + ea + '/' + threshold + (hit ? ' — Revelation!' : '');
   pill.title = hit
     ? 'Eye Awareness ' + ea + ' has reached the Hunt threshold ' + threshold + ' — roll a Revelation Episode. Tap to open.'
     : 'Eye Awareness ' + ea + ' of ' + threshold + ' (Hunt threshold). Tap to open.';
-  pill.style.opacity = hit ? '1' : '.85';
+  pill.style.opacity = '1';
+  // The pill doubles as a gauge: a ring fills toward the Hunt threshold.
+  pill.style.setProperty('--p', Math.min(100, Math.round(ea / Math.max(1, threshold) * 100)));
+  pill.classList.toggle('hit', hit);
 }
 
 async function rollRevelationEpisode() {

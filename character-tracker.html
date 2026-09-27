@@ -218,7 +218,7 @@
   <div id="gm-campaign-body"></div>
   <div id="gm-party-body"></div>
   <div class="card">
-    <h3 class="card-title" data-hint="Group Shadow Test">🌑 Group Shadow Test</h3>
+    <h3 class="card-title" data-hint="Group Shadow Test">Group Shadow Test</h3>
     <p class="hint" style="text-align:left">Rolls one test for every hero at once — Dread (Valour vs Heart TN), Greed / Sorcery (Wisdom vs Wits TN). Each hero's own Weary + Despair apply. Tap a failure's button to hand out the Shadow (capped, persisted).</p>
     <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:6px">
       <button onclick="gmGroupShadowTest('dread')" style="font-size:var(--fs-xs);padding:4px 10px">🌑 Dread</button>
@@ -231,18 +231,18 @@
     <div id="gm-shadow-results" aria-live="polite"></div>
   </div>
   <div class="card">
-    <h3 class="card-title" data-hint="Encounter">⚔️ Encounter</h3>
+    <h3 class="card-title" data-hint="Encounter">Encounter</h3>
     <p class="hint" id="gm-enc-line" style="text-align:left">No active encounter.</p>
     <button onclick="openBestiary()" style="width:100%">➕ Drop a foe into the Encounter</button>
     <p class="hint" style="text-align:left;margin-top:6px">Adds to the active hero's Combat-tab encounter. A single <b>shared</b> encounter arrives with cloud campaigns.</p>
   </div>
   <div class="card">
-    <h3 class="card-title" data-hint="Eye of Mordor">👁 Eye of Mordor</h3>
+    <h3 class="card-title" data-hint="Eye of Mordor">Eye of Mordor</h3>
     <div id="gm-eye-body"></div>
     <p class="hint" style="text-align:left;margin-top:6px">Each hero's Eye Awareness vs their Hunt threshold (solo modes track this). ⚠ = a Revelation is due.</p>
   </div>
   <div class="card">
-    <h3 class="card-title" data-hint="NPC Ledger">👤 NPC Ledger</h3>
+    <h3 class="card-title" data-hint="NPC Ledger">NPC Ledger</h3>
     <input type="text" id="gm-npc-filter" placeholder="🔍 Search NPCs…" oninput="renderGmNpc()"
            style="width:100%;padding:6px 8px;margin-bottom:6px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--card-bg);color:var(--ink);font-size:var(--fs-sm)">
     <div id="gm-npc-body"></div>
@@ -272,7 +272,7 @@
     <div id="gm-deck-result" aria-live="polite"></div>
   </div>
   <div class="card">
-    <h3 class="card-title">📜 Moria Tables — Rumours · Landmarks · Water</h3>
+    <h3 class="card-title">Moria Tables — Rumours · Landmarks · Water</h3>
     <p class="hint" style="text-align:left">Feat-die tables from the Moria Loremaster chapter (11 = 👁 Eye row, 12 = ᚱ Rune row). Landmark seeking: SCAN vs Wits TN — Obscure −1d, Hidden −2d.</p>
     <div style="display:flex;flex-wrap:wrap;gap:6px">
       <button onclick="gmRollRumour('genuine')" style="font-size:var(--fs-xs);padding:4px 10px">🗣 Genuine Rumour</button>
@@ -289,7 +289,7 @@
 <section class="panel" id="panel-build">
 
   <div class="card" id="build-progress-card">
-    <h3 class="card-title">📋 Your progress — what's left</h3>
+    <h3 class="card-title">Your progress — what's left</h3>
     <div id="build-checklist"></div>
   </div>
 
@@ -661,7 +661,7 @@
   </div>
 
   <div class="card" id="eye-of-mordor-card" style="display:none;border-color:var(--red-dark);background:linear-gradient(180deg,var(--red-soft) 0%,var(--card-bg) 50%)">
-    <h3 class="card-title" data-hint="Eye of Mordor" style="color:var(--red-dark)">👁️ Eye of Mordor</h3>
+    <h3 class="card-title" data-hint="Eye of Mordor" style="color:var(--red-dark)">Eye of Mordor</h3>
     <p class="hint" style="text-align:left;line-height:1.5;margin-bottom:10px">Your visibility to the Enemy. Raise by 1 for any Eye icon outside combat; raise by amount of Shadow gained outside combat. When Eye Awareness ≥ Hunt Threshold, face a Revelation Episode.</p>
     <div class="row-3">
       <div class="counter">
@@ -929,7 +929,7 @@
   </div>
 
   <div class="card" id="encounter-card-wrap">
-    <h3 class="card-title" data-hint="Encounter">⚔️ Encounter</h3>
+    <h3 class="card-title" data-hint="Encounter">Encounter</h3>
     <div id="encounter-card"></div>
   </div>
 
@@ -1379,7 +1379,7 @@
     <textarea class="full" data-field="travel" style="min-height:160px" placeholder="Describe your travelling clothes and supplies..."></textarea>
   </div>
   <div class="card">
-    <h3 class="card-title" data-hint="Blessing (magical item)" style="color:var(--gold)">✨ Magical Treasure</h3>
+    <h3 class="card-title" data-hint="Blessing (magical item)" style="color:var(--gold)">Magical Treasure</h3>
     <p class="hint" style="text-align:left;margin-bottom:10px;line-height:1.5">Marvellous Artefacts (1 Blessing → +2d on that skill + Magical Success), Wondrous Items (2 Blessings), Famous Weapons/Armour. Each magical item counts as <strong>+1 Load</strong>.</p>
     <div style="display:flex;gap:6px;margin-bottom:10px">
       <button class="add-row-btn" onclick="openHoardRoller()" style="flex:1;background:var(--gold)">🎲 Roll Hoard</button>
@@ -1564,7 +1564,7 @@
   </div>
 
   <div class="card">
-    <h3 class="card-title">🛡️ Protection Roll</h3>
+    <h3 class="card-title">Protection Roll</h3>
     <p class="hint" style="margin-bottom:10px">When hit by a Piercing Blow: Feat die + Protection dice vs. weapon's Injury TN</p>
     <div class="field">
       <label>Injury TN</label>
@@ -1602,7 +1602,7 @@
 <section class="panel" id="panel-oracle">
 
   <div class="card">
-    <h3 class="card-title">🗡️ Strider Oracle</h3>
+    <h3 class="card-title">Strider Oracle</h3>
     <p class="hint" style="text-align:left;line-height:1.5">Solo-play oracle tables from the Strider Mode supplement. Use these in place of a Loremaster's adjudication when you need a yes/no/maybe answer (Telling), a story prompt (Lore), or a narrative twist on a Rune / Eye result (Fortune / Ill-Fortune).</p>
   </div>
 
@@ -1641,21 +1641,21 @@
   </div>
 
   <div class="card">
-    <h3 class="card-title">📜 Patron Quest</h3>
+    <h3 class="card-title">Patron Quest</h3>
     <p class="hint" style="text-align:left">Rolls a mission from your Patron's own six-entry table (Strider Mode supplement). Set a Patron on the Build tab first. Use it when you need a reason to set out.</p>
     <button class="roll-btn" onclick="rollPatronQuest()" style="width:100%">📜 Roll a Patron Quest</button>
   </div>
 
   <!-- Moria-only generators -->
   <div class="card moria-only" style="display:none;border-color:var(--gold)">
-    <h3 class="card-title">⛏️ Random Chamber Generator</h3>
+    <h3 class="card-title">Random Chamber Generator</h3>
     <p class="hint" style="text-align:left">Generate a Moria chamber — Type, Condition, Appearance, and optional Challenge (each a Feat die).</p>
     <button class="roll-btn" onclick="rollChamber()" style="width:100%">🎲 Generate Chamber</button>
     <div id="chamber-result" style="margin-top:10px;padding:10px;background:var(--bg-deep);border-radius:var(--r-sm);font-size:var(--fs-sm);line-height:1.6;display:none"></div>
   </div>
 
   <div class="card moria-only" style="display:none">
-    <h3 class="card-title">☠ Random Orc-Band</h3>
+    <h3 class="card-title">Random Orc-Band</h3>
     <p class="hint" style="text-align:left">A Feat die for the leader, then <strong>one Success die per hero</strong> in your party. Set the count (defaults to your living Band size), then roll.</p>
     <div class="field"><label style="flex:0 0 130px">Heroes (Success dice)</label><input id="orcband-count" type="number" min="1" max="12" placeholder="band size"></div>
     <button class="roll-btn" onclick="rollOrcBand()" style="width:100%;background:var(--btn-secondary-bg)">🎲 Generate Orc-Band</button>
@@ -1679,7 +1679,7 @@
   </div>
 
   <div class="card">
-    <h3 class="card-title">📜 Oracle History</h3>
+    <h3 class="card-title">Oracle History</h3>
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
       <p class="hint" style="text-align:left;margin:0;flex:1">Recent rolls (last 30).</p>
       <button onclick="clearOracleHistory()" aria-label="Clear all oracle history" title="Delete every stored oracle roll" style="font-size:var(--fs-xs);padding:4px 8px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--bg-deep);color:var(--error-text);cursor:pointer">🗑 Clear</button>
@@ -1823,7 +1823,7 @@
   </div>
 
   <div class="card" style="border-color:var(--green-soft)">
-    <h3 class="card-title" data-hint="Moria Fellowship Phase">🌿 Fellowship Phase (Moria)</h3>
+    <h3 class="card-title" data-hint="Moria Fellowship Phase">Fellowship Phase (Moria)</h3>
     <p class="hint" style="text-align:left;line-height:1.5">Return to Balin's camp between missions. Work down in order — Moria has no Yule.</p>
     <p class="hint" style="text-align:left;margin:8px 0 4px;color:var(--red-dark);font-weight:600;text-transform:uppercase;font-size:var(--fs-xs);letter-spacing:.5px">1 · How long do you rest?</p>
     <p class="hint" style="text-align:left;margin:0 0 6px">Longer rests heal more but let the Shadow gain ground — each step lowers your next Hunt Threshold.</p>
@@ -1860,7 +1860,7 @@
 
   <!-- SETUP -->
   <div class="card" id="battle-setup-card">
-    <h3 class="card-title" data-hint="War Party (Battle)">⚔️ Battle Setup</h3>
+    <h3 class="card-title" data-hint="War Party (Battle)">Battle Setup</h3>
     <p class="hint" style="text-align:left;line-height:1.5">Set the enemy War Party, then begin. Clashes resolve the whole fight in rounds (your Band's <strong>War</strong> vs Readiness TN + foe <strong>Might</strong>); reduce the foe's <strong>Resistance</strong> to 0 to win.</p>
     <button class="add-row-btn" onclick="rollWarParty()" style="width:100%;font-size:var(--fs-xs);background:var(--btn-secondary-bg);margin-bottom:8px">🎲 Roll War Party (Fav small band / Ill large)</button>
     <div class="field"><label style="flex:0 0 60px">Scale</label><input id="b-scale" readonly placeholder="— roll or type —"></div>
@@ -1890,7 +1890,7 @@
 
   <!-- IN PROGRESS -->
   <div class="card" id="battle-active-card" style="display:none;border-color:var(--red);">
-    <h3 class="card-title" data-hint="Clash">⚔️ Clash <span id="b-round" style="color:var(--text-muted);font-weight:400;font-size:var(--fs-xs)"></span></h3>
+    <h3 class="card-title" data-hint="Clash">Clash <span id="b-round" style="color:var(--text-muted);font-weight:400;font-size:var(--fs-xs)"></span></h3>
     <div class="row-2">
       <div class="counter"><div class="counter-label" data-hint="Foe Resistance">Foe Resistance</div><div class="counter-value" id="b-foeres-v">6</div><div class="hint" style="margin:0">Might <span id="b-foemight-v">1</span></div></div>
       <div class="counter" id="b-obj-counter" style="display:none"><div class="counter-label">Objective</div><div class="counter-value" id="b-objres-v">0</div><div class="hint" style="margin:0" id="b-obj-name"></div></div>

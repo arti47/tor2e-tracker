@@ -951,3 +951,21 @@ body.adjust-mode .adj-lock { background: var(--gold-soft); border-color: var(--g
 .ref-group dd { margin: 2px 0 0; color: var(--ink-soft); font-size: var(--fs-sm); line-height: 1.5; }
 .ref-group dd.solo { margin-top: var(--sp-2); }
 .bs-empty { grid-column: 1 / -1; margin: 0 0 var(--sp-2); padding: var(--sp-4); background: var(--card-bg); border-radius: var(--r-md); color: var(--text-muted); text-align: center; box-shadow: var(--elev-1); }
+
+/* Dice result: outcome tint */
+.roll-result { border-top: 4px solid var(--border); }
+.roll-result.res-success { border-top-color: var(--success-text); }
+.roll-result.res-fail { border-top-color: var(--error-text); }
+/* Eye pill as a gauge */
+.hud-eye { position: relative; padding-left: 26px; }
+.hud-eye::before {
+  content: ''; position: absolute; left: 6px; top: 50%; width: 14px; height: 14px; margin-top: -7px; border-radius: 50%;
+  background: conic-gradient(var(--red) calc(var(--p, 0) * 1%), var(--bg-deep) 0);
+  -webkit-mask: radial-gradient(circle, transparent 3.5px, #000 4px); mask: radial-gradient(circle, transparent 3.5px, #000 4px);
+}
+.hud-eye.hit { background: var(--red); color: var(--accent-ink); border-color: var(--red); animation: pulse 1.8s ease-in-out infinite; }
+.hud-eye.hit::before { background: #fff; }
+/* Bottom-nav press feedback */
+.bn-item:active .ic { transform: scale(.9); }
+body.dark input.char-name { background: transparent !important; border-color: transparent !important; }
+body.dark .hud-eye { background: var(--card-bg); }
