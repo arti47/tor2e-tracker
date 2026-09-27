@@ -3634,7 +3634,7 @@ async function flyYouFools() {
 /** The Defensive escape: a real attack roll against the foe, Parry and stance included. */
 async function _flyEscapeRoll(foe) {
   const wpns = (typeof _equippedWeapons === 'function') ? _equippedWeapons() : [];
-  if (!wpns.length) return requireStep('You need a weapon in hand to fight your way clear.<br><br>Pick one under <strong>War Gear</strong> on this tab.', 'combat', 'war-gear-card', '⚠️ No weapon equipped');
+  if (!wpns.length) return requireStep('You need a weapon in hand to fight your way clear.<br><br>Pick one under <strong>War Gear</strong> on Hero → Gear.', 'gear', 'war-gear-card', '⚠️ No weapon equipped');
   const e = enc();
   const w = wpns[Math.min(e.weaponIdx || 0, wpns.length - 1)];
   const prof = w.prof;

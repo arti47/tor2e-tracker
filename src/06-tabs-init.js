@@ -1707,7 +1707,7 @@ const TUTORIAL_LESSONS = [
       { tab: 'combat', sel: '#encounter-card-wrap', title: `Attack!`, done: c => (((c.encounter && c.encounter.foes) || []).some(f => f.slain || f.endCur < f.endMax)), body: `Pick your weapon in “Attack with”, then tap a foe's ⚔️ Attack. You roll your proficiency vs (your Strength TN + the foe's Parry); a hit deals your weapon's Damage. Try it.`, more: `A higher proficiency means more Success dice — better odds, and more ✦ for special effects.` },
       { tab: 'combat', sel: '#encounter-card-wrap', title: `Piercing Blows`, body: `Roll a ☉ rune or a 10 on the Feat die (9+ with a Keen weapon) for a Piercing Blow: the foe rolls its Protection (Armour) or is Wounded — and a second Wound fells it.`, more: `Reducing a foe to 0 Endurance also fells it. Tough foes need both: whittle their Endurance and land a telling blow.` },
       { tab: 'combat', sel: '#encounter-card-wrap', title: `The foe strikes back`, done: (c, b) => (parseInt(c.endCur) || 0) < b.end, body: `Tap “🗡️ … Attacks”, or “All engaged foes attack”. A hit drops your Endurance; a foe's Piercing Blow makes YOU roll Protection or be Wounded. Let a foe attack you.`, more: `Your Protection roll = a Feat die + Success dice equal to your Armour + Helm, against the foe's Injury number.` },
-      { tab: 'combat', sel: '[data-stance="rearward"]', title: `Wounds, fleeing & more`, body: `A Wound is serious — you're hurt until you heal. To escape, use “🏃 Fly, You Fools!”. Brawling, two-handed grips, and a Foe-Parry counter all live on this tab.`, more: `At 0 Endurance you are Dying — out of the fight unless aided. A Wound on top of that is dire; sometimes retreat is the wise course.` },
+      { tab: 'combat', sel: '[data-stance="rearward"]', title: `Wounds, fleeing & more`, body: `A Wound is serious — you're hurt until you heal. To escape, use “🏃 Fly, You Fools!”. Weapons, armour, two-handed grips and your shield live on Hero → Gear.`, more: `At 0 Endurance you are Dying — out of the fight unless aided. A Wound on top of that is dire; sometimes retreat is the wise course.` },
       { tab: 'combat', sel: '#encounter-card-wrap', title: `End the encounter`, body: `When the foes are down, tap “End encounter”. In solo play the whole fight folds neatly into your Chronicle as one entry. Recover your Endurance by resting afterward.`, more: `Combat ends when one side is defeated or flees. Hate is the foe's version of Hope — some spend it for fell deeds.` }
     ] },
   { id: 'conditions', icon: '🌑', title: 'Conditions, Shadow & Rest', sub: 'Endurance, Hope, dread and wounds',
@@ -2088,4 +2088,12 @@ function initIconify() {
     if (queued) return; queued = true;
     requestAnimationFrame(() => { queued = false; iconifyButtons(document); });
   }).observe(document.body, { childList: true, subtree: true });
+}
+
+/** Open Hero → Gear at the War Gear card (equipment moved off the Combat tab in round 3). */
+function openEquipment() {
+  openNavGroup('hero');
+  const t = document.querySelector('.tab[data-tab="gear"]'); if (t) t.click();
+  const c = document.getElementById('war-gear-card');
+  if (c) setTimeout(() => c.closest('.card').scrollIntoView({ block: 'start' }), 60);
 }

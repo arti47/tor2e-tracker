@@ -509,7 +509,7 @@ module.exports = {
         dead,
         // every data-hint element must actually carry a rendered (?) button
         allRendered: all.every(e => !!e.querySelector('.hint-q')),
-        combat: rendered('combat'), gm: rendered('gm'),
+        combat: rendered('combat'), gear: rendered('gear'), gm: rendered('gm'),
         thinTabs: ['character','skills','combat','journey','council','dice','oracle','band','battle','chronicle','build','gm']
           .filter(t => rendered(t) === 0),
         stanceResolves: !!hintRow('Stance') && !!hintRow('Forward') && !!hintRow('forward')
@@ -518,7 +518,8 @@ module.exports = {
     checks.push({ ok: hints.dead.length === 0, msg: `every data-hint resolves to real text (dead: ${hints.dead.join(', ') || 'none'})` });
     checks.push({ ok: hints.allRendered, msg: 'every data-hint element renders a (?) button' });
     checks.push({ ok: hints.stanceResolves, msg: 'stance lookup works for Stance/Forward/forward (case-insensitive)' });
-    checks.push({ ok: hints.combat >= 8, msg: `Combat tab has point-of-use hints (got ${hints.combat})` });
+    // Round 3 moved War Gear / Armour / Shield (and their hints) from Combat to Hero → Gear.
+    checks.push({ ok: hints.combat >= 5 && hints.gear >= 3, msg: `Combat + Gear keep their point-of-use hints (combat ${hints.combat}, gear ${hints.gear})` });
     checks.push({ ok: hints.gm >= 4, msg: `GM tab has point-of-use hints (got ${hints.gm})` });
     // Every jargon-carrying tab must have at least one (?); Reference IS the glossary, Gear is
     // free text, so those two are exempt by design.
@@ -724,15 +725,16 @@ module.exports = {
                  // the result no longer sits in the page: it slides up in the drawer from any tab
                  !!document.querySelector('#roll-drawer #roll-result') &&
                  at('id="combat-tasks-card"') < at('id="shadow-test-card"');
-      // Combat stays play-first by decision: stance and encounter above the one-time gear setup.
-      const cb = titles('combat').join('|');
-      out.combatPlayFirst = cb.indexOf('Stance') < cb.indexOf('War Gear');
+      // Round 3: Combat is ONLY the fight (Stance, Encounter); one-time equipment lives on Hero → Gear.
+      const cb = titles('combat').join('|'), gr = titles('gear').join('|');
+      out.combatPlayFirst = cb.indexOf('Stance') >= 0 && cb.indexOf('Stance') < cb.indexOf('Encounter') &&
+        !/War Gear|Armour|Shield/.test(cb) && /War Gear/.test(gr) && /Armour/.test(gr) && /Shield/.test(gr);
       return out;
     });
     checks.push({ ok: seq3.council, msg: 'Council: both subsystems run in order, Past Councils archived last' });
     checks.push({ ok: seq3.gearEditableFirst, msg: 'Gear: opens on an editable card, read-only Useful Items last' });
     checks.push({ ok: seq3.dice, msg: 'Dice: quick-rolls → manual fold → modifiers → Roll → result → other triggers' });
-    checks.push({ ok: seq3.combatPlayFirst, msg: 'Combat stays play-first (stance/encounter above one-time gear)' });
+    checks.push({ ok: seq3.combatPlayFirst, msg: 'Combat is the fight only (Stance → Encounter); War Gear/Armour/Shield live on Hero → Gear' });
 
     // ---- Sequence pass 4: within-card order (Encounter, Moria FP) ----
     const seq4 = await page.evaluate(() => {

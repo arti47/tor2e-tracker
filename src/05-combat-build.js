@@ -1221,7 +1221,7 @@ function _foeProtectionRoll(foe, tn) {
 async function heroAttackFoe(foeId) {
   const f = getFoe(foeId); if (!f || f.slain) return;
   const wpns = _equippedWeapons();
-  if (!wpns.length) return requireStep('You have nothing to fight with — no weapon is equipped.<br><br>Scroll down to <strong>War Gear</strong> on this tab and tap <strong>+ Pick Weapon</strong>. Unarmed is a valid choice too, if you meant it.', 'combat', 'war-gear-card', '⚠️ No weapon equipped');
+  if (!wpns.length) return requireStep('You have nothing to fight with — no weapon is equipped.<br><br>Open <strong>War Gear</strong> on Hero → Gear and tap <strong>+ Pick Weapon</strong>. Unarmed is a valid choice too, if you meant it.', 'gear', 'war-gear-card', '⚠️ No weapon equipped');
   const e = enc();
   const w = wpns[Math.min(e.weaponIdx || 0, wpns.length - 1)];
   const prof = w.prof;
@@ -1376,6 +1376,10 @@ function renderEncounter() {
   const card = document.getElementById('encounter-card');
   if (!card) return;
   const e = enc();
+  // The manual Engaged/Foe-Parry counters only matter when no Encounter is running — the
+  // Encounter derives both from the foes it holds, so showing them too just invites mistakes.
+  const _sc = document.getElementById('stance-counters');
+  if (_sc) _sc.style.display = (e.foes || []).some(f => !f.slain) ? 'none' : '';
   const shared = encShared(), canGm = encCanGm();
   const sharedBanner = shared ? `<p class="hint" style="text-align:left;margin:0 0 8px;border:1px solid var(--gold);border-radius:var(--r-sm);padding:5px 8px">🏰 <b>Shared campaign encounter</b> — every member sees this fight live.${canGm ? ' You run it (Loremaster).' : ' The Loremaster runs the foes; roll your own attacks and defences.'}</p>` : '';
   if (!e.active && (!e.foes || e.foes.length === 0)) {
@@ -2263,8 +2267,8 @@ function promptApplyReward(rewardName, source) {
   if (!r) return;
   const targets = getCompatibleTargets(rewardName);
   if (targets.length === 0) {
-    requireStep(`<strong>${escapeHtml(rewardName)}</strong> is an upgrade applied to a piece of gear — and you have no <strong>${escapeHtml(r.type)}</strong> equipped for it to improve.<br><br>Equip that gear on the <strong>Combat</strong> tab, then pick this Reward again.`,
-      'combat', 'war-gear-card', '⚠️ Nothing to apply it to');
+    requireStep(`<strong>${escapeHtml(rewardName)}</strong> is an upgrade applied to a piece of gear — and you have no <strong>${escapeHtml(r.type)}</strong> equipped for it to improve.<br><br>Equip that gear on <strong>Hero → Gear</strong>, then pick this Reward again.`,
+      'gear', 'war-gear-card', '⚠️ Nothing to apply it to');
     return false;
   }
   pendingReward = { name: rewardName, source, rewardObj: r };
@@ -3398,8 +3402,8 @@ function _buildSteps() {
     { done: !!c.calling,                       label: 'Pick a <strong>Calling</strong>', where: 'step 1 below' },
     { done: (c.favouredSkills || []).length > 0 || Object.values(c.skills || {}).length > 0, label: 'Mark your <strong>Favoured skills</strong>', where: 'step 4 below' },
     { done: String(c.features || '').trim().length > 0, label: 'Choose <strong>Distinctive Features</strong>', where: 'step 5 below' },
-    { done: weapons.length > 0,                label: 'Equip <strong>War Gear</strong> — at least one weapon', where: 'Combat tab', tab: 'combat' },
-    { done: !!c.armourProt || !!c.shieldTotal, label: 'Pick <strong>armour or a shield</strong>', where: 'Combat tab', tab: 'combat' },
+    { done: weapons.length > 0,                label: 'Equip <strong>War Gear</strong> — at least one weapon', where: 'Gear tab', tab: 'gear' },
+    { done: !!c.armourProt || !!c.shieldTotal, label: 'Pick <strong>armour or a shield</strong>', where: 'Gear tab', tab: 'gear' },
     { done: String(c.name || '').trim().length > 0, label: 'Give your hero a <strong>Name</strong>', where: 'Character tab', tab: 'character' },
     { done: !!c.age,                           label: 'Set an <strong>Age</strong>', where: 'Character tab', tab: 'character' },
     { done: String(c.safeHaven || '').trim().length > 0, label: 'Name a <strong>Safe Haven</strong> — where your hero rests', where: 'Character tab', tab: 'character' },
