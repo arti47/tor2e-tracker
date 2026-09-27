@@ -126,7 +126,8 @@ function openMapPicker(mode) {
   const ov = document.getElementById('map-overlay'); if (!ov) return;
   const svg = document.getElementById('map-svg');
   const img = svg.querySelector('image');
-  if (img && !img.getAttribute('href')) img.setAttribute('href', MAP_DATA.img);
+  if (img && !img.getAttribute('href')) { img.setAttribute('href', MAP_DATA.img); img.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', MAP_DATA.img); }
+  initMapGestures();
   ov.classList.toggle('view-only', MapPick.mode === 'view');
   ov.classList.add('show');
   if (MapPick.mode === 'view') { _mapShowJourney(); return; }
@@ -236,21 +237,35 @@ function mapZoom(f, cx, cy) {
   const w = v.w * f; _mapSetVB(cx - (cx - v.x) * f, cy - (cy - v.y) * f, w);
 }
 function _mapClientToImg(e) {
-  const svg = document.getElementById('map-svg'), b = svg.getBoundingClientRect(), v = MapPick.vb;
+  // the SVG's own screen matrix, so a tap lands on the right hex even when the box has
+  // changed shape since the viewBox was set (summary grew, keyboard, rotation)
+  const svg = document.getElementById('map-svg'), m = svg.getScreenCTM && svg.getScreenCTM();
+  if (m) { const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY; const q = pt.matrixTransform(m.inverse()); return [q.x, q.y]; }
+  const b = svg.getBoundingClientRect(), v = MapPick.vb;
   return [v.x + (e.clientX - b.left) / b.width * v.w, v.y + (e.clientY - b.top) / b.height * v.h];
 }
 function initMapGestures() {
   const svg = document.getElementById('map-svg'); if (!svg || svg._wired) return; svg._wired = true;
-  const pts = new Map(); let start = null, moved = false, pinch = null, lp = null;
+  // Pointer events pan, pinch and long-press; the TAP itself is read from `click`, which every
+  // browser fires for a tap even when its pointer stream is cancelled or never delivered
+  // (iOS Safari on an <svg> can do either) — so choosing a hex never depends on the drag code.
+  // keep the viewBox the shape of its box, so drag and pinch track the finger after a resize
+  if (typeof ResizeObserver === 'function') new ResizeObserver(() => {
+    const v = MapPick.vb; if (!v || !document.getElementById('map-overlay').classList.contains('show')) return;
+    const box = svg.getBoundingClientRect(); if (!box.width || !box.height) return;
+    const cx = v.x + v.w / 2, cy = v.y + v.h / 2; _mapSetVB(cx - v.w / 2, cy - v.w * box.height / box.width / 2, v.w);
+  }).observe(svg);
+  const pts = new Map(); let start = null, pinch = null, lp = null;
+  let dragged = false, pressed = false;
   const end = () => { clearTimeout(lp); lp = null; };
   svg.addEventListener('pointerdown', e => {
-    svg.setPointerCapture && svg.setPointerCapture(e.pointerId);
+    try { svg.setPointerCapture(e.pointerId); } catch (_) {}
     pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (pts.size === 1) {
-      start = { x: e.clientX, y: e.clientY, vb: { ...MapPick.vb } }; moved = false;
-      lp = setTimeout(() => { if (!moved && MapPick.mode === 'pick') { moved = true; const at = HexMap.at(..._mapClientToImg(e)); if (at) openHexFix(at); } }, 550);
+      start = { x: e.clientX, y: e.clientY, vb: { ...MapPick.vb } }; dragged = false; pressed = false;
+      lp = setTimeout(() => { if (!dragged && MapPick.mode === 'pick') { pressed = true; const at = HexMap.at(..._mapClientToImg(e)); if (at) openHexFix(at); } }, 550);
     } else if (pts.size === 2) {
-      end(); moved = true;
+      end(); dragged = true;
       const [a, b] = [...pts.values()]; pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), vb: { ...MapPick.vb }, mid: _mapClientToImg({ clientX: (a.x + b.x) / 2, clientY: (a.y + b.y) / 2 }) };
     }
   });
@@ -263,20 +278,20 @@ function initMapGestures() {
       _mapSetVB(pinch.mid[0] - (pinch.mid[0] - v.x) * f, pinch.mid[1] - (pinch.mid[1] - v.y) * f, w);
     } else if (start) {
       const dx = e.clientX - start.x, dy = e.clientY - start.y;
-      if (!moved && Math.hypot(dx, dy) > 7) { moved = true; end(); }
-      if (moved) _mapSetVB(start.vb.x - dx / b.width * start.vb.w, start.vb.y - dy / b.height * start.vb.h, start.vb.w);
+      if (!dragged && Math.hypot(dx, dy) > 7) { dragged = true; end(); }
+      if (dragged) _mapSetVB(start.vb.x - dx / b.width * start.vb.w, start.vb.y - dy / b.height * start.vb.h, start.vb.w);
     }
   });
-  const up = e => {
-    const wasTap = pts.size === 1 && !moved && start;
-    pts.delete(e.pointerId); end();
-    if (pts.size < 2) pinch = null;
-    if (wasTap && MapPick.mode === 'pick') { const at = HexMap.at(..._mapClientToImg(e)); if (at) mapTapHex(at); }
-    if (!pts.size) start = null;
-  };
-  svg.addEventListener('pointerup', up); svg.addEventListener('pointercancel', e => { pts.delete(e.pointerId); end(); pinch = null; start = null; });
+  const lift = e => { pts.delete(e.pointerId); end(); if (pts.size < 2) pinch = null; if (!pts.size) start = null; };
+  svg.addEventListener('pointerup', lift);
+  svg.addEventListener('pointercancel', lift);
+  svg.addEventListener('click', e => {
+    const skip = dragged || pressed; dragged = false; pressed = false;
+    if (skip || MapPick.mode !== 'pick') return;
+    const at = HexMap.at(..._mapClientToImg(e)); if (at) mapTapHex(at);
+  });
   svg.addEventListener('wheel', e => { e.preventDefault(); const [x, y] = _mapClientToImg(e); mapZoom(e.deltaY > 0 ? 1.15 : 1 / 1.15, x, y); }, { passive: false });
-  svg.addEventListener('contextmenu', e => { e.preventDefault(); if (MapPick.mode !== 'pick') return; const at = HexMap.at(..._mapClientToImg(e)); if (at) openHexFix(at); });
+  svg.addEventListener('contextmenu', e => { e.preventDefault(); if (MapPick.mode !== 'pick') return; pressed = true; const at = HexMap.at(..._mapClientToImg(e)); if (at) openHexFix(at); });
 }
 function mapTapHex(rc) {
   const which = MapPick.setting;

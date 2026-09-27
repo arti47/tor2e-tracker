@@ -1752,8 +1752,8 @@ body.theme-sepia .card { background-image: linear-gradient(180deg, rgba(255,245,
 .map-sug-row:first-child { border-top: 0; }
 .map-sug-none { margin: 0; padding: 12px 14px; color: var(--text-muted); font-size: var(--fs-sm); }
 .map-close { flex: 0 0 auto; width: 44px; height: 44px; border: 0; background: none; color: var(--ink); cursor: pointer; }
-.map-view { position: relative; flex: 1; min-height: 0; background: #3f4a40; overflow: hidden; }
-#map-svg { width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; }
+.map-view { position: relative; flex: 1; min-height: 0; background: #3f4a40; overflow: hidden; touch-action: none; -webkit-touch-callout: none; }
+#map-svg { width: 100%; height: 100%; display: block; touch-action: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; cursor: pointer; user-select: none; -webkit-user-select: none; }
 .map-zoom { position: absolute; right: 10px; top: 10px; display: flex; flex-direction: column; gap: 6px; }
 .map-zoom button { width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--border); background: var(--card-bg); color: var(--ink); box-shadow: var(--elev-1); cursor: pointer; }
 .map-hint { position: absolute; left: 50%; top: 10px; transform: translateX(-50%); background: rgba(30, 20, 10, .78); color: #fff4df; padding: 7px 14px; border-radius: 999px; font-size: var(--fs-sm); pointer-events: none; max-width: calc(100% - 120px); text-align: center; }

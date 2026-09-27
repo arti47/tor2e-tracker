@@ -3,13 +3,14 @@
 //   • HTML / navigations → NETWORK-FIRST: always fetch the freshest page when online,
 //     fall back to cache only when offline. This means a deploy shows up on the next
 //     online load with no stale-cache lag.
-//   • Static assets (icons, manifest) → CACHE-FIRST for speed/offline.
+//   • Code (.js/.css/.json) → NETWORK-FIRST as well, so HTML and scripts always match.
+//   • Static assets (images, fonts, icons) → CACHE-FIRST for speed/offline.
 //   • Updates AUTO-ACTIVATE: install skipWaiting()s and activate claims clients, so a new
 //     deploy takes over on the next online load (the page reloads once to pick up fresh HTML).
 //     This keeps clients from getting stuck on a stale build.
 // Bump CACHE_VERSION on any deploy so old caches are garbage-collected on activate.
 
-const CACHE_VERSION = 'tor2e-v136';
+const CACHE_VERSION = 'tor2e-v137';
 const PRECACHE = [
   './',
   './index.html',
@@ -43,7 +44,8 @@ self.addEventListener('install', (event) => {
   // Precache best-effort (don't let one missing file fail the whole install).
   event.waitUntil(
     caches.open(CACHE_VERSION).then(cache =>
-      Promise.all(PRECACHE.map(u => cache.add(u).catch(() => null)))
+      // cache:'reload' skips the browser's HTTP cache, so a new version can never precache old code
+      Promise.all(PRECACHE.map(u => cache.add(new Request(u, { cache: 'reload' })).catch(() => null)))
     )
   );
   self.skipWaiting();  // auto-activate so stuck clients can't be marooned on an old build
@@ -70,8 +72,11 @@ self.addEventListener('fetch', (event) => {
                  event.request.destination === 'document' ||
                  url.pathname.endsWith('.html') ||
                  url.pathname.endsWith('/');
+  // The app's code is network-first too: fresh HTML running last version's scripts shows new
+  // controls wired to old functions (the map card once did nothing that way).
+  const isCode = /\.(js|css|json)$/.test(url.pathname);
 
-  if (isHTML) {
+  if (isHTML || isCode) {
     // Network-first: freshest HTML online, cached shell offline.
     event.respondWith(
       fetch(event.request).then(response => {
@@ -81,7 +86,7 @@ self.addEventListener('fetch', (event) => {
         }
         return response;
       }).catch(() =>
-        caches.match(event.request).then(c => c || caches.match('./index.html') || caches.match('./character-tracker.html'))
+        caches.match(event.request).then(c => c || (isHTML ? caches.match('./index.html').then(i => i || caches.match('./character-tracker.html')) : Response.error()))
       )
     );
     return;

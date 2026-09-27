@@ -914,6 +914,41 @@ module.exports = {
       char.moriaMode = false; saveCharacter(); refreshStriderUI(); jSyncGuided();
       return { hidden, back: !document.querySelector('#j-dist [data-hex="map"]').hidden };`);
     checks.push({ ok: !mo.err && mo.hidden && mo.back, msg: `Moria (abstract distances) hides Pick on the map (${JSON.stringify(mo)})` });
+
+    // A real tap chooses the hex under the finger — also after the map has changed shape
+    // (the summary grows under it once a route exists; a tablet turns). Taps go through the
+    // mouse, i.e. pointer + click events, never through a function call.
+    // the screen point of a passable hex near a spot on the visible map
+    const tapInfo = async (fx, fy) => page.evaluate(([fx, fy]) => {
+      const svg = document.getElementById('map-svg'), b = svg.getBoundingClientRect(), m = svg.getScreenCTM();
+      for (let k = 0; k < 40; k++) {
+        const p = Object.assign(svg.createSVGPoint(), { x: b.left + b.width * (fx + (k % 7) * 0.03), y: b.top + b.height * (fy + Math.floor(k / 7) * 0.03) }).matrixTransform(m.inverse());
+        const h = HexMap.at(p.x, p.y); if (!h || !HexMap.passable(...h)) continue;
+        const [hx, hy] = HexMap.center(...h), q = Object.assign(svg.createSVGPoint(), { x: hx, y: hy }).matrixTransform(m);
+        return { x: q.x, y: q.y, hex: h };
+      }
+      return null;
+    }, [fx, fy]);
+    const offBy = async (pt) => page.evaluate((hex) => MapPick.to ? Math.hypot(MapPick.to[0] - hex[0], MapPick.to[1] - hex[1]) : 999, pt.hex);
+    const tp = {};
+    try {
+      const vp = page.viewportSize();
+      await page.evaluate(() => { Object.assign(MapPick, { from: null, to: null, via: null }); closeMapPicker(); char.safeHaven = 'Bree'; saveCharacter(); openMapPicker(); });
+      await page.waitForTimeout(300);
+      let pt = await tapInfo(0.62, 0.4); await page.mouse.click(pt.x, pt.y); await page.waitForTimeout(250);
+      tp.first = +(await offBy(pt)).toFixed(2);
+      await page.setViewportSize({ width: 820, height: 1180 }); await page.waitForTimeout(300);
+      pt = await tapInfo(0.35, 0.3); await page.mouse.click(pt.x, pt.y); await page.waitForTimeout(250);
+      tp.turned = +(await offBy(pt)).toFixed(2);
+      const before = await page.evaluate(() => JSON.stringify(MapPick.to));
+      await page.mouse.move(pt.x, pt.y); await page.mouse.down(); await page.mouse.move(pt.x + 80, pt.y + 40, { steps: 6 }); await page.mouse.up(); await page.waitForTimeout(200);
+      tp.dragKeeps = before === await page.evaluate(() => JSON.stringify(MapPick.to));
+      tp.route = await page.evaluate(() => !!MapPick.result && !document.getElementById('map-use').disabled);
+      await page.evaluate(() => closeMapPicker());
+      await page.setViewportSize(vp); await page.waitForTimeout(200);
+    } catch (e) { tp.err = String(e); }
+    checks.push({ ok: !tp.err && tp.first < 0.5 && tp.turned < 0.5 && tp.dragKeeps && tp.route,
+      msg: `tapping the map chooses the hex under the finger, after it changes shape too, and a drag chooses nothing (${JSON.stringify(tp)})` });
     await hero();
 
 

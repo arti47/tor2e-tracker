@@ -2302,7 +2302,11 @@ async function reclaimSafeHavenUndertaking() {
 let _jExact = false;
 const J_REGION_SAY = { Free: 'Safe lands — the road tends to go your way.', Border: 'Border lands — events lean in your favour.', Wild: 'The wild — neither kind nor cruel.', Shadow: 'Shadow lands — events turn against you.', Dark: 'Dark lands — the Enemy’s own; every event goes hard.' };
 function jPickDist(v) {
-  if (v === 'map') { if (typeof openMapPicker === 'function') openMapPicker(); return; }
+  if (v === 'map') {
+    if (typeof openMapPicker === 'function') openMapPicker();
+    else showToast('The map has not loaded — reload the app while online.');
+    return;
+  }
   window._jPendingRoute = null;
   const inp = document.getElementById('j-totalHexes');
   if (v === 'exact') { _jExact = true; jSyncGuided(); if (inp) inp.focus(); return; }
