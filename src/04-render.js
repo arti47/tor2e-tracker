@@ -4660,6 +4660,20 @@ function _chips(txt, cls) {
   return parts.map(x => `<span class="trait ${cls || ''}">${escapeHtml(x)}</span>`).join('');
 }
 function _pips(n, max) { let h = ''; for (let i = 0; i < (max || 6); i++) h += `<i class="${i < n ? 'on' : ''}"></i>`; return `<span class="pipset">${h}</span>`; }
+/* A Spend button with nothing to spend says how points are earned instead of opening an empty
+   list (round 4). Never `disabled` — GOTCHA 21: the control must be able to explain itself. */
+function _spendBtn(kind, pts) {
+  const what = kind === 'skill' ? 'Skill points' : 'Adventure points';
+  if (pts > 0) return `<button class="btn btn-secondary" onclick="openSpendXP('${kind}')">Spend ${what} · ${pts}</button>`;
+  return `<button class="btn btn-quiet spend-empty" onclick="explainNoPoints('${kind}')">No ${what} yet</button>`;
+}
+function explainNoPoints(kind) {
+  const what = kind === 'skill' ? 'Skill points' : 'Adventure points';
+  const how = char.experienceMode === 'milestone' || isSolo()
+    ? 'You earn them from <strong>milestones</strong> — a deed worth remembering. Award one from the vitals bar (tap your Endurance and Hope).'
+    : 'You earn them at the <strong>end of each session</strong> (+3 each). End a session from the vitals bar (tap your Endurance and Hope).';
+  alertStyled(`You have no ${what} to spend yet.<br><br>${how}<br><br>Spend them between adventures, in a Fellowship Phase.`);
+}
 function renderHeroSheet() {
   const host = document.getElementById('hero-sheet'); if (!host) return;
   if (!char.culture) { host.innerHTML = ''; return; }
@@ -4682,7 +4696,6 @@ function renderHeroSheet() {
     || '<p class="s-empty">No weapon yet — <a href="#" onclick="openEquipment();return false">equip one</a>.</p>';
   const protection = n(char.armourProt) + n(char.helmProt);
   const armourBits = [char.armourNotes && escapeHtml(char.armourNotes), n(char.helmProt) ? 'helm' : '', char.shieldNotes && escapeHtml(char.shieldNotes)].filter(Boolean).join(' · ');
-  const eye = isSolo() ? `<div class="s-eye">Eye of Mordor <strong>${n(char.eyeAwareness)}</strong> / ${typeof huntThreshold === 'function' ? huntThreshold(char) : 16}</div>` : '';
   const traits = [
     ['Distinctive Features', _chips(char.features)], ['Flaws', _chips(char.flaws, 'flaw')],
     ['Rewards', _chips(char.rewards, 'reward')], ['Virtues', _chips(char.virtues, 'virtue')]
@@ -4717,8 +4730,7 @@ function renderHeroSheet() {
   <div class="card">
     <h3 class="card-title">Experience &amp; wealth</h3>
     <div class="s-stats">${stat('Skill points', n(char.skillPts))}${stat('Adventure pts', n(char.advPts))}${stat('Treasure', n(char.treasure))}${stat('Fellowship pts', n(char.fellowship))}</div>
-    <div class="s-actions"><button class="btn btn-secondary" onclick="openSpendXP('skill')">Spend Skill points</button><button class="btn btn-secondary" onclick="openSpendXP('adv')">Spend Adventure points</button></div>
-    ${eye}
+    <div class="s-actions">${_spendBtn('skill', n(char.skillPts))}${_spendBtn('adv', n(char.advPts))}</div>
   </div>
   ${String(char.history || '').trim() ? `<div class="card"><h3 class="card-title">History</h3><p class="s-history">${escapeHtml(char.history)}</p></div>` : ''}`;
 }
@@ -4757,6 +4769,8 @@ function renderHud() {
     const key = (char.culture || '') + '|' + (char.name || '');
     if (mono.dataset.key !== key) { mono.dataset.key = key; mono.innerHTML = cultureCrest(char.culture, 36, char.name); }
   }
+  const nameEl = document.getElementById('char-name-text');
+  if (nameEl) { const n = String(char.name || '').trim(); nameEl.textContent = n || (built ? heroLabel(char) : 'Unnamed hero'); nameEl.classList.toggle('unnamed', !n); }
   if (!built) return;
   const end = parseInt(char.endCur) || 0, endMax = parseInt(char.endMax) || 0;
   const hope = parseInt(char.hopeCur) || 0, hopeMax = parseInt(char.hopeMax) || 0;
@@ -4787,9 +4801,13 @@ function _vitalsActions() {
   const shadow = (parseInt(char.shadow) || 0);
   return `<div class="v-h">Actions</div><div class="v-acts">` +
     (shadow > 0 ? A('Harden your will', 'hardenWill()', 'Shadow becomes one permanent Scar') : '') +
-    A('Support an ally', 'spendHopeToSupport()', 'Spend 1 Hope for their roll') +
-    ((parseInt(char.fellowship) || 0) > 0 ? A('Fellowship → Hope', 'spendFPforHope()', 'During a rest') : '') +
-    (char.experienceMode === 'milestone' ? A('Award a milestone', 'openMilestonePicker()', 'Experience for a deed') : A('End the session', 'awardSessionXP()', '+3 Skill & Adventure points')) +
+    // a lone hero has no ally to support and no Company pool to draw on (round 4)
+    (!isSolo() ? A('Support an ally', 'spendHopeToSupport()', 'Spend 1 Hope for their roll') : '') +
+    (!isSolo() && (parseInt(char.fellowship) || 0) > 0 ? A('Fellowship → Hope', 'spendFPforHope()', 'During a rest') : '') +
+    (char.experienceMode === 'milestone' ? A('Award a milestone', 'openMilestonePicker()', 'Experience for a deed you just did') : '') +
+    (sagaState().started
+      ? A('End the session', 'sagaEndSession()', (char.experienceMode === 'milestone' || isSolo()) ? 'Close for today — a recap waits next time' : '+3 Skill & Adventure points')
+      : (char.experienceMode === 'milestone' ? '' : A('End the session', 'awardSessionXP()', '+3 Skill & Adventure points'))) +
     A('Fellowship Phase', "(char.moriaMode ? (openNavGroup('adventure'), document.querySelector('.tab[data-tab=band]').click()) : openFPWizard())", 'Rest between adventures') +
     `</div>`;
 }
@@ -4885,7 +4903,8 @@ function renderPlay() {
     host.innerHTML = '<div class="card play-empty"><div class="eyebrow">Welcome</div><h3 class="card-title">First, a hero</h3>' +
       '<p>You need someone to play. A ready-made hero takes one tap; making your own takes a few minutes.</p>' +
       '<button class="btn btn-block" onclick="openPregens()">Give me a ready-made hero</button>' +
-      '<button class="btn btn-secondary btn-block" onclick="document.querySelector(\'.tab[data-tab=build]\').click()">I\'ll make my own</button></div>';
+      '<button class="btn btn-secondary btn-block" onclick="document.querySelector(\'.tab[data-tab=build]\').click()">I\'ll make my own</button>' +
+      '<button class="btn btn-quiet btn-block" onclick="startTutorialFromWelcome()">' + (typeof tutorialOffered === 'function' && tutorialOffered() ? 'Take the guided tutorial' : 'New to the game? Take the guided tutorial first') + '</button></div>';
     return;
   }
   if (!s.started) {

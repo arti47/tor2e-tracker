@@ -1574,3 +1574,15 @@ body.dark[data-group="adventure"] { --grp: #97c483; } body.dark[data-group="roll
 /* ===== Round 4 ===== */
 .opt-row { display: flex; gap: var(--sp-2, 8px); flex-wrap: wrap; }
 .opt-row > .opt-card { flex: 1 1 170px; }
+/* The header name is the way to your heroes, not a text box (round 4). Rename in Edit. */
+.header .char-name { display: flex; align-items: center; gap: var(--sp-2, 8px); cursor: pointer; overflow: hidden; min-height: 44px; border: none !important; background: transparent !important; box-shadow: none !important; }
+.header .char-name .hn-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.header .char-name .hn-text.unnamed { color: var(--text-faint); font-style: italic; }
+.header .char-name .hn-chev { width: 14px; height: 14px; flex: 0 0 auto; transform: rotate(90deg); opacity: .5; }
+.header .char-name .monogram { flex: 0 0 auto; }
+.header .char-name:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+/* The five odds read as one scale: always one row (round 4). */
+#ask-odds { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); }
+#ask-odds .seg-btn { min-width: 0; padding-left: 2px; padding-right: 2px; font-size: var(--fs-sm); overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 360px) { #ask-odds .seg-btn { font-size: var(--fs-xs); } }
+#panel-play.no-hero #campaign-box { display: none; }

@@ -61,8 +61,11 @@
 <header class="header">
   <div class="header-row">
     <button class="menu-btn" onclick="toggleMenu()" aria-label="Menu"><svg class="ic"><use href="#i-menu"/></svg></button>
-    <span class="monogram" id="hdr-monogram" aria-hidden="true" style="display:none"></span>
-    <input class="char-name" id="char-name" placeholder="Unnamed hero" data-field="name" aria-label="Hero name">
+    <button type="button" class="char-name" id="char-name" onclick="openRoster()" aria-label="Your heroes — switch or add a hero">
+      <span class="monogram" id="hdr-monogram" aria-hidden="true" style="display:none"></span>
+      <span class="hn-text" id="char-name-text">Unnamed hero</span>
+      <svg class="ic hn-chev" aria-hidden="true"><use href="#i-chev"/></svg>
+    </button>
     <span id="retired-pill" style="display:none;background:var(--btn-alert-bg);color:white;padding:3px 10px;border-radius:10px;font-size:var(--fs-xs);font-weight:700;letter-spacing:1px;text-transform:uppercase" title=""></span>
     <button id="campaign-pill" onclick="openCampaign()" style="display:none;background:var(--gold-soft);color:var(--ink);border:1px solid var(--gold);padding:3px 10px;border-radius:10px;font-size:var(--fs-xs);font-weight:700" title="Fellowship campaign" aria-label="Fellowship campaign — open campaign panel"></button>
     <button class="menu-btn" id="undo-btn" onclick="undoLast()" aria-label="Undo" title="Undo last change" style="display:none"><svg class="ic"><use href="#i-undo"/></svg></button>
@@ -521,7 +524,7 @@
     </div>
     <div class="field">
       <label>Name</label>
-      <input data-field="name" placeholder="Character name (also in header)">
+      <input data-field="name" placeholder="Your hero’s name">
       <button onclick="generateRandomName()" style="background:var(--gold);color:white;border:none;border-radius:var(--r-sm);padding:6px 10px;font-size:var(--fs-xs);font-weight:600;cursor:pointer;margin-left:4px;flex-shrink:0">🎲</button>
     </div>
     <p class="hint" id="name-hint" style="text-align:left;margin:0 0 8px 0;display:none;color:var(--text-muted)"></p>

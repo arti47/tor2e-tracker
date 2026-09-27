@@ -544,6 +544,10 @@ module.exports = {
       char.name = 'RealHero'; saveCharacter();
       const realId = activeCharId;
       openTutorial();
+      // round 4: browsing the lesson list must not swap your hero out — only picking a lesson does
+      out.menuOnly = !localStorage.getItem('tor2e-tut-sandbox') && activeCharId === realId;
+      tutStartLesson(TUTORIAL_LESSONS[0].id);
+      _tutClearPoll(); _tutHideSpotlight(); _tutState = null;
       out.persisted = !!localStorage.getItem('tor2e-tut-sandbox');
       out.swapped = activeCharId !== realId;
       const sb = JSON.parse(localStorage.getItem('tor2e-tut-sandbox') || '{}');
@@ -568,7 +572,7 @@ module.exports = {
     });
     checks.push({ ok: tut.out.lessons === 10 && tut.out.steps === 57, msg: `tutorial has 10 lessons / 57 steps (got ${tut.out.lessons}/${tut.out.steps})` });
     checks.push({ ok: tut.out.bad.length === 0, msg: `every tutorial step resolves its tab+selector and has copy (bad: ${tut.out.bad.slice(0, 4).join(', ') || 'none'})` });
-    checks.push({ ok: tut.out.persisted && tut.out.swapped && tut.out.remembersReal, msg: 'tutorial sandbox is persisted and remembers the real hero' });
+    checks.push({ ok: tut.out.menuOnly && tut.out.persisted && tut.out.swapped && tut.out.remembersReal, msg: 'tutorial sandbox starts with a lesson (not the menu), is persisted and remembers the real hero' });
     checks.push({ ok: tut2.cleared, msg: 'exiting the tutorial clears the persisted sandbox' });
     checks.push({ ok: tut2.back === 'RealHero', msg: 'discarding the practice hero restores the real one' });
     checks.push({

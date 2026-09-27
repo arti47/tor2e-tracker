@@ -1369,7 +1369,8 @@ async function _tutRecoverSandbox() {
 /* ----- the Lessons menu ----- */
 function openTutorial() {
   const m = document.getElementById('menu-overlay'); if (m) m.classList.remove('show');
-  _tutEnterSandbox();
+  // the practice hero is made when a lesson starts (tutStartLesson) — just looking at the list
+  // used to swap your hero out and then ask whether to keep a practice hero you never used
   renderTutMenu();
 }
 function _tutCloseMenu() { const m = document.getElementById('tut-menu'); if (m) m.classList.remove('show'); }
@@ -1613,28 +1614,11 @@ function _tutRender() {
 }
 
 /* ----- first-run offer ----- */
-function maybeOfferTutorial() {
-  const p = loadTutProgress();
-  if (p.offered) return;
-  setTimeout(async () => {
-    // NB: `offered` is stamped only AFTER the user answers. Stamping it up-front (the old
-    // behaviour) meant a dismissal — or a reload inside this delay — permanently destroyed the
-    // only proactive onboarding a first-time player ever gets.
-    const choice = await showModal({
-      title: '📖 Welcome to the TOR2E Tracker',
-      message: `This app plays <em>The One Ring</em> 2nd Edition — solo or with a group. It does the rules and the maths for you.<br><br>` +
-               `<strong>Never played before?</strong> The guided tutorial runs on a throwaway practice hero and teaches the whole game: making a character, rolling dice, fighting, journeying — and how to play <strong>on your own, with no Game Master</strong>.<br><br>` +
-               `<span style="opacity:.8">You can start it any time from ☰ Menu → 📖 Tutorial.</span>`,
-      buttons: [
-        { label: '📖 Start the tutorial', value: 'go' },
-        { label: 'Not now', value: 'later', style: 'background:var(--btn-secondary-bg);color:white;border:1px solid var(--btn-secondary-bg);border-radius:var(--r-sm);padding:10px;font-size:var(--fs-md);cursor:pointer' }
-      ]
-    });
-    if (choice) { const q = loadTutProgress(); q.offered = true; saveTutProgress(q); }
-    if (choice === 'go') openTutorial();
-    renderNewcomerBanner();
-  }, 700);
-}
+/* First run (round 4): no dialog. The welcome modal covered the Play tab's own "First, a hero"
+   screen, so a newcomer met two competing starts. The tutorial is now offered on that screen
+   (renderPlay), and `offered` is stamped only when the player acts on it. */
+function tutorialOffered() { return !!loadTutProgress().offered; }
+function startTutorialFromWelcome() { const q = loadTutProgress(); q.offered = true; saveTutProgress(q); openTutorial(); }
 
 /* ---------- A: persistent newcomer banner ----------
    The first-run modal is a single moment; this is the standing safety net. While the active hero
@@ -2039,7 +2023,6 @@ document.addEventListener('DOMContentLoaded', () => {
   if (typeof snapshotHero === 'function') snapshotHero(activeCharId, 'load');   // U12: one auto-backup per load
   importFromHash();   // offer to import a character if the URL carries a shared payload
   _tutRecoverSandbox();   // unwind a tutorial the app was closed during (before offering a new one)
-  maybeOfferTutorial();   // one-time first-run offer of the guided tutorial
   maybeBackupNudge();       // U14: gentle export reminder (14-day threshold, 3-day throttle)
 
   // Prevent iOS double-tap zoom
@@ -2271,6 +2254,14 @@ function enhanceSteppers(root) {
   root.querySelectorAll('input[type="number"]:not([readonly]):not([data-nostep]):not(.has-step)').forEach(inp => {
     if (inp.closest('.counter, #pick-overlay')) return;
     inp.classList.add('has-step');
+    // a 64px box cannot show "auto-filled from armour": keep the words as its label, the number as the hint
+    const ph = inp.getAttribute('placeholder') || '';
+    if (ph.length > 4) {
+      if (!inp.getAttribute('aria-label')) inp.setAttribute('aria-label', ph);
+      if (!inp.title) inp.title = ph;
+      const num = ph.match(/\d+/);
+      inp.setAttribute('placeholder', num ? num[0] : '–');
+    }
     const wrap = document.createElement('span'); wrap.className = 'stepper';
     inp.parentNode.insertBefore(wrap, inp);
     const mk = (d, lab) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'step-btn'; b.textContent = d < 0 ? '−' : '+'; b.setAttribute('aria-label', lab); b.onclick = () => stepNumber(inp, d); return b; };

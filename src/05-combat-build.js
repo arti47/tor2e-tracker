@@ -387,9 +387,6 @@ async function generateRandomName() {
   char.name = name;
   saveCharacter();
   render();
-  // Also update header input live
-  const headerName = document.getElementById('char-name');
-  if (headerName) headerName.value = name;
 }
 
 function renderGearCount() {
