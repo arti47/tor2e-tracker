@@ -39,7 +39,7 @@ let activeCharId = null;
 // 'auto' follows prefers-color-scheme and is stored as *absent* so the live prefers-color-scheme
 // listener (see init) keeps re-applying it.
 const THEMES = ['auto', 'light', 'dark', 'sepia', 'hc'];
-const THEME_LABELS = { auto: 'Auto', light: 'Light', dark: 'Dark', sepia: 'Sepia', hc: 'High Contrast' };
+const THEME_LABELS = { auto: 'Auto', light: 'Light', dark: 'Dark', sepia: 'Old map', hc: 'High Contrast' };
 function currentThemePref() { return localStorage.getItem(THEME_KEY) || 'auto'; }
 function applyTheme() {
   const pref = currentThemePref();
@@ -52,7 +52,7 @@ function applyTheme() {
   else if (eff === 'hc') b.classList.add('theme-hc');
   // (light => no class)
   const tc = document.querySelector('meta[name="theme-color"]');
-  if (tc) tc.setAttribute('content', eff === 'dark' ? '#1b130d' : (eff === 'sepia' ? '#e9dcb8' : '#f3ead8'));
+  if (tc) tc.setAttribute('content', eff === 'dark' ? '#1b130d' : (eff === 'sepia' ? '#d7c095' : '#f3ead8'));
   const btn = document.getElementById('dark-mode-btn');
   if (btn) setMenuLabel(btn, 'Theme', THEME_LABELS[pref]);
 }

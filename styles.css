@@ -109,12 +109,14 @@
     --btn-alert-bg: #b8452f;
     --btn-warn-bg: #8a5e18;
   }
-  /* Sepia — deeper aged paper. */
+  /* Old map (round 4; stored as 'sepia') — deep tan paper, brown-black ink, faded red, strong contours. */
   body.theme-sepia {
-    --bg: #e9dcb8; --bg-deep: #dccb9f; --card-bg: #f6ecd0; --pure-white: #f6ecd0;
-    --ink: #3a2a17; --ink-soft: #624b2c; --text-muted: #6a5638; --text-faint: #8f7c5b;
-    --border: rgba(110, 75, 30, 0.22); --line: rgba(110, 75, 30, 0.13); --shadow: rgba(80, 55, 20, 0.16);
-    --gold-soft: #efe0b6; --gold-paler: #f3e8c6;
+    --bg: #d7c095; --bg-deep: #c9ae7e; --card-bg: #e7d4a8; --pure-white: #e7d4a8;
+    --ink: #24170b; --ink-soft: #3e2a14; --text-muted: #4f3a1f; --text-faint: #6f5a3a;
+    --red: #8b3324; --red-dark: #6e2518; --red-light: #a4523f; --gold: #6f4f17; --accent-ink: #fff6e4;
+    --border: rgba(70, 45, 15, 0.32); --line: rgba(70, 45, 15, 0.2); --shadow: rgba(60, 40, 10, 0.22);
+    --gold-soft: #dcc491; --gold-paler: #e2cd9d; --red-soft: #e2c3a2;
+    --elev-1: 0 1px 2px rgba(60,40,10,.2), 0 3px 12px rgba(60,40,10,.12);
   }
   /* High Contrast — accessibility: black on white, firm borders. */
   body.theme-hc {
@@ -1718,3 +1720,13 @@ input[type="radio"]:checked::after { content: ''; position: absolute; inset: 3px
 .route .rm-camp { fill: color-mix(in srgb, var(--ink) 20%, transparent); stroke: color-mix(in srgb, var(--ink) 70%, transparent); stroke-width: 1.1; stroke-linejoin: round; }
 .route .rm-past { fill: var(--red); stroke: var(--card-bg); stroke-width: 1; }
 .route .rm-day { fill: var(--red); font: 600 9.5px var(--font-display, serif); letter-spacing: .3px; }
+/* Page turns between nav groups (round 4) */
+.panel.active.turn-fwd { animation: turnFwd .34s var(--ease, ease) both; transform-origin: 0 50%; }
+.panel.active.turn-back { animation: turnBack .34s var(--ease, ease) both; transform-origin: 100% 50%; }
+@keyframes turnFwd { from { opacity: 0; transform: perspective(1400px) rotateY(-6deg) scale(.95); } to { opacity: 1; transform: none; } }
+@keyframes turnBack { from { opacity: 0; transform: perspective(1400px) rotateY(6deg) scale(.95); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .panel.active.turn-fwd, .panel.active.turn-back { animation: none; } }
+/* Old map: stronger contours, burnt edges */
+body.theme-sepia { --contours: url("data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27520%27 height=%27520%27 viewBox=%270 0 520 520%27%3E%3Cg fill=%27none%27 stroke=%27%234a2e0e%27 stroke-opacity=%27.2%27 stroke-width=%271.3%27%3E%3Cpath d=%27M196 170 L197 180 L189 188 L180 194 L172 200 L160 200 L150 194 L143 191 L132 196 L114 199 L102 192 L106 179 L116 170 L120 164 L120 156 L124 149 L131 144 L139 138 L150 130 L164 129 L172 140 L170 154 L171 160 L183 163 L196 170Z%27/%3E%3Cpath d=%27M228 170 L229 187 L212 198 L191 203 L177 208 L166 217 L150 223 L133 221 L116 217 L97 212 L84 201 L84 184 L96 170 L101 160 L97 146 L98 128 L111 117 L132 115 L150 117 L167 119 L182 126 L191 137 L198 148 L212 157 L228 170Z%27/%3E%3Cpath d=%27M249 170 L247 191 L230 207 L207 216 L188 223 L173 238 L150 251 L123 251 L101 238 L86 221 L73 205 L64 188 L65 170 L69 153 L71 133 L77 111 L96 96 L125 95 L150 104 L170 109 L193 110 L217 117 L233 132 L242 150 L249 170Z%27/%3E%3Cpath d=%27M263 170 L257 193 L248 215 L230 234 L206 248 L181 262 L150 273 L116 272 L89 254 L74 231 L60 211 L41 193 L27 170 L30 144 L44 121 L63 101 L88 85 L120 79 L150 84 L177 90 L207 91 L241 97 L265 117 L269 144 L263 170Z%27/%3E%3Cpath d=%27M283 170 L274 197 L270 225 L257 255 L227 276 L189 285 L150 287 L112 283 L79 269 L55 246 L36 223 L13 199 L-5 170 L-4 137 L21 110 L53 92 L83 77 L114 63 L150 56 L187 60 L223 69 L259 83 L285 108 L292 140 L283 170Z%27/%3E%3Cpath d=%27M312 170 L305 203 L296 237 L278 273 L243 298 L195 305 L150 299 L109 292 L68 284 L29 266 L2 239 L-17 206 L-28 170 L-24 133 L1 101 L38 80 L73 63 L107 42 L150 27 L197 29 L238 48 L270 74 L296 103 L312 135 L312 170Z%27/%3E%3Cpath d=%27M349 170 L344 212 L323 250 L293 284 L252 311 L201 322 L150 318 L103 310 L54 303 L4 287 L-32 254 L-45 212 L-43 170 L-35 130 L-16 93 L16 62 L56 39 L99 19 L150 4 L205 7 L250 31 L281 65 L308 97 L334 131 L349 170Z%27/%3E%3Cpath d=%27M430 400 L436 407 L432 414 L421 416 L412 415 L406 417 L400 422 L390 427 L382 424 L379 416 L380 409 L378 404 L370 400 L364 393 L368 386 L379 384 L388 385 L394 383 L400 378 L410 373 L418 376 L421 384 L420 391 L422 396 L430 400Z%27/%3E%3Cpath d=%27M462 400 L458 412 L445 419 L433 425 L424 431 L414 441 L400 446 L385 443 L374 434 L367 425 L358 418 L346 411 L338 400 L342 388 L355 381 L367 375 L376 369 L386 359 L400 354 L415 357 L426 366 L433 375 L442 382 L454 389 L462 400Z%27/%3E%3Cpath d=%27M482 400 L472 414 L461 426 L452 439 L441 453 L422 462 L400 462 L381 454 L365 445 L348 439 L329 431 L317 417 L318 400 L328 386 L339 374 L348 361 L359 347 L378 338 L400 338 L419 346 L435 355 L452 361 L471 369 L483 383 L482 400Z%27/%3E%3Cpath d=%27M496 400 L491 418 L486 437 L476 457 L455 471 L427 476 L400 472 L376 468 L350 465 L324 457 L305 441 L299 420 L304 400 L309 382 L314 363 L324 343 L345 329 L373 324 L400 328 L424 332 L450 335 L476 343 L495 359 L501 380 L496 400Z%27/%3E%3Cpath d=%27M519 400 L521 424 L515 450 L494 471 L463 482 L431 486 L400 489 L367 491 L334 486 L306 471 L291 447 L285 423 L281 400 L279 376 L285 350 L306 329 L337 318 L369 314 L400 311 L433 309 L466 314 L494 329 L509 353 L515 377 L519 400Z%27/%3E%3C/g%3E%3C/svg%3E"); }
+body.theme-sepia { background-image: var(--contours), radial-gradient(ellipse at 50% 40%, transparent 55%, rgba(70, 40, 10, .28) 100%); background-attachment: fixed; }
+body.theme-sepia .card { background-image: linear-gradient(180deg, rgba(255,245,220,.18), transparent 40%); }

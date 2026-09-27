@@ -61,6 +61,15 @@ function refreshNav() {
   const active = document.querySelector('.tab.active');
   const cur = navGroupOf(active ? active.dataset.tab : 'play');
   if (active) _navLast[cur.id] = active.dataset.tab;
+  // round 4: moving to another group turns the page, forward or back by the group's place in the bar
+  const prevGroup = document.body.dataset.group;
+  if (prevGroup && prevGroup !== cur.id && active) {
+    const panel = document.getElementById('panel-' + active.dataset.tab);
+    const dir = NAV_GROUPS.findIndex(x => x.id === cur.id) > NAV_GROUPS.findIndex(x => x.id === prevGroup) ? 'fwd' : 'back';
+    if (panel) { panel.classList.remove('turn-fwd', 'turn-back'); void panel.offsetWidth; panel.classList.add('turn-' + dir);
+      clearTimeout(panel._turnT); panel._turnT = setTimeout(() => panel.classList.remove('turn-fwd', 'turn-back'), 450); }
+    if (typeof sfx === 'function') sfx('page');
+  }
   document.body.dataset.group = cur.id;   // per-group accent colour (wayfinding)
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('nav-out', !cur.tabs.includes(t.dataset.tab)));
   const nav = document.querySelector('.tabs');
@@ -2377,7 +2386,7 @@ function menuActions() {
   add('Learn to play (tutorial)', 'help lessons', () => openTutorial());
   add('Rules reference', 'glossary rules help', () => openReferenceTab());
   add('Export this hero', 'save backup file download', () => exportData());
-  add('Change theme', 'dark light sepia contrast colour', () => cycleTheme());
+  add('Change theme', 'dark light sepia old map contrast colour', () => cycleTheme());
   if (typeof isSolo === 'function' && isSolo()) {
     add('Ask the Oracle', 'telling yes no question lore', () => _goTab('oracle'));
     add('New scene', 'chronicle journal write', () => { _goTab('chronicle'); newScene(); });
