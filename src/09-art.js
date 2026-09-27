@@ -310,3 +310,35 @@ function initArt() {
   });
 }
 document.addEventListener('DOMContentLoaded', initArt);
+
+/* ---------- Foe silhouettes (round 4) ----------
+   Each foe card carries a faint drawn figure of what it is — an orc, a warg, a troll, a spider,
+   a wight — chosen from its name and source, so a fight reads at a glance. */
+const FOE_ART = {
+  orc: '<path d="M50 14c-7 0-12 6-12 13 0 4 2 7 4 9-9 3-16 11-18 22l-4 22h10l3-14 3 30h10l4-18 4 18h10l3-30 3 14h10l-4-22c-2-11-9-19-18-22 2-2 4-5 4-9 0-7-5-13-12-13z"/><path d="M38 24l-9-5 5 9zM62 24l9-5-5 9z"/><path d="M80 34l8-20 3 1-6 21-9 24-3-1z"/>',
+  goblin: '<path d="M50 30c-6 0-10 5-10 11 0 3 1 5 3 7-7 3-12 9-13 17l-3 17h8l3-10 2 18h8l2-12 2 12h8l2-18 3 10h8l-3-17c-1-8-6-14-13-17 2-2 3-4 3-7 0-6-4-11-10-11z"/><path d="M41 38l-17-9 13 13zM59 38l17-9-13 13z"/><path d="M26 60l-6 26 3 1 7-25z"/>',
+  wolf: '<path d="M6 62c5-11 15-15 27-15h22l11-11 3-11 5 9 6 2-2 8 9 7-3 5-11-2-5 8v24h-7l-2-17H39l-5 17h-7l1-19c-9-2-15-7-22-15z"/>',
+  troll: '<path d="M48 8c-10 0-16 7-16 16 0 3 1 6 3 8-15 4-25 16-27 31l-2 21h12l4-16 3 28h15l3-18h5l3 18h15l3-28 4 16h12l-2-21c-2-15-12-27-27-31 2-2 3-5 3-8 0-9-6-16-16-16z"/><path d="M86 14l7 4-15 44-6-2z"/><circle cx="87" cy="16" r="6"/>',
+  spider: '<ellipse cx="50" cy="60" rx="17" ry="15"/><circle cx="50" cy="39" r="9"/><path fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" d="M38 52 20 36 8 46M36 58 14 52 4 64M38 64 18 72 10 86M42 70 30 84 26 96M62 52 80 36 92 46M64 58 86 52 96 64M62 64 82 72 90 86M58 70 70 84 74 96"/>',
+  undead: '<path fill-rule="evenodd" d="M50 8c-13 0-21 10-21 24v14L18 88l8-6 6 11 6-11 6 11 6-11 6 11 6-11 6 11 6-11 8 6-11-42V32C71 18 63 8 50 8zM42 32h5v4h-5zM53 32h5v4h-5z"/>',
+  man: '<circle cx="46" cy="16" r="8"/><path d="M36 28c-6 2-10 8-11 16l-5 44h10l4-26 3 34h14l3-34 4 26h10l-5-44c-1-8-5-14-11-16z"/><path d="M76 10h3v88h-3z"/><path d="M74 12l3.5-9 3.5 9z"/>',
+  beast: '<path fill-rule="evenodd" d="M18 18l13 15c4-6 11-9 19-9s15 3 19 9l13-15-4 23c3 5 4 11 4 17 0 17-14 30-32 30S18 75 18 58c0-6 1-12 4-17zM38 52a4 4 0 1 0 .1 0zM62 52a4 4 0 1 0 .1 0z"/>'
+};
+function foeKind(f) {
+  // the name decides first ("Orc Guard" filed under "Orcs & Goblins" is an orc); the source only if the name says nothing
+  return _foeKindOf(String((f && f.name) || '').toLowerCase()) || _foeKindOf(String((f && f.source) || '').toLowerCase()) || 'beast';
+}
+function _foeKindOf(t) {
+  if (/spider|attercop|shelob/.test(t)) return 'spider';
+  if (/warg|wolf|wolves|hound|werewolf/.test(t)) return 'wolf';
+  if (/troll|ogre/.test(t)) return 'troll';
+  if (/goblin|snaga/.test(t)) return 'goblin';
+  if (/orc|uruk|orch|ghash|bolg|azog/.test(t)) return 'orc';
+  if (/wight|wraith|ghost|dead|undead|barrow|nazg|shade|spirit|necromancer/.test(t)) return 'undead';
+  if (/\bmen\b|\bman\b|ruffian|bandit|brigand|easterling|southron|southerner|dunlend|númenórean|numenorean|footpad|chieftain|captain|robber|thief|outlaw|villain|sorcerer|spy|agent|lord|king/.test(t)) return 'man';
+  return '';
+}
+function foeSilhouette(f, cls) {
+  const k = foeKind(f);
+  return `<svg class="${cls || 'foe-sil'} k-${k}" viewBox="0 0 100 100" fill="currentColor" aria-hidden="true">${FOE_ART[k]}</svg>`;
+}

@@ -1110,9 +1110,9 @@ function renderBestiaryList() {
   allBestiary().forEach((b, idx) => {
     if (!b.name.toLowerCase().includes(q)) return;
     if (b.source !== src) { src = b.source; html += `<div style="font-size:var(--fs-xs);font-weight:700;color:var(--text-muted);margin:8px 0 4px">${src}</div>`; }
-    html += `<button onclick="addFoeFromBestiary(${idx})" class="add-row-btn" style="width:100%;text-align:left;margin-bottom:4px;background:var(--bg-deep);color:var(--ink);font-size:var(--fs-xs)">
-      <strong>${escapeHtml(b.name)}</strong> — End ${b.end}, Parry ${b.parry}, Armour ${b.armour}${b.might ? `, Might ${b.might}` : ''}<br>
-      <span style="color:var(--text-muted)">${b.attacks.map(a => `${escapeHtml(a.name)} ${a.dice}d (${a.dmg}/${a.inj})`).join(' · ')}</span></button>`;
+    html += `<button onclick="addFoeFromBestiary(${idx})" class="add-row-btn" style="width:100%;text-align:left;margin-bottom:4px;background:var(--bg-deep);color:var(--ink);font-size:var(--fs-xs);display:flex;align-items:center">
+      ${typeof foeSilhouette === 'function' ? foeSilhouette(b, 'bestiary-sil') : ''}<span style="flex:1;min-width:0"><strong>${escapeHtml(b.name)}</strong> — End ${b.end}, Parry ${b.parry}, Armour ${b.armour}${b.might ? `, Might ${b.might}` : ''}<br>
+      <span style="color:var(--text-muted)">${b.attacks.map(a => `${escapeHtml(a.name)} ${a.dice}d (${a.dmg}/${a.inj})`).join(' · ')}</span></span></button>`;
   });
   list.innerHTML = html || '<div style="color:var(--text-faint);text-align:center;padding:10px">No match.</div>';
 }
@@ -1463,7 +1463,7 @@ function _renderFoeCard(f, canGm = true, lead = true) {
   const slain = f.slain;
   const step = (field, d, lbl) => canGm ? `<button onclick="adjFoe('${f.id}','${field}',${d})" style="width:24px;height:24px;border:1px solid var(--border);background:var(--card-bg);color:var(--ink);border-radius:var(--r-sm);cursor:pointer">${lbl}</button>` : '';
   const pct = (c, m) => Math.max(0, Math.min(100, (parseInt(c) || 0) / Math.max(1, parseInt(m) || 1) * 100));
-  let h = `<div class="foe-card${slain ? ' slain' : ''}">
+  let h = `<div class="foe-card${slain ? ' slain' : ''}">${typeof foeSilhouette === 'function' ? foeSilhouette(f) : ''}
     <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
       <strong style="font-size:var(--fs-md)">${escapeHtml(f.name)}</strong>
       ${slain ? '<span class="result-tag tag-fail">SLAIN</span>' : (f.wounded ? '<span class="result-tag" style="background:var(--btn-warn-bg);color:white">WOUNDED</span>' : '')}

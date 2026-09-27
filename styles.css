@@ -1708,3 +1708,9 @@ input[type="radio"]:checked::after { content: ''; position: absolute; inset: 3px
 @media (prefers-reduced-motion: reduce) { .roll-banner .rb-ribbon { animation: none; } }
 .roll-banner:not([hidden]) ~ .result-summary > .rs-head { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .roll-banner:not([hidden]) ~ .result-summary > .rs-head + br { display: none; }
+/* Foe silhouettes (round 4) */
+.foe-card { position: relative; overflow: hidden; }
+.foe-card > * { position: relative; }
+.foe-card > .foe-sil { position: absolute; right: -8px; top: 6px; width: 96px; height: 96px; color: var(--ink); opacity: .1; pointer-events: none; }
+.foe-card.slain > .foe-sil { opacity: .05; }
+.bestiary-sil { width: 26px; height: 26px; flex: 0 0 26px; color: var(--text-muted); vertical-align: middle; margin-right: 8px; }
