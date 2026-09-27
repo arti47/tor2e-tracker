@@ -602,6 +602,237 @@ module.exports = {
     await page.setViewportSize({ width: 390, height: 844 });
     checks.push({ ok: two.side && two.top, msg: 'on a tablet, Play shows the story and the choices side by side' });
 
+    // ================= Round 4 (2026-09-27) =================
+    const tick = () => page.evaluate(() => new Promise(r => requestAnimationFrame(() => setTimeout(r, 40))));
+    const safe = fn => page.evaluate(async src => { try { return await (new Function('return (async()=>{' + src + '})()'))(); } catch (e) { return { err: String(e && e.message || e) }; } }, fn);
+    await hero();
+
+    // ---- No blank buttons, and no colour emoji left in the interface's own words ----
+    const emo4 = await safe(`
+      const tabs = ['play','character','gear','build','journey','council','combat','dice','reference','chronicle','oracle'];
+      char.striderMode = true; saveCharacter(); refreshStriderUI();
+      const blanks = new Set(), left = new Set();
+      const pic = /\\p{Extended_Pictographic}/u;
+      const scan = () => {
+        document.querySelectorAll('button').forEach(b => { if (!b.checkVisibility()) return;
+          if (!b.textContent.trim() && !b.querySelector('svg,img,.pipset') && !b.getAttribute('aria-label')) blanks.add((b.getAttribute('onclick') || b.className || '?').slice(0, 30)); });
+        const tw = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT); let n;
+        while ((n = tw.nextNode())) { const e = n.parentElement; if (!e || e.closest(_ICON_SKIP) || !e.checkVisibility()) continue;
+          for (const ch of n.nodeValue.match(/\\p{Extended_Pictographic}/gu) || []) if (!_EMOJI_KEEP.has(ch)) left.add(ch); }
+      };
+      for (const t of tabs) { const el = document.querySelector('.tab[data-tab="' + t + '"]'); if (el && el.style.display !== 'none') { openNavGroup(navGroupOf(t).id); el.click(); await new Promise(r => setTimeout(r, 40)); scan(); } }
+      toggleMenu(); await new Promise(r => setTimeout(r, 40)); scan(); toggleMenu();
+      char.striderMode = false; saveCharacter(); refreshStriderUI();
+      return { blanks: [...blanks], left: [...left] };`);
+    checks.push({ ok: !emo4.err && emo4.blanks.length === 0 && emo4.left.length === 0, msg: `every button shows something and no colour emoji remain in the interface (${JSON.stringify(emo4)})` });
+
+    // ---- Council: choose first, one setup and one primary at a time ----
+    const cc = await safe(`
+      openNavGroup('adventure'); document.querySelector('.tab[data-tab="council"]').click(); await new Promise(r => setTimeout(r, 30));
+      _councilKind = null; renderCouncil(); renderSkillEndeavour();
+      const vis = id => document.getElementById(id).checkVisibility();
+      const before = { chooser: vis('council-chooser'), c: vis('council-setup-card'), e: vis('se-setup-card') };
+      document.getElementById('pick-council').click();
+      const after = { c: vis('council-setup-card'), e: vis('se-setup-card') };
+      const prim = [...document.querySelectorAll('#panel-council .add-row-btn.primary, #panel-council .btn:not(.btn-secondary):not(.btn-quiet)')].filter(b => b.checkVisibility()).length;
+      return { before, after, prim };`);
+    checks.push({ ok: !cc.err && cc.before.chooser && !cc.before.c && !cc.before.e && cc.after.c && !cc.after.e && cc.prim === 1, msg: `Council opens on a chooser; picking shows only that setup, with one primary (${JSON.stringify(cc)})` });
+
+    // ---- Header: the name opens your heroes, it is not a text box ----
+    const hn = await safe(`
+      const n = document.getElementById('char-name');
+      const isBtn = n.tagName === 'BUTTON' && !document.querySelector('.header input');
+      n.click(); const open = document.getElementById('roster-overlay').classList.contains('show'); closeRoster && closeRoster();
+      document.getElementById('roster-overlay').classList.remove('show');
+      return { isBtn, open, text: document.getElementById('char-name-text').textContent };`);
+    checks.push({ ok: !hn.err && hn.isBtn && hn.open && /Beran/.test(hn.text), msg: `the header name is a button that opens Your heroes (${JSON.stringify(hn)})` });
+
+    // ---- Number boxes keep a placeholder that fits; the words move to the label ----
+    const ph = await safe(`const i = document.getElementById('prot-dice'); return { ph: i.getAttribute('placeholder'), al: i.getAttribute('aria-label') };`);
+    checks.push({ ok: !ph.err && ph.ph.length <= 4 && /armour/.test(ph.al || ''), msg: `stepper placeholders fit the box (${JSON.stringify(ph)})` });
+
+    // ---- The five odds sit on one row ----
+    const od = await safe(`
+      char.striderMode = true; saveCharacter(); refreshStriderUI();
+      openNavGroup('roll'); document.querySelector('.tab[data-tab="oracle"]').click(); await new Promise(r => setTimeout(r, 450));   // let the page turn settle
+      const tops = [...document.querySelectorAll('#ask-odds .seg-btn')].map(b => Math.round(b.getBoundingClientRect().top));
+      const chips = [...document.querySelectorAll('#panel-oracle .jump-chip')].map(b => b.textContent);
+      char.striderMode = false; saveCharacter(); refreshStriderUI();
+      return { rows: new Set(tops).size, n: tops.length, chips };`);
+    checks.push({ ok: !od.err && od.n === 5 && od.rows === 1, msg: `the Oracle's five odds sit on one row (${JSON.stringify(od)})` });
+    checks.push({ ok: !od.err && !od.chips.some(c => /Ask/.test(c)) && !od.chips.some(c => /Table$/.test(c)), msg: `the Oracle's jump chips skip the card already on screen and read short (${od.chips && od.chips.join(' | ')})` });
+
+    // ---- First run: no dialog; the tutorial is offered on Play's first screen ----
+    const fr = await safe(`
+      localStorage.removeItem('tor2e-tutorial');
+      char = JSON.parse(JSON.stringify(DEFAULT_CHARACTER)); saveCharacter(); render();
+      openNavGroup('play'); renderPlay(); await new Promise(r => setTimeout(r, 900));
+      const dialog = !!document.querySelector('.menu-overlay.show');
+      const tut = [...document.querySelectorAll('#play-body button')].some(b => /tutorial/i.test(b.textContent));
+      const box = document.getElementById('campaign-box').checkVisibility();
+      localStorage.setItem('tor2e-tutorial', JSON.stringify({ offered: true }));
+      return { dialog, tut, box };`);
+    checks.push({ ok: !fr.err && !fr.dialog && fr.tut && !fr.box, msg: `first run opens no dialog; Play offers the tutorial and hides the empty campaign box (${JSON.stringify(fr)})` });
+    await hero();
+
+    // ---- Solo vitals: no ally to support; the session ends through the saga ----
+    const sv = await safe(`
+      char.striderMode = true; char.saga = Object.assign(char.saga || {}, { started: true, premise: 'x' }); saveCharacter(); refreshStriderUI();
+      openVitals(); const acts = [...document.querySelectorAll('#vitals-body .v-act')].map(b => b.textContent + '|' + b.getAttribute('onclick'));
+      closeVitals(); char.striderMode = false; char.saga.started = false; saveCharacter(); refreshStriderUI();
+      return { support: acts.some(a => /Support an ally/.test(a)), end: acts.some(a => /End the session/.test(a) && /sagaEndSession/.test(a)) };`);
+    checks.push({ ok: !sv.err && !sv.support && sv.end, msg: `in solo the vitals sheet offers no "Support an ally" and ends the session through the saga (${JSON.stringify(sv)})` });
+
+    // ---- Sheet: no stray Eye line; Spend with nothing to spend explains itself ----
+    const sp = await safe(`
+      char.striderMode = true; char.skillPts = 0; char.advPts = 3; saveCharacter(); refreshStriderUI();
+      openNavGroup('hero'); document.querySelector('.tab[data-tab="character"]').click(); setCharEditing(false); renderHeroSheet();
+      const hs = document.getElementById('hero-sheet');
+      const eye = /Eye of Mordor/.test(hs.innerText);
+      const empty = [...hs.querySelectorAll('button')].find(b => /No Skill points yet/.test(b.textContent));
+      const full = [...hs.querySelectorAll('button')].find(b => /Spend Adventure points · 3/.test(b.textContent));
+      let explained = false; const orig = window.alertStyled; window.alertStyled = m => { explained = /earn/i.test(m); };
+      if (empty) empty.click(); window.alertStyled = orig;
+      char.striderMode = false; saveCharacter(); refreshStriderUI();
+      return { eye, empty: !!empty && !empty.disabled, full: !!full, explained };`);
+    checks.push({ ok: !sp.err && !sp.eye && sp.empty && sp.full && sp.explained, msg: `the sheet has no stray Eye line; a Spend button at 0 says how points are earned (${JSON.stringify(sp)})` });
+
+    // ---- Edit: a short menu of sections, each one screen; play actions are not in it ----
+    const ed = await safe(`
+      openNavGroup('hero'); document.querySelector('.tab[data-tab="character"]').click();
+      setCharEditing(true); await new Promise(r => setTimeout(r, 20));
+      const rows = [...document.querySelectorAll('#edit-menu .edit-row')].filter(b => b.checkVisibility()).length;
+      const cardVis = t => [...document.querySelectorAll('#char-edit .card-title')].some(h => h.textContent.trim().startsWith(t) && h.checkVisibility());
+      const menuHidesCards = !cardVis('Attributes') && !cardVis('Name');
+      [...document.querySelectorAll('#edit-menu .edit-row')].find(b => /Numbers/.test(b.textContent)).click();
+      const numbers = cardVis('Attributes') && cardVis('Endurance') && !cardVis('Name') && !cardVis('History');
+      const rest = [...document.querySelectorAll('#char-edit button')].some(b => /Short Rest|Award Session XP|Open Fellowship Phase/i.test(b.textContent) && b.checkVisibility());
+      document.querySelector('#char-edit .edit-back').click();
+      const back = document.getElementById('edit-menu').checkVisibility();
+      setCharEditing(false);
+      return { rows, menuHidesCards, numbers, rest, back };`);
+    checks.push({ ok: !ed.err && ed.rows === 5 && ed.menuHidesCards && ed.numbers && !ed.rest && ed.back, msg: `Edit opens five short sections; Numbers shows only its cards; play actions are not in Edit (${JSON.stringify(ed)})` });
+
+    // ---- Gear: read-only item cards with numbers in words and Reward badges ----
+    const gr = await safe(`
+      char.weapons = [{ name: 'Long Sword', dmg: '5', inj: '16', inj1h: '16', inj2h: '18', grip: '1h', load: '3', prof: 'Swords', picked: true, rewards: ['Fell'] }];
+      char.armourProt = 3; char.armourLoad = 10; char.armourNotes = 'Mail-shirt'; saveCharacter(); render();
+      openEquipment(); await new Promise(r => setTimeout(r, 30));
+      const card = document.querySelector('#weapon-tbody .item-card');
+      const inputs = [...document.querySelectorAll('#weapon-tbody input, #armour-items input')].filter(i => i.checkVisibility()).length;
+      const words = card && /Damage 5 · Injury 16 · Load 3/.test(card.textContent), badge = !!(card && card.querySelector('.item-badge'));
+      const armour = /Protection 3 dice/.test(document.getElementById('armour-items').textContent);
+      card.querySelector('[aria-label^="Edit"]').click();
+      const editOpens = [...document.querySelectorAll('#weapon-tbody input')].some(i => i.checkVisibility());
+      toggleGearEdit('w0'); char.weapons = []; saveCharacter(); render();
+      return { words, badge, inputs, armour, editOpens };`);
+    checks.push({ ok: !gr.err && gr.words && gr.badge && gr.inputs === 0 && gr.armour && gr.editOpens, msg: `gear shows read-only item cards (numbers in words, Reward badge), fields only behind the pencil (${JSON.stringify(gr)})` });
+
+    // ---- Journey: three questions drive the real setup ----
+    const jq = await safe(`
+      openNavGroup('adventure'); document.querySelector('.tab[data-tab="journey"]').click(); await new Promise(r => setTimeout(r, 30));
+      document.querySelector('#j-dist [data-hex="9"]').click();
+      document.querySelector('#j-travel [data-mode="mounted"]').click();
+      document.querySelector('#j-region-chips [data-v="Shadow"]').click();
+      return { hex: document.getElementById('j-totalHexes').value, mounted: document.getElementById('j-mounted').checked,
+        vigour: document.getElementById('j-vigour-row').checkVisibility(), region: document.getElementById('j-region').value,
+        pressed: document.querySelector('#j-dist [data-hex="9"]').getAttribute('aria-pressed') };`);
+    checks.push({ ok: !jq.err && jq.hex === '9' && jq.mounted && jq.vigour && jq.region === 'Shadow' && jq.pressed === 'true', msg: `the journey's three questions set distance, mount and lands (${JSON.stringify(jq)})` });
+
+    // ---- Fellowship Phase: Next on the Rest step rests, no "are you sure" ----
+    const fp4 = await safe(`
+      char.hopeCur = 2; char.hopeMax = 10; char.fpWizardState = null; saveCharacter();
+      let asked = false; const oc = window.confirmStyled; window.confirmStyled = async () => { asked = true; return true; };
+      openFPWizard(true); fpSetPhaseType('ordinary'); await fpNextStep();
+      const label = document.getElementById('fp-next-btn').textContent;
+      await fpNextStep();
+      window.confirmStyled = oc;
+      const out = { asked, label, hope: char.hopeCur, step: fpState.step };
+      fpClose(); char.fpWizardState = null; saveCharacter();
+      return out;`);
+    checks.push({ ok: !fp4.err && !fp4.asked && /Rest/.test(fp4.label) && fp4.hope > 2 && fp4.step === 3, msg: `the Fellowship Phase rests on Next, without asking (${JSON.stringify(fp4)})` });
+
+    // ---- Checkboxes read as switches, radios as option rows ----
+    const sw = await safe(`const c = document.getElementById('hoard-tainted'); const cs = getComputedStyle(c); const r = getComputedStyle(document.querySelector('input[name="fp-shadow-rm"]').parentElement);
+      return { app: cs.appearance || cs.webkitAppearance, w: cs.width, rowBorder: r.borderTopStyle };`);
+    checks.push({ ok: !sw.err && sw.app === 'none' && sw.w === '36px' && sw.rowBorder === 'solid', msg: `checkboxes are switches and radios are option rows (${JSON.stringify(sw)})` });
+
+    // ---- Plain words: no clipped abbreviations on Battle ----
+    const jg = await safe(`const t = document.getElementById('panel-battle').textContent; return { bad: (t.match(/Resist\\.|Labor\\.|Daunt\\.|Overw\\.|Aggr\\.|Guard\\.|M\\+1 R\\+3/g) || []) };`);
+    checks.push({ ok: !jg.err && jg.bad.length === 0, msg: `the Battle tab spells its words out (${JSON.stringify(jg)})` });
+
+    // ---- Combat: one "You attack" is primary ----
+    const fa = await safe(`
+      char.encounter = JSON.parse(JSON.stringify(DEFAULT_CHARACTER.encounter)); saveCharacter();
+      addFoeFromBestiary(allBestiary().findIndex(b => b.name === 'Orc Soldier')); addFoeFromBestiary(allBestiary().findIndex(b => b.name === 'Warg'));
+      openNavGroup('adventure'); document.querySelector('.tab[data-tab="combat"]').click(); await new Promise(r => setTimeout(r, 30));
+      const you = [...document.querySelectorAll('.foe-you')];
+      const kinds = [...document.querySelectorAll('.foe-card .foe-sil')].map(s => [...s.classList].find(c => c.startsWith('k-')));
+      const out = { n: you.length, prim: you.filter(b => !b.classList.contains('btn-secondary')).length, kinds };
+      char.encounter = JSON.parse(JSON.stringify(DEFAULT_CHARACTER.encounter)); saveCharacter(); render();
+      return out;`);
+    checks.push({ ok: !fa.err && fa.n === 2 && fa.prim === 1, msg: `with two foes, only one "You attack" is primary (${JSON.stringify(fa)})` });
+    checks.push({ ok: !fa.err && fa.kinds && fa.kinds[0] === 'k-orc' && fa.kinds[1] === 'k-wolf', msg: `each foe card carries a silhouette of its kind (${fa.kinds})` });
+
+    // ---- Header folds while scrolling down, returns on the way up ----
+    const sl = await safe(`
+      openNavGroup('reference'); document.querySelector('.tab[data-tab="reference"]').click(); await new Promise(r => setTimeout(r, 60));
+      document.querySelectorAll('#panel-reference details').forEach(d => d.open = true);
+      const h0 = document.querySelector('.header').offsetHeight;
+      window.scrollTo(0, 50); await new Promise(r => setTimeout(r, 320)); window.scrollTo(0, 900); await new Promise(r => setTimeout(r, 120));
+      const slim = document.body.classList.contains('hdr-slim'), h1 = document.querySelector('.header').offsetHeight;
+      const tabsHidden = !document.querySelector('.header nav.tabs').checkVisibility();
+      await new Promise(r => setTimeout(r, 320)); window.scrollTo(0, 500); await new Promise(r => setTimeout(r, 120));
+      const back = !document.body.classList.contains('hdr-slim');
+      window.scrollTo(0, 0); setSlimHeader(false);
+      return { slim, shorter: h1 < h0, tabsHidden, back };`);
+    checks.push({ ok: !sl.err && sl.slim && sl.shorter && sl.tabsHidden && sl.back, msg: `the header folds to one line while scrolling down and returns on the way up (${JSON.stringify(sl)})` });
+
+    // ---- Pickers describe what a choice means ----
+    const pd = await safe(`
+      char.striderMode = true; saveCharacter(); refreshStriderUI();
+      openNavGroup('hero'); document.querySelector('.tab[data-tab="character"]').click(); setCharEditing(true, 'numbers');
+      openPicker(document.getElementById('eye-region-pick'));
+      const txt = [...document.querySelectorAll('#pick-list .pick-opt')].map(b => b.textContent);
+      closePicker(); setCharEditing(false); char.striderMode = false; saveCharacter(); refreshStriderUI();
+      return { txt };`);
+    checks.push({ ok: !pd.err && pd.txt.some(t => /Wild lands.*hunts you at 16/.test(t)), msg: `a picker option says what it means (${pd.txt && pd.txt[2]})` });
+
+    // ---- The roll result leads with a banner: the verdict and why ----
+    const rb = await safe(`
+      rollFromSheet('Awe'); await new Promise(r => setTimeout(r, 60));
+      const b = document.getElementById('roll-banner'); const word = b.querySelector('.rb-ribbon').textContent, why = b.querySelector('.rb-why').textContent;
+      const verdict = /SUCCESS/.test(document.querySelector('#result-summary .rs-head').textContent);
+      closeRollDrawer();
+      return { shown: !b.hidden && b.checkVisibility(), word, why, agrees: verdict === /uccess/.test(word) };`);
+    checks.push({ ok: !rb.err && rb.shown && /^(Success|Great success|Extraordinary success|Failure)$/.test(rb.word) && /(vs TN|Rune|Eye)/.test(rb.why) && rb.agrees, msg: `a roll opens on a ribbon with the verdict and why (${rb.word}: ${rb.why})` });
+
+    // ---- The route map marks camps, past events and the day ----
+    const rm = await safe(`
+      const h = routeMap(9, 18, 12, 'Bree', 'Rivendell', 'road', { days: 6, log: [{ hex: 3, day: 2, text: 'Marching Test' }, { hex: 6, day: 4, text: 'Marching Test' }, { hex: 6, day: 4, text: 'Mishap' }] });
+      const d = document.createElement('div'); d.innerHTML = h;
+      return { camps: d.querySelectorAll('.rm-camp').length, past: d.querySelectorAll('.rm-past').length, day: /Day 6/.test(d.textContent) };`);
+    checks.push({ ok: !rm.err && rm.camps === 2 && rm.past === 1 && rm.day, msg: `the route map marks camps, past events and the day (${JSON.stringify(rm)})` });
+
+    // ---- Moving to another group turns the page ----
+    const pt = await safe(`
+      openNavGroup('hero'); await new Promise(r => setTimeout(r, 500));
+      openNavGroup('journal'); const p = document.querySelector('.panel.active'); const turned = p.classList.contains('turn-fwd');
+      openNavGroup('play'); const q = document.querySelector('.panel.active'); const back = q.classList.contains('turn-back');
+      return { turned, back };`);
+    checks.push({ ok: !pt.err && pt.turned && pt.back, msg: `moving between groups turns the page forward or back (${JSON.stringify(pt)})` });
+
+    // ---- Old map theme ----
+    const om4 = await safe(`
+      localStorage.setItem('tor2e-theme', 'sepia'); applyTheme();
+      const bg = getComputedStyle(document.body).getPropertyValue('--bg').trim(), label = THEME_LABELS.sepia;
+      const contours = getComputedStyle(document.body).getPropertyValue('--contours');
+      localStorage.removeItem('tor2e-theme'); applyTheme();
+      return { bg, label, strong: /stroke-opacity=%27\\.2%27/.test(contours) };`);
+    checks.push({ ok: !om4.err && om4.label === 'Old map' && om4.bg === '#d7c095' && om4.strong, msg: `the Old map theme: deep tan paper and strong contours (${JSON.stringify(om4)})` });
+    await hero();
+
+
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length}${errors.length ? ': ' + errors[0] : ''})` });
     await context.close();
     return { checks };

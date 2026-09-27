@@ -154,7 +154,7 @@ function renderJumpBar(panelId) {
     const t = c.querySelector(':scope > .card-title');
     const label = t.childNodes[0] && t.childNodes[0].nodeType === 3 ? t.childNodes[0].textContent : t.textContent;
     const b = document.createElement('button'); b.type = 'button'; b.className = 'jump-chip';
-    b.textContent = label.replace(/[⌄▾▸?]/g, '').replace(/—.*$/, '').replace(/\s+Table$/i, '').replace(/^Random\s+/i, '').trim().slice(0, 22);
+    b.textContent = label.replace(/[⌄▾▸?]/g, '').replace(/—.*$/, '').trim().replace(/\s+Table$/i, '').replace(/^(Random|Oracle)\s+/i, '').trim().slice(0, 22);
     b.onclick = () => openCard(c);
     bar.appendChild(b);
   });
