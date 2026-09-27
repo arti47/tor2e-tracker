@@ -2759,7 +2759,7 @@ function renderBand() {
   if (cnt) cnt.textContent = `(${char.band.allies.length})`;
   if (ac) {
     if (!char.band.allies.length) {
-      ac.innerHTML = `<p class="hint" style="text-align:center">No allies yet. Tap “Roll 6 Starting Allies” to begin your Band.</p>`;
+      ac.innerHTML = emptyState('No allies yet. Tap “Roll 6 Starting Allies” to begin your Band.', 'users');
     } else {
       const injOpts = ['', ...INJURY_ORDER, 'lingering'];
       const fatOpts = ['', ...FATIGUE_ORDER];
@@ -3496,7 +3496,7 @@ function renderMagicalItems() {
   if (!list) return;
   const items = char.magicalItems || [];
   if (items.length === 0) {
-    list.innerHTML = '<p class="hint" style="text-align:center;margin:0">No magical treasure yet.</p>';
+    list.innerHTML = emptyState('No magical treasure yet.', 'gem');
     return;
   }
   list.innerHTML = items.map((item, i) => {
@@ -3661,10 +3661,12 @@ async function spendHopeToSupport() {
   if (cur <= 0) { alert('No Hope to spend.'); return; }
   const focus = char.fellowshipFocus || '';
   const focusBit = focus ? `\n\nNote: if the ally you're supporting is your Fellowship Focus (${focus}), they gain +2d instead of +1d.` : '';
-  if (!await confirmStyled(`Spend 1 Hope to support an ally's roll?\n\nHope: ${cur} → ${cur - 1}\nAlly gains +1d (or +2d if you are their Focus).${focusBit}\n\nThe ally should toggle "Receive Support" on their Dice tab.`, undefined, {yes:'Spend 1 Hope', no:'Don’t spend'})) return;
+  // Reversible: it just happens, with Undo (GOTCHA 28).
+  if (typeof snapshot === 'function') snapshot();
   char.hopeCur = cur - 1;
   saveCharacter();
   render();
+  showToast(`Spent 1 Hope — your ally rolls +1d${focus ? ' (+2d if you are their Focus)' : ''}.`, { label: 'Undo', fn: () => undoLast() });
 }
 
 async function spendFPforHope() {
@@ -3679,11 +3681,12 @@ async function spendFPforHope() {
     alert('Hope is already at maximum.');
     return;
   }
-  if (!await confirmStyled(`Spend 1 Fellowship point to gain +1 Hope?\n\nFP: ${fp} → ${fp - 1}\nHope: ${curHope} → ${curHope + 1} / ${maxHope}\n\n(only during a resting scene.)`, undefined, {yes:'Spend the point', no:'Don’t spend'})) return;
+  if (typeof snapshot === 'function') snapshot();
   char.fellowship = fp - 1;
   char.hopeCur = Math.min(maxHope, curHope + 1);
   saveCharacter();
   render();
+  showToast(`Fellowship point spent: Hope ${curHope} → ${curHope + 1}. (Only during a rest.)`, { label: 'Undo', fn: () => undoLast() });
 }
 
 /* ---------- THE SAGA — starting, sustaining and ending a campaign ----------
@@ -4815,10 +4818,26 @@ function renderPlayAside() {
   </div>`;
 }
 
+/* "(Travel roll 6 vs 15 — failure.)" in the story becomes a small dice pill. */
+function _rollPills(html) {
+  return String(html).replace(/\((\w[\w ]*?) roll (\d+) vs (\d+) — (success|failure)\.\)/g,
+    (m, sk, a, b, o) => `<span class="roll-pill ${o === 'success' ? 'ok' : 'fail'}" title="${sk} roll ${a} against ${b}: ${o}"><svg class="ic"><use href="#i-dice"/></svg>${sk} ${a}<small>/${b}</small></span>`);
+}
+/* The journey as a road: a stone per stretch, the hero's marker, the next event flagged. */
+function _roadStrip(cur, total, nextEvent) {
+  const n = Math.min(total, 24);
+  const at = Math.round(cur / total * n), ev = nextEvent ? Math.round(nextEvent / total * n) : -1;
+  let dots = '';
+  for (let i = 0; i <= n; i++) dots += `<i class="${i < at ? 'done' : ''}${i === at ? ' here' : ''}${i === ev && i > at ? ' ev' : ''}"></i>`;
+  return `<div class="road" role="img" aria-label="${cur} of ${total} stretches travelled"><div class="road-track">${dots}</div>` +
+    `<div class="road-ends"><span>Setting out</span><span>${cur} / ${total}</span><span>Journey’s end</span></div></div>`;
+}
+
 function renderPlay() {
   renderPlayAside();
   const host = document.getElementById('play-body'); if (!host) return;
   const s = sagaState();
+  const pp = document.getElementById('panel-play'); if (pp) pp.classList.toggle('no-hero', !char.culture);
 
   if (!char.culture) {
     host.innerHTML = '<div class="card play-empty"><div class="eyebrow">Welcome</div><h3 class="card-title">First, a hero</h3>' +
@@ -4843,19 +4862,22 @@ function renderPlay() {
   const sit = char.retired ? _playRetiredSituation() : _playSituation();
   const choices = _playChoices();
   const feed = _playFeed.length
-    ? _playFeed.slice(-8).map(f => `<p class="${f.kind === 'aside' ? 'aside' : ''}">${f.text}</p>`).join('')
+    ? _playFeed.slice(-8).map(f => `<p class="${f.kind === 'aside' ? 'aside' : ''}">${_rollPills(f.text)}</p>`).join('')
     : '';
   const split = lbl => {
     const m = String(lbl).match(/^(\p{Extended_Pictographic}\uFE0F?|[▶↩✔✖🏁])\s*/u);
     return m ? [m[1], lbl.slice(m[0].length)] : ['', lbl];
   };
 
+  const jr = char.journey || {};
+  const road = (jr.active && parseInt(jr.totalHexes) > 0) ? _roadStrip(parseInt(jr.currentHex) || 0, parseInt(jr.totalHexes), jr.nextEventHex) : '';
   host.innerHTML =
     _playConditionBanner() +
     `<div class="card play-scene${['journey', 'home'].includes(s.step) && (char.journey || {}).active ? ' on-road' : ''}">
        <div class="eyebrow">Where you are</div>
        <h3 class="card-title">${escapeHtml(sit.title)}</h3>
        <div class="play-sit">${sit.text}</div>
+       ${road}
        ${feed ? `<div class="play-feed" aria-live="polite">${feed}</div>` : ''}
      </div>
      <div class="play-choices" role="group" aria-label="What do you do?">

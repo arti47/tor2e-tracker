@@ -583,12 +583,12 @@ function renderWeapons() {
       : '';
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td><input value="${escapeHtml(w.name || '')}" oninput="updateWeapon(${i},'name',this.value)">${gripBtn}</td>
-      <td><input value="${escapeHtml(w.dmg || '')}" oninput="updateWeapon(${i},'dmg',this.value)" ${ro}></td>
-      <td><input value="${escapeHtml(w.inj || '')}" oninput="updateWeapon(${i},'inj',this.value)" ${ro}></td>
-      <td><input value="${escapeHtml(w.load || '')}" oninput="updateWeapon(${i},'load',this.value)" ${ro}></td>
-      <td><input value="${escapeHtml(w.notes || '')}" oninput="updateWeapon(${i},'notes',this.value)"></td>
-      <td style="white-space:nowrap"><button class="del-btn" onclick="moveWeapon(${i},-1)" title="Move up" aria-label="Move ${escapeHtml(w.name || 'weapon')} up" style="padding:2px 5px">▲</button><button class="del-btn" onclick="moveWeapon(${i},1)" title="Move down" aria-label="Move ${escapeHtml(w.name || 'weapon')} down" style="padding:2px 5px">▼</button><button class="del-btn" onclick="removeWeapon(${i})" aria-label="Remove ${escapeHtml(w.name || 'weapon')}">×</button></td>
+      <td class="wc-name" data-label="Weapon"><input value="${escapeHtml(w.name || '')}" oninput="updateWeapon(${i},'name',this.value)" aria-label="Weapon name">${gripBtn}</td>
+      <td class="wc-num" data-label="Damage"><input value="${escapeHtml(w.dmg || '')}" oninput="updateWeapon(${i},'dmg',this.value)" ${ro} aria-label="Damage"></td>
+      <td class="wc-num" data-label="Injury"><input value="${escapeHtml(w.inj || '')}" oninput="updateWeapon(${i},'inj',this.value)" ${ro} aria-label="Injury"></td>
+      <td class="wc-num" data-label="Load"><input value="${escapeHtml(w.load || '')}" oninput="updateWeapon(${i},'load',this.value)" ${ro} aria-label="Load"></td>
+      <td class="wc-notes" data-label="Notes"><input value="${escapeHtml(w.notes || '')}" oninput="updateWeapon(${i},'notes',this.value)" placeholder="Notes" aria-label="Notes"></td>
+      <td class="wc-ctl" style="white-space:nowrap"><button class="del-btn" onclick="moveWeapon(${i},-1)" title="Move up" aria-label="Move ${escapeHtml(w.name || 'weapon')} up" style="padding:2px 5px">▲</button><button class="del-btn" onclick="moveWeapon(${i},1)" title="Move down" aria-label="Move ${escapeHtml(w.name || 'weapon')} down" style="padding:2px 5px">▼</button><button class="del-btn" onclick="removeWeapon(${i})" aria-label="Remove ${escapeHtml(w.name || 'weapon')}">×</button></td>
     `;
     tbody.appendChild(tr);
   });
@@ -1487,6 +1487,10 @@ function renderQuickSkills() {
     // Brawling: derived prof (max(others) − 1) — RAW p.45. Shown when at least one other prof is rated.
     {name:'Brawling', attr:'str', isProf: true, isDerived: true}
   ];
+  // Grouped under their attribute (and Valour & Wisdom / Combat), so a player scans three
+  // short lists instead of one 20-button grid. A heading appears only above a group that shows.
+  const groupOf = it => it.isMeta ? 'Valour & Wisdom' : it.isProf ? 'Combat' : ({ str: 'Strength', hrt: 'Heart', wit: 'Wits' })[it.attr];
+  let lastGroup = null;
   all.forEach(item => {
     let s;
     if (item.isMeta) s = { rating: parseInt(char[item.ratingSrc]) || 1, favoured: false };
@@ -1511,6 +1515,8 @@ function renderQuickSkills() {
     const derivedTag = item.isDerived ? ' <small style="color:var(--text-faint);font-size:var(--fs-xs)">(der)</small>' : '';
     btn.innerHTML = `${item.name}${star}${derivedTag}<br><span class="rating">${s.rating}d · ${item.attr.toUpperCase()}</span>`;
     btn.onclick = () => quickRoll(item, s);
+    const g = groupOf(item);
+    if (g !== lastGroup) { const h = document.createElement('div'); h.className = 'qs-h'; h.textContent = g; container.appendChild(h); lastGroup = g; }
     container.appendChild(btn);
   });
   if (container.children.length === 0) {

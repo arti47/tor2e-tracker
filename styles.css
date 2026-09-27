@@ -1208,3 +1208,70 @@ body.dark { background-image: var(--contours), radial-gradient(ellipse 80% 45% a
 @keyframes spFade { to { opacity: 1; } }
 @media print { #splash { display: none !important; } }
 .sr-only { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ---- Round 2 layout ---- */
+/* glosses: one quiet line, never a ragged second row */
+.gloss { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+/* empty free-text boxes collapse to a single "add" line until used */
+textarea:placeholder-shown:not(:focus):not([readonly]):not(#ch-compose) { min-height: 44px !important; height: 44px; resize: none; overflow: hidden; }
+/* segmented controls wrap to a second row instead of truncating */
+.seg-btns { flex-wrap: wrap; }
+.seg-btns .seg-btn { flex: 1 1 auto; min-width: 72px; white-space: nowrap; }
+/* blank Play: the welcome card is the explanation */
+#panel-play.no-hero .tab-intro { display: none !important; }
+/* tablet: vitals move up beside the name */
+@media (min-width: 1100px) {
+  .header { display: grid; grid-template-columns: minmax(0, 1fr) minmax(460px, 560px); column-gap: var(--sp-5); align-items: center; }
+  .header-row { grid-column: 1; }
+  .hud { grid-column: 2; grid-row: 1; padding: 0; max-width: none; }
+  .tabs { grid-column: 1 / -1; }
+}
+/* Chronicle: the write box is a journal page */
+#ch-compose {
+  font-family: var(--font-display) !important; font-size: var(--fs-lg) !important; line-height: 28px !important;
+  min-height: 140px; padding: 6px 12px !important; border-radius: var(--r-sm) !important;
+  background: repeating-linear-gradient(to bottom, transparent 0 27px, color-mix(in srgb, var(--gold) 22%, transparent) 27px 28px), var(--card-bg) !important;
+  background-attachment: local !important; border: 1px solid var(--line) !important;
+}
+.qs-h { grid-column: 1 / -1; font-size: var(--fs-xs); font-weight: 700; text-transform: uppercase; letter-spacing: .7px; color: var(--text-muted); margin: var(--sp-2) 0 0; }
+/* Play: road strip + roll pills */
+.road { margin-top: var(--sp-3); }
+.road-track { position: relative; display: flex; justify-content: space-between; align-items: center; padding: 8px 2px; }
+.road-track::before { content: ''; position: absolute; left: 4px; right: 4px; top: 50%; border-top: 2px dashed color-mix(in srgb, var(--gold) 55%, transparent); }
+.road-track i { position: relative; width: 8px; height: 8px; border-radius: 50%; background: var(--bg-deep); border: 1.5px solid color-mix(in srgb, var(--gold) 60%, transparent); }
+.road-track i.done { background: var(--gold); border-color: var(--gold); }
+.road-track i.here { width: 18px; height: 18px; background: var(--red); border: 3px solid var(--card-bg); box-shadow: 0 0 0 2px var(--red); }
+.road-track i.ev { background: var(--card-bg); border-color: var(--red); border-style: dotted; width: 12px; height: 12px; }
+.road-ends { display: flex; justify-content: space-between; font-size: var(--fs-xs); color: var(--text-muted); }
+.road-ends span:nth-child(2) { font-weight: 700; color: var(--ink); }
+.roll-pill { display: inline-flex; align-items: center; gap: 4px; font-family: var(--font-body); font-size: var(--fs-xs); font-weight: 700;
+  padding: 1px 8px 1px 5px; border-radius: var(--r-pill); vertical-align: 2px; white-space: nowrap; }
+.roll-pill .ic { width: 14px; height: 14px; }
+.roll-pill small { font-weight: 500; opacity: .75; }
+.roll-pill.ok { background: var(--success-bg); color: var(--success-text); }
+.roll-pill.fail { background: var(--error-bg); color: var(--error-text); }
+/* Stance buttons carry their effect */
+.stance-btn { display: flex; flex-direction: column; align-items: center; gap: 1px; border-radius: var(--r-md) !important; padding: 8px 6px !important; }
+.stance-btn strong { font-size: var(--fs-sm); }
+.stance-btn small { font-size: 10.5px; font-weight: 500; color: var(--text-muted); line-height: 1.2; }
+.stance-btn.active small { color: inherit; opacity: .85; }
+/* War gear: each weapon is a card, not a squeezed table row */
+.gear-table thead { display: none; }
+.gear-table, .gear-table tbody { display: block; }
+#weapon-tbody tr { display: grid; grid-template-columns: repeat(3, 1fr) auto; gap: 6px var(--sp-2); align-items: end;
+  background: var(--bg); border-radius: var(--r-md); padding: var(--sp-3); margin-bottom: var(--sp-2); }
+#weapon-tbody td { padding: 0; display: block; }
+#weapon-tbody td::before { content: attr(data-label); display: block; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--text-muted); margin-bottom: 2px; }
+#weapon-tbody .wc-name { grid-column: 1 / -2; }
+#weapon-tbody .wc-name input { font-family: var(--font-display); font-size: var(--fs-lg); font-weight: 600; }
+#weapon-tbody .wc-ctl { grid-column: -2 / -1; grid-row: 1; align-self: start; }
+#weapon-tbody .wc-ctl::before { display: none; }
+#weapon-tbody .wc-notes { grid-column: 1 / -1; }
+#weapon-tbody .wc-notes::before { display: none; }
+#weapon-tbody .wc-num input { text-align: center; font-family: var(--font-display); font-size: var(--fs-lg); }
+.jump-bar { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 2px 0 var(--sp-3); column-span: all; }
+.jump-bar::-webkit-scrollbar { display: none; }
+.jump-chip { flex: 0 0 auto; background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--r-pill); padding: 6px 12px; font-size: var(--fs-xs); font-weight: 600; color: var(--ink-soft); }
+.panel .card { scroll-margin-top: 190px; }
+.empty-state { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: var(--sp-4) var(--sp-2); color: var(--text-faint); font-size: var(--fs-sm); text-align: center; }
+.empty-state .ic { width: 34px; height: 34px; color: color-mix(in srgb, var(--gold) 60%, transparent); stroke-width: 1.4; }

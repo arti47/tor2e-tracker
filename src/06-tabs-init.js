@@ -19,6 +19,7 @@ function bindTabs() {
       if (t.dataset.tab === 'gm' && typeof renderGm === 'function') renderGm();
       if (typeof initHintButtons === 'function') initHintButtons();       // (?) hints on any newly-shown markup
       clampLongHints();
+      if (JUMP_PANELS.includes('panel-' + t.dataset.tab)) renderJumpBar('panel-' + t.dataset.tab);
       if (typeof renderNewcomerBanner === 'function') renderNewcomerBanner();
       refreshNav();
       window.scrollTo(0, 0);
@@ -118,6 +119,33 @@ function closeRollDrawer() {
   const d = document.getElementById('roll-drawer'); if (!d) return;
   d.classList.remove('open'); document.body.classList.remove('drawer-open');
 }
+
+/* ---------- JUMP BARS ----------
+   The two longest tabs (Band ~5 screens, Oracle ~3) get a row of chips naming their cards,
+   so a player can go straight to "Tests" or "Lore" instead of scrolling past everything. */
+const JUMP_PANELS = ['panel-band', 'panel-oracle'];
+function renderJumpBar(panelId) {
+  const panel = document.getElementById(panelId); if (!panel) return;
+  let bar = panel.querySelector(':scope > .jump-bar');
+  const cards = [...panel.querySelectorAll(':scope > .card:not(.tab-intro)')]
+    .filter(c => c.style.display !== 'none' && c.querySelector(':scope > .card-title'));
+  if (cards.length < 4) { if (bar) bar.remove(); return; }
+  if (!bar) {
+    bar = document.createElement('nav'); bar.className = 'jump-bar'; bar.setAttribute('aria-label', 'Jump to a section');
+    const intro = panel.querySelector(':scope > .tab-intro');
+    panel.insertBefore(bar, intro ? intro.nextSibling : panel.firstChild);
+  }
+  bar.innerHTML = '';
+  cards.forEach((c, i) => {
+    const t = c.querySelector(':scope > .card-title');
+    const label = t.childNodes[0] && t.childNodes[0].nodeType === 3 ? t.childNodes[0].textContent : t.textContent;
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'jump-chip';
+    b.textContent = label.replace(/[⌄▾▸?]/g, '').replace(/—.*$/, '').trim().slice(0, 26);
+    b.onclick = () => { c.classList.remove('collapsed'); c.scrollIntoView({ block: 'start', behavior: 'auto' }); };
+    bar.appendChild(b);
+  });
+}
+function renderJumpBars() { JUMP_PANELS.forEach(renderJumpBar); }
 
 /* ---------- ONE-TIME TIPS ----------
    Every tab opens with an explanation (.tab-intro — GOTCHA 14 keeps them). Shown every
@@ -1142,7 +1170,7 @@ function renderHistory() {
   if (!div) return;
   div.innerHTML = '';
   if (history.length === 0) {
-    div.innerHTML = '<div style="text-align:center;color:var(--text-faint);padding:10px;font-size:var(--fs-xs)">No rolls yet</div>';
+    div.innerHTML = emptyState('No rolls yet — tap a skill above to make your first.', 'dice');
     return;
   }
   // Filters
@@ -1901,6 +1929,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initHintButtons();        // U7/B: (?) hints app-wide (text-matched labels + data-hint)
   initTips();               // one-time tab tips (dismissable intros)
   initRollDrawer();         // dice results slide up from the bottom on every tab
+  renderJumpBars();         // chips to jump between the cards of the longest tabs
   (function splash() {      // once per session; purely decorative
     const sp = document.getElementById('splash'); if (!sp) return;
     let seen = false; try { seen = sessionStorage.getItem('tor2e-splashed') === '1'; sessionStorage.setItem('tor2e-splashed', '1'); } catch (e) {}

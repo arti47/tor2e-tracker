@@ -126,6 +126,10 @@ const DIE_GLYPH = {
   eye: '<svg viewBox="0 0 32 20" width="30" height="19" aria-hidden="true"><path d="M1 10 Q16 -4 31 10 Q16 24 1 10 Z" fill="none" stroke="currentColor" stroke-width="2"/><ellipse cx="16" cy="10" rx="3" ry="7" fill="currentColor"/></svg>',
   rune: '<svg viewBox="0 0 20 28" width="17" height="24" aria-hidden="true"><path d="M6 2 V26 M6 5 L15 11 M6 13 L15 19" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>'
 };
+/* Empty states: a quiet drawn icon above one line, instead of grey text floating in a card. */
+function emptyState(msg, icon) {
+  return `<div class="empty-state"><svg class="ic" aria-hidden="true"><use href="#i-${icon || 'scroll'}"/></svg><span>${msg}</span></div>`;
+}
 function _labelFeatDie(el, special) {
   if (!el) return;
   const t = special === 'eye' ? 'Feat die: the Eye of Sauron — counts as 0, and an automatic failure while Miserable'
@@ -1074,7 +1078,7 @@ function renderOracleHistory() {
   const el = document.getElementById('oracle-history');
   if (!el) return;
   if (oracleHistory.length === 0) {
-    el.innerHTML = '<div style="text-align:center;color:var(--text-faint);padding:10px;font-size:var(--fs-xs)">No rolls yet.</div>';
+    el.innerHTML = emptyState('No rolls yet.', 'dice');
     return;
   }
   el.innerHTML = oracleHistory.map((h, i) => `<div style="padding:5px 8px;border-bottom:1px solid var(--border)"><strong>${h.label}</strong> · ${h.result} <span style="float:right;color:var(--text-muted);font-size:var(--fs-xs)">${h.time} <button onclick="deleteOracleRollAt(${i})" aria-label="Delete this oracle roll" title="Delete this roll" style="background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:var(--fs-md);padding:0 0 0 4px;vertical-align:middle">×</button></span></div>`).join('');

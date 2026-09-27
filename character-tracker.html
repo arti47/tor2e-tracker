@@ -376,7 +376,7 @@
   </div>
 
   <div class="card" id="lifepath-card">
-    <h3 class="card-title">Optional — instead of choosing in step 1 · 🎲 Random Lifepath</h3>
+    <h3 class="card-title">Optional — instead of choosing in step 1 · Random Lifepath</h3>
     <p class="hint" style="margin-bottom:10px;text-align:left;line-height:1.5">From the <em>Character Lifepaths</em> supplement — an <strong>alternative to picking</strong>: it rolls your backstory, attributes, a culture-Favoured skill and two Distinctive Features for you, then a Major Event adds a twist.<br><strong>Use it here, before step 2</strong> — running it later overwrites what you chose in steps 4 and 5. (It always asks first.)</p>
 
     <div id="lifepath-disabled-hint" style="display:none;padding:10px;background:var(--bg-deep);border-radius:var(--r-sm);font-size:var(--fs-xs);color:var(--text-muted);font-style:italic"></div>
@@ -916,11 +916,11 @@
   <div class="card">
     <h3 class="card-title" data-hint="Stance">Stance</h3>
     <div class="conditions" style="grid-template-columns:repeat(4,1fr)">
-      <button class="cond-btn" data-stance="forward">Forward</button>
-      <button class="cond-btn" data-stance="open">Open</button>
-      <button class="cond-btn" data-stance="defensive">Defensive</button>
-      <button class="cond-btn" data-stance="rearward">Rearward</button>
-      <button class="cond-btn" data-stance="skirmish" style="display:none">🗡️ Skirmish</button>
+      <button class="cond-btn stance-btn" data-stance="forward"><strong>Forward</strong><small>hit harder, get hit more</small></button>
+      <button class="cond-btn stance-btn" data-stance="open"><strong>Open</strong><small>balanced</small></button>
+      <button class="cond-btn stance-btn" data-stance="defensive"><strong>Defensive</strong><small>harder to hit you</small></button>
+      <button class="cond-btn stance-btn" data-stance="rearward"><strong>Rearward</strong><small>bows only, out of reach</small></button>
+      <button class="cond-btn stance-btn" data-stance="skirmish" style="display:none"><strong>Skirmish</strong><small>shoot and slip away</small></button>
     </div>
     <div id="stance-desc" style="font-size:var(--fs-xs);margin-top:10px;padding:10px;background:var(--bg);border-radius:var(--r-sm);min-height:50px;line-height:1.5;color:var(--text-muted);">
       Select a stance to see its effects.
@@ -1723,7 +1723,7 @@
   </div>
 
   <div class="card">
-    <h3 class="card-title" data-hint="Mission (Moria)">2 · 🗺️ Mission Planning</h3>
+    <h3 class="card-title" data-hint="Mission (Moria)">2 · Mission Planning</h3>
     <p class="hint" style="text-align:left;line-height:1.5">Set your mission, then choose the Band's <strong>composition</strong> — it seeds Dispositions, Burden, Readiness, Eye Awareness, and the Hunt Threshold.</p>
     <div class="field"><label style="flex:0 0 70px">Objective</label><input id="m-objective" placeholder="What does Balin send you to do?" onchange="char.mission.objective=this.value;saveCharacter()"></div>
     <button class="add-row-btn" onclick="rollMissionObjective()" style="width:100%;font-size:var(--fs-xs);background:var(--btn-secondary-bg);margin-bottom:10px">🎲 Roll Mission Objective</button>
@@ -1766,7 +1766,7 @@
   </div>
 
   <div class="card">
-    <h3 class="card-title" data-hint="Your Band (Moria)">3 · ⛏️ Band of Allies</h3>
+    <h3 class="card-title" data-hint="Your Band (Moria)">3 · Band of Allies</h3>
     <p class="hint" style="text-align:left;line-height:1.5">Your Band of Dwarves under Balin's expedition. Roll <strong>Dispositions</strong> for the Band vs the <strong>Readiness TN</strong> (= 20 − Readiness). Generate allies below.</p>
     <div class="row-2" style="margin-top:6px">
       <div class="counter">
