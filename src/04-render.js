@@ -4852,7 +4852,7 @@ function renderPlay() {
 
   host.innerHTML =
     _playConditionBanner() +
-    `<div class="card play-scene">
+    `<div class="card play-scene${['journey', 'home'].includes(s.step) && (char.journey || {}).active ? ' on-road' : ''}">
        <div class="eyebrow">Where you are</div>
        <h3 class="card-title">${escapeHtml(sit.title)}</h3>
        <div class="play-sit">${sit.text}</div>

@@ -122,6 +122,10 @@ function cycleTheme() {
 /* Dice results render as three bare coloured boxes. The Feat die is visually distinct but nothing
    NAMES it, so a new player can't tell which die is which — and a screen reader reads only digits.
    Label every die at the point it is built. */
+const DIE_GLYPH = {
+  eye: '<svg viewBox="0 0 32 20" width="30" height="19" aria-hidden="true"><path d="M1 10 Q16 -4 31 10 Q16 24 1 10 Z" fill="none" stroke="currentColor" stroke-width="2"/><ellipse cx="16" cy="10" rx="3" ry="7" fill="currentColor"/></svg>',
+  rune: '<svg viewBox="0 0 20 28" width="17" height="24" aria-hidden="true"><path d="M6 2 V26 M6 5 L15 11 M6 13 L15 19" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>'
+};
 function _labelFeatDie(el, special) {
   if (!el) return;
   const t = special === 'eye' ? 'Feat die: the Eye of Sauron — counts as 0, and an automatic failure while Miserable'
@@ -145,7 +149,8 @@ function showModal(opts) {
     const bodyEl = document.getElementById('styled-modal-body');
     const inputEl = document.getElementById('styled-modal-input');
     const btnsEl = document.getElementById('styled-modal-buttons');
-    titleEl.textContent = opts.title || '';
+    // Dialog titles are words, not emoji soup: strip a leading emoji the caller may have added.
+    titleEl.textContent = String(opts.title || '').replace(/^(?:[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B50}\u{231A}-\u{23FF}]\uFE0F?\u200D?)+\s*/u, '');
     bodyEl.innerHTML = opts.message || '';  // intentionally HTML — caller controls
     if (opts.input) {
       inputEl.style.display = 'block';
@@ -1356,7 +1361,10 @@ function updateEyePill(ea, threshold) {
   if (!isSolo()) { pill.style.display = 'none'; return; }
   pill.style.display = '';
   const hit = ea >= threshold;
-  pill.textContent = 'Eye ' + ea + '/' + threshold + (hit ? ' — Revelation!' : '');
+  const open = Math.min(1, ea / Math.max(1, threshold));
+  const ry = (1.5 + open * 6.5).toFixed(1);   // the lid opens as the Enemy's gaze sharpens
+  pill.innerHTML = `<svg class="eye-gauge" viewBox="0 0 32 20" width="22" height="14" aria-hidden="true"><path d="M1 10 Q16 ${10 - ry * 1.5} 31 10 Q16 ${10 + +ry * 1.5} 1 10 Z" fill="currentColor" fill-opacity=".12" stroke="currentColor" stroke-width="1.6"/><ellipse cx="16" cy="10" rx="${(1 + open * 2.2).toFixed(1)}" ry="${ry}" fill="currentColor"/></svg>` +
+    '<span class="sr-only">Eye </span>' + ea + '/' + threshold + (hit ? ' <span class="sr-only">— </span>Revelation!' : '');
   pill.title = hit
     ? 'Eye Awareness ' + ea + ' has reached the Hunt threshold ' + threshold + ' — roll a Revelation Episode. Tap to open.'
     : 'Eye Awareness ' + ea + ' of ' + threshold + ' (Hunt threshold). Tap to open.';

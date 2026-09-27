@@ -879,7 +879,8 @@ function rollDice(skillLabel) {
     const d = document.createElement('div');
     d.className = 'feat-die' + (r.special === 'eye' ? ' eye' : '') + (r.special === 'rune' ? ' rune' : '');
     d.textContent = r.label;
-    _labelFeatDie(d, r.special);
+    _labelFeatDie(d, r.special);                       // label first: it reads textContent
+    if (r.special && DIE_GLYPH[r.special]) d.innerHTML = DIE_GLYPH[r.special];
     if (r !== chosenFeat) d.style.opacity = '0.4';
     diceDiv.appendChild(d);
   });
@@ -1313,7 +1314,7 @@ function renderTutMenu() {
       </button>`;
   }).join('');
   ov.innerHTML = `<div class="menu" style="max-width:400px;width:93%;max-height:90vh;overflow-y:auto">
-      <h3 style="margin-top:0">📖 Learn the Game</h3>
+      <h3 style="margin-top:0">Learn the Game</h3>
       <p class="hint" style="text-align:left;margin:0 0 10px">Lessons run on a safe <strong>practice hero</strong> — your real characters aren't touched. Pick any topic.</p>
       ${items}
       <button onclick="tutDone()" class="close add-row-btn" style="width:100%;margin-top:8px;background:var(--btn-secondary-bg);color:white">Done — exit tutorial</button>
@@ -1900,6 +1901,12 @@ document.addEventListener('DOMContentLoaded', () => {
   initHintButtons();        // U7/B: (?) hints app-wide (text-matched labels + data-hint)
   initTips();               // one-time tab tips (dismissable intros)
   initRollDrawer();         // dice results slide up from the bottom on every tab
+  (function splash() {      // once per session; purely decorative
+    const sp = document.getElementById('splash'); if (!sp) return;
+    let seen = false; try { seen = sessionStorage.getItem('tor2e-splashed') === '1'; sessionStorage.setItem('tor2e-splashed', '1'); } catch (e) {}
+    if (seen || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)) { sp.remove(); return; }
+    sp.classList.add('run'); setTimeout(() => sp.classList.add('out'), 1100); setTimeout(() => sp.remove(), 1600);
+  })();
   clampLongHints();         // long explanations fold to one tappable line
   applyPlainGlosses();      // 'Shadow — creeping despair' under the first terms a newcomer meets
   renderNewcomerBanner();   // A: 'start here' card while the active hero is still blank
