@@ -1735,10 +1735,10 @@ const TUTORIAL_LESSONS = [
   { id: 'council', icon: '🗣️', title: 'Councils & Endeavours', sub: 'Words, and long labours',
     prep: c => _tutBuildIfBlank(c),
     steps: [
-      { tab: 'council', sel: '[onclick="startCouncil()"]', intro: `Not every battle is fought with the sword.`, title: `Begin a Council`, done: c => !!(c.council && c.council.active), body: `A Council is a social contest. Set the topic, the audience's Resistance and attitude, then tap “▶ Begin Council”. Try it.`, more: `Resistance is how many successes you need to win them over; attitude (Reluctant / Open / Friendly) gives ±1 die to your rolls.` },
+      { tab: 'council', sel: '#council-chooser', intro: `Not every battle is fought with the sword.`, title: `Begin a Council`, done: c => !!(c.council && c.council.active), body: `A Council is a social contest. Tap “Persuade someone”, set the topic, the audience's Resistance and attitude, then tap “Begin Council”. Try it.`, more: `Resistance is how many successes you need to win them over; attitude (Reluctant / Open / Friendly) gives ±1 die to your rolls.` },
       { tab: 'council', title: `Introduction`, body: `First make an Introduction roll (AWE, COURTESY, or RIDDLE) to set your time limit — how many attempts you get before patience runs out.`, more: `A strong introduction buys you more attempts; a poor one leaves you little room to manoeuvre.` },
       { tab: 'council', title: `Interaction`, body: `Then use skills like PERSUADE, INSIGHT, ENHEARTEN, RIDDLE or SONG to wear down the Resistance. Each success contributes 1 + its ✦ icons.`, more: `A Roleplay Bonus for a relevant or brilliant point adds dice. Run out of time and you may accept failure, or a costly Success-with-Woe.` },
-      { tab: 'council', title: `Skill Endeavours`, body: `Scroll to the Skill Endeavour section for long tasks — research, crafting, healing. Set a Resistance, a time limit, and a risk level, then roll until it's done.`, more: `Risk levels: Standard, Hazardous (failures bring Woe), and Foolish (a single failure is a Disaster). Choose your gamble.` }
+      { tab: 'council', title: `Skill Endeavours`, body: `For long tasks — research, crafting, healing — choose “A long, hard task” at the top of this tab. Set a Resistance, a time limit, and a risk level, then roll until it's done.`, more: `Risk levels: Standard, Hazardous (failures bring Woe), and Foolish (a single failure is a Disaster). Choose your gamble.` }
     ] },
   { id: 'treasure', icon: '💎', title: 'Treasure & Magical Items', sub: 'The glitter of old hoards',
     prep: c => { _tutBuildIfBlank(c); c.treasure = (parseInt(c.treasure) || 0) + 20; },
@@ -2084,49 +2084,108 @@ if ('serviceWorker' in navigator && (location.protocol === 'http:' || location.p
   });
 }
 
-/* ---------- Drawn icons instead of emoji (round 3) ----------
-   Emoji render as glossy colour pictures that fight the line-art look. A leading emoji on any
-   button is swapped for the matching drawn icon from the shell's sprite, or dropped when there
-   is no good match. Runs over the whole document and again on any newly added markup. */
+/* ---------- Drawn icons instead of emoji (rounds 3–4) ----------
+   Emoji render as glossy colour pictures that fight the line-art look. Every pictograph in the
+   interface's own text — buttons, titles, hints, chips, toasts, dialogs — is swapped for the
+   matching drawn icon. An emoji with no drawing is LEFT AS IT IS (round 3 dropped them, which
+   left six buttons blank). User writing (Chronicle prose, history, form fields) is never touched. */
 const EMOJI_ICON = {
-  '🎲': 'i-dice', '🗡': 'i-swords', '⚔': 'i-swords', '📜': 'i-scroll', '🛡': 'i-shield', '✨': 'i-sparkles', '🌟': 'i-sparkles',
-  '🔥': 'i-flame', '🌙': 'i-moon', '☀': 'i-sun', '⛺': 'i-tent', '🏕': 'i-tent', '🏛': 'i-castle', '🏰': 'i-castle',
-  '✍': 'i-feather', '🪶': 'i-feather', '🎒': 'i-pack', '🔨': 'i-hammer', '⚒': 'i-hammer', '❤': 'i-heart', '🩸': 'i-heart',
-  '🧭': 'i-compass', '🥾': 'i-steps', '🏃': 'i-steps', '⛰': 'i-mountain', '🏔': 'i-mountain', '💀': 'i-skull', '👥': 'i-users',
-  '🤝': 'i-users', '👑': 'i-crown', '💎': 'i-gem', '👁': 'i-eye', '➕': 'i-plus', '🔮': 'i-sparkles', '🌿': 'i-feather',
-  '📖': 'i-book', '🗺': 'i-map', '🏹': 'i-swords'
+  '🎲': 'i-dice', '🗡': 'i-swords', '⚔': 'i-swords', '📜': 'i-scroll', '🛡': 'i-shield', '✨': 'i-sparkles', '🌟': 'i-star', '⭐': 'i-star',
+  '🎉': 'i-sparkles', '🔮': 'i-sparkles', '🔥': 'i-flame', '🌙': 'i-moon', '🌑': 'i-moon', '☀': 'i-sun', '⛺': 'i-tent', '🏕': 'i-tent',
+  '🏛': 'i-castle', '🏰': 'i-castle', '✍': 'i-feather', '🪶': 'i-feather', '🎒': 'i-pack', '🔨': 'i-hammer', '⚒': 'i-hammer',
+  '❤': 'i-heart', '🩸': 'i-drop', '🧭': 'i-compass', '🥾': 'i-steps', '🏃': 'i-steps', '🚶': 'i-person', '⛰': 'i-mountain',
+  '🏔': 'i-mountain', '💀': 'i-skull', '☠': 'i-skull', '👥': 'i-users', '🤝': 'i-users', '👑': 'i-crown', '💎': 'i-gem',
+  '👁': 'i-eye', '👀': 'i-eye', '➕': 'i-plus', '🌿': 'i-leaf', '🌲': 'i-tree', '📖': 'i-book', '🗺': 'i-map', '🏹': 'i-bow',
+  '⚠': 'i-warn', '✅': 'i-check', '✔': 'i-check', '❌': 'i-cross', '✖': 'i-x', '🏁': 'i-flag', '🏆': 'i-trophy', '🗣': 'i-chat',
+  '💬': 'i-chat', '🗑': 'i-trash', '🎯': 'i-target', '🎬': 'i-clapper', '🔍': 'i-search', '💰': 'i-coins', '⛏': 'i-pick',
+  '🩹': 'i-bandage', '🌊': 'i-wave', '🔒': 'i-lock', '🔓': 'i-unlock', '📝': 'i-pencil', '⛑': 'i-helm', '📅': 'i-calendar',
+  '🗓': 'i-calendar', '⚓': 'i-anchor', '🏠': 'i-home', '⚜': 'i-fleur', '🦁': 'i-lion', '📣': 'i-horn', '📢': 'i-horn',
+  '⚙': 'i-settings', '📋': 'i-clipboard', '📈': 'i-chart', '📊': 'i-chart', '❄': 'i-snow', '👂': 'i-ear', '🤫': 'i-hush',
+  '🛈': 'i-info', 'ℹ': 'i-info', '📥': 'i-inbox', '📦': 'i-box', '⚖': 'i-scales', '💾': 'i-save', '💥': 'i-burst', '🎩': 'i-hat',
+  '🎵': 'i-music', '🎶': 'i-music', '🐉': 'i-dragon', '😓': 'i-weary', '😱': 'i-warn', '📸': 'i-camera', '📷': 'i-camera',
+  '📺': 'i-screen', '♻': 'i-refresh', '🔄': 'i-refresh', '📴': 'i-offline', '🔗': 'i-link', '💪': 'i-arm', '🦏': 'i-arm',
+  '🧗': 'i-climb', '🎁': 'i-gift', '👉': 'i-point', '🛠': 'i-tools', '☁': 'i-cloud', '🕸': 'i-web', '🪨': 'i-rock',
+  '🌫': 'i-fog', '👤': 'i-user', '🟢': 'i-dot|ok', '🔴': 'i-dot|bad', '⚪': 'i-dot|off', '♂': 'i-user', '♀': 'i-user',
+  '🌧': 'i-rain', '💧': 'i-drop', '🧙': 'i-hat', '🐺': 'i-skull', '🕯': 'i-flame', '🍃': 'i-leaf', '🌳': 'i-tree', '🎭': 'i-user',
+  '🃏': 'i-cards', '⏱': 'i-timer', '⏳': 'i-hourglass', '⌛': 'i-hourglass', '⬇': 'i-download', '⬆': 'i-upload', '📤': 'i-upload'
 };
-const _EMOJI_LEAD = /^\s*(\p{Extended_Pictographic})️?\s*/u;
-const _EMOJI_KEEP = new Set(['⚔', '✦', '★', '▶', '↺', '✓', '✗', '×', '©', '®', '™', '↩', '↶']);
-function iconifyButtons(root) {
-  (root || document).querySelectorAll('button').forEach(b => {
-    // the first words on the button, even when they sit inside a <strong> or <span>
-    const tw = document.createTreeWalker(b, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT, {
-      acceptNode: n => n.nodeType === 1 ? (n.tagName.toLowerCase() === 'svg' ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_SKIP)
-        : (n.textContent.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP) });
-    const first = tw.nextNode();
-    if (!first) return;
-    if (first.previousSibling && first.previousSibling.nodeName.toLowerCase() === 'svg') return;
-    const m = first.textContent.match(_EMOJI_LEAD); if (!m || _EMOJI_KEEP.has(m[1])) return;
-    const id = EMOJI_ICON[m[1]];
-    first.textContent = first.textContent.slice(m[0].length);
-    if (!b.textContent.trim() && !b.getAttribute('aria-label')) b.setAttribute('aria-label', b.title || 'Roll');
-    if (id) {
-      const ns = 'http://www.w3.org/2000/svg';
-      const svg = document.createElementNS(ns, 'svg'); svg.setAttribute('class', 'b-ic'); svg.setAttribute('aria-hidden', 'true');
-      const use = document.createElementNS(ns, 'use'); use.setAttribute('href', '#' + id); svg.appendChild(use);
-      first.parentNode.insertBefore(svg, first);
+// Typographic marks that read as text, not pictures — kept, forced to text presentation.
+const _EMOJI_KEEP = new Set(['✦', '★', '▶', '↺', '✓', '✗', '×', '©', '®', '™', '↩', '↪', '↶', '↷', '☉', '⇄', '⇒', '☰', '✎', '✕', '↔', '▸', '▾', '◆', '◇', '↕', '➜', '→', '←', '↑', '↓', '▲', '▼', '○', '⬢', '⌄']);
+const _PICTO = /(\p{Extended_Pictographic}|[\u{1F1E6}-\u{1F1FF}])(\uFE0F|\u200D\p{Extended_Pictographic}\uFE0F?)*/gu;
+// Where the words are the player's own, or the glyph is the value itself.
+const _ICON_SKIP = 'script,style,textarea,input,select,option,svg,[contenteditable],.feat-die,.success-die,.ch-p,.s-history,.no-iconify,.user-text,code,pre';
+window._unmappedEmoji = window._unmappedEmoji || new Set();
+function _iconSvg(id, cls) {
+  const ns = 'http://www.w3.org/2000/svg';
+  const [sym, tone] = id.split('|');
+  const svg = document.createElementNS(ns, 'svg'); svg.setAttribute('class', cls + (tone ? ' tone-' + tone : '')); svg.setAttribute('aria-hidden', 'true');
+  const use = document.createElementNS(ns, 'use'); use.setAttribute('href', '#' + sym); svg.appendChild(use);
+  return svg;
+}
+function _iconifyTextNode(t) {
+  const txt = t.nodeValue;
+  if (!txt || !/[\u2190-\u2BFF\u{1F000}-\u{1FAFF}\u2139\u24C2\u3030\u303D\u3297\u3299\u00A9\u00AE]/u.test(txt)) return;
+  const el = t.parentElement; if (!el || el.closest(_ICON_SKIP)) return;
+  _PICTO.lastIndex = 0;
+  if (!_PICTO.test(txt)) return;
+  _PICTO.lastIndex = 0;
+  const frag = document.createDocumentFragment(); let last = 0, changed = false, m;
+  while ((m = _PICTO.exec(txt))) {
+    const base = m[1];
+    if (_EMOJI_KEEP.has(base)) {
+      if (m[0] !== base) { frag.appendChild(document.createTextNode(txt.slice(last, m.index) + base + '\uFE0E')); last = m.index + m[0].length; changed = true; }
+      continue;
     }
+    const id = EMOJI_ICON[base];
+    if (!id) { window._unmappedEmoji.add(base); continue; }
+    let before = txt.slice(last, m.index);
+    let end = m.index + m[0].length;
+    // the icon sits where the emoji sat; one space after it stays, a leading icon swallows it
+    const lead = !before.trim() && !frag.childNodes.length && !t.previousSibling;
+    if (lead && txt[end] === ' ') end++;
+    if (before) frag.appendChild(document.createTextNode(before));
+    frag.appendChild(_iconSvg(id, lead ? 'b-ic' : 'b-ic ic-t'));
+    last = end; changed = true;
+  }
+  if (!changed) return;
+  if (last < txt.length) frag.appendChild(document.createTextNode(txt.slice(last)));
+  t.parentNode.replaceChild(frag, t);
+}
+function _labelGlyphButtons(root) {
+  const scope = root.nodeType === 1 ? root : document.body;
+  const btns = scope.matches && scope.matches('button') ? [scope] : [];
+  scope.querySelectorAll && scope.querySelectorAll('button').forEach(b => btns.push(b));
+  btns.forEach(b => {
+    if (b.getAttribute('aria-label') || b.textContent.trim()) return;
+    const use = b.querySelector('use'); const name = (use && use.getAttribute('href') || '').replace('#i-', '');
+    b.setAttribute('aria-label', b.title || name || 'Button');
   });
 }
+function iconifyText(root) {
+  const r = root || document.body;
+  if (r.nodeType === 3) { _iconifyTextNode(r); if (r.parentElement) _labelGlyphButtons(r.parentElement); return; }
+  if (r.nodeType !== 1 && r.nodeType !== 9) return;
+  const start = r.nodeType === 9 ? r.body : r;
+  if (!start || (start.closest && start.closest(_ICON_SKIP))) return;
+  const tw = document.createTreeWalker(start, NodeFilter.SHOW_TEXT);
+  const nodes = []; let n; while ((n = tw.nextNode())) nodes.push(n);
+  nodes.forEach(_iconifyTextNode);
+  _labelGlyphButtons(start);
+}
 function initIconify() {
-  const pass = () => { iconifyButtons(document); enhancePickers(document); enhanceSteppers(document); syncPickers(); };
-  pass();
-  let queued = false;
-  new MutationObserver(() => {
+  const pass = () => { enhancePickers(document); enhanceSteppers(document); syncPickers(); };
+  iconifyText(document.body); pass();
+  let queued = false; const pending = new Set();
+  new MutationObserver(muts => {
+    muts.forEach(m => {
+      if (m.type === 'childList') m.addedNodes.forEach(x => pending.add(x));
+      else if (m.type === 'characterData') pending.add(m.target);
+    });
+    // text is iconified at once, so nothing flashes as a colour emoji first
+    pending.forEach(x => { if (x.isConnected) iconifyText(x); }); pending.clear();
     if (queued) return; queued = true;
     requestAnimationFrame(() => { queued = false; pass(); });
-  }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'disabled'] });
+  }).observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['style', 'disabled'] });
   // A select's value set in code fires no event; re-read the labels after every change anywhere.
   document.addEventListener('change', () => requestAnimationFrame(syncPickers), true);
 }

@@ -674,7 +674,7 @@ module.exports = {
     // ---- Solo players have no Loremaster and no Company; the copy must not assume otherwise ----
     const solo = await page.evaluate(() => {
       const out = {};
-      const council = () => document.querySelector('#panel-council .hint').innerText;
+      const council = () => document.querySelector('#council-setup-card .hint').textContent;
       char.striderMode = false; saveCharacter(); refreshStriderUI();
       const group = council();
       char.striderMode = true; saveCharacter(); refreshStriderUI();
@@ -710,7 +710,9 @@ module.exports = {
       const out = {};
       // Council: the two subsystems are two clean runs; the archive sits last.
       const c = titles('council').join('|');
-      out.council = c.indexOf('Council Log') < c.indexOf('Skill Endeavour') &&
+      // round 4: the tab opens on a chooser, then the Council, then the Endeavour
+      out.council = c.indexOf('What are you facing?') < c.indexOf('Set up the Council') &&
+                    c.indexOf('Council Log') < c.indexOf('Set up the Endeavour') &&
                     c.indexOf('Endeavour Log') < c.indexOf('Past Councils');
       // Gear: opens on something editable, not the read-only summary.
       const g = titles('gear');

@@ -1309,6 +1309,12 @@ textarea:placeholder-shown:not(:focus):not([readonly]):not(#ch-compose) { min-he
 .roll-btn { font-family: var(--font-body) !important; font-weight: 700 !important; letter-spacing: .2px; }
 /* Buttons carry drawn icons, not emoji. */
 .b-ic { width: 17px; height: 17px; flex: 0 0 auto; vertical-align: -3px; }
+/* round 4: a leading icon keeps a real gap from its words; an icon inside a sentence sits on the line */
+.b-ic:not(.ic-t) { margin-right: .4em; }
+button .b-ic:only-child, button .b-ic:last-child:not(.ic-t) { margin-right: 0; }
+.b-ic.ic-t { width: 1.05em; height: 1.05em; vertical-align: -.16em; margin: 0 .12em; }
+.b-ic.tone-ok { color: var(--success-text, #2e7d32); } .b-ic.tone-bad { color: var(--red); } .b-ic.tone-off { color: var(--text-faint); }
+.card-title .b-ic, h2 .b-ic, h3 .b-ic, h4 .b-ic { color: var(--gold); }
 
 /* A choice between equals: outlined cards, the chosen one ticked and ruled in red. */
 .opt-card, .menu button.opt-card { flex: 1; display: flex !important; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left;
@@ -1564,3 +1570,7 @@ body.dark[data-group="adventure"] { --grp: #97c483; } body.dark[data-group="roll
 }
 @media (min-width: 900px) { .tab { flex: 0 0 auto; min-width: 120px; } .scene-art { opacity: .55; } }
 .panel a:not(.btn), .menu a:not(.btn) { color: var(--red); text-decoration-color: color-mix(in srgb, var(--red) 40%, transparent); text-underline-offset: 3px; }
+
+/* ===== Round 4 ===== */
+.opt-row { display: flex; gap: var(--sp-2, 8px); flex-wrap: wrap; }
+.opt-row > .opt-card { flex: 1 1 170px; }

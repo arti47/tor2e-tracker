@@ -917,6 +917,25 @@ async function cancelSkillEndeavour() {
   renderSkillEndeavour();
 }
 
+/* ---------- Council or Endeavour: choose first (round 4) ----------
+   The tab stacked two setups with two primary buttons and a divider under them. Now the player
+   picks which one they face; only that setup shows, and whichever is running has the tab. */
+let _councilKind = null;
+function pickCouncilKind(kind) { _councilKind = kind; _councilLayout(); const el = document.getElementById(kind === 'council' ? 'council-setup-card' : 'se-setup-card'); if (el && el.scrollIntoView) el.scrollIntoView({ block: 'nearest', behavior: 'auto' }); }
+function _councilLayout() {
+  const ch = document.getElementById('council-chooser'); if (!ch) return;
+  const vis = id => { const e = document.getElementById(id); return e && e.style.display !== 'none'; };
+  const cRun = vis('council-active-card'), eRun = vis('se-active-card');
+  const busy = cRun || eRun;
+  ch.style.display = busy ? 'none' : '';
+  document.getElementById('council-setup-card').style.display = (!busy && _councilKind === 'council') ? 'block' : 'none';
+  document.getElementById('se-setup-card').style.display = (!busy && _councilKind === 'endeavour') ? 'block' : 'none';
+  ['council', 'endeavour'].forEach(k => { const b = document.getElementById('pick-' + k); if (b) { b.classList.toggle('on', _councilKind === k); b.setAttribute('aria-pressed', String(_councilKind === k)); } });
+  // Past Councils is a record, not a step — it waits below whatever is on screen
+  const hist = document.getElementById('council-history-card');
+  if (hist && eRun) hist.style.display = 'none';
+}
+
 function renderSkillEndeavour() {
   const setup = document.getElementById('se-setup-card');
   const active = document.getElementById('se-active-card');
@@ -1017,6 +1036,7 @@ function renderSkillEndeavour() {
     active.style.display = 'none';
     log.style.display = 'none';
   }
+  _councilLayout();
 }
 
 function renderSkillEndeavourLog() {
@@ -1121,6 +1141,7 @@ function finalizeSkillEndeavour(outcome) {
   document.getElementById('se-log-card').style.display = 'block';
   document.getElementById('se-setup-card').style.display = 'none';
   document.getElementById('se-cancel-btn').style.display = 'none';
+  _councilLayout();
 }
 
 function closeSkillEndeavourAndReset() {
@@ -1266,6 +1287,7 @@ function renderCouncil() {
     log.style.display = 'none';
   }
   renderCouncilHistory();
+  _councilLayout();
 }
 
 function renderCouncilHistory() {
@@ -1283,6 +1305,7 @@ function renderCouncilHistory() {
       <small>${labels[h.outcome] || h.outcome} · ${h.successesScored}/${h.resistance} successes in ${h.attemptsUsed} attempt(s)</small>
     </div>`;
   }).join('');
+  _councilLayout();
 }
 
 async function clearCouncilHistory() {
@@ -1418,6 +1441,7 @@ function finalizeCouncil(outcome) {
   document.getElementById('council-log-card').style.display = 'block';
   document.getElementById('council-setup-card').style.display = 'none';
   document.getElementById('c-cancel-btn').style.display = 'none';
+  _councilLayout();
 }
 
 function closeCouncilAndReset() {

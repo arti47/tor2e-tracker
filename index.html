@@ -1087,8 +1087,18 @@
 <!-- ============ COUNCIL ============ -->
 <section class="panel" id="panel-council">
 
-  <div class="card" id="council-setup-card">
-    <h3 class="card-title" id="council-setup-title" data-hint="Resistance">Council Setup</h3>
+  <div class="card tab-intro"><p class="hint" style="text-align:left;line-height:1.55;margin:0"><strong>Words, and long labours.</strong> A <strong>Council</strong> is winning someone over; an <strong>Endeavour</strong> is a hard task that takes several tries. Pick one — only its setup shows, and while it runs it has the tab to itself.</p></div>
+
+  <div class="card" id="council-chooser">
+    <h3 class="card-title">What are you facing?</h3>
+    <div class="opt-row" role="group" aria-label="Council or Endeavour">
+      <button type="button" class="opt-card" id="pick-council" aria-pressed="false" onclick="pickCouncilKind('council')"><strong>Persuade someone</strong><small>A Council — win over a lord, a gathering, a wary stranger</small></button>
+      <button type="button" class="opt-card" id="pick-endeavour" aria-pressed="false" onclick="pickCouncilKind('endeavour')"><strong>A long, hard task</strong><small>An Endeavour — search, build, mend or decipher over several tries</small></button>
+    </div>
+  </div>
+
+  <div class="card" id="council-setup-card" style="display:none">
+    <h3 class="card-title" id="council-setup-title" data-hint="Resistance">Set up the Council</h3>
     <p class="hint" style="text-align:left;margin-bottom:10px;line-height:1.5" data-solo-text="A council is a formal gathering where the stakes are high — a plea, a bargain, a warning. To win it you must accumulate successful rolls equal to the <strong>Resistance</strong>, within a <strong>Time Limit</strong> set by your opening roll.">A council is a formal gathering where the stakes are high. To win, the Company must accumulate successful rolls equal to the Resistance, within a Time Limit determined by the Introduction roll.</p>
     <div class="field"><label>Topic / Goal</label><input id="c-topic" placeholder="e.g. Petition Elrond for safe passage"></div>
     <div style="margin-top:10px">
@@ -1202,8 +1212,8 @@
     <div id="c-roll-log" style="font-size:var(--fs-xs);line-height:1.5;max-height:300px;overflow-y:auto;-webkit-overflow-scrolling:touch"></div>
   </div>
 
-  <div class="card" id="se-setup-card">
-    <h3 class="card-title" id="endeavour-setup-title">Skill Endeavour Setup</h3>
+  <div class="card" id="se-setup-card" style="display:none">
+    <h3 class="card-title" id="endeavour-setup-title" data-hint="Resistance">Set up the Endeavour</h3>
     <p class="hint" style="text-align:left;margin-bottom:10px;line-height:1.5">A Skill Endeavour is a complicated task that requires multiple rolls — searching a wide area, fortifying a steading, deciphering a riddle. Players accumulate successes equal to Resistance within the Time Limit.</p>
     <div class="field"><label>Task</label><input id="se-task" placeholder="e.g. Search the ruined keep for clues"></div>
     <div style="margin-top:10px">
@@ -1290,12 +1300,6 @@
     <h3 class="card-title">Past Councils <span id="c-history-count" style="font-size:var(--fs-xs);color:var(--text-muted);font-weight:400"></span></h3>
     <div id="c-history-list" style="font-size:var(--fs-xs);line-height:1.5;max-height:260px;overflow-y:auto;-webkit-overflow-scrolling:touch"></div>
     <button class="add-row-btn" onclick="clearCouncilHistory()" style="width:100%;margin-top:8px;background:var(--btn-secondary-bg);font-size:var(--fs-xs)">Clear Council History</button>
-  </div>
-
-  <!-- Visual divider between Council and Skill Endeavour -->
-  <div style="text-align:center;color:var(--gold);font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:2px;font-weight:600;margin:24px 0 12px;position:relative">
-    <span style="background:var(--bg);padding:0 12px;position:relative;z-index:1">Skill Endeavour</span>
-    <div style="position:absolute;top:50%;left:0;right:0;border-top:1px solid var(--border);z-index:0"></div>
   </div>
 
 </section>
