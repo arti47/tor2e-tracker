@@ -208,8 +208,8 @@
   }
   .tabs::-webkit-scrollbar { display: none; }
   .tab {
-    flex: 0 0 auto;
-    padding: 7px 14px;
+    flex: 1 1 auto; min-width: 0; white-space: nowrap; text-align: center;
+    padding: 7px 10px;
     background: transparent; border: 1px solid transparent; border-radius: var(--r-pill);
     font-size: var(--fs-sm); font-weight: 600;
     color: var(--text-muted);
@@ -905,9 +905,18 @@ body.dark .m-bar > i.shadow { background: repeating-linear-gradient(135deg, #000
 .menu-sec[open] > summary::after { transform: none; }
 .main-menu > button:not(.close) { font-weight: 600; }
 .main-menu .close { margin-top: var(--sp-3); }
-.hint-clamp { cursor: pointer; text-align: left !important; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
-.hint-clamp::before { content: 'ⓘ '; color: var(--gold); font-style: normal; }
-.hint-clamp.open { display: block; -webkit-line-clamp: unset; overflow: visible; }
+/* Quiet help: first full sentence shown, the rest behind "More" (never a mid-word "…"). */
+.hint-clamp { cursor: pointer; text-align: left !important; }
+.card .hint-clamp::before { content: 'ⓘ '; color: var(--gold); font-style: normal; }
+.hint-clamp .hint-rest { display: none; }
+.hint-clamp.open .hint-rest { display: inline; }
+.hint-more { color: var(--red); font-weight: 600; font-style: normal; margin-left: 6px; white-space: nowrap; font-size: var(--fs-xs); }
+.hint-more::before { content: '· '; color: var(--text-faint); font-weight: 400; }
+/* A card title that explains itself: tap the words (dotted underline), not a (?) beside them. */
+.title-term { position: relative; text-decoration: underline dotted var(--gold); text-decoration-thickness: 1px; text-underline-offset: 4px; cursor: help; }
+.title-term .hint-q.hq-title { position: absolute; inset: -4px -6px; width: auto; height: auto; min-width: 0; min-height: 0; margin: 0; padding: 0; opacity: 0; border: 0; background: none; }
+.title-term .hint-q.hq-title::before { display: none; }
+.title-term .hint-q.hq-title:focus-visible { opacity: 1; outline: 2px solid var(--gold); background: transparent; color: transparent; }
 
 /* Hand-edit mode: rule-owned −/+ appear only when asked for. */
 body:not(.adjust-mode) .adj-lock, body:not(.adjust-mode) .adj-only { display: none !important; }
@@ -1163,15 +1172,19 @@ body { background-image: var(--contours), url("data:image/svg+xml;utf8,%3Csvg xm
 body.dark { background-image: var(--contours), radial-gradient(ellipse 80% 45% at 50% -8%, rgba(255, 170, 80, .13), transparent 70%); }
 
 /* every card: an inset gilt rule with corner flourishes */
-.card:not(.tab-intro):not(.callout) { position: relative; box-shadow: var(--elev-1), inset 0 0 28px rgba(120, 80, 30, .05); }
-.card:not(.tab-intro):not(.callout)::before {
+.card:not(.tab-intro):not(.callout) { position: relative; box-shadow: var(--elev-1); }
+/* Tiered (round 3): the gilt frame marks what MATTERS — the hero, the scene, the result.
+   Every tool card is flat and quiet, so the ornate ones read as the page's centre. */
+.card.ornate { box-shadow: 0 2px 14px rgba(40, 25, 10, .14), inset 0 0 28px rgba(120, 80, 30, .06); }
+.card.ornate::before, .roll-drawer::before {
   content: ''; position: absolute; inset: 6px; border-radius: 9px; pointer-events: none;
   border: 1px solid color-mix(in srgb, var(--gold) 22%, transparent);
   background: var(--corner-tl) top left / 22px no-repeat, var(--corner-tr) top right / 22px no-repeat,
               var(--corner-br) bottom right / 22px no-repeat, var(--corner-bl) bottom left / 22px no-repeat;
 }
 /* card titles sit on an ornamental rule */
-.card > .card-title, .card > h2, .ref-group summary h3 { padding-bottom: 12px; background: var(--orn-rule) left bottom / 96px 10px no-repeat; }
+.card.ornate > .card-title, .card.ornate > h2 { padding-bottom: 12px; background: var(--orn-rule) left bottom / 96px 10px no-repeat; }
+.ref-group summary h3 { padding-bottom: 12px; background: var(--orn-rule) left bottom / 96px 10px no-repeat; }
 .card.collapsed > .card-title { background-image: none; padding-bottom: 0; }
 .sheet-head .sh-name, .play-scene .card-title { background: none; padding-bottom: 0; }
 /* illuminated initials */
@@ -1275,3 +1288,27 @@ textarea:placeholder-shown:not(:focus):not([readonly]):not(#ch-compose) { min-he
 .panel .card { scroll-margin-top: 190px; }
 .empty-state { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: var(--sp-4) var(--sp-2); color: var(--text-faint); font-size: var(--fs-sm); text-align: center; }
 .empty-state .ic { width: 34px; height: 34px; color: color-mix(in srgb, var(--gold) 60%, transparent); stroke-width: 1.4; }
+
+/* ================= ROUND 3 ================= */
+/* A grid cell may never widen the page: long button text wraps instead (Band's "Extended ·
+   weeks · 2 undertakings" pushed the page to 437px on a 390px phone). */
+[style*="grid-template-columns"] > *, .grid-2 > *, .grid-3 > * { min-width: 0; }
+.add-row-btn, .btn { white-space: normal; min-width: 0; text-align: center; overflow-wrap: anywhere; }
+.add-row-btn small, .btn small { display: block; font-weight: 500; opacity: .85; }
+
+/* ---- Tiered buttons: ONE primary per screen ----
+   .btn and .roll-btn are primary. .add-row-btn is secondary unless marked .primary; a
+   .roll-btn marked .secondary steps down too. These beat the legacy inline fills. */
+.panel button.add-row-btn:not(.primary):not(.bs-dot), .menu-overlay button.add-row-btn:not(.primary),
+.panel button.roll-btn.secondary {
+  background: var(--card-bg) !important; color: var(--ink) !important;
+  border: 1px solid var(--border) !important; box-shadow: none !important;
+}
+.panel button.add-row-btn.primary, .panel button.roll-btn:not(.secondary) {
+  background: var(--red) !important; color: var(--accent-ink) !important; border: 1px solid var(--red) !important;
+}
+.btn-quiet, .panel button.add-row-btn.quiet { background: transparent !important; border-color: transparent !important; color: var(--red) !important; }
+/* One typeface for every button — the serif belongs to titles, numbers and the story. */
+.roll-btn { font-family: var(--font-body) !important; font-weight: 700 !important; letter-spacing: .2px; }
+/* Buttons carry drawn icons, not emoji. */
+.b-ic { width: 17px; height: 17px; flex: 0 0 auto; vertical-align: -3px; }

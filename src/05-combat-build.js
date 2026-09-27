@@ -1381,7 +1381,7 @@ function renderEncounter() {
   if (!e.active && (!e.foes || e.foes.length === 0)) {
     card.innerHTML = sharedBanner + (canGm
       ? `<p class="hint" style="text-align:left;margin:0 0 8px">Key in adversaries, roll your attacks and theirs, and apply damage — all here. Works in solo or group play.</p>
-      <button class="add-row-btn" onclick="openBestiary()" style="width:100%;background:var(--btn-alert-bg)">+ Add Adversary</button>`
+      <button class="add-row-btn primary" onclick="openBestiary()" style="width:100%">+ Add Adversary</button>`
       : `<p class="hint" style="text-align:center;padding:8px">No active encounter — waiting for the Loremaster to add adversaries.</p>`);
     return;
   }
@@ -1412,7 +1412,10 @@ function renderEncounter() {
       </div>`;
   }
   // Sequence: bring foes in, fight them, then close the encounter.
-  if (canGm) html += `<button onclick="openBestiary()" class="add-row-btn" style="width:100%;margin-bottom:8px;background:var(--gold)">+ Add Adversary</button>`;
+  // One primary per screen: bringing foes in leads only while nobody is standing — once a foe
+  // is up, "You attack" is the action and "Add Adversary" steps down.
+  const _alive = (e.foes || []).some(f => !f.slain);
+  if (canGm) html += `<button onclick="openBestiary()" class="add-row-btn${_alive ? '' : ' primary'}" style="width:100%;margin-bottom:8px">+ Add Adversary</button>`;
   if (encEngagedFoes().length > 1) html += `<button onclick="allFoesAttack()" class="btn btn-secondary btn-block" style="margin:0 0 8px">Every engaged foe attacks you</button>`;
   (e.foes || []).forEach(f => { html += _renderFoeCard(f, canGm); });
   if (canGm) html += `<button onclick="endEncounter()" class="btn btn-quiet btn-block" style="margin-top:10px">End encounter</button>`;

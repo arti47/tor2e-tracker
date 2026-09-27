@@ -4651,7 +4651,7 @@ function renderHeroSheet() {
     ['Rewards', _chips(char.rewards, 'reward')], ['Virtues', _chips(char.virtues, 'virtue')]
   ].filter(([, h]) => h).map(([t, h]) => `<div class="s-h">${t}</div><div class="traits">${h}</div>`).join('');
   host.innerHTML = `
-  <div class="card sheet-head">
+  <div class="card ornate sheet-head">
     <div class="sh-crest">${cultureCrest(char.culture, 76, char.name)}</div>
     <div class="sh-id">
       <h2 class="sh-name">${escapeHtml(heroLabel(char))}</h2>
@@ -4873,7 +4873,7 @@ function renderPlay() {
   const road = (jr.active && parseInt(jr.totalHexes) > 0) ? _roadStrip(parseInt(jr.currentHex) || 0, parseInt(jr.totalHexes), jr.nextEventHex) : '';
   host.innerHTML =
     _playConditionBanner() +
-    `<div class="card play-scene${['journey', 'home'].includes(s.step) && (char.journey || {}).active ? ' on-road' : ''}">
+    `<div class="card ornate play-scene${['journey', 'home'].includes(s.step) && (char.journey || {}).active ? ' on-road' : ''}">
        <div class="eyebrow">Where you are</div>
        <h3 class="card-title">${escapeHtml(sit.title)}</h3>
        <div class="play-sit">${sit.text}</div>

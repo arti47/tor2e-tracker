@@ -19,6 +19,7 @@ function bindTabs() {
       if (t.dataset.tab === 'gm' && typeof renderGm === 'function') renderGm();
       if (typeof initHintButtons === 'function') initHintButtons();       // (?) hints on any newly-shown markup
       clampLongHints();
+      initTips();
       if (JUMP_PANELS.includes('panel-' + t.dataset.tab)) renderJumpBar('panel-' + t.dataset.tab);
       if (typeof renderNewcomerBanner === 'function') renderNewcomerBanner();
       refreshNav();
@@ -164,23 +165,65 @@ function initTips() {
       b.onclick = () => { const s = _tipsSeen(); s[id] = 1; try { localStorage.setItem(TIPS_KEY, JSON.stringify(s)); } catch (e) {} el.classList.add('tip-hidden'); };
       el.appendChild(b);
     }
-    el.classList.toggle('tip-hidden', !!seen[id]);
+    el.classList.toggle('tip-hidden', !!seen[id] || !_tipTurn(id));
   });
+}
+/* Quiet help: at most ONE tab tip per session. The first unseen tip the player meets this
+   session is the one that shows; the others wait (undismissed) for a later session. */
+const TIP_SESSION_KEY = 'tor2e-tip-session';
+function _tipTurn(id) {
+  let cur = null; try { cur = sessionStorage.getItem(TIP_SESSION_KEY); } catch (e) {}
+  if (cur) return cur === '*' || cur === id;      // '*' = the player asked for every tip back
+  const panel = document.getElementById(id);
+  if (!panel || !panel.classList.contains('active')) return false;   // only the tab actually opened claims the turn
+  try { sessionStorage.setItem(TIP_SESSION_KEY, id); } catch (e) {}
+  return true;
 }
 /* Long explanations collapse to one line marked ⓘ; tap to read the rest. The text is all still
    there (and still read by screen readers) — it just stops shouting from every card. */
 function clampLongHints() {
-  document.querySelectorAll('.panel .card .hint:not(.hint-clamp-checked)').forEach(h => {
+  document.querySelectorAll('.panel .card .hint:not(.hint-clamp-checked), .panel .tab-intro .hint:not(.hint-clamp-checked)').forEach(h => {
     h.classList.add('hint-clamp-checked');
-    if (h.closest('.tab-intro')) return;
+    const intro = !!h.closest('.tab-intro');
     if (h.querySelector('button, a, input, select, textarea')) return;
-    if ((h.textContent || '').trim().length < 110) return;
+    if ((h.textContent || '').trim().length < (intro ? 90 : 110)) return;
+    if (!_splitFirstSentence(h)) return;        // one long sentence: show it whole, never cut mid-word
     h.classList.add('hint-clamp');
     h.setAttribute('role', 'button'); h.setAttribute('tabindex', '0'); h.setAttribute('aria-expanded', 'false');
-    const t = () => { const o = h.classList.toggle('open'); h.setAttribute('aria-expanded', o ? 'true' : 'false'); };
+    const more = document.createElement('span'); more.className = 'hint-more'; more.textContent = 'More'; more.setAttribute('aria-hidden', 'true');
+    h.appendChild(more);
+    const t = () => { const o = h.classList.toggle('open'); h.setAttribute('aria-expanded', o ? 'true' : 'false'); more.textContent = o ? 'Less' : 'More'; };
     h.addEventListener('click', t);
     h.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); t(); } });
   });
+}
+/* Quiet help: keep the first full sentence on screen and fold the rest behind "More".
+   Splits at the first sentence end (after ≥20 characters) in a direct text child, or at the
+   element boundary that contains it; everything after moves into span.hint-rest.
+   Returns false when there is nothing worth folding, so the hint shows whole. */
+function _splitFirstSentence(h) {
+  const kids = [...h.childNodes]; let acc = 0, cut = -1;
+  for (let i = 0; i < kids.length && cut < 0; i++) {
+    const n = kids[i], t = n.textContent || '';
+    const re = /[.!?](?=\s|$)/g; let m;
+    while ((m = re.exec(t))) {
+      if (acc + m.index < 20) continue;
+      if (n.nodeType === 3) {
+        if (m.index + 1 < t.length) n.splitText(m.index + 1);
+        cut = i + 1;
+      } else cut = i + 1;
+      break;
+    }
+    acc += t.length;
+  }
+  if (cut < 0) return false;
+  const rest = [...h.childNodes].slice(cut);
+  const restLen = rest.reduce((a, n) => a + (n.textContent || '').trim().length, 0);
+  if (restLen < 25) return false;
+  const span = document.createElement('span'); span.className = 'hint-rest';
+  rest.forEach(n => span.appendChild(n));
+  h.appendChild(span);
+  return true;
 }
 /* Plain-language glosses: a two- or three-word gloss under the game terms a newcomer meets
    first. The (?) still gives the full rule; the gloss answers "what is this, roughly". */
@@ -202,7 +245,7 @@ function applyPlainGlosses() {
   });
 }
 function resetTips() {
-  try { localStorage.removeItem(TIPS_KEY); } catch (e) {}
+  try { localStorage.removeItem(TIPS_KEY); sessionStorage.setItem(TIP_SESSION_KEY, '*'); } catch (e) {}
   initTips();
   if (typeof showToast === 'function') showToast('Tips are back on every tab.');
 }
@@ -1820,6 +1863,17 @@ function _attachHint(el, term) {
   b.className = 'hint-q'; b.textContent = '?';
   b.setAttribute('aria-label', 'What is ' + term + '?');
   b.onclick = ev => { ev.stopPropagation(); ev.preventDefault(); hintFor(term); };
+  // Quiet help: on a card title the whole title word is the tap target (dotted underline),
+  // not a (?) circle beside it. The button is still there — transparent, over the words —
+  // so keyboard and screen-reader users get the same control; the chevron area still collapses.
+  if (el.matches('.card > h3.card-title, .card > h2')) {
+    const term$ = document.createElement('span'); term$.className = 'title-term';
+    [...el.childNodes].forEach(n => term$.appendChild(n));
+    el.appendChild(term$);
+    b.classList.add('hq-title');
+    term$.appendChild(b);
+    return;
+  }
   el.appendChild(b);
 }
 
@@ -1928,6 +1982,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initCollapsibleCards();   // U3: tap a card title to collapse (remembered per device)
   initHintButtons();        // U7/B: (?) hints app-wide (text-matched labels + data-hint)
   initTips();               // one-time tab tips (dismissable intros)
+  initIconify();            // drawn icons in place of emoji on buttons
   initRollDrawer();         // dice results slide up from the bottom on every tab
   renderJumpBars();         // chips to jump between the cards of the longest tabs
   (function splash() {      // once per session; purely decorative
@@ -1994,4 +2049,43 @@ if ('serviceWorker' in navigator && (location.protocol === 'http:' || location.p
       reg.update().catch(() => {});
     }).catch(err => console.warn('TOR2E SW registration failed:', err));
   });
+}
+
+/* ---------- Drawn icons instead of emoji (round 3) ----------
+   Emoji render as glossy colour pictures that fight the line-art look. A leading emoji on any
+   button is swapped for the matching drawn icon from the shell's sprite, or dropped when there
+   is no good match. Runs over the whole document and again on any newly added markup. */
+const EMOJI_ICON = {
+  '🎲': 'i-dice', '🗡': 'i-swords', '⚔': 'i-swords', '📜': 'i-scroll', '🛡': 'i-shield', '✨': 'i-sparkles', '🌟': 'i-sparkles',
+  '🔥': 'i-flame', '🌙': 'i-moon', '☀': 'i-sun', '⛺': 'i-tent', '🏕': 'i-tent', '🏛': 'i-castle', '🏰': 'i-castle',
+  '✍': 'i-feather', '🪶': 'i-feather', '🎒': 'i-pack', '🔨': 'i-hammer', '⚒': 'i-hammer', '❤': 'i-heart', '🩸': 'i-heart',
+  '🧭': 'i-compass', '🥾': 'i-steps', '🏃': 'i-steps', '⛰': 'i-mountain', '🏔': 'i-mountain', '💀': 'i-skull', '👥': 'i-users',
+  '🤝': 'i-users', '👑': 'i-crown', '💎': 'i-gem', '👁': 'i-eye', '➕': 'i-plus', '🔮': 'i-sparkles', '🌿': 'i-feather',
+  '📖': 'i-book', '🗺': 'i-map', '🏹': 'i-swords'
+};
+const _EMOJI_LEAD = /^\s*(\p{Extended_Pictographic})️?\s*/u;
+const _EMOJI_KEEP = new Set(['⚔', '✦', '★', '▶', '↺', '✓', '✗', '×', '©', '®', '™', '↩', '↶']);
+function iconifyButtons(root) {
+  (root || document).querySelectorAll('button').forEach(b => {
+    const first = [...b.childNodes].find(n => n.nodeType === 3 ? n.textContent.trim() : true);
+    if (!first || first.nodeType !== 3) return;
+    const m = first.textContent.match(_EMOJI_LEAD); if (!m || _EMOJI_KEEP.has(m[1])) return;
+    const id = EMOJI_ICON[m[1]];
+    first.textContent = first.textContent.slice(m[0].length);
+    if (!b.textContent.trim() && !b.getAttribute('aria-label')) b.setAttribute('aria-label', b.title || 'Roll');
+    if (id) {
+      const ns = 'http://www.w3.org/2000/svg';
+      const svg = document.createElementNS(ns, 'svg'); svg.setAttribute('class', 'b-ic'); svg.setAttribute('aria-hidden', 'true');
+      const use = document.createElementNS(ns, 'use'); use.setAttribute('href', '#' + id); svg.appendChild(use);
+      b.insertBefore(svg, first);
+    }
+  });
+}
+function initIconify() {
+  iconifyButtons(document);
+  let queued = false;
+  new MutationObserver(() => {
+    if (queued) return; queued = true;
+    requestAnimationFrame(() => { queued = false; iconifyButtons(document); });
+  }).observe(document.body, { childList: true, subtree: true });
 }

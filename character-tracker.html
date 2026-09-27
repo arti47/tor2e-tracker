@@ -132,7 +132,7 @@
     <div id="ch-active-scene" style="font-size:var(--fs-xs);color:var(--red-dark);font-weight:600;margin-bottom:6px"></div>
     <textarea id="ch-compose" placeholder="Write what happens…" rows="3" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--bg-deep);color:var(--ink);resize:vertical;font-size:var(--fs-md);line-height:1.5"></textarea>
     <div style="display:flex;gap:6px;margin-top:6px">
-      <button class="add-row-btn" onclick="addProseToScene()" style="flex:1;background:var(--gold)">Add to scene</button>
+      <button class="add-row-btn primary" onclick="addProseToScene()" style="flex:1;background:var(--gold)">Add to scene</button>
       <button class="add-row-btn" onclick="rollWritingPrompt()" title="Scene seed — Where · Who/What · Happening · Mood, tuned to your situation. A journaling aid, not a Strider Mode rule" style="background:var(--btn-secondary-bg);font-size:var(--fs-xs)">🎬 Scene</button>
     </div>
     <p class="hint" style="text-align:left;margin-top:2px;color:var(--text-faint)">🎬 Scene seeds a frame (Where · Who · What · Mood) — a journaling aid, not a Strider Mode rule.</p>
@@ -1124,7 +1124,7 @@
       <input type="number" id="j-perilRating" min="0" max="6" value="0" style="width:50px;padding:2px 4px">
     </div>
     <div style="display:flex;gap:8px;margin-top:10px">
-      <button class="add-row-btn" onclick="startJourney()" id="j-start-btn" style="flex:1">▶ Start Journey</button>
+      <button class="add-row-btn primary" onclick="startJourney()" id="j-start-btn" style="flex:1">▶ Start Journey</button>
       
     </div>
   </div>
@@ -1200,7 +1200,7 @@
       </div>
       <p class="hint" id="c-attitude-hint" style="text-align:left;margin-top:6px"></p>
     </div>
-    <button class="add-row-btn" onclick="startCouncil()" style="width:100%;margin-top:14px">▶ Begin Council</button>
+    <button class="add-row-btn primary" onclick="startCouncil()" style="width:100%;margin-top:14px">▶ Begin Council</button>
   </div>
 
   <div class="card" id="council-active-card" style="display:none">
@@ -1324,7 +1324,7 @@
       </div>
       <p class="hint" id="se-risk-hint" style="text-align:left;margin-top:6px"></p>
     </div>
-    <button class="add-row-btn" onclick="startSkillEndeavour()" style="width:100%;margin-top:14px">▶ Begin Endeavour</button>
+    <button class="add-row-btn primary" onclick="startSkillEndeavour()" style="width:100%;margin-top:14px">▶ Begin Endeavour</button>
   </div>
 
   <div class="card" id="se-active-card" style="display:none">
@@ -1594,7 +1594,7 @@
       <label>Protection</label>
       <input type="number" id="prot-dice" placeholder="auto-filled from armour" min="0" max="6">
     </div>
-    <button class="roll-btn" onclick="rollProtection()" style="background:var(--btn-secondary-bg)">🛡️ Roll Protection</button>
+    <button class="roll-btn secondary" onclick="rollProtection()" style="background:var(--btn-secondary-bg)">🛡️ Roll Protection</button>
     <div class="roll-result" id="prot-result" style="margin-top:12px; display:none">
       <div class="result-dice" id="prot-dice-display"></div>
       <div class="result-total" id="prot-total">—</div>
@@ -1662,14 +1662,14 @@
   <div class="card">
     <h3 class="card-title">Patron Quest</h3>
     <p class="hint" style="text-align:left">Rolls a mission from your Patron's own six-entry table (Strider Mode supplement). Set a Patron on the Build tab first. Use it when you need a reason to set out.</p>
-    <button class="roll-btn" onclick="rollPatronQuest()" style="width:100%">📜 Roll a Patron Quest</button>
+    <button class="roll-btn secondary" onclick="rollPatronQuest()" style="width:100%">📜 Roll a Patron Quest</button>
   </div>
 
   <!-- Moria-only generators -->
   <div class="card moria-only" style="display:none">
     <h3 class="card-title">Random Chamber Generator</h3>
     <p class="hint" style="text-align:left">Generate a Moria chamber — Type, Condition, Appearance, and optional Challenge (each a Feat die).</p>
-    <button class="roll-btn" onclick="rollChamber()" style="width:100%">🎲 Generate Chamber</button>
+    <button class="roll-btn secondary" onclick="rollChamber()" style="width:100%">🎲 Generate Chamber</button>
     <div id="chamber-result" style="margin-top:10px;padding:10px;background:var(--bg-deep);border-radius:var(--r-sm);font-size:var(--fs-sm);line-height:1.6;display:none"></div>
   </div>
 
@@ -1677,7 +1677,7 @@
     <h3 class="card-title">Random Orc-Band</h3>
     <p class="hint" style="text-align:left">A Feat die for the leader, then <strong>one Success die per hero</strong> in your party. Set the count (defaults to your living Band size), then roll.</p>
     <div class="field"><label style="flex:0 0 130px">Heroes (Success dice)</label><input id="orcband-count" type="number" min="1" max="12" placeholder="band size"></div>
-    <button class="roll-btn" onclick="rollOrcBand()" style="width:100%;background:var(--btn-secondary-bg)">🎲 Generate Orc-Band</button>
+    <button class="roll-btn secondary" onclick="rollOrcBand()" style="width:100%;background:var(--btn-secondary-bg)">🎲 Generate Orc-Band</button>
     <div id="orcband-result" style="margin-top:10px;padding:10px;background:var(--bg-deep);border-radius:var(--r-sm);font-size:var(--fs-sm);line-height:1.6;display:none"></div>
   </div>
 
@@ -1716,7 +1716,7 @@
   <div class="card">
     <h3 class="card-title" id="band-allies-card" data-hint="Ally Gift / Quirk">1 · Allies <span id="band-ally-count" style="color:var(--text-muted);font-weight:400;font-size:var(--fs-xs)"></span></h3>
     <div style="display:flex;gap:8px;margin-bottom:8px">
-      <button class="add-row-btn" onclick="generateAlly()" style="flex:1">🎲 Generate Ally</button>
+      <button class="add-row-btn primary" onclick="generateAlly()" style="flex:1">🎲 Generate Ally</button>
       <button class="add-row-btn" onclick="addStartingBand()" style="flex:1;background:var(--btn-secondary-bg)">+ Roll 6 Starting Allies</button>
     </div>
     <div id="band-allies"></div>
@@ -1817,12 +1817,12 @@
         <button class="seg-btn" data-threat="vicious">Vicious 2</button>
         <button class="seg-btn" data-threat="dreadful">Dreadful 3</button>
       </div>
-      <button class="roll-btn" onclick="enduranceTest()" style="margin-top:6px">🩸 Roll Endurance Test</button>
+      <button class="roll-btn secondary" onclick="enduranceTest()" style="margin-top:6px">🩸 Roll Endurance Test</button>
     </div>
     <div style="border-top:1px dashed var(--border);padding-top:10px">
       <label data-hint="Fatigue Test (Band)" style="font-size:var(--fs-xs);color:var(--red-dark);text-transform:uppercase;letter-spacing:0.5px;font-weight:600">Fatigue Test (Rally vs TN + Fatigue pts, ± Burden)</label>
       <div class="field" style="margin-top:4px"><label style="flex:0 0 110px">Fatigue points</label><input type="number" id="band-fatigue-pts" min="0" value="2"></div>
-      <button class="roll-btn" onclick="fatigueTest()" style="margin-top:2px;background:var(--btn-secondary-bg)">😓 Roll Fatigue Test</button>
+      <button class="roll-btn secondary" onclick="fatigueTest()" style="margin-top:2px;background:var(--btn-secondary-bg)">😓 Roll Fatigue Test</button>
     </div>
     <div class="roll-result" id="band-test-result" style="margin-top:10px;display:none">
       <div class="result-dice" id="band-test-dice"></div>
