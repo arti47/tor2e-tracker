@@ -208,7 +208,7 @@
   }
   .tabs::-webkit-scrollbar { display: none; }
   .tab {
-    flex: 1 1 auto; min-width: 0; white-space: nowrap; text-align: center;
+    flex: 1 0 auto; white-space: nowrap; text-align: center;
     padding: 7px 10px;
     background: transparent; border: 1px solid transparent; border-radius: var(--r-pill);
     font-size: var(--fs-sm); font-weight: 600;
@@ -1313,13 +1313,13 @@ textarea:placeholder-shown:not(:focus):not([readonly]):not(#ch-compose) { min-he
 .b-ic { width: 17px; height: 17px; flex: 0 0 auto; vertical-align: -3px; }
 
 /* A choice between equals: outlined cards, the chosen one ticked and ruled in red. */
-.choice { flex: 1; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left;
+.opt-card { flex: 1; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left;
   padding: 10px 12px; min-height: 56px; border-radius: var(--r-md); background: var(--card-bg); color: var(--ink);
   border: 1px solid var(--border); position: relative; }
-.choice strong { font-family: var(--font-display); font-size: var(--fs-lg); font-weight: 600; }
-.choice small { color: var(--text-muted); font-size: var(--fs-xs); line-height: 1.3; }
-.choice.on { border: 2px solid var(--red); padding: 9px 11px; box-shadow: var(--elev-1); }
-.choice.on::after { content: '✓'; position: absolute; top: 6px; right: 10px; color: var(--red); font-weight: 700; }
+.opt-card strong { font-family: var(--font-display); font-size: var(--fs-lg); font-weight: 600; }
+.opt-card small { color: var(--text-muted); font-size: var(--fs-xs); line-height: 1.3; }
+.opt-card.on { border: 2px solid var(--red); padding: 9px 11px; box-shadow: var(--elev-1); }
+.opt-card.on::after { content: '✓'; position: absolute; top: 6px; right: 10px; color: var(--red); font-weight: 700; }
 
 /* Spend XP rows: name, drawn rank pips (the next one outlined in red), and a button that
    says what it buys. */
@@ -1392,3 +1392,17 @@ select.pick-src { position: absolute !important; width: 1px !important; height: 
 .field:has(> .stepper) { flex-wrap: wrap; row-gap: 4px; }
 .row-2 > .field:has(> .stepper) { flex-direction: column; align-items: flex-start; }
 .row-2 > .field:has(> .stepper) > label { flex: none !important; }
+
+/* Menu search */
+.menu-search { width: 100%; margin: 4px 0 10px; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--bg); color: var(--ink); font-size: var(--fs-md); }
+.main-menu.searching > button, .main-menu.searching > details { display: none !important; }
+.menu-search-results .menu-hit { display: block; width: 100%; text-align: left; }
+
+/* Play: pinned quick rolls */
+.play-quick { margin-top: var(--sp-4); }
+.qchips { display: flex; flex-wrap: wrap; gap: 8px; }
+.qchip { flex: 1 1 30%; min-width: 96px; display: flex; flex-direction: column; align-items: flex-start; gap: 1px; padding: 8px 12px; min-height: 48px;
+  background: var(--card-bg); color: var(--ink); border: 1px solid var(--border); border-radius: var(--r-md); text-align: left; font: inherit; }
+.qchip strong { font-family: var(--font-display); font-size: var(--fs-md); font-weight: 600; }
+.qchip small { font-size: var(--fs-xs); color: var(--text-muted); }
+.choice .c-ico .ic { width: 20px; height: 20px; }

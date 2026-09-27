@@ -2096,6 +2096,8 @@
   <div class="menu main-menu">
     <h3>Menu</h3>
     <div id="sync-status-line" class="menu-status">Saved locally on this device.</div>
+    <input type="search" id="menu-search" class="menu-search" placeholder="Find: roll Stealth, add a foe, spend points…" aria-label="Find an action" oninput="menuSearch(this.value)" autocomplete="off">
+    <div id="menu-search-results" class="menu-search-results"></div>
     <button onclick="openRoster()"><span>Your heroes</span><span class="m-state">switch · new · share</span></button>
     <button onclick="openTutorial()"><span>Learn to play (tutorial)</span></button>
     <button onclick="openReferenceTab()"><span>Rules reference</span></button>
@@ -2342,8 +2344,8 @@
       <p class="hint" style="text-align:left;line-height:1.6">A Fellowship Phase concludes the Adventuring Phase. <strong>Ordinary phases</strong> last a week to a season. <strong>Yule</strong> is the winter end-of-year — ages everyone by 1, restores all Hope, grants WITS bonus Skill Points, and unlocks Yule-only undertakings (Heal Scars, Raise an Heir, Recount a Story).</p>
       <p class="hint" style="text-align:left;color:var(--text-muted)">Yule comes once every ~3 phases. Tap Yule if it's been about a year since your last Yule, or your group is treating this as the winter festival.</p>
       <div style="display:flex;gap:8px;margin-top:14px">
-        <button class="choice" onclick="fpSetPhaseType('ordinary')" id="fp-type-ord" aria-pressed="false"><strong>Ordinary</strong><small>a week to a season</small></button>
-        <button class="choice" onclick="fpSetPhaseType('yule')" id="fp-type-yule" aria-pressed="false"><strong>Yule</strong><small>year's end · age +1 · full Hope</small></button>
+        <button class="opt-card" onclick="fpSetPhaseType('ordinary')" id="fp-type-ord" aria-pressed="false"><strong>Ordinary</strong><small>a week to a season</small></button>
+        <button class="opt-card" onclick="fpSetPhaseType('yule')" id="fp-type-yule" aria-pressed="false"><strong>Yule</strong><small>year's end · age +1 · full Hope</small></button>
       </div>
       <p class="hint" id="fp-type-status" style="margin-top:10px;text-align:center;font-weight:600;color:var(--red-dark)"></p>
     </div>

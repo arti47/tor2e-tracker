@@ -636,6 +636,7 @@ function bindDice() {
 }
 
 function quickRoll(item, s) {
+  window._lastQuick = { item, s };   // Play's "Again" chip repeats this
   // Set dice state and switch to dice tab
   let rating = s.rating;
   let stanceNote = '';
@@ -2226,4 +2227,55 @@ function openEquipment() {
   const t = document.querySelector('.tab[data-tab="gear"]'); if (t) t.click();
   const c = document.getElementById('war-gear-card');
   if (c) setTimeout(() => c.closest('.card').scrollIntoView({ block: 'start' }), 60);
+}
+
+/* ---------- Menu search (round 3) ----------
+   One box that finds any action by name: "roll stealth", "add orc", "spend", "rest", "oracle".
+   Results run the same functions the buttons do, then close the menu. */
+function _goTab(t) { const g = navGroupOf(t); if (g) openNavGroup(g.id); const b = document.querySelector(`.tab[data-tab="${t}"]`); if (b) b.click(); }
+function menuActions() {
+  const A = [];
+  const add = (label, words, run) => A.push({ label, words: (label + ' ' + (words || '')).toLowerCase(), run });
+  ['Valour', 'Wisdom', ...SKILLS.str, ...SKILLS.hrt, ...SKILLS.wit, ...COMBAT_PROFS].forEach(n => add('Roll ' + n, 'dice test check', () => rollFromSheet(n)));
+  document.querySelectorAll('.tab').forEach(t => {
+    if (t.style.display === 'none') return;
+    add('Open ' + t.textContent.trim(), 'go tab page', () => _goTab(t.dataset.tab));
+  });
+  add('Add a foe to the fight', 'adversary enemy orc troll combat encounter bestiary', () => { _goTab('combat'); openBestiary(); });
+  add('Spend Skill Points', 'xp experience raise improve', () => openSpendXP('skill'));
+  add('Spend Adventure Points', 'xp experience valour wisdom proficiency raise', () => openSpendXP('adv'));
+  add('Short rest', 'recover endurance', () => takeShortRest());
+  add('Prolonged rest — sleep', 'night recover endurance hope', () => takeProlongedRest());
+  add('Harden Will', 'shadow scar', () => hardenWill());
+  add('Fellowship Phase', 'end adventure yule undertaking', () => openFPWizard());
+  add('Equipment — weapons & armour', 'gear war weapon shield helm armour', () => openEquipment());
+  add('Start a journey', 'travel road hexes', () => _goTab('journey'));
+  add('Edit hero', 'change name attributes', () => { _goTab('character'); setCharEditing(true); });
+  add('Your heroes', 'roster switch character new', () => openRoster());
+  add('Ready-made heroes', 'pregen pregenerated', () => openPregens());
+  add('Learn to play (tutorial)', 'help lessons', () => openTutorial());
+  add('Rules reference', 'glossary rules help', () => openReferenceTab());
+  add('Export this hero', 'save backup file download', () => exportData());
+  add('Change theme', 'dark light sepia contrast colour', () => cycleTheme());
+  if (typeof isSolo === 'function' && isSolo()) {
+    add('Ask the Oracle', 'telling yes no question lore', () => _goTab('oracle'));
+    add('New scene', 'chronicle journal write', () => { _goTab('chronicle'); newScene(); });
+  }
+  return A;
+}
+function menuSearch(q) {
+  const box = document.getElementById('menu-search-results');
+  const menu = document.querySelector('.main-menu');
+  q = (q || '').trim().toLowerCase();
+  menu.classList.toggle('searching', !!q);
+  box.innerHTML = '';
+  if (!q) return;
+  const terms = q.split(/\s+/);
+  const hits = menuActions().filter(a => terms.every(t => a.words.includes(t))).slice(0, 8);
+  if (!hits.length) { box.innerHTML = '<p class="hint" style="text-align:left">Nothing matches — try a skill name, “rest”, “foe” or “spend”.</p>'; return; }
+  hits.forEach(a => {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'menu-hit'; b.textContent = a.label;
+    b.onclick = () => { const s = document.getElementById('menu-search'); s.value = ''; menuSearch(''); toggleMenu(); setTimeout(a.run, 30); };
+    box.appendChild(b);
+  });
 }

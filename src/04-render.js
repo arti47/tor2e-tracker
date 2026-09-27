@@ -4896,11 +4896,27 @@ function renderPlay() {
      </div>
      <div class="play-choices" role="group" aria-label="What do you do?">
        <div class="eyebrow">What do you do?</div>
-       ${choices.map((c, i) => { const [ico, txt] = split(c.label); return `<button class="choice${i === 0 ? ' primary' : ''}" onclick="${c.fn}">
-            <span class="c-ico" aria-hidden="true">${ico || '•'}</span>
+       ${choices.map((c, i) => { const [ico, txt] = split(c.label); const icId = (typeof EMOJI_ICON !== 'undefined') && EMOJI_ICON[String(ico).replace('\uFE0F', '')]; return `<button class="choice${i === 0 ? ' primary' : ''}" onclick="${c.fn}">
+            <span class="c-ico" aria-hidden="true">${icId ? `<svg class="ic"><use href="#${icId}"/></svg>` : (ico || '•')}</span>
             <span class="c-txt"><strong>${escapeHtml(txt)}</strong>${c.hint ? `<small>${escapeHtml(c.hint)}</small>` : ''}</span>
             <svg class="ic c-chev" aria-hidden="true"><use href="#i-chev"/></svg>
           </button>`; }).join('')}
      </div>
+     ${_playQuickRolls()}
      ${isSolo() ? '<p class="play-foot">Everything that happens here is written into your Chronicle for you.</p>' : ''}`;
 }
+/** Pinned quick rolls on Play (round 3): the hero's three strongest skills, plus "Again" for
+    the last roll made anywhere — so the common rolls never need a trip to the Roll tab. */
+function _playQuickRolls() {
+  if (!char.culture) return '';
+  const best = Object.entries(char.skills || {})
+    .map(([n, v]) => ({ n, r: parseInt(v && v.rating) || 0, f: v && v.favoured ? 1 : 0 }))
+    .filter(x => x.r > 0).sort((a, b) => (b.r + b.f * .5) - (a.r + a.f * .5)).slice(0, 3);
+  const last = window._lastQuick;
+  const chip = (lab, sub, fn) => `<button type="button" class="qchip" onclick="${fn}"><strong>${escapeHtml(lab)}</strong><small>${escapeHtml(sub)}</small></button>`;
+  const chips = (last ? chip('Again: ' + last.item.name, 'repeat last roll', 'rollAgain()') : '') +
+    best.map(x => chip(x.n, x.r + 'd' + (x.f ? ' · ★' : ''), `rollFromSheet('${x.n}')`)).join('');
+  if (!chips) return '';
+  return `<div class="play-quick"><div class="eyebrow">Quick rolls</div><div class="qchips">${chips}</div></div>`;
+}
+function rollAgain() { const l = window._lastQuick; if (l) quickRoll(l.item, l.s); }
