@@ -859,6 +859,20 @@ function pickFeat(rolls) {
   return effectiveFav() === 'fav' ? rolls[0] : rolls[rolls.length - 1];
 }
 
+/* ---------- The illuminated result banner (round 4) ----------
+   The verdict comes first, as a ribbon in the display face coloured by outcome, with one line
+   of why ("12 vs TN 15 — short by 3"). Success icons and a Piercing Blow sit on it as seals. */
+function renderRollBanner(r) {
+  const el = document.getElementById('roll-banner'); if (!el) return;
+  const word = !r.ok ? 'Failure' : r.level === 'Extraordinary' ? 'Extraordinary success' : r.level === 'Great' ? 'Great success' : 'Success';
+  const why = r.isAutoSuccess ? 'The Rune — a success whatever the total'
+    : r.isAutoFail ? 'Miserable, and the Eye came up — it fails'
+    : (r.total >= r.tn ? `${r.total} vs TN ${r.tn} — made it${r.total > r.tn ? ' by ' + (r.total - r.tn) : ', exactly'}` : `${r.total} vs TN ${r.tn} — short by ${r.tn - r.total}`);
+  const seals = (r.ok && r.icons ? `<span class="seal" title="Success icons">✦ ${r.icons}</span>` : '') + (r.piercing ? '<span class="seal pierce">Piercing blow</span>' : '');
+  el.className = 'roll-banner ' + (!r.ok ? 'b-fail' : r.level === 'Extraordinary' ? 'b-extra' : r.level === 'Great' ? 'b-great' : 'b-ok');
+  el.innerHTML = `${r.what ? `<div class="rb-what">${escapeHtml(r.what)}</div>` : ''}<div class="rb-ribbon"><span>${word}</span></div><div class="rb-why">${why}</div>${seals ? `<div class="rb-seals">${seals}</div>` : ''}`;
+  el.hidden = false;
+}
 function rollDice(skillLabel) {
   // A hero with no culture applied has placeholder attributes, so every roll here is meaningless
   // (and always vs the default TN). Say so once rather than silently printing nonsense numbers.
@@ -975,16 +989,20 @@ function rollDice(skillLabel) {
   resultEl.classList.toggle('res-success', outcome.startsWith('SUCCESS'));
   resultEl.classList.toggle('res-fail', !outcome.startsWith('SUCCESS'));
   try { if (navigator.vibrate) navigator.vibrate(outcome.startsWith('SUCCESS') ? 12 : [8, 40, 8]); } catch (e) {}
+  renderRollBanner({ ok: outcome.startsWith('SUCCESS') && !isAutoFail, level, total, tn, isAutoSuccess, isAutoFail, icons,
+    piercing: piercing && outcome.startsWith('SUCCESS') && diceState.isAttack, what: skillLabel || '' });
 
   const tnLabel = foeParryBonus > 0 ? `${tn} (${baseTn} Str + ${foeParryBonus} Foe Parry)` : `${tn}`;
   // Lead with WHAT was rolled (quick rolls pass the skill/prof name; manual rolls have none).
-  let summary = `<strong>${skillLabel ? escapeHtml(skillLabel) + ' · ' : ''}vs TN ${tnLabel}</strong> — `;
+  // The banner above says the verdict; this head line stays for screen readers and history.
+  let summary = `<span class="rs-head"><strong>${skillLabel ? escapeHtml(skillLabel) + ' · ' : ''}vs TN ${tnLabel}</strong> — `;
   summary += outcome.startsWith('SUCCESS')
     ? `<span class="result-tag tag-success">${outcome}</span>`
     : `<span class="result-tag tag-fail">${outcome}</span>`;
   if (level === 'Great') summary += `<span class="result-tag tag-great">Great Success</span>`;
   if (level === 'Extraordinary') summary += `<span class="result-tag tag-extra">Extraordinary</span>`;
   if (icons > 0) summary += `<br><small>${icons} success icon${icons>1?'s':''}</small>`;
+  summary += '</span>';
   if (diceState.stanceNote) summary += `<br><small style="color:var(--gold);font-weight:600">Modifier:${diceState.stanceNote}</small>`;
   // Favoured/Ill-Favoured cancellation tag (RAW p.20)
   {
