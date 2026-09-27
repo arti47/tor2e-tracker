@@ -2534,7 +2534,7 @@ function renderSpendXP(mode) {
   const available = mode === 'skill' ? sp : ap;
   const fpHint = char.fpModeActive
     ? `<br><small style="color:var(--gold);font-weight:600">⚠️ Fellowship Phase mode: 1 rank max per Skill/Prof per FP; Valour XOR Wisdom per FP. Already spent: ${Object.keys(char.fpSpend?.skills || {}).length} skill rank(s), ${Object.keys(char.fpSpend?.profs || {}).length} prof rank(s)${char.fpSpend?.valour ? ', Valour' : ''}${char.fpSpend?.wisdom ? ', Wisdom' : ''}.</small>`
-    : `<br><small style="color:var(--text-muted)">Spending outside Fellowship Phase (no caps enforced; by the rules XP is only spent in a Fellowship Phase — use the FP wizard for rule-correct play).</small>`;
+    : `<br><small style="color:var(--text-muted)">Outside a Fellowship Phase, so no per-phase limits apply. By the rules, points are spent at the end of an adventure.</small>`;
   budgetEl.innerHTML = (mode === 'skill' ? `Available: ${sp} Skill Points` : `Available: ${ap} Adventure Points`) + fpHint;
 
   const makeRow = (label, currentRank, maxRank, onUpgrade, group) => {
@@ -2543,19 +2543,23 @@ function renderSpendXP(mode) {
     const fpBlock = cost !== null ? fpSpendBlocker(group, label) : null;
     const can = cost !== null && available >= cost && !fpBlock;
     const row = document.createElement('div');
-    row.style.cssText = `display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--card-bg);${fpBlock ? 'opacity:0.6' : ''}`;
+    row.className = 'xp-row' + (fpBlock ? ' blocked' : '');
+    // Say what the button buys, in words: "Raise to 2 · 8 pts" — not a bare "8 pts" bar.
+    const pips = n => '<span class="pipset">' + Array.from({ length: Math.max(maxRank, newRank) }, (_, i) =>
+      `<i class="${i < currentRank ? 'on' : (i === currentRank && cost !== null ? 'next' : '')}"></i>`).join('') + '</span>';
     let status;
-    if (cost === null) status = 'MAX';
-    else if (fpBlock) status = '🔒 FP';
-    else status = `${cost} pts`;
-    const fpBlockHint = fpBlock ? `<div style="color:var(--red);font-size:var(--fs-xs);font-style:italic">${fpBlock}</div>` : '';
+    if (cost === null) status = 'At maximum';
+    else if (fpBlock) status = 'Not this phase';
+    else if (!can) status = `Need ${cost} pts`;
+    else status = `Raise to ${newRank} · ${cost} pts`;
+    const fpBlockHint = fpBlock ? `<div class="xp-why">${fpBlock}</div>` : '';
     row.innerHTML = `
-      <div style="flex:1">
-        <div style="font-size:var(--fs-sm)"><strong>${label}</strong> <span style="color:var(--red);font-size:var(--fs-xs);text-transform:uppercase">${group}</span></div>
-        <div style="color:var(--text-muted);font-size:var(--fs-xs)">Current: ${'◆'.repeat(currentRank) || '—'} → ${cost === null ? 'maxed' : '◆'.repeat(newRank)}</div>
+      <div class="xp-main">
+        <div class="xp-name">${label}</div>
+        <div class="xp-pips">${pips()}<span class="xp-rank">${currentRank ? 'rank ' + currentRank : 'untrained'}</span></div>
         ${fpBlockHint}
       </div>
-      <button style="background:${can?'var(--red)':'#ccc'};color:white;border:none;border-radius:var(--r-sm);padding:8px 12px;font-size:var(--fs-xs);font-weight:600;cursor:${can?'pointer':'not-allowed'}" ${can?'':'disabled'} title="${fpBlock || ''}">${status}</button>
+      <button class="xp-buy${can ? '' : ' off'}" ${can ? '' : 'disabled'} title="${fpBlock || ''}">${status}</button>
     `;
     const btn = row.querySelector('button');
     if (can) btn.onclick = () => {
@@ -2574,7 +2578,7 @@ function renderSpendXP(mode) {
 
   const header = (txt) => {
     const h = document.createElement('div');
-    h.style.cssText = 'font-size:var(--fs-xs);color:var(--red);text-transform:uppercase;letter-spacing:1px;font-weight:700;padding:8px 2px 4px';
+    h.className = 'xp-head';
     h.textContent = txt;
     list.appendChild(h);
   };

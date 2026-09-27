@@ -310,7 +310,8 @@ function renderStance() {
   });
   const desc = document.getElementById('stance-desc');
   if (desc) {
-    desc.innerHTML = char.stance ? STANCE_INFO[char.stance] : 'Select a stance to see its effects.';
+    desc.innerHTML = char.stance ? STANCE_INFO[char.stance] : '';   // the buttons already say what each does
+    desc.style.display = char.stance ? '' : 'none';
   }
   renderCombatTasks();
 }
@@ -451,13 +452,19 @@ function fpSetPhaseType(t) {
   fpState.phaseType = t;
   fpPersist();
   const status = document.getElementById('fp-type-status');
-  status.textContent = t === 'yule' ? '❄️ Yule selected — all heroes age +1, Hope restored, +WITS bonus Skill Points' : 'Ordinary Phase selected';
-  document.getElementById('fp-type-ord').style.opacity = t === 'ordinary' ? '1' : '0.5';
-  document.getElementById('fp-type-yule').style.opacity = t === 'yule' ? '1' : '0.5';
+  status.textContent = t === 'yule' ? 'Yule selected — all heroes age +1, Hope restored, +WITS bonus Skill Points' : 'Ordinary Phase selected';
+  // A choice shows as chosen (ticked, outlined) — not by greying out the other one.
+  [['fp-type-ord', 'ordinary'], ['fp-type-yule', 'yule']].forEach(([id, v]) => {
+    const b = document.getElementById(id); if (!b) return;
+    b.classList.toggle('on', t === v); b.setAttribute('aria-pressed', t === v ? 'true' : 'false');
+  });
 }
 
 function fpRenderStep() {
   const steps = [1, 2, 3, 4];
+  [['fp-type-ord', 'ordinary'], ['fp-type-yule', 'yule']].forEach(([id, v]) => {
+    const b = document.getElementById(id); if (b) { b.classList.toggle('on', fpState.phaseType === v); b.setAttribute('aria-pressed', fpState.phaseType === v ? 'true' : 'false'); }
+  });
   steps.forEach(n => {
     document.getElementById('fp-step-' + n).style.display = fpState.step === n ? 'block' : 'none';
   });

@@ -915,7 +915,7 @@
 
   <div class="card">
     <h3 class="card-title" data-hint="Stance">Stance</h3>
-    <div class="conditions" style="grid-template-columns:repeat(4,1fr)">
+    <div class="conditions stance-grid">
       <button class="cond-btn stance-btn" data-stance="forward"><strong>Forward</strong><small>hit harder, get hit more</small></button>
       <button class="cond-btn stance-btn" data-stance="open"><strong>Open</strong><small>balanced</small></button>
       <button class="cond-btn stance-btn" data-stance="defensive"><strong>Defensive</strong><small>harder to hit you</small></button>
@@ -2320,10 +2320,10 @@
   <div class="menu" style="max-width:520px;width:95%;max-height:90vh;overflow-y:auto">
     <h3>Fellowship Phase</h3>
     <div id="fp-step-indicator" style="display:flex;justify-content:space-between;gap:4px;margin-bottom:14px;font-size:var(--fs-xs)">
-      <span class="fp-step-pill" data-step="1">1. Type</span>
-      <span class="fp-step-pill" data-step="2">2. Recovery</span>
-      <span class="fp-step-pill" data-step="3">3. Updates</span>
-      <span class="fp-step-pill" data-step="4">4. Undertakings</span>
+      <span class="fp-step-pill" data-step="1">1 · Type</span>
+      <span class="fp-step-pill" data-step="2">2 · Rest</span>
+      <span class="fp-step-pill" data-step="3">3 · Improve</span>
+      <span class="fp-step-pill" data-step="4">4 · Undertake</span>
     </div>
 
     <!-- Step 1: Phase Type -->
@@ -2331,8 +2331,8 @@
       <p class="hint" style="text-align:left;line-height:1.6">A Fellowship Phase concludes the Adventuring Phase. <strong>Ordinary phases</strong> last a week to a season. <strong>Yule</strong> is the winter end-of-year — ages everyone by 1, restores all Hope, grants WITS bonus Skill Points, and unlocks Yule-only undertakings (Heal Scars, Raise an Heir, Recount a Story).</p>
       <p class="hint" style="text-align:left;color:var(--text-muted)">Yule comes once every ~3 phases. Tap Yule if it's been about a year since your last Yule, or your group is treating this as the winter festival.</p>
       <div style="display:flex;gap:8px;margin-top:14px">
-        <button class="add-row-btn" onclick="fpSetPhaseType('ordinary')" id="fp-type-ord" style="flex:1">Ordinary Phase</button>
-        <button class="add-row-btn" onclick="fpSetPhaseType('yule')" id="fp-type-yule" style="flex:1;background:var(--gold)">❄️ Yule</button>
+        <button class="choice" onclick="fpSetPhaseType('ordinary')" id="fp-type-ord" aria-pressed="false"><strong>Ordinary</strong><small>a week to a season</small></button>
+        <button class="choice" onclick="fpSetPhaseType('yule')" id="fp-type-yule" aria-pressed="false"><strong>Yule</strong><small>year's end · age +1 · full Hope</small></button>
       </div>
       <p class="hint" id="fp-type-status" style="margin-top:10px;text-align:center;font-weight:600;color:var(--red-dark)"></p>
     </div>
