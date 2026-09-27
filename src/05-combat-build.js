@@ -1453,11 +1453,13 @@ function renderEncounter() {
   const _alive = (e.foes || []).some(f => !f.slain);
   if (canGm) html += `<button onclick="openBestiary()" class="add-row-btn${_alive ? '' : ' primary'}" style="width:100%;margin-bottom:8px">+ Add Adversary</button>`;
   if (encEngagedFoes().length > 1) html += `<button onclick="allFoesAttack()" class="btn btn-secondary btn-block" style="margin:0 0 8px">Every engaged foe attacks you</button>`;
-  (e.foes || []).forEach(f => { html += _renderFoeCard(f, canGm); });
+  // One primary on screen: the first foe still standing carries it; the others step down (round 4)
+  const _lead = (e.foes || []).find(f => !f.slain);
+  (e.foes || []).forEach(f => { html += _renderFoeCard(f, canGm, f === _lead); });
   if (canGm) html += `<button onclick="endEncounter()" class="btn btn-quiet btn-block" style="margin-top:10px">End encounter</button>`;
   card.innerHTML = html;
 }
-function _renderFoeCard(f, canGm = true) {
+function _renderFoeCard(f, canGm = true, lead = true) {
   const slain = f.slain;
   const step = (field, d, lbl) => canGm ? `<button onclick="adjFoe('${f.id}','${field}',${d})" style="width:24px;height:24px;border:1px solid var(--border);background:var(--card-bg);color:var(--ink);border-radius:var(--r-sm);cursor:pointer">${lbl}</button>` : '';
   const pct = (c, m) => Math.max(0, Math.min(100, (parseInt(c) || 0) / Math.max(1, parseInt(m) || 1) * 100));
@@ -1479,7 +1481,7 @@ function _renderFoeCard(f, canGm = true) {
   if (!slain) {
     // Two turns, two looks: YOUR attack is the one primary button; the foe's attacks sit under
     // "…attacks you" as secondary buttons. They used to be identical red buttons side by side.
-    h += `<button onclick="heroAttackFoe('${f.id}')" class="btn btn-block foe-you">⚔ You attack ${escapeHtml(f.name)}</button>
+    h += `<button onclick="heroAttackFoe('${f.id}')" class="btn btn-block foe-you${lead ? '' : ' btn-secondary'}">⚔ You attack ${escapeHtml(f.name)}</button>
       ${(f.attacks || []).length ? `<div class="foe-them"><span>When ${escapeHtml(f.name)} attacks you:</span>
         ${(f.attacks || []).map((atk, i) => `<button onclick="foeAttackHero('${f.id}',${i})" class="btn btn-secondary">${escapeHtml(atk.name)} · ${atk.dice}d</button>`).join('')}</div>` : ''}`;
   }
@@ -1567,8 +1569,8 @@ function renderQuickSkills() {
     if (item.isMeta) btn.style.background = 'var(--gold-soft)';
     if (item.isDerived) btn.title = 'Brawling: derived from your highest combat prof, minus 1. Use for Unarmed/Dagger/Cudgel/Club.';
     const star = blessingFav ? ' ★' : '';
-    const derivedTag = item.isDerived ? ' <small style="color:var(--text-faint);font-size:var(--fs-xs)">(der)</small>' : '';
-    btn.innerHTML = `${item.name}${star}${derivedTag}<br><span class="rating">${s.rating}d · ${item.attr.toUpperCase()}</span>`;
+    const derivedTag = item.isDerived ? ' <small style="color:var(--text-faint);font-size:var(--fs-xs)">bare hands</small>' : '';
+    btn.innerHTML = `${item.name}${star}${derivedTag}<br><span class="rating">${s.rating} ${s.rating === 1 ? 'die' : 'dice'} · ${({ str: 'Strength', hrt: 'Heart', wit: 'Wits' })[item.attr] || String(item.attr).toUpperCase()}</span>`;
     btn.onclick = () => quickRoll(item, s);
     const g = groupOf(item);
     if (g !== lastGroup) { const h = document.createElement('div'); h.className = 'qs-h'; h.textContent = g; container.appendChild(h); lastGroup = g; }

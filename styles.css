@@ -1627,3 +1627,37 @@ body.dark[data-group="adventure"] { --grp: #97c483; } body.dark[data-group="roll
 @media (max-width: 420px) { .item-card { grid-template-columns: 30px minmax(0, 1fr); } .item-ctl { grid-column: 1 / -1; justify-content: flex-start; padding-left: 40px; } }
 .card .raw-gear { display: none; }
 .card.show-raw .raw-gear { display: block; margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border); }
+/* Journey setup as three questions (round 4) */
+.jq { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 10px; padding: 10px 0; border-top: 1px solid var(--line, var(--border)); }
+.jq:first-of-type { border-top: 0; padding-top: 2px; }
+.jq-n { width: 26px; height: 26px; border-radius: 50%; border: 1.5px solid var(--gold); color: var(--gold); display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-weight: 700; font-size: var(--fs-md); }
+.jq-q { font-family: var(--font-display); font-size: var(--fs-lg); font-weight: 600; margin: 1px 0 8px; }
+.jq-sub { font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: .6px; color: var(--text-muted); font-weight: 600; margin: 12px 0 5px; }
+#j-dist.opt-row > .opt-card, #j-travel.opt-row > .opt-card { flex: 1 1 130px; min-height: 52px; }
+.chip-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip-row .chip { border: 1px solid var(--border); background: var(--card-bg); color: var(--ink); border-radius: 999px; padding: 7px 14px; min-height: 36px; font-size: var(--fs-sm); cursor: pointer; }
+.chip-row .chip.on { border: 2px solid var(--red); padding: 6px 13px; font-weight: 700; }
+.j-more { margin-top: 10px; }
+.j-more > summary { cursor: pointer; color: var(--red); font-size: var(--fs-sm); padding: 6px 0; }
+.jq .field { flex-direction: column; align-items: stretch; gap: 4px; }
+.jq .field > label { flex: none !important; width: auto; }
+.jq .field > input:not([type="number"]) { width: 100%; }
+/* Native checkboxes read as switches, radios as option rows (round 4) */
+input[type="checkbox"]:not([data-native]) { -webkit-appearance: none; appearance: none; width: 36px !important; height: 20px; flex: 0 0 36px;
+  border-radius: 999px; background: var(--bg-deep); border: 1px solid var(--border); position: relative; cursor: pointer;
+  vertical-align: middle; margin: 0 6px 0 0; transition: background .15s, border-color .15s; padding: 0; }
+input[type="checkbox"]:not([data-native])::after { content: ''; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%;
+  background: var(--card-bg); box-shadow: 0 1px 2px rgba(0,0,0,.25); transition: transform .15s; }
+input[type="checkbox"]:not([data-native]):checked { background: var(--red); border-color: var(--red); }
+input[type="checkbox"]:not([data-native]):checked::after { transform: translateX(16px); }
+input[type="checkbox"]:not([data-native]):focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+input[type="checkbox"]:not([data-native]):disabled { opacity: .45; }
+label:has(> input[type="checkbox"]:not([data-native])) { display: inline-flex; align-items: center; gap: 2px; min-height: 32px; cursor: pointer; }
+label:has(> input[type="radio"]) { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--border);
+  border-radius: var(--r-md); background: var(--card-bg); cursor: pointer; line-height: 1.35; }
+label:has(> input[type="radio"]:checked) { border: 2px solid var(--red); padding: 9px 11px; font-weight: 600; }
+input[type="radio"] { -webkit-appearance: none; appearance: none; width: 18px; height: 18px; flex: 0 0 18px; border-radius: 50%;
+  border: 1.5px solid var(--text-muted); margin: 0; position: relative; }
+input[type="radio"]:checked { border-color: var(--red); }
+input[type="radio"]:checked::after { content: ''; position: absolute; inset: 3px; border-radius: 50%; background: var(--red); }
+@media print { input[type="checkbox"], input[type="radio"] { -webkit-appearance: auto; appearance: auto; } }

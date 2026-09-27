@@ -347,7 +347,7 @@ module.exports = {
       endEncounter && (char.encounter = JSON.parse(JSON.stringify(DEFAULT_CHARACTER.encounter))); saveCharacter(); render();
       return r;
     });
-    checks.push({ ok: /^⚔ You attack/.test(foe.you || '') && foe.youPrimary && foe.themSecondary && foe.label, msg: `"You attack X" is primary; the foe's attacks sit under "attacks you" (${foe.you})` });
+    checks.push({ ok: /^(⚔ )?You attack/.test(foe.you || '') && foe.youPrimary && foe.themSecondary && foe.label, msg: `"You attack X" is primary; the foe's attacks sit under "attacks you" (${foe.you})` });
 
     // ---- Play: road strip + roll pills ----
     const road = await page.evaluate(() => {
@@ -471,9 +471,10 @@ module.exports = {
 
     // ---- Pickers: the whole choice is shown, and choosing drives the real select ----
     const pick = await page.evaluate(async () => {
-      openNavGroup('adventure'); document.querySelector('.tab[data-tab="journey"]').click();
+      // round 4: the Journey's region became chips; the history filter is still a picker
+      openNavGroup('roll'); document.querySelector('.tab[data-tab="dice"]').click();
       await new Promise(r => requestAnimationFrame(() => setTimeout(r, 30)));
-      const sel = document.getElementById('j-region'), btn = sel && sel._pickBtn;
+      const sel = document.getElementById('history-outcome'), btn = sel && sel._pickBtn;
       if (!btn) return { found: false };
       const v = btn.querySelector('.pick-val');
       const whole = v.scrollWidth <= v.clientWidth + 1 && v.textContent === sel.options[sel.selectedIndex].textContent.trim();

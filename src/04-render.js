@@ -475,6 +475,9 @@ function fpRenderStep() {
   });
   document.getElementById('fp-prev-btn').style.display = fpState.step > 1 ? 'inline-block' : 'none';
   document.getElementById('fp-next-btn').style.display = fpState.step < 4 ? 'inline-block' : 'none';
+  const _applied = fpState.recoveryApplied || (char.fpWizardState && char.fpWizardState.recoveryApplied);
+  document.getElementById('fp-next-btn').textContent = fpState.step === 2 && !_applied ? 'Rest and continue →' : 'Next →';
+  const _ab = document.getElementById('fp-recovery-apply'); if (_ab) _ab.style.display = 'none';
 
   if (fpState.step === 2) fpRenderStep2();
   if (fpState.step === 3) fpRenderStep3();
@@ -488,9 +491,9 @@ async function fpNextStep() {
     alertStyled('Choose the phase type first — <strong>Ordinary</strong> (the usual rest between adventures) or <strong>Yule</strong> (the midwinter feast, which recovers more and ages your hero a year). The two buttons are at the top of this step.', '⚠️ Pick a phase type');
     return;
   }
-  if (fpState.step === 2 && !fpState.recoveryApplied) {
-    if (!await confirmStyled('You haven\'t tapped "Apply Recovery" yet. Skip Spiritual Recovery?', undefined, {yes:'Skip recovery', no:'Go back'})) return;
-  }
+  // Round 4: one tap. Next on the Rest step applies the recovery (it used to ask "Skip recovery?"
+  // when the separate Apply button had not been pressed — nobody skips resting on purpose).
+  if (fpState.step === 2 && !fpState.recoveryApplied && !(char.fpWizardState && char.fpWizardState.recoveryApplied)) fpApplyRecovery();
   fpState.step = Math.min(4, fpState.step + 1);
   fpPersist();
   fpRenderStep();
@@ -621,6 +624,8 @@ function fpApplyRecovery() {
   saveCharacter();
   render();
   document.getElementById('fp-recovery-status').innerHTML = `✅ ${summary}`;
+  // Next moves straight on, so say what the rest did where it can be seen (round 4)
+  if (typeof showToast === 'function') showToast('Rested — ' + String(summary).replace(/<[^>]+>/g, ''));
 }
 
 function fpRenderStep3() {
@@ -1635,6 +1640,7 @@ function renderJourney() {
     log.style.display = 'none';
     if (cancelBtn) cancelBtn.style.display = 'none';
   }
+  if (typeof jSyncGuided === 'function') jSyncGuided();
 }
 
 /** The button the journey event asks for, with the effect it promises wired to it. */
@@ -2289,6 +2295,36 @@ async function reclaimSafeHavenUndertaking() {
   alert('🏛️ New Safe Haven reclaimed! +3 SP, +3 AP. The secured region is now a Wild Land (Hunt Threshold 16). Update your Safe Haven name on the Character tab.');
 }
 
+/* ---------- Journey setup as three questions (round 4) ----------
+   The option cards and chips drive the same inputs the setup always read (j-totalHexes,
+   j-mounted, j-forcedMarch, j-season, j-region), so startJourney is unchanged. */
+let _jExact = false;
+const J_REGION_SAY = { Free: 'Safe lands — the road tends to go your way.', Border: 'Border lands — events lean in your favour.', Wild: 'The wild — neither kind nor cruel.', Shadow: 'Shadow lands — events turn against you.', Dark: 'Dark lands — the Enemy’s own; every event goes hard.' };
+function jPickDist(v) {
+  const inp = document.getElementById('j-totalHexes');
+  if (v === 'exact') { _jExact = true; jSyncGuided(); if (inp) inp.focus(); return; }
+  _jExact = false; if (inp) inp.value = v; jSyncGuided();
+}
+function jPickTravel(mode) { const m = document.getElementById('j-mounted'); if (m) m.checked = mode === 'mounted'; jSyncGuided(); }
+function jToggleForced() { const f = document.getElementById('j-forcedMarch'); if (f) f.checked = !f.checked; jSyncGuided(); }
+function jPickChip(selId, v) { const sel = document.getElementById(selId); if (!sel) return; sel.value = v; sel.dispatchEvent(new Event('change', { bubbles: true })); jSyncGuided(); }
+function jSyncGuided() {
+  const inp = document.getElementById('j-totalHexes'); if (!inp) return;
+  const hex = String(inp.value || '');
+  const preset = ['4', '9', '18'].includes(hex) && !_jExact;
+  document.querySelectorAll('#j-dist .opt-card').forEach(b => { const on = b.dataset.hex === 'exact' ? (!preset && (_jExact || !!hex)) : (preset && b.dataset.hex === hex); b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); });
+  const ex = document.getElementById('j-exact'); if (ex) ex.hidden = preset || (!_jExact && !hex);
+  const mounted = !!(document.getElementById('j-mounted') || {}).checked, forced = !!(document.getElementById('j-forcedMarch') || {}).checked;
+  document.querySelectorAll('#j-travel .opt-card').forEach(b => { const on = b.dataset.mode === 'forced' ? forced : (b.dataset.mode === 'mounted') === mounted; b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); });
+  const vr = document.getElementById('j-vigour-row'); if (vr) vr.hidden = !mounted;
+  [['j-season', 'j-season-chips'], ['j-region', 'j-region-chips']].forEach(([sid, cid]) => {
+    const v = (document.getElementById(sid) || {}).value;
+    document.querySelectorAll('#' + cid + ' .chip').forEach(c => { c.classList.toggle('on', c.dataset.v === v); c.setAttribute('aria-pressed', String(c.dataset.v === v)); });
+  });
+  const say = document.getElementById('j-region-say'); if (say) say.textContent = J_REGION_SAY[(document.getElementById('j-region') || {}).value] || '';
+}
+document.addEventListener('DOMContentLoaded', () => { const i = document.getElementById('j-totalHexes'); if (i) i.addEventListener('input', () => { _jExact = true; jSyncGuided(); }); jSyncGuided(); });
+
 // Moria abstract distance: (2 Success dice) × 4 miles, then ÷2 since each hex = 2 miles.
 function rollMoriaDistance() {
   const d1 = Math.floor(Math.random() * 6) + 1;
@@ -2297,7 +2333,8 @@ function rollMoriaDistance() {
   const hexes = Math.round(miles / 2);
   const el = document.getElementById('j-totalHexes');
   if (el) el.value = hexes;
-  alert(`🎲 Moria distance: (${d1} + ${d2}) × 4 = ${miles} miles → ${hexes} hexes (1 hex = 2 miles). Set as Total Hexes.`);
+  if (typeof jSyncGuided === 'function') { _jExact = true; jSyncGuided(); }
+  alert(`🎲 Moria distance: (${d1} + ${d2}) × 4 = ${miles} miles → ${hexes} hexes (1 hex = 2 miles). Set as the journey's length.`);
 }
 
 /* ================= MORIA BAND OF ALLIES ================= */
@@ -3972,7 +4009,7 @@ const ADVENTURE_STEPS = [
     next: 'haven → journey', nextLabel: '▶ We set out — begin the journey' },
   { id: 'journey', n: 2, name: 'On the road',
     what: 'Getting there is <strong>the Journey subsystem</strong>, not a scene you narrate away. Set the origin, destination and distance, then repeat: <strong>Marching Test</strong> to cover ground, <strong>Resolve Event</strong> when the road throws something at you.',
-    doNow: 'Open the Journey tab, fill in where you are going, and tap ▶ Start Journey.',
+    doNow: 'Open the Journey tab, answer where, how far and how, and tap Set out.',
     tab: 'journey', tabLabel: 'Journey',
     next: 'journey → location', nextLabel: '▶ We have arrived' },
   { id: 'location', n: 3, name: 'At the place you travelled to',

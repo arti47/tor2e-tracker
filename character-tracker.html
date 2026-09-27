@@ -990,38 +990,54 @@
 <!-- ============ JOURNEY ============ -->
 <section class="panel" id="panel-journey">
 
-  <div class="card tab-intro"><p class="hint" style="text-align:left;line-height:1.55;margin:0"><strong>Travel from one place to another.</strong> Fill in where you’re going and how far (in hexes on the map), then tap <strong>Start Journey</strong>. From there you repeat two steps: a <strong>Marching Test</strong> to cover ground, and <strong>Resolve Event</strong> when the road throws something at you. Fatigue builds as you go; <strong>Arrive</strong> closes the journey and settles it.</p></div>
+  <div class="card tab-intro"><p class="hint" style="text-align:left;line-height:1.55;margin:0"><strong>Travel from one place to another.</strong> Answer three questions — where, how far, how you travel — then tap <strong>Set out</strong>. From there you repeat two steps: a <strong>Marching Test</strong> to cover ground, and <strong>Resolve Event</strong> when the road throws something at you. Fatigue builds as you go; <strong>Arrive</strong> closes the journey and settles it.</p></div>
 
   <div class="card" id="journey-setup-card">
-    <h3 class="card-title">Journey Setup</h3>
-    <div class="field"><label>Origin</label><input id="j-origin" placeholder="e.g. Rivendell"></div>
-    <div class="field"><label>Destination</label><input id="j-destination" placeholder="e.g. Bree"></div>
-    <div class="row-2">
-      <div class="field" style="margin:0"><label data-hint="Hexes" style="flex:0 0 90px">Total Hexes</label><input id="j-totalHexes" type="number" min="1"></div>
-      <div class="field" style="margin:0"><label style="flex:0 0 90px">Hard Terrain</label><input id="j-hardTerrainHexes" type="number" min="0" title="Hexes of hills/woods/marshes/etc — each adds +1 day"></div>
-    </div>
-    <button id="moria-distance-btn" class="add-row-btn" onclick="rollMoriaDistance()" style="display:none;width:100%;margin-top:6px;background:var(--btn-secondary-bg);font-size:var(--fs-xs);padding:5px 10px" title="Moria abstract distance: (2 Success dice) × 4 miles, ÷2 = hexes">🎲 Roll Moria distance (abstract)</button>
-    <div class="row-2" style="margin-top:8px">
-      <div class="field" style="margin:0">
-        <label style="flex:0 0 60px">Season</label>
-        <select id="j-season">
-          <option>Spring</option>
-          <option>Summer</option>
-          <option>Autumn</option>
-          <option>Winter</option>
-        </select>
+    <h3 class="card-title">Set out on a journey</h3>
+    <div class="jq"><div class="jq-n">1</div><div class="jq-b">
+      <div class="jq-q">Where to?</div>
+      <div class="row-2">
+        <div class="field" style="margin:0"><label>From</label><input id="j-origin" placeholder="e.g. Rivendell"></div>
+        <div class="field" style="margin:0"><label>To</label><input id="j-destination" placeholder="e.g. Bree"></div>
       </div>
-      <div class="field" style="margin:0">
-        <label style="flex:0 0 60px">Region</label>
-        <select id="j-region" title="Free/Border = Favoured event Feat die · Wild = normal · Shadow/Dark = Ill-favoured">
-          <option value="Free">Free Land</option>
-          <option value="Border">Border Land</option>
-          <option value="Wild" selected>Wild Land</option>
-          <option value="Shadow">Shadow Land</option>
-          <option value="Dark">Dark Land</option>
-        </select>
+    </div></div>
+    <div class="jq"><div class="jq-n">2</div><div class="jq-b">
+      <div class="jq-q" data-hint="Hexes">How far?</div>
+      <div class="opt-row" id="j-dist" role="group" aria-label="How far">
+        <button type="button" class="opt-card" data-hex="4" onclick="jPickDist(4)"><strong>Short</strong><small>A few days · 4 hexes</small></button>
+        <button type="button" class="opt-card" data-hex="9" onclick="jPickDist(9)"><strong>Long</strong><small>A week or more · 9 hexes</small></button>
+        <button type="button" class="opt-card" data-hex="18" onclick="jPickDist(18)"><strong>Very long</strong><small>Weeks on the road · 18 hexes</small></button>
+        <button type="button" class="opt-card" data-hex="exact" onclick="jPickDist('exact')"><strong>I know the number</strong><small>Count the hexes on your map</small></button>
       </div>
-    </div>
+      <div class="j-exact" id="j-exact" hidden>
+        <div class="field" style="margin:8px 0 0"><label data-hint="Hexes">Hexes</label><input id="j-totalHexes" type="number" min="1"></div>
+      </div>
+      <div class="field" style="margin:8px 0 0"><label>Rough ground (hexes)</label><input id="j-hardTerrainHexes" type="number" min="0" title="Hills, woods, marshes — each such hex adds a day"></div>
+      <button id="moria-distance-btn" class="add-row-btn quiet" onclick="rollMoriaDistance()" style="display:none;width:100%;margin-top:6px" title="Moria: two Success dice × 4 miles, halved into hexes">Roll the distance through Moria</button>
+    </div></div>
+    <div class="jq"><div class="jq-n">3</div><div class="jq-b">
+      <div class="jq-q">How do you travel?</div>
+      <div class="opt-row" id="j-travel" role="group" aria-label="How do you travel">
+        <button type="button" class="opt-card" data-mode="foot" onclick="jPickTravel('foot')"><strong>On foot</strong><small>The usual way</small></button>
+        <button type="button" class="opt-card" data-mode="mounted" onclick="jPickTravel('mounted')"><strong>Mounted</strong><small>Ponies or horses carry the load</small></button>
+        <button type="button" class="opt-card" data-mode="forced" onclick="jToggleForced()"><strong>Forced march</strong><small>Faster, but +1 Fatigue a day</small></button>
+      </div>
+      <div class="field" id="j-vigour-row" style="margin:8px 0 0" hidden><label>Mount’s Vigour</label><input type="number" id="j-mountVigour" min="0" max="6"></div>
+      <div class="jq-sub">Season</div>
+      <div class="chip-row" id="j-season-chips" role="group" aria-label="Season">
+        <button type="button" class="chip" data-v="Spring" onclick="jPickChip('j-season','Spring')">Spring</button><button type="button" class="chip" data-v="Summer" onclick="jPickChip('j-season','Summer')">Summer</button><button type="button" class="chip" data-v="Autumn" onclick="jPickChip('j-season','Autumn')">Autumn</button><button type="button" class="chip" data-v="Winter" onclick="jPickChip('j-season','Winter')">Winter</button>
+      </div>
+      <div class="jq-sub" data-hint="Hunt Threshold">Lands you cross</div>
+      <div class="chip-row" id="j-region-chips" role="group" aria-label="Region">
+        <button type="button" class="chip" data-v="Free" onclick="jPickChip('j-region','Free')" title="Safe lands — events go your way">Free</button><button type="button" class="chip" data-v="Border" onclick="jPickChip('j-region','Border')" title="Border lands — events favour you">Border</button><button type="button" class="chip" data-v="Wild" onclick="jPickChip('j-region','Wild')" title="The wild — neither kind nor cruel">Wild</button><button type="button" class="chip" data-v="Shadow" onclick="jPickChip('j-region','Shadow')" title="Shadow lands — events turn against you">Shadow</button><button type="button" class="chip" data-v="Dark" onclick="jPickChip('j-region','Dark')" title="Dark lands — the Enemy's own">Dark</button>
+      </div>
+      <p class="hint" id="j-region-say" style="text-align:left;margin:4px 0 0"></p>
+      <div class="j-hidden-src" hidden>
+        <input type="checkbox" id="j-forcedMarch"><input type="checkbox" id="j-mounted">
+        <select id="j-season" data-native><option>Spring</option><option>Summer</option><option>Autumn</option><option>Winter</option></select>
+        <select id="j-region" data-native><option value="Free">Free Land</option><option value="Border">Border Land</option><option value="Wild" selected>Wild Land</option><option value="Shadow">Shadow Land</option><option value="Dark">Dark Land</option></select>
+      </div>
+    </div></div>
     <div id="j-roles-section" style="margin-top:10px;padding:8px;background:var(--bg-deep);border-radius:var(--r-sm)">
       <label data-hint="Journey Role" style="display:block;font-size:var(--fs-xs);color:var(--red-dark);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;font-weight:600">My Journey Role(s)</label>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:var(--fs-sm)">
@@ -1032,19 +1048,14 @@
       </div>
     </div>
     <div id="j-roles-strider-hint" style="display:none;margin-top:10px;padding:8px;background:var(--gold-soft);border:1px solid var(--gold);border-radius:var(--r-sm);font-size:var(--fs-xs);color:var(--ink);line-height:1.4">
-      🗡️ <strong>Strider Mode:</strong> no roles assigned — the lone hero handles all aspects of travel. Marching Tests roll TRAVEL automatically; event sub-rolls always target you with the appropriate skill (HUNTING/EXPLORE/AWARENESS depending on the sub-event).
+      <strong>Travelling alone:</strong> there are no roles to share out — you do all of it. The app rolls Travel for each march, and when something happens on the road it asks you for the skill that fits (Hunting, Explore or Awareness).
     </div>
-    <div style="margin-top:8px;display:flex;gap:14px;flex-wrap:wrap;font-size:var(--fs-sm);padding:8px;background:var(--bg-deep);border-radius:var(--r-sm)">
-      <label><input type="checkbox" id="j-forcedMarch"> <strong>Forced March</strong> <small style="color:var(--text-muted)">(2 hex/day, +1 Fatigue/day)</small></label>
-      <label><input type="checkbox" id="j-mounted"> <strong>Mounted</strong></label>
-      <label style="flex:1;min-width:140px">Mount Vigour: <input type="number" id="j-mountVigour" min="0" max="6" style="width:50px;padding:2px 4px"></label>
-    </div>
-    <div style="margin-top:8px;display:flex;gap:8px;align-items:center;font-size:var(--fs-sm);padding:8px;background:var(--bg-deep);border-radius:var(--r-sm)">
-      <label style="flex:1"><strong>Perilous Location — Peril rating</strong> <small style="color:var(--text-muted)">(extra events on arrival)</small></label>
-      <input type="number" id="j-perilRating" min="0" max="6" value="0" style="width:50px;padding:2px 4px">
-    </div>
+    <details class="j-more"><summary>Heading somewhere perilous?</summary>
+      <div class="field" style="margin:6px 0 0"><label data-hint="Journey Event">Peril rating</label><input type="number" id="j-perilRating" min="0" max="6" value="0"></div>
+      <p class="hint" style="text-align:left;margin:4px 0 0">Each point adds one more event to face when you get there.</p>
+    </details>
     <div style="display:flex;gap:8px;margin-top:10px">
-      <button class="add-row-btn primary" onclick="startJourney()" id="j-start-btn" style="flex:1">▶ Start Journey</button>
+      <button class="add-row-btn primary" onclick="startJourney()" id="j-start-btn" style="flex:1">Set out</button>
       
     </div>
   </div>
@@ -1915,22 +1926,22 @@
     <div class="field"><label style="flex:0 0 60px">Scale</label><input id="b-scale" readonly placeholder="— roll or type —"></div>
     <div class="row-2">
       <div class="field" style="margin:0"><label data-hint="Might (foe)" style="flex:0 0 50px">Might</label><input id="b-might" type="number" min="0" value="1"></div>
-      <div class="field" style="margin:0"><label style="flex:0 0 60px">Resist.</label><input id="b-resistance" type="number" min="1" value="6"></div>
+      <div class="field" style="margin:0"><label style="flex:0 0 60px">Resistance</label><input id="b-resistance" type="number" min="1" value="6"></div>
     </div>
     <label data-hint="Archfoe" style="font-size:var(--fs-xs);color:var(--red-dark);text-transform:uppercase;letter-spacing:0.5px;font-weight:600;margin-top:6px;display:block">Archfoe</label>
     <div class="seg-btns" id="b-archfoe-pick" style="margin:4px 0 6px">
       <button class="seg-btn" data-archfoe="none">None</button>
-      <button class="seg-btn" data-archfoe="lesser">Lesser <small>R+1</small></button>
-      <button class="seg-btn" data-archfoe="greater">Greater <small>M+1 R+3</small></button>
+      <button class="seg-btn" data-archfoe="lesser">Lesser <small>+1 Resistance</small></button>
+      <button class="seg-btn" data-archfoe="greater">Greater <small>+1 Might, +3 Resistance</small></button>
     </div>
     <button class="add-row-btn" onclick="rollArchfoe()" style="width:100%;font-size:var(--fs-xs);background:var(--btn-secondary-bg);margin-bottom:8px">🎲 Roll Archfoe (Success die)</button>
     <div class="field"><label style="flex:0 0 70px">Objective</label><input id="b-objective" placeholder="optional goal beyond defeating the foe"></div>
     <div class="seg-btns" id="b-objres-pick" style="margin:4px 0 6px">
       <button class="seg-btn active" data-objres="">No Objective</button>
       <button class="seg-btn" data-objres="simple">Simple 3</button>
-      <button class="seg-btn" data-objres="laborious">Labor. 6</button>
-      <button class="seg-btn" data-objres="daunting">Daunt. 9</button>
-      <button class="seg-btn" data-objres="overwhelming">Overw. 12</button>
+      <button class="seg-btn" data-objres="laborious">Laborious 6</button>
+      <button class="seg-btn" data-objres="daunting">Daunting 9</button>
+      <button class="seg-btn" data-objres="overwhelming">Overwhelming 12</button>
     </div>
     <button data-hint="Battlefield Aspect" class="add-row-btn" onclick="rollBattlefield()" style="width:100%;font-size:var(--fs-xs);background:var(--btn-secondary-bg);margin-bottom:4px">🎲 Roll Battlefield Aspect (flavour)</button>
     <div id="b-battlefield" class="hint" style="text-align:left;margin:2px 0"></div>
@@ -1957,10 +1968,10 @@
 
     <label data-hint="Band Stance" style="font-size:var(--fs-xs);color:var(--red-dark);text-transform:uppercase;letter-spacing:0.5px;font-weight:600">2 · Band Stance</label>
     <div class="seg-btns" id="b-stance-pick" style="margin:4px 0">
-      <button class="seg-btn" data-stance="aggressive">Aggr. <small>Ill</small></button>
+      <button class="seg-btn" data-stance="aggressive">Aggressive <small>harder</small></button>
       <button class="seg-btn" data-stance="balanced">Balanced</button>
-      <button class="seg-btn" data-stance="guarded">Guard. <small>Fav</small></button>
-      <button class="seg-btn" data-stance="fleeing">Flee <small>Man</small></button>
+      <button class="seg-btn" data-stance="guarded">Guarded <small>safer</small></button>
+      <button class="seg-btn" data-stance="fleeing">Flee <small>rolls Manoeuvre</small></button>
     </div>
 
     <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:6px 0">
