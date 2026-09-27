@@ -2110,12 +2110,114 @@ function iconifyButtons(root) {
   });
 }
 function initIconify() {
-  iconifyButtons(document);
+  const pass = () => { iconifyButtons(document); enhancePickers(document); enhanceSteppers(document); syncPickers(); };
+  pass();
   let queued = false;
   new MutationObserver(() => {
     if (queued) return; queued = true;
-    requestAnimationFrame(() => { queued = false; iconifyButtons(document); });
-  }).observe(document.body, { childList: true, subtree: true });
+    requestAnimationFrame(() => { queued = false; pass(); });
+  }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'disabled'] });
+  // A select's value set in code fires no event; re-read the labels after every change anywhere.
+  document.addEventListener('change', () => requestAnimationFrame(syncPickers), true);
+}
+
+/* ---------- Tap-to-pick sheets (round 3) ----------
+   Native dropdowns truncated their text ("Wild La…", "Gilraen, daughter of Dirl…") and look
+   foreign on iOS. Each <select> gets a full-width button that shows the whole choice and opens
+   a bottom sheet of options. The <select> stays in the DOM (hidden, still the source of truth),
+   so every existing onchange handler, data-field binding and test keeps working. */
+function enhancePickers(root) {
+  root.querySelectorAll('select:not([multiple]):not([data-native]):not(.pick-src)').forEach(sel => {
+    if (sel.closest('#pick-overlay')) return;
+    sel.classList.add('pick-src'); sel.tabIndex = -1; sel.setAttribute('aria-hidden', 'true');
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'pick-btn'; b.setAttribute('aria-haspopup', 'listbox');
+    b.innerHTML = '<span class="pick-val"></span><svg class="b-ic pick-chev" aria-hidden="true"><use href="#i-chev"></use></svg>';
+    b.onclick = () => openPicker(sel);
+    sel.insertAdjacentElement('afterend', b);
+    sel._pickBtn = b;
+  });
+}
+function _pickLabel(sel) {
+  const lab = (sel.id && document.querySelector(`label[for="${sel.id}"]`)) || (sel.closest('.field') && sel.closest('.field').querySelector('label'))
+    || (sel.closest('label'));
+  const t = (sel.getAttribute('aria-label') || (lab && lab.textContent) || '').replace(/[?⌄]/g, '').trim();
+  return t.split('\n')[0].trim();
+}
+function syncPickers() {
+  document.querySelectorAll('select.pick-src').forEach(sel => {
+    const b = sel._pickBtn || (sel.nextElementSibling && sel.nextElementSibling.classList.contains('pick-btn') ? sel.nextElementSibling : null);
+    if (!b) return;
+    const o = sel.options[sel.selectedIndex];
+    const txt = o ? o.textContent.trim() : '';
+    const v = b.querySelector('.pick-val');
+    const shown = txt || 'Choose…';
+    if (v.textContent !== shown) v.textContent = shown;
+    b.classList.toggle('empty', !o || !sel.value);
+    b.disabled = sel.disabled;
+    b.style.display = sel.style.display === 'none' ? 'none' : '';
+    const lbl = _pickLabel(sel); b.setAttribute('aria-label', (lbl ? lbl + ': ' : '') + shown);
+  });
+}
+let _pickSel = null;
+function openPicker(sel) {
+  _pickSel = sel;
+  document.getElementById('pick-title').textContent = _pickLabel(sel) || 'Choose';
+  const list = document.getElementById('pick-list'); list.innerHTML = '';
+  const addOpt = o => {
+    if (o.hidden || o.style.display === 'none') return;
+    const b = document.createElement('button'); b.type = 'button';
+    b.className = 'pick-opt' + (o.selected && sel.value === o.value ? ' on' : '') + (o.disabled ? ' off' : '');
+    b.setAttribute('role', 'option'); b.setAttribute('aria-selected', o.selected ? 'true' : 'false');
+    b.disabled = o.disabled;
+    b.textContent = o.textContent.trim() || '—';
+    b.onclick = () => choosePick(o.value);
+    list.appendChild(b);
+  };
+  [...sel.children].forEach(ch => {
+    if (ch.tagName === 'OPTGROUP') {
+      const h = document.createElement('div'); h.className = 'pick-group'; h.textContent = ch.label; list.appendChild(h);
+      [...ch.children].forEach(addOpt);
+    } else addOpt(ch);
+  });
+  document.getElementById('pick-overlay').classList.add('show');
+  const on = list.querySelector('.pick-opt.on'); if (on) on.scrollIntoView({ block: 'center' });
+}
+function choosePick(v) {
+  const sel = _pickSel; closePicker();
+  if (!sel) return;
+  if (sel.value !== v) {
+    sel.value = v;
+    sel.dispatchEvent(new Event('input', { bubbles: true }));
+    sel.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+  syncPickers();
+}
+function closePicker() { document.getElementById('pick-overlay').classList.remove('show'); }
+
+/* ---------- Steppers for number boxes (round 3) ----------
+   A blank number field asks the player to type; − / + beside it lets them tap. Respects the
+   field's min / max / step and fires the same input + change events a keyboard edit would. */
+function enhanceSteppers(root) {
+  root.querySelectorAll('input[type="number"]:not([readonly]):not([data-nostep]):not(.has-step)').forEach(inp => {
+    if (inp.closest('.counter, #pick-overlay')) return;
+    inp.classList.add('has-step');
+    const wrap = document.createElement('span'); wrap.className = 'stepper';
+    inp.parentNode.insertBefore(wrap, inp);
+    const mk = (d, lab) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'step-btn'; b.textContent = d < 0 ? '−' : '+'; b.setAttribute('aria-label', lab); b.onclick = () => stepNumber(inp, d); return b; };
+    wrap.appendChild(mk(-1, 'Decrease')); wrap.appendChild(inp); wrap.appendChild(mk(1, 'Increase'));
+  });
+}
+function stepNumber(inp, dir) {
+  const step = parseFloat(inp.step) || 1;
+  const min = inp.min !== '' ? parseFloat(inp.min) : -Infinity, max = inp.max !== '' ? parseFloat(inp.max) : Infinity;
+  let v = parseFloat(inp.value);
+  if (isNaN(v)) v = dir > 0 ? (isFinite(min) ? min : 0) : (isFinite(min) ? min : 0);
+  else v = v + dir * step;
+  v = Math.min(max, Math.max(min, v));
+  inp.value = v;
+  inp.dispatchEvent(new Event('input', { bubbles: true }));
+  inp.dispatchEvent(new Event('change', { bubbles: true }));
 }
 
 /** Open Hero → Gear at the War Gear card (equipment moved off the Combat tab in round 3). */

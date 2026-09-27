@@ -1364,3 +1364,31 @@ button.s-stat:hover { background: color-mix(in srgb, var(--gold) 10%, transparen
 .campaign-box:not([open]) > summary { flex-direction: row; align-items: baseline; gap: 10px; padding: 10px var(--sp-2); background: none; border: 0; box-shadow: none; border-top: 1px solid var(--line); border-radius: 0; }
 .campaign-box:not([open]) > summary span { font-size: var(--fs-md); color: var(--red); }
 .campaign-box:not([open]) > summary span::after { content: ' ›'; }
+
+/* Tap-to-pick: the hidden <select> stays the source of truth; this button shows the whole choice. */
+select.pick-src { position: absolute !important; width: 1px !important; height: 1px !important; opacity: 0 !important; pointer-events: none !important; overflow: hidden; }
+.pick-btn { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; min-height: 40px;
+  padding: 8px 12px; background: var(--card-bg); color: var(--ink); border: 1px solid var(--border); border-radius: var(--r-sm);
+  font: inherit; font-size: var(--fs-sm); text-align: left; cursor: pointer; }
+.pick-btn .pick-val { flex: 1; min-width: 0; white-space: normal; line-height: 1.3; }
+.pick-btn.empty .pick-val { color: var(--text-muted); }
+.pick-btn .pick-chev { color: var(--text-muted); transform: rotate(90deg); }
+.pick-btn:disabled { opacity: .55; }
+.pick-sheet { max-height: 80vh; display: flex; flex-direction: column; }
+#pick-list { overflow-y: auto; margin: 4px -4px 8px; padding: 0 4px; }
+.pick-group { font-size: var(--fs-xs); font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: var(--text-muted); padding: 12px 4px 4px; }
+.pick-opt { display: block; width: 100%; text-align: left; padding: 12px 36px 12px 12px; min-height: 44px; background: none; color: var(--ink);
+  border: 0; border-bottom: 1px solid var(--line); border-radius: 0; font: inherit; font-size: var(--fs-md); position: relative; }
+.pick-opt.on { color: var(--red); font-weight: 700; }
+.pick-opt.on::after { content: '✓'; position: absolute; right: 12px; top: 50%; transform: translateY(-50%); }
+.pick-opt.off { color: var(--text-faint); }
+/* Steppers */
+.stepper { display: inline-flex; align-items: stretch; max-width: 100%; }
+.stepper input[type="number"] { width: 64px !important; min-width: 0; text-align: center; border-radius: 0 !important; margin: 0 !important; }
+.step-btn { width: 38px; min-height: 38px; background: var(--card-bg); color: var(--ink); border: 1px solid var(--border); font-size: 18px; font-weight: 600; line-height: 1; padding: 0; }
+.step-btn:first-child { border-radius: var(--r-sm) 0 0 var(--r-sm); border-right: 0; }
+.step-btn:last-child { border-radius: 0 var(--r-sm) var(--r-sm) 0; border-left: 0; }
+/* A field holding a stepper wraps its label above when the row is narrow. */
+.field:has(> .stepper) { flex-wrap: wrap; row-gap: 4px; }
+.row-2 > .field:has(> .stepper) { flex-direction: column; align-items: flex-start; }
+.row-2 > .field:has(> .stepper) > label { flex: none !important; }

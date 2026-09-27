@@ -2064,6 +2064,15 @@
 <!-- ============ MENU OVERLAY ============ -->
 <!-- Styled modal — replaces native confirm/alert/prompt for higher-impact dialogs.
      Use via showModal({title, message, buttons:[{label,value,style?}], input?, inputPlaceholder?}). Returns Promise. -->
+<!-- Tap-to-pick sheet: every <select> opens this instead of the native wheel (round 3) -->
+<div class="menu-overlay pick-overlay" id="pick-overlay">
+  <div class="menu pick-sheet">
+    <h3 id="pick-title">Choose</h3>
+    <div id="pick-list" role="listbox"></div>
+    <button class="close" onclick="closePicker()">Cancel</button>
+  </div>
+</div>
+
 <div class="menu-overlay" id="styled-modal-overlay">
   <div class="menu" style="max-width:440px;width:92%">
     <h3 id="styled-modal-title">Confirm</h3>

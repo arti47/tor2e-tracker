@@ -468,7 +468,7 @@
     <aside id="play-aside" class="play-aside" aria-label="Your hero at a glance"></aside>
   </div>
   <details class="campaign-box" id="campaign-box">
-    <summary><span>Your campaign</span><small>sessions · the adventure loop · ending the saga</small></summary>
+    <summary><span>Your campaign</span><small>sessions · adventures · ending the saga</small></summary>
   <div class="card" id="saga-card"></div>
   <div class="card" id="adventure-loop" style="display:none"></div>
   </details>
@@ -2064,6 +2064,15 @@
 <!-- ============ MENU OVERLAY ============ -->
 <!-- Styled modal — replaces native confirm/alert/prompt for higher-impact dialogs.
      Use via showModal({title, message, buttons:[{label,value,style?}], input?, inputPlaceholder?}). Returns Promise. -->
+<!-- Tap-to-pick sheet: every <select> opens this instead of the native wheel (round 3) -->
+<div class="menu-overlay pick-overlay" id="pick-overlay">
+  <div class="menu pick-sheet">
+    <h3 id="pick-title">Choose</h3>
+    <div id="pick-list" role="listbox"></div>
+    <button class="close" onclick="closePicker()">Cancel</button>
+  </div>
+</div>
+
 <div class="menu-overlay" id="styled-modal-overlay">
   <div class="menu" style="max-width:440px;width:92%">
     <h3 id="styled-modal-title">Confirm</h3>
