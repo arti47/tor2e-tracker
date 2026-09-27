@@ -989,7 +989,7 @@ body.dark .hud-eye { background: var(--card-bg); }
   .panel { max-width: 1180px; padding: var(--sp-5); }
   .header { padding-left: var(--sp-5); padding-right: var(--sp-5); }
   /* Sheet-style tabs flow their cards into two columns (reading order: down, then across). */
-  #panel-character.active, #panel-combat.active, #panel-gear.active, #panel-oracle.active,
+  #panel-character.active, #panel-gear.active, #panel-oracle.active,
   #panel-band.active, #panel-gm.active, #panel-dice.active, #panel-council.active {
     column-count: 2; column-gap: var(--sp-4);
   }
@@ -1529,3 +1529,38 @@ body.dark[data-group="adventure"] { --grp: #97c483; } body.dark[data-group="roll
 .slip-d { font-size: var(--fs-xs); color: #6b5a44; margin-top: 8px; }
 .slip-words { font-family: var(--font-display); font-size: 26px; font-weight: 600; display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 10px; }
 .slip-words i { color: #a67a22; font-style: normal; }
+
+/* ================= Tablet layouts (round 3) ================= */
+.bs-name { display: none; }
+@media (min-width: 900px) {
+  /* Play in two panes: the story on the left; what you can do, quick rolls and the hero on the right. */
+  #panel-play { max-width: 1180px; }
+  .play-layout { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(300px, 1fr); gap: 0 var(--sp-5); align-items: start; grid-auto-flow: dense; }
+  #play-body { display: contents; }
+  #play-body > .callout, #play-body > .card:not(.play-scene) { grid-column: 1 / -1; }
+  #play-body > .play-scene { grid-column: 1; grid-row: span 6; }
+  #play-body > .play-choices, #play-body > .play-quick { grid-column: 2; }
+  #play-body > .play-choices { margin-top: 0; }
+  #play-body > .play-foot { grid-column: 1; }
+  .play-aside { display: block; grid-column: 2; position: static; margin-top: var(--sp-4); }
+  /* Combat: the Encounter leads, tall on the left; Stance and Parry beside it. */
+  #panel-combat.active { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 0 var(--sp-4); align-items: start; grid-auto-flow: dense; max-width: 1180px; }
+  #panel-combat > .tab-intro, #panel-combat > :not(.card) { grid-column: 1 / -1; }
+  #panel-combat > #encounter-card-wrap { grid-column: 1; grid-row: span 4; }
+  #panel-combat > .card:not(#encounter-card-wrap):not(.tab-intro) { grid-column: 2; }
+  /* Build: every step named along the top, the current one in red. */
+  .bs-dots { gap: 4px; }
+  .bs-dot { height: auto; padding-top: 8px; background: none; border-top: 4px solid var(--bg-deep) !important; border-radius: 0; text-align: left; }
+  .bs-dot.past { background: none; border-top-color: color-mix(in srgb, var(--gold) 55%, var(--bg-deep)) !important; }
+  .bs-dot.on { background: none; border-top-color: var(--red) !important; }
+  .bs-dot::before { display: none; }
+  .bs-name { display: block; font-size: 11px; line-height: 1.25; color: var(--text-muted); font-weight: 600; }
+  .bs-dot.on .bs-name { color: var(--red); }
+  /* Single-column sequence tabs sit centred, not pinned left with empty space beside them. */
+  #panel-build, #panel-journey, #panel-reference { margin-left: auto; margin-right: auto; }
+}
+@media (min-width: 1100px) {
+  .play-layout { grid-template-columns: minmax(0, 1.4fr) minmax(320px, 1fr); }
+}
+@media (min-width: 900px) { .tab { flex: 0 0 auto; min-width: 120px; } .scene-art { opacity: .55; } }
+.panel a:not(.btn), .menu a:not(.btn) { color: var(--red); text-decoration-color: color-mix(in srgb, var(--red) 40%, transparent); text-underline-offset: 3px; }

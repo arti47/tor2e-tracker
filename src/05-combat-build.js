@@ -3470,7 +3470,7 @@ function renderBuildWizard() {
     : `<div class="bs-row"><span class="bs-label">Step ${buildStep + 1} of ${n} · <strong>${st.title}</strong></span>` +
       `<button class="btn btn-quiet" onclick="toggleBuildShowAll()">Show every step</button></div>` +
       `<div class="bs-dots" role="tablist" aria-label="Creation steps">${BUILD_WIZ_STEPS.map((s, i) =>
-        `<button role="tab" aria-selected="${i === buildStep}" aria-label="Step ${i + 1}: ${s.title}" class="bs-dot${i === buildStep ? ' on' : ''}${i < buildStep ? ' past' : ''}" onclick="buildGoStep(${i})"></button>`).join('')}</div>`;
+        `<button role="tab" aria-selected="${i === buildStep}" aria-label="Step ${i + 1}: ${s.title}" class="bs-dot${i === buildStep ? ' on' : ''}${i < buildStep ? ' past' : ''}" onclick="buildGoStep(${i})"><span class="bs-name">${i + 1} · ${s.title}</span></button>`).join('')}</div>`;
   foot.style.display = all ? 'none' : '';
   foot.innerHTML = all ? '' :
     (empty ? `<p class="bs-empty">Nothing to choose here for this hero — it is already settled. Carry on.</p>` : '') +
