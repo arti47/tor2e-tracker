@@ -403,7 +403,7 @@ module.exports = {
         .find(c => /Advancement/i.test((c.querySelector('.card-title') || {}).innerText || ''));
       const steps = [...card.querySelectorAll('.adv-step')].map(e => e.innerText);
       out.advSteps = steps.length === 4 && /earn/i.test(steps[0]) && /pools/i.test(steps[1])
-                  && /spend/i.test(steps[2]) && /adventuring phase/i.test(steps[3]);
+                  && /ranks/i.test(steps[2]) && /adventuring phase/i.test(steps[3]);   // round 4: spending is on the sheet
       const html = card.innerHTML;
       out.earnBeforeSpend = html.indexOf('xp-session-btn') < html.indexOf("openSpendXP('skill')");
 
@@ -424,7 +424,7 @@ module.exports = {
     checks.push({ ok: seq2.buildNumbered, msg: 'Build creation steps are numbered 1-9 in order' });
     checks.push({ ok: seq2.lifepathOptional, msg: 'Lifepath reads as optional and names itself an alternative to step 1' });
     checks.push({ ok: seq2.pqMoved, msg: 'Patron Quest moved off Build to the Oracle tab' });
-    checks.push({ ok: seq2.advSteps, msg: 'Advancement is split earn → pools → spend → end phase' });
+    checks.push({ ok: seq2.advSteps, msg: 'Advancement is split earn → pools → ranks → end phase' });
     checks.push({ ok: seq2.earnBeforeSpend, msg: 'Award XP sits above the Spend buttons' });
     checks.push({ ok: seq2.quickBeforeManual, msg: 'Dice tab leads with quick-rolls, manual controls below' });
     checks.push({ ok: seq2.manualFolds && seq2.manualIntact, msg: 'manual dice controls fold away but stay intact' });

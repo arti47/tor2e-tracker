@@ -1595,7 +1595,7 @@ let adjustMode = false;
 function toggleAdjustMode(force) {
   adjustMode = typeof force === 'boolean' ? force : !adjustMode;
   document.body.classList.toggle('adjust-mode', adjustMode);
-  if (adjustMode && typeof setCharEditing === 'function') { const p = document.getElementById('panel-character'); if (p && !p.classList.contains('editing')) setCharEditing(true); }
+  if (adjustMode && typeof setCharEditing === 'function') { const p = document.getElementById('panel-character'); if (p && !p.classList.contains('editing')) setCharEditing(true, 'numbers'); else if (typeof setEditSection === 'function' && document.getElementById('char-edit').dataset.sec !== 'numbers') setEditSection('numbers'); }
   const b = document.getElementById('adjust-banner'); if (b) b.style.display = adjustMode ? '' : 'none';
   document.querySelectorAll('.adjust-toggle').forEach(t => {
     t.setAttribute('aria-pressed', adjustMode ? 'true' : 'false');
@@ -3485,7 +3485,7 @@ function renderBuildChecklist() {
   // Only what is still left is listed; finished items collapse into the count above.
   const rows = steps.filter(s => !s.done).map(s => {
     const stepN = (String(s.where).match(/^step (\d)/) || [])[1];
-    const jump = s.tab ? ` <a href="#" onclick="document.querySelector('.tab[data-tab=${s.tab}]').click();${s.tab === 'character' ? 'setCharEditing(true);' : ''}return false" style="color:var(--gold)">${escapeHtml(s.where)} →</a>`
+    const jump = s.tab ? ` <a href="#" onclick="document.querySelector('.tab[data-tab=${s.tab}]').click();${s.tab === 'character' ? "setCharEditing(true,'name');" : ''}return false" style="color:var(--gold)">${escapeHtml(s.where)} →</a>`
                : stepN ? ` <a href="#" onclick="buildGoStep(${stepN - 1});return false" style="color:var(--gold)">go to step ${stepN} →</a>`
                        : ` <span style="color:var(--text-faint)">${escapeHtml(s.where)}</span>`;
     return `<div style="margin:0 0 5px;font-size:var(--fs-sm);line-height:1.5">` +

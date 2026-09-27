@@ -1586,3 +1586,18 @@ body.dark[data-group="adventure"] { --grp: #97c483; } body.dark[data-group="roll
 #ask-odds .seg-btn { min-width: 0; padding-left: 2px; padding-right: 2px; font-size: var(--fs-sm); overflow: hidden; text-overflow: ellipsis; }
 @media (max-width: 360px) { #ask-odds .seg-btn { font-size: var(--fs-xs); } }
 #panel-play.no-hero #campaign-box { display: none; }
+/* Edit in short sections (round 4) */
+#char-edit .sec-off { display: none !important; }
+#char-edit .play-act { display: none !important; }
+.edit-bar { display: flex; align-items: center; gap: var(--sp-2, 8px); }
+.edit-bar #edit-title { flex: 1; min-width: 0; }
+.edit-bar > .btn:first-child { order: 3; }
+.edit-bar .edit-back { order: 0; display: inline-flex; align-items: center; gap: 4px; padding-left: 4px; }
+.edit-bar .edit-back[hidden] { display: none; }
+.edit-menu .edit-row { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 12px 6px; background: none; border: 0; border-top: 1px solid var(--line, var(--border)); color: var(--ink); cursor: pointer; min-height: 56px; }
+.edit-menu .edit-row:first-of-type { border-top: 0; }
+.edit-menu .edit-row > .ic { width: 22px; height: 22px; color: var(--gold); flex: 0 0 auto; }
+.edit-menu .edit-row > span { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.edit-menu .edit-row strong { font-family: var(--font-display); font-size: var(--fs-lg); font-weight: 600; }
+.edit-menu .edit-row small { color: var(--text-muted); font-size: var(--fs-xs); }
+.edit-menu .edit-row .chev { width: 16px; height: 16px; opacity: .5; }

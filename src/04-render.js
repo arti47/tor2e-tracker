@@ -4644,10 +4644,26 @@ function advanceDays(n) {
    The Character tab opens on a one-screen sheet — crest, identity, attributes, skills, gear,
    traits — the way the paper sheet reads. "Edit" reveals the full form (#char-edit, unchanged,
    so every control, guard and spec still finds it). In-play actions live in the vitals sheet. */
-function setCharEditing(on) {
+/* Edit opens a short menu of sections, each one screen (round 4). `sec` jumps straight to one —
+   anything that targets a control inside the form passes the section that holds it. */
+const EDIT_SECTIONS = { name: 'Name & background', numbers: 'Numbers', skills: 'Skill ratings', traits: 'Traits', story: 'Story' };
+function editSectionOf(el) { const h = el && el.closest && el.closest('#char-edit [data-sec]'); return h && EDIT_SECTIONS[h.dataset.sec] ? h.dataset.sec : null; }
+function setEditSection(sec) {
+  const f = document.getElementById('char-edit'); if (!f) return;
+  sec = EDIT_SECTIONS[sec] ? sec : null;
+  f.dataset.sec = sec || 'menu';
+  f.querySelectorAll('[data-sec]').forEach(el => el.classList.toggle('sec-off', el.dataset.sec !== (sec || 'menu')));
+  const t = document.getElementById('edit-title');
+  if (t) t.innerHTML = sec ? `<strong>${escapeHtml(EDIT_SECTIONS[sec])}</strong>` : 'Editing <strong>your hero</strong>';
+  const back = f.querySelector('.edit-back'); if (back) back.hidden = !sec;
+  if (sec !== 'skills' && typeof editMode !== 'undefined' && editMode) toggleEditMode();
+  if (sec !== 'numbers' && typeof adjustMode !== 'undefined' && adjustMode) toggleAdjustMode(false);
+  window.scrollTo(0, 0);
+}
+function setCharEditing(on, sec) {
   const p = document.getElementById('panel-character'); if (!p) return;
   p.classList.toggle('editing', !!on);
-  if (on) { const e = document.getElementById('char-edit'); if (e) e.scrollIntoView({ block: 'start' }); }
+  if (on) setEditSection(sec || null);
   else {
     if (typeof adjustMode !== 'undefined' && adjustMode) toggleAdjustMode(false);
     if (typeof editMode !== 'undefined' && editMode) toggleEditMode();   // Done also locks skill corrections
