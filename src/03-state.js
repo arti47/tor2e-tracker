@@ -492,7 +492,7 @@ function loadPregen(idx) {
   if (typeof clearUndo === 'function') clearUndo();
   render(); renderHistory(); renderChronicle();
   const ov = document.getElementById('pregen-overlay'); if (ov) ov.classList.remove('show');
-  alert('Loaded ' + char.name + ' into your roster.');
+  showToast(char.name + ' is ready to play.');
 }
 function openPregens() {
   const m = document.getElementById('menu-overlay'); if (m) m.classList.remove('show');
@@ -623,21 +623,29 @@ function renderPartyView() {
 }
 
 /* ---------- TOAST (P6 — broadcast arrivals & cloud notices) ---------- */
-function showToast(msg) {
+// action (optional): { label, fn } — e.g. an Undo button, so a reversible action can simply
+// happen instead of asking "are you sure?" first.
+function showToast(msg, action) {
   let wrap = document.getElementById('toast-wrap');
   if (!wrap) {
     wrap = document.createElement('div');
     wrap.id = 'toast-wrap';
-    wrap.style.cssText = 'position:fixed;bottom:18px;left:50%;transform:translateX(-50%);z-index:9999;display:flex;flex-direction:column;gap:6px;align-items:center;pointer-events:none';
+    wrap.style.cssText = 'position:fixed;bottom:calc(var(--nav-h) + var(--safe-bot) + 14px);left:50%;transform:translateX(-50%);z-index:9999;display:flex;flex-direction:column;gap:6px;align-items:center;pointer-events:none';
     document.body.appendChild(wrap);
   }
   const t = document.createElement('div');
   t.setAttribute('role', 'status');
-  t.style.cssText = 'background:var(--btn-secondary-bg);color:#fff;padding:9px 16px;border-radius:10px;font-size:var(--fs-sm);max-width:86vw;box-shadow:0 4px 14px rgba(0,0,0,.35);opacity:0;transition:opacity .25s';
-  t.textContent = String(msg);
+  t.className = 'toast';
+  const span = document.createElement('span'); span.textContent = String(msg); t.appendChild(span);
+  if (action && typeof action.fn === 'function') {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'toast-action'; b.textContent = action.label || 'Undo';
+    b.onclick = () => { try { action.fn(); } finally { t.remove(); } };
+    t.appendChild(b); t.style.pointerEvents = 'auto';
+  }
   wrap.appendChild(t);
-  requestAnimationFrame(() => { t.style.opacity = '1'; });
-  setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 4500);
+  requestAnimationFrame(() => { t.classList.add('in'); });
+  setTimeout(() => { t.classList.remove('in'); setTimeout(() => t.remove(), 300); }, action ? 6500 : 4000);
 }
 
 /* ---------- FELLOWSHIP CAMPAIGN (P4) — create/join/leave + live party ---------- */

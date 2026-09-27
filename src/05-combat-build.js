@@ -1993,11 +1993,14 @@ async function applyMajorEvent(die) {
     else if (e === 'hrtTN+1') addTnAdjust('hrt', 1);
     else if (e === 'strTN+1') addTnAdjust('str', 1);
     else if (e === 'attrTN-1') {
-      const which = await promptStyled('Lower which Attribute TN by 1? Type "str", "hrt", or "wit":', 'str');
-      if (which && ['str','hrt','wit'].includes(which.toLowerCase())) {
-        const k = which.toLowerCase() + 'TN';
-        char[k] = Math.max(1, (parseInt(char[k]) || 0) - 1);
-      }
+      // Through tnAdjust, like every other standing TN change (GOTCHA 19): writing char.xxxTN
+      // directly was silently undone by the next recomputeAttrTNs().
+      const which = await showModal({
+        title: 'Lower one Target Number by 1',
+        message: 'A lower TN makes rolls on that Attribute easier.',
+        buttons: [{ label: 'Strength', value: 'str' }, { label: 'Heart', value: 'hrt' }, { label: 'Wits', value: 'wit' }]
+      });
+      if (['str', 'hrt', 'wit'].includes(which)) addTnAdjust(which, -1);
     }
     else if (e === 'fellow-1') char.fellowshipRating = Math.max(0, (parseInt(char.fellowshipRating) || 0) - 1);
     else if (e === 'fellow+1') char.fellowshipRating = (parseInt(char.fellowshipRating) || 0) + 1;

@@ -809,14 +809,13 @@ async function fpComplete() {
         if (famousWithDormant.length === 0) {
           log.push(`📝 Visiting the Treasury: narrative (no Famous Weapon/Armour with dormant qualities to unlock)`);
         } else {
-          let prompt_msg = `🏛️ VISITING THE TREASURY\n\nTrade in 1 Reward from a piece of war gear to activate one dormant quality on a Famous Weapon/Armour.\n\nFamous items with dormant qualities:\n\n`;
-          famousWithDormant.forEach((mi, idx) => {
-            const dormant = mi.qualities.filter(q => !q.active).length;
-            const itemIdx = char.magicalItems.indexOf(mi);
-            prompt_msg += `  ${idx + 1}. ${mi.name} (${mi.type}) — ${dormant} dormant\n`;
+          const pick = await showModal({
+            title: '🏛️ Visiting the Treasury',
+            message: 'Trade in 1 Reward from a piece of war gear to wake one dormant quality on a Famous Weapon or Armour. Which item?',
+            buttons: famousWithDormant.map((mi, idx) => ({
+              label: `${mi.name} — ${mi.qualities.filter(q => !q.active).length} dormant`, value: idx + 1
+            })).concat([{ label: 'Skip — no unlock this phase', value: 0, cancel: true }])
           });
-          prompt_msg += `\nEnter the number to unlock (1-${famousWithDormant.length}), or Cancel to skip.`;
-          const pick = parseInt(await promptStyled(prompt_msg, '1'));
           if (pick >= 1 && pick <= famousWithDormant.length) {
             const chosen = famousWithDormant[pick - 1];
             const qIdx = chosen.qualities.findIndex(q => !q.active);
@@ -1733,12 +1732,17 @@ async function rollMarchingTest() {
   // Solo (Strider or Moria): no roles assigned — the lone hero is the de-facto Guide.
   // Treat as Guide automatically and auto-roll TRAVEL.
   if (!isSolo() && (!j.roles || !j.roles.guide)) {
-    const inp = await promptStyled('You are not the Guide. Record the Marching Test outcome from the Guide:\n\nFormat: "S 2" for success with 2 icons, "F 0" for fail.', 'S 0');
-    if (!inp) return;
-    const parts = inp.trim().toUpperCase().split(/\s+/);
-    const success = parts[0] === 'S';
-    const icons = parseInt(parts[1]) || 0;
-    applyMarchingTestResult(success, icons, 'manual entry');
+    const r = await showModal({
+      title: 'Marching Test',
+      message: 'You are not the Guide. How did the Guide’s TRAVEL roll go?',
+      buttons: [
+        { label: 'Success', value: 'S0' }, { label: 'Success with 1 ✦', value: 'S1' },
+        { label: 'Success with 2 ✦', value: 'S2' }, { label: 'Failure', value: 'F0' },
+        { label: 'Cancel', value: null, cancel: true }
+      ]
+    });
+    if (!r) return;
+    applyMarchingTestResult(r[0] === 'S', parseInt(r[1]) || 0, 'manual entry');
     return;
   }
   const s = char.skills['Travel'] || { rating: 0, favoured: false };
@@ -2168,7 +2172,16 @@ async function moriaFP(duration) {
   }
   // Shadow removal (Brief/Extended) — player decides by impact (1-3)
   if (duration !== 'hurried' && (parseInt(char.shadow) || 0) > 0) {
-    const n = parseInt(await promptStyled('Spiritual Recovery — remove how many Shadow points?\n\n1 = you interfered with the Shadow · 2 = you damaged the Enemy · 3 = you drew the Dark Lord\'s attention', '1'));
+    const n = await showModal({
+      title: 'Spiritual Recovery',
+      message: 'How much did your adventure hurt the Enemy? That is how much Shadow you shed.',
+      buttons: [
+        { label: '−1 · you interfered with the Shadow', value: 1 },
+        { label: '−2 · you damaged the Enemy', value: 2 },
+        { label: '−3 · you drew the Dark Lord’s attention', value: 3 },
+        { label: 'None', value: 0, cancel: true }
+      ]
+    });
     if (n >= 1 && n <= 3) { const rem = Math.min(n, parseInt(char.shadow) || 0); adj('shadow', -rem); lines.push(`−${rem} Shadow`); }
   }
   // Band conditions
@@ -3015,11 +3028,13 @@ async function takeShortRest() {
     if (!await confirmStyled(`You have already taken a Short Rest on Day ${char.dayCount || 1}.<br><br>The rules allow one Short Rest per day. Take another anyway?`, '☀️ Already Rested Today', {yes:'Rest again anyway', no:'Don’t rest'})) return;
   }
   const recovered = Math.min(str, max - cur);
-  if (!await confirmStyled(`Recover <strong>+${recovered}</strong> Endurance (your STRENGTH ${str}).<br>End: ${cur} → ${cur + recovered} / ${max}<br><br><small>At least 1 hour of inactivity. Marks your Short Rest for Day ${char.dayCount || 1}.</small>`, '☀️ Short Rest', {yes:'Take the rest', no:'Not now'})) return;
+  // Reversible, so it just happens — with Undo — instead of asking first.
+  if (typeof snapshot === 'function') snapshot();
   char.endCur = cur + recovered;
   char.shortRestUsedToday = true;
   saveCharacter();
   render();
+  showToast(`Short rest: +${recovered} Endurance (${cur} → ${cur + recovered}).`, { label: 'Undo', fn: () => undoLast() });
 }
 
 async function takeProlongedRest() {
@@ -3525,13 +3540,17 @@ async function unlockDormantQuality(itemIdx) {
   if (nextDormantIdx < 0) { alert('No dormant qualities to unlock.'); return; }
   const q = item.qualities[nextDormantIdx];
 
-  const method = await promptStyled(`🔓 Unlock dormant quality on "${item.name}":\n\n  ${q.name}\n  ${q.description}\n\nHow are you unlocking it?\n\n  1. Via new VALOUR rank (instead of taking a Reward this rank-up)\n  2. Via VISITING THE TREASURY undertaking (trade in 1 Reward from war gear at your folk's treasury)\n\nEnter 1 or 2 to confirm, or Cancel to abort.`, '');
-
-  if (method === null) return;                       // Cancel — the user meant to back out, say nothing
-  if (method !== '1' && method !== '2') {
-    await alertStyled('Enter <strong>1</strong> or <strong>2</strong> to choose how the quality is unlocked — nothing was changed.', '⚠️ Unrecognised choice');
-    return;
-  }
+  // A choice between two routes is two buttons, not "type 1 or 2".
+  const method = await showModal({
+    title: '🔓 Wake a dormant quality',
+    message: `<strong>${escapeHtml(q.name)}</strong> on ${escapeHtml(item.name)}<br><small>${escapeHtml(q.description || '')}</small><br><br>How are you unlocking it?`,
+    buttons: [
+      { label: 'With a new Valour rank (instead of a Reward)', value: '1' },
+      { label: 'By Visiting the Treasury (give up a Reward)', value: '2' },
+      { label: 'Cancel', value: null, cancel: true }
+    ]
+  });
+  if (method !== '1' && method !== '2') return;       // Cancel — nothing changes, nothing to say
 
   q.active = true;
   const methodLabel = method === '1' ? 'new Valour rank' : 'Visiting the Treasury';
@@ -3717,7 +3736,7 @@ async function sagaBegin() {
     'What sends your hero out?<br><br>' +
     (seed ? `Your patron <strong>${escapeHtml(char.patron)}</strong> suggests:<br><em>${escapeHtml(seed)}</em><br><br>Keep it, or write your own.`
           : 'One sentence is enough — a rumour, a debt, a summons, a threat to somewhere you love.'),
-    seed, '🗺️ Begin your saga', 'e.g. Word came that the road east is no longer safe…');
+    seed, '🗺️ Begin your saga', 'e.g. Word came that the road east is no longer safe…', 'Begin the saga');
   if (premise === null) return;
   s.started = true;
   s.premise = String(premise).trim() || seed || 'The road calls.';
@@ -3736,14 +3755,12 @@ async function sagaBegin() {
     } catch (e) {}
   }
   render();
-  await alertStyled(
-    `<strong>Your saga has begun.</strong><br><em>${escapeHtml(s.premise)}</em><br><br>` +
-    'Do these three things, in order:<br><br>' +
-    '<strong>1.</strong> Decide where your hero is right now, and say what they do first.<br>' +
-    '<strong>2.</strong> When the world has to answer something you don\'t know, ask the <strong>Oracle</strong>. When your hero attempts something that could fail, <strong>roll it</strong>.<br>' +
-    '<strong>3.</strong> Write down what happened in the <strong>Chronicle</strong>, in your own words.<br><br>' +
-    'Repeat until the scene ends, then open the next one. That is the whole game.',
-    '🗺️ Session one');
+  // No instruction dialog: the Play screen now shows exactly what to do next, and does the
+  // rolling and the writing itself. (The old "Session one" dialog told players to ask the
+  // Oracle and write in the Chronicle by hand — the opposite of what Play does for them.)
+  if (typeof openNavGroup === 'function') openNavGroup('play');
+  if (typeof renderPlay === 'function') renderPlay();
+  if (typeof showToast === 'function') showToast('Your saga has begun.');
 }
 
 async function sagaStartSession() {

@@ -119,6 +119,25 @@ function clampLongHints() {
     h.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); t(); } });
   });
 }
+/* Plain-language glosses: a two- or three-word gloss under the game terms a newcomer meets
+   first. The (?) still gives the full rule; the gloss answers "what is this, roughly". */
+const PLAIN_GLOSS = {
+  'Strength': 'body & brawn', 'Heart': 'spirit & nerve', 'Wits': 'mind & senses',
+  'Shadow': 'creeping despair', 'Scars': 'permanent Shadow', 'Fatigue': 'weariness from travel',
+  'Load': 'weight you carry', 'Valour': 'courage · earns Rewards', 'Wisdom': 'judgement · earns Virtues',
+  'Skill Pts': 'buy skills', 'Adventure Pts': 'buy combat skill, Valour, Wisdom', 'Treasure': 'wealth',
+  'Fellowship Pts': 'bonds with companions', 'Parry': 'how hard you are to hit', 'Parry Total': 'how hard you are to hit',
+  'Protection (dice)': 'armour against wounds', 'Eye Awareness': 'how close the Enemy is to noticing you',
+  'Hunt Threshold': 'when the Enemy strikes', 'Engaged Foes': 'enemies fighting you', 'Foe Parry': 'how hard the foe is to hit'
+};
+function applyPlainGlosses() {
+  document.querySelectorAll('.counter-label, .attr h4').forEach(el => {
+    if (el.querySelector('.gloss')) return;
+    const key = (el.childNodes[0] && el.childNodes[0].nodeType === 3 ? el.childNodes[0].textContent : el.textContent).replace(/[?⌄▾▸]/g, '').trim();
+    const g = PLAIN_GLOSS[key]; if (!g) return;
+    const s = document.createElement('span'); s.className = 'gloss'; s.textContent = g; el.appendChild(s);
+  });
+}
 function resetTips() {
   try { localStorage.removeItem(TIPS_KEY); } catch (e) {}
   initTips();
@@ -1829,6 +1848,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initHintButtons();        // U7/B: (?) hints app-wide (text-matched labels + data-hint)
   initTips();               // one-time tab tips (dismissable intros)
   clampLongHints();         // long explanations fold to one tappable line
+  applyPlainGlosses();      // 'Shadow — creeping despair' under the first terms a newcomer meets
   renderNewcomerBanner();   // A: 'start here' card while the active hero is still blank
   // Dice tab: the manual dice controls fold away behind the quick-roll grid. Remember the
   // player's choice, but default OPEN for anyone who already knows the app (no hidden controls

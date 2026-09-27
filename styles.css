@@ -916,3 +916,10 @@ body.adjust-mode .adj-lock { background: var(--gold-soft); border-color: var(--g
 .menu .btn-quiet { background: transparent; color: var(--red); border-color: transparent; }
 #styled-modal-title:empty { display: none; }
 #styled-modal-buttons { margin-top: var(--sp-2); }
+.toast { display: flex; align-items: center; gap: var(--sp-3); background: var(--btn-secondary-bg); color: #fff;
+  padding: 10px 14px; border-radius: var(--r-md); font-size: var(--fs-sm); max-width: 90vw; box-shadow: var(--elev-2);
+  opacity: 0; transform: translateY(8px); transition: opacity .22s var(--ease), transform .22s var(--ease); }
+.toast.in { opacity: 1; transform: none; }
+.toast-action { background: none; border: none; color: var(--gold); font-weight: 700; font-size: var(--fs-sm); padding: 4px 6px; }
+@media (min-width: 900px) { #toast-wrap { bottom: 24px !important; } }
+.gloss { display: block; font-size: 11px; font-weight: 500; text-transform: none; letter-spacing: 0; color: var(--text-faint); margin-top: 1px; font-family: var(--font-body); }
