@@ -4,16 +4,16 @@ An HTML5 character sheet + play tracker for **The One Ring 2nd Edition** RPG —
 
 ---
 
-## ⭐ STATUS DASHBOARD — read this first (updated 2026-09-27, round 4)
+## ⭐ STATUS DASHBOARD — read this first (updated 2026-09-27, map fix)
 
 > **This section is the single source of truth for "where are we and what's next."**
 > Everything below it is reference detail and per-phase history. Keep this dashboard
 > current whenever work lands (and prune it — it must stay one screen).
 
 ### Current state
-- **All roadmap phases COMPLETE (incl. the full loremaster port):** P0 adversaries · P1 test harness (`npm test`, **389/389 green**, 8 specs) · P2 module split (`src/01…08` + `styles.css`) · P3 cloud-owned heroes · P4 live campaigns/party · P5 shared GM-driven encounter · P6 Loremaster screen (role-gated GM tab, peek, broadcast) · P7 security rules (**deployed + live-verified 2026-07-02**) · P8 accessibility. Plus the full UX batch (U3, U4, U5/6/7/8, U9–U15 — all shipped; "group rolls" deliberately skipped).
+- **All roadmap phases COMPLETE (incl. the full loremaster port):** P0 adversaries · P1 test harness (`npm test`, **390/390 green**, 8 specs) · P2 module split (`src/01…08` + `styles.css`) · P3 cloud-owned heroes · P4 live campaigns/party · P5 shared GM-driven encounter · P6 Loremaster screen (role-gated GM tab, peek, broadcast) · P7 security rules (**deployed + live-verified 2026-07-02**) · P8 accessibility. Plus the full UX batch (U3, U4, U5/6/7/8, U9–U15 — all shipped; "group rolls" deliberately skipped).
 - **Cloud is LIVE**: real Firebase config committed (`FIREBASE_ENABLED=true`); rules deployed; broadcast / in-campaign push / peek all verified against the real project 2026-07-02.
-- **SW cache `tor2e-v136`** · git repo (origin = github.com/arti47/tor2e-tracker, branch main) · shells (`character-tracker.html` = `index.html`) in sync.
+- **SW cache `tor2e-v137`** · git repo (origin = github.com/arti47/tor2e-tracker, branch main) · shells (`character-tracker.html` = `index.html`) in sync.
 - **Dice-tab QoL (2026-07-02):** quick-roll grid moved to sit directly above the 🎲 Roll button (result renders right below → tap-to-result with no hunting) + the result `scrollIntoView`s on every roll (`behavior:'auto'` on purpose — `'smooth'` never completes in some headless/older-Safari engines); roll history gets a per-row **×** delete (`deleteRollAt`, index via `history.indexOf`) and a **🗑 Clear** button (`clearRollHistory`, confirmed). +2 ux-spec checks.
 - **Dice/Oracle QoL 2 (2026-07-02, SW v101, harness 104/104):** the roll-result summary now **leads with the skill/prof name** (quick rolls pass it as `rollDice(skillLabel)`; e.g. "Valour · vs TN 15 — SUCCESS"); **Oracle History** gets per-row **×** (`deleteOracleRollAt` — direct index, newest-first) + **🗑 Clear** (`clearOracleHistory`, confirmed; device-global history). +2 ux-spec checks. *(Preview-verification note: the local `http.server` + SW combo can poison the HTTP cache so even a new SW precaches stale JS — when the preview serves old code, switch the preview port = fresh origin.)*
 
@@ -341,6 +341,12 @@ An HTML5 character sheet + play tracker for **The One Ring 2nd Edition** RPG —
   - **Known misreads, left to the fix tool:** the far-eastern Rhûn ranges and the Yellow Mountains read as rough ground rather than impassable; a few Shire hexes still carry label ink as rough ground.
   - **+6 design checks**, every one revert-probed (9 sabotages, all red). The routing check first used only Bree → Rivendell, which crosses no mountains, so routing *through* impassable hexes went unnoticed; it now also crosses the Misty Mountains (GOTCHA 32 again: the check must be able to see the thing).
 
+- **"Pick on the map doesn't work" (2026-09-27, SW v137, harness 390/390):** the whole flow passed in desktop Chromium with touch emulation, so the fault was in the conditions around it. Three fixes:
+  - 🐞 **Taps landed on the wrong hex once the map changed shape.** A tap was converted to map coordinates with the viewBox set when the picker opened. The map box shrinks as soon as a route exists (the summary grows under it), and changes again when a tablet turns or the keyboard opens; after that every tap was measured against the old shape. Measured: the second tap landed **1–2 hexes off** on phone and tablet. Taps now go through the SVG's own `getScreenCTM()`, and a `ResizeObserver` keeps the viewBox the shape of its box, so dragging and pinching also follow the finger.
+  - **A tap is read from `click`, not `pointerup`.** Pointer events still handle pan, pinch and long-press. Every browser fires `click` for a tap even when iOS Safari cancels or never delivers the pointer stream on an `<svg>`. `setPointerCapture` is in a try, the map area sets `-webkit-touch-callout:none` (a long press no longer offers to save the image), and the `<image>` also carries `xlink:href`. If `10-map.js` has not loaded, the Journey card says so instead of doing nothing.
+  - **The service worker could pair new HTML with old scripts.** HTML was network-first but JS was cache-first, and the precache went through the browser's HTTP cache (GOTCHA 12). New HTML could show the map card wired to the previous `04-render.js`, whose `jPickDist` did not know `'map'`, and that pairing could last for the whole version. Now `.js`/`.css`/`.json` are network-first like HTML, the precache uses `cache: 'reload'`, and an offline code request no longer falls back to the HTML shell. See GOTCHA 44.
+  - **+1 design check (93 → 94).** It uses real mouse clicks (pointer and click events), including after a resize to 820×1180, and requires the chosen hex to be exactly the tapped one; a drag must choose nothing. Revert-probed twice and red both times: the old coordinate maths put the tap 1 hex off, and with tap handling removed nothing was chosen. **The earlier map checks never tapped the map; they called functions.** That is why this shipped.
+
 ### The dev workflow (every change)
 1. Edit **`src/*.js`** (JS) or **`character-tracker.html`** (markup) or `styles.css`.
 2. If the HTML changed: `cp character-tracker.html index.html`.
@@ -450,6 +456,9 @@ An HTML5 character sheet + play tracker for **The One Ring 2nd Edition** RPG —
 42. **The map data is generated, not hand-written.** `src/10-map-data.js` came from pixel analysis of `maps/middle-earth.jpg` (grid, colour, ink and crimson-digit tests described in the dashboard entry). Replacing or re-scaling the image means refitting the grid and regenerating the file — a wrong grid misplaces every hex by a fraction and every route with it. Player corrections live in `tor2e-map-fixes`, never in the data file. *(→ The Middle-earth map)*
 43. **A number box inside a `.field` needs `flex: 0 0 64px`.** `.field input` sets `flex: 1 1 0%`, which beats `width` and squeezed a stepper's input to 22px. *(→ The Middle-earth map)*
 
+44. **HTML and code must come from the same version.** The service worker serves HTML *and* `.js`/`.css`/`.json` network-first, and precaches with `cache: 'reload'`. Do not make scripts cache-first again: fresh HTML running last version's scripts shows new controls wired to old functions, which then do nothing and report no error. *(→ Pick on the map fix)*
+45. **Test a gesture surface with real input.** Map taps are pointer and click events on a box that changes shape. A check that calls `mapChoosePlace()` or `mapTapHex()` proves nothing about a finger. Drive `page.mouse`/`touchscreen`, resize mid-check, and compare the chosen hex with the one under the pointer. *(→ Pick on the map fix)*
+
 ---
 
 ## Project Overview
@@ -476,8 +485,8 @@ npm install && npm test                     # harness must be green (npm install
 
 As of last verification:
 - **Layout (since P2, 2026-06-29)**: thin `character-tracker.html` shell (mirrored to `index.html`) loading `styles.css` + `src/vendor-qrcode.js` + `src/01-core.js`…`src/08-gm.js` in order — **classic scripts, no build step, still works over `file://`**. `firebase-config.js` (real keys, `FIREBASE_ENABLED=true`) + Firebase compat CDN scripts power the optional-but-live cloud layer (`src/07-sync.js`); the app degrades gracefully to fully-local when offline.
-- **`sw.js` `CACHE_VERSION`**: `tor2e-v136` (bump on every deploy). `PRECACHE` lists all 8 `src/*.js` + `vendor-qrcode.js` + `styles.css` + `firebase-config.js` + shells + PWA assets — **add any new file there**. SW strategy: HTML/navigations network-first; static assets cache-first; auto-activate.
-- **Test harness**: `npm test` → 8 specs / **389 checks** (smoke 23, adversaries 11, ux 208, spillage 20, a11y 7, gm 20, reachability 7, **design 93**). A fresh clone needs `npm install` first (`playwright-core` is the only devDependency; `tests/browser.js` glob-resolves a cached Chromium, `CHROMIUM_BIN` overrides). Cloud paths are no-ops in tests (SDK blocked) — verify live features via preview against the real project.
+- **`sw.js` `CACHE_VERSION`**: `tor2e-v137` (bump on every deploy). `PRECACHE` lists all 8 `src/*.js` + `vendor-qrcode.js` + `styles.css` + `firebase-config.js` + shells + PWA assets — **add any new file there**. SW strategy: HTML/navigations **and code (.js/.css/.json)** network-first; images/fonts cache-first; precache bypasses the HTTP cache (`cache:'reload'`); auto-activate.
+- **Test harness**: `npm test` → 8 specs / **390 checks** (smoke 23, adversaries 11, ux 208, spillage 20, a11y 7, gm 20, reachability 7, **design 94**). A fresh clone needs `npm install` first (`playwright-core` is the only devDependency; `tests/browser.js` glob-resolves a cached Chromium, `CHROMIUM_BIN` overrides). Cloud paths are no-ops in tests (SDK blocked) — verify live features via preview against the real project.
 - **Cloud (P3–P7)**: heroes mirror to `characters/{id}` (owner-only, rules-enforced); campaigns at `campaigns/{cid}` (join codes, live vitals party, presence, shared encounter, loremaster broadcast). `database.rules.json` **deployed + live-verified 2026-07-02**.
 - **Solo modes**: Strider + Moria complete (see their sections below).
 - **localStorage keys**: a **multi-character roster** (added 2026-05-31):
