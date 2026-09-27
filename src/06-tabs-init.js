@@ -131,7 +131,9 @@ function renderJumpBar(panelId) {
   const panel = document.getElementById(panelId); if (!panel) return;
   let bar = panel.querySelector(':scope > .jump-bar');
   const cards = [...panel.querySelectorAll(':scope > .card:not(.tab-intro)')]
-    .filter(c => c.style.display !== 'none' && c.querySelector(':scope > .card-title'));
+    .filter(c => c.style.display !== 'none' && c.querySelector(':scope > .card-title'))
+    // round 4: the card already on screen (the Oracle's Ask box) needs no chip
+    .filter(c => !c.classList.contains('ornate'));
   if (cards.length < 4) { if (bar) bar.remove(); return; }
   if (!bar) {
     bar = document.createElement('nav'); bar.className = 'jump-bar'; bar.setAttribute('aria-label', 'Jump to a section');
@@ -143,7 +145,7 @@ function renderJumpBar(panelId) {
     const t = c.querySelector(':scope > .card-title');
     const label = t.childNodes[0] && t.childNodes[0].nodeType === 3 ? t.childNodes[0].textContent : t.textContent;
     const b = document.createElement('button'); b.type = 'button'; b.className = 'jump-chip';
-    b.textContent = label.replace(/[⌄▾▸?]/g, '').replace(/—.*$/, '').trim().slice(0, 26);
+    b.textContent = label.replace(/[⌄▾▸?]/g, '').replace(/—.*$/, '').replace(/\s+Table$/i, '').replace(/^Random\s+/i, '').trim().slice(0, 22);
     b.onclick = () => openCard(c);
     bar.appendChild(b);
   });
@@ -1760,6 +1762,36 @@ const TUTORIAL_LESSONS = [
 /* ---------- U4: swipe between tabs (touch) ---------- */
 // Horizontal swipe on panel content switches to the prev/next VISIBLE tab. Ignores swipes that
 // start inside form fields or horizontally-scrollable content, and does nothing while a dialog is open.
+/* ---------- Header folds on scroll (round 4, phones) ----------
+   Scrolling down folds the header to one slim line — crest, Endurance, Hope, the Eye. Scrolling
+   up, or a tap on the slim header, brings it back with the sub-tabs. */
+function setSlimHeader(on) {
+  if (document.body.classList.contains('hdr-slim') === !!on) return;
+  document.body.classList.toggle('hdr-slim', !!on);
+  window._slimHold = Date.now();
+}
+function initSlimHeader() {
+  let lastY = window.scrollY, queued = false;
+  const phone = () => window.matchMedia('(max-width: 899px)').matches;
+  window.addEventListener('scroll', () => {
+    if (queued) return; queued = true;
+    requestAnimationFrame(() => {
+      queued = false;
+      const y = window.scrollY, dy = y - lastY; lastY = y;
+      if (!phone() || document.querySelector('.menu-overlay.show')) return setSlimHeader(false);
+      if (Date.now() - (window._slimHold || 0) < 250) return;   // the header's own resize moves the page
+      if (y < 60) setSlimHeader(false);
+      else if (dy > 6 && document.documentElement.scrollHeight > window.innerHeight + 240) setSlimHeader(true);
+      else if (dy < -6) setSlimHeader(false);
+    });
+  }, { passive: true });
+  const hdr = document.querySelector('.header');
+  if (hdr) hdr.addEventListener('click', e => {
+    if (!document.body.classList.contains('hdr-slim')) return;
+    e.preventDefault(); e.stopPropagation(); setSlimHeader(false);
+  }, true);
+}
+
 function initSwipeTabs() {
   let sx = 0, sy = 0, st = 0, valid = false;
   document.addEventListener('touchstart', e => {
@@ -1996,6 +2028,7 @@ document.addEventListener('DOMContentLoaded', () => {
   renderChronicle();
   restoreLastTab();   // U4: reopen the tab the player was last on (if still visible)
   initSwipeTabs();          // U4: swipe between tabs on touch
+  initSlimHeader();         // round 4: the header folds to one line while you scroll down
   initCollapsibleCards();   // U3: tap a card title to collapse (remembered per device)
   initHintButtons();        // U7/B: (?) hints app-wide (text-matched labels + data-hint)
   initTips();               // one-time tab tips (dismissable intros)
@@ -2212,6 +2245,15 @@ function syncPickers() {
   });
 }
 let _pickSel = null;
+/* A choice says what it means, not only its name (round 4). `data-desc` on an option wins;
+   otherwise the big pickers describe themselves from the game data. */
+const PICK_DESC = {
+  'eye-region-pick': v => HUNT_THRESHOLDS[v] ? `The Eye hunts you at ${HUNT_THRESHOLDS[v]}` : '',
+  'culture-pick': v => (CULTURES[v] && CULTURES[v].blessing) ? String(CULTURES[v].blessing).replace(/\s—\s.*$/, '') + ' · ' + String(CULTURES[v].blessing).replace(/^.*?—\s*/, '') : '',
+  'calling-pick': v => CALLINGS[v] && CALLINGS[v].favoured ? `Good at ${CALLINGS[v].favoured.join(', ')}` : '',
+  'patron-pick': v => PATRONS[v] ? PATRONS[v].ability : ''
+};
+function _pickDesc(sel, o) { const f = PICK_DESC[sel.id]; try { return f && o.value ? f(o.value) : ''; } catch (e) { return ''; } }
 function openPicker(sel) {
   _pickSel = sel;
   document.getElementById('pick-title').textContent = _pickLabel(sel) || 'Choose';
@@ -2222,7 +2264,9 @@ function openPicker(sel) {
     b.className = 'pick-opt' + (o.selected && sel.value === o.value ? ' on' : '') + (o.disabled ? ' off' : '');
     b.setAttribute('role', 'option'); b.setAttribute('aria-selected', o.selected ? 'true' : 'false');
     b.disabled = o.disabled;
-    b.textContent = o.textContent.trim() || '—';
+    const desc = o.dataset.desc || _pickDesc(sel, o);
+    if (desc) { b.innerHTML = `<strong>${escapeHtml(o.textContent.trim() || '—')}</strong><small>${escapeHtml(desc)}</small>`; b.classList.add('has-desc'); }
+    else b.textContent = o.textContent.trim() || '—';
     b.onclick = () => choosePick(o.value);
     list.appendChild(b);
   };
