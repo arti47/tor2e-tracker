@@ -1552,10 +1552,10 @@ module.exports = {
       out.askOffersOdds = bands.indexOf('doubtful') >= 0 && bands.indexOf('certain') >= 0
         && bands.length >= 4;
 
-      // minor — the Play vitals must show a condition the rules have imposed.
+      // minor — the vitals bar (every tab, incl. Play) must show a condition the rules have imposed.
       freshHero();
-      char.endCur = 3; char.load = 10; char.fatigue = 0; char.weary = false; saveCharacter();
-      out.playShowsAutoWeary = /WEARY/.test(_playStateTags());
+      char.endCur = 3; char.load = 10; char.fatigue = 0; char.weary = false; saveCharacter(); renderHud();
+      out.playShowsAutoWeary = /Weary/.test(document.getElementById('hud-chips').innerText);
 
       // minor — days must pass on the road, not only in bed.
       freshHero();

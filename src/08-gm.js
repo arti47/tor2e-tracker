@@ -23,6 +23,7 @@ function refreshGmUI() {
     if (home) home.click();
   }
   if (vis) renderGm();   // keep the party body fresh across hero switches / re-renders
+  if (typeof refreshNav === 'function') refreshNav();
 }
 function toggleGmScreen() {
   if (gmInCampaign()) {

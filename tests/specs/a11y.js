@@ -28,7 +28,7 @@ module.exports = {
     checks.push({ ok: dlg.role === 'dialog' && dlg.modal === 'true' && dlg.labelled, msg: 'overlays are role=dialog + aria-modal=true + aria-labelledby' });
 
     // Opening a dialog moves focus inside it.
-    await page.evaluate(() => { document.querySelector('.tab[data-tab="character"]').focus(); openTimeline(); });
+    await page.evaluate(() => { openNavGroup('hero'); document.querySelector('.tab[data-tab="character"]').focus(); openTimeline(); });
     await page.waitForTimeout(90);
     const focusIn = await page.evaluate(() => {
       const ov = document.getElementById('timeline-overlay');

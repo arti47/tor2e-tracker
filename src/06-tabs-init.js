@@ -18,8 +18,57 @@ function bindTabs() {
       if (t.dataset.tab === 'gm' && typeof renderGm === 'function') renderGm();
       if (typeof initHintButtons === 'function') initHintButtons();       // (?) hints on any newly-shown markup
       if (typeof renderNewcomerBanner === 'function') renderNewcomerBanner();
+      refreshNav();
       window.scrollTo(0, 0);
     };
+  });
+  document.querySelectorAll('.bn-item').forEach(b => { b.onclick = () => openNavGroup(b.dataset.group); });
+  refreshNav();
+}
+
+/* ---------- PRIMARY NAVIGATION (groups) ----------
+   Fourteen top-level tabs were the single biggest source of "intimidating": they
+   overflowed the header and a newcomer could not tell which ones mattered. The
+   .tab buttons still exist (every jump link, guard and spec clicks them) but they
+   are now a sub-navigation inside five groups. Mode gating stays where it was —
+   refreshStriderUI / refreshGmUI set .tab style.display — and a group is simply
+   hidden when none of its tabs is visible. */
+const NAV_GROUPS = [
+  { id: 'play',      tabs: ['play'] },
+  { id: 'hero',      tabs: ['character', 'skills', 'gear', 'build'] },
+  { id: 'adventure', tabs: ['journey', 'council', 'combat', 'band', 'battle', 'gm'] },
+  { id: 'roll',      tabs: ['dice', 'oracle'] },
+  { id: 'journal',   tabs: ['chronicle', 'reference'] },
+];
+const _navLast = {};   // group id → last sub-tab opened in it (this session)
+function _tabShown(id) {
+  const t = document.querySelector(`.tab[data-tab="${id}"]`);
+  return !!t && t.style.display !== 'none';
+}
+function navGroupOf(tabId) { return NAV_GROUPS.find(g => g.tabs.includes(tabId)) || NAV_GROUPS[0]; }
+function openNavGroup(gid) {
+  const g = NAV_GROUPS.find(x => x.id === gid); if (!g) return;
+  const shown = g.tabs.filter(_tabShown);
+  const pick = (_navLast[gid] && shown.includes(_navLast[gid])) ? _navLast[gid] : shown[0];
+  const t = pick && document.querySelector(`.tab[data-tab="${pick}"]`);
+  if (t) t.click();
+}
+function refreshNav() {
+  const active = document.querySelector('.tab.active');
+  const cur = navGroupOf(active ? active.dataset.tab : 'play');
+  if (active) _navLast[cur.id] = active.dataset.tab;
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('nav-out', !cur.tabs.includes(t.dataset.tab)));
+  const nav = document.querySelector('.tabs');
+  if (nav) nav.classList.toggle('single', cur.tabs.filter(_tabShown).length <= 1);
+  document.querySelectorAll('.bn-item').forEach(b => {
+    const g = NAV_GROUPS.find(x => x.id === b.dataset.group);
+    const shown = g ? g.tabs.filter(_tabShown) : [];
+    b.style.display = shown.length ? '' : 'none';
+    const on = g === cur;
+    b.classList.toggle('active', on);
+    if (on) b.setAttribute('aria-pressed', 'true'); else b.removeAttribute('aria-pressed');
+    const lbl = b.querySelector('[data-alt]');   // "Journal" reads "Rules" when there is no Chronicle
+    if (lbl) { lbl.dataset.main = lbl.dataset.main || lbl.textContent; lbl.textContent = shown.length === 1 && shown[0] === 'reference' ? lbl.dataset.alt : lbl.dataset.main; }
   });
 }
 // U4: reopen the last-used tab on load. Only if it's still present AND visible (solo-only

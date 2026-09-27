@@ -1484,6 +1484,7 @@ function refreshStriderUI() {
   if (mbtn) mbtn.textContent = char.moriaMode ? '⛏️ Solo Play: Moria campaign — ON' : '⛏️ Solo Play: Moria campaign';
   // GM Screen (P6): device-global toggle, independent of char mode. Keep its tab + label in sync.
   if (typeof refreshGmUI === 'function') refreshGmUI();
+  if (typeof refreshNav === 'function') refreshNav();
 }
 
 /* Solo players have no Loremaster and no Company, but a lot of RAW-derived copy assumes both.

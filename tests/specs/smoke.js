@@ -24,7 +24,8 @@ module.exports = {
     // Click through every visible tab; each should activate its panel.
     const visibleTabs = await page.$$eval('.tab', els => els.filter(e => e.style.display !== 'none').map(e => e.dataset.tab));
     for (const t of visibleTabs) {
-      await page.click(`.tab[data-tab="${t}"]`);
+      await page.click(`.bn-item[data-group="${await page.evaluate(t => navGroupOf(t).id, t)}"]`);   // a player reaches a tab through its group
+        if (await page.evaluate(t => !document.querySelector(`.tab[data-tab="${t}"]`).classList.contains('active'), t)) await page.click(`.tab[data-tab="${t}"]`);
       const active = await page.$eval(`#panel-${t}`, el => el.classList.contains('active'));
       checks.push({ ok: active, msg: `tab "${t}" activates its panel` });
     }

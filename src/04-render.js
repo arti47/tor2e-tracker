@@ -96,6 +96,7 @@ function render() {
   renderEncounter();
 
   if (typeof renderNewcomerBanner === 'function') renderNewcomerBanner();   // A: newcomer 'start here' card
+  renderHud();
 }
 
 function renderDerivedStats() {
@@ -4575,20 +4576,75 @@ function advanceDays(n) {
   }
 }
 
-function _playStateTags() {
+/* ---------- VITALS BAR (header HUD) ----------
+   The numbers a player watches in play — Endurance, Hope with Shadow creeping into it,
+   the Eye, and any condition the rules impose — on every tab, not only the Character tab.
+   Tapping it opens a quick-adjust sheet that routes through adj(), so caps, triggers and
+   undo behave exactly as they do on the sheet. */
+function _hudConditions() {
   const t = [];
-  if ((parseInt(char.endCur) || 0) <= 0) t.push('DYING');
-  if (char.wounded) t.push('WOUNDED');
-  // Show the conditions the rules have imposed on you as well as the ones you have ticked: the
-  // Character tab pulses an auto-WEARY badge that this line used to omit entirely.
-  const autoWeary = (parseInt(char.endCur) || 0) <= (parseInt(char.load) || 0) + (parseInt(char.fatigue) || 0);
-  const totalShadow = (parseInt(char.shadow) || 0) + (parseInt(char.scars) || 0);
-  const autoMiser = char.hopeMax > 0 && totalShadow >= (parseInt(char.hopeCur) || 0);
-  if (char.weary || autoWeary) t.push('WEARY' + (!char.weary && autoWeary ? '?' : ''));
-  if (char.miserable || autoMiser) t.push('MISERABLE' + (!char.miserable && autoMiser ? '?' : ''));
-  return t.length
-    ? ' · <strong style="color:var(--error-text)" title="A ? means the rules say this applies but you have not ticked it on the Character tab.">' + t.join(' · ') + '</strong>'
-    : '';
+  const end = parseInt(char.endCur) || 0;
+  if (end <= 0 && char.culture) t.push({ k: 'dying', label: 'Dying', set: true });
+  if (char.wounded) t.push({ k: 'wounded', label: 'Wounded', set: true });
+  const autoWeary = end <= (parseInt(char.load) || 0) + (parseInt(char.fatigue) || 0);
+  const shadowT = (parseInt(char.shadow) || 0) + (parseInt(char.scars) || 0);
+  const autoMiser = char.hopeMax > 0 && shadowT >= (parseInt(char.hopeCur) || 0);
+  if (char.weary || autoWeary) t.push({ k: 'weary', label: 'Weary', set: !!char.weary });
+  if (char.miserable || autoMiser) t.push({ k: 'miserable', label: 'Miserable', set: !!char.miserable });
+  return t;
+}
+function _meter(label, cur, max, cls, extraPct) {
+  const pct = max > 0 ? Math.max(0, Math.min(100, cur / max * 100)) : 0;
+  const shadow = extraPct ? `<i class="shadow" style="width:${Math.min(100, extraPct)}%"></i>` : '';
+  return `<span class="m-label">${label}</span><span class="m-val">${cur}<small>/${max}</small></span>` +
+         `<span class="m-bar ${cls}"><i style="width:${pct}%"></i>${shadow}</span>`;
+}
+function renderHud() {
+  const hud = document.getElementById('hud'); if (!hud) return;
+  const mono = document.getElementById('hdr-monogram');
+  const built = !!char.culture;
+  hud.style.display = built ? '' : 'none';
+  if (mono) {
+    const n = (char.name || '').trim();
+    mono.style.display = built ? '' : 'none';
+    mono.textContent = (n || char.culture || '?').charAt(0).toUpperCase();
+  }
+  if (!built) return;
+  const end = parseInt(char.endCur) || 0, endMax = parseInt(char.endMax) || 0;
+  const hope = parseInt(char.hopeCur) || 0, hopeMax = parseInt(char.hopeMax) || 0;
+  const sh = (parseInt(char.shadow) || 0) + (parseInt(char.scars) || 0);
+  const weary = end <= (parseInt(char.load) || 0) + (parseInt(char.fatigue) || 0);
+  document.getElementById('hud-end').innerHTML = _meter('Endurance', end, endMax, weary ? 'end low' : 'end');
+  document.getElementById('hud-hope').innerHTML = _meter('Hope', hope, hopeMax, 'hope', hopeMax ? sh / hopeMax * 100 : 0);
+  document.getElementById('hud-chips').innerHTML = (sh ? `<span class="chip shadow" title="Shadow (incl. Scars). When it reaches your Hope you are Miserable.">Shadow ${sh}</span>` : '') + _hudConditions()
+    .map(c => `<span class="chip ${c.k}${c.set ? '' : ' auto'}" title="${c.set ? '' : 'The rules say this applies — tap Weary/Miserable on the Character tab to confirm.'}">${c.label}</span>`).join('');
+}
+function openVitals() {
+  renderVitalsBody();
+  document.getElementById('vitals-overlay').classList.add('show');
+}
+function closeVitals() { document.getElementById('vitals-overlay').classList.remove('show'); }
+function vitalsAdj(field, d) { adj(field, d); renderVitalsBody(); }
+function renderVitalsBody() {
+  const host = document.getElementById('vitals-body'); if (!host) return;
+  const row = (label, field, cur, max, help) => `
+    <div class="v-row">
+      <div class="v-text"><strong>${label}</strong><span>${help}</span></div>
+      <button class="v-btn" aria-label="${label} down" onclick="vitalsAdj('${field}',-1)">−</button>
+      <span class="v-num">${cur}${max !== null ? `<small>/${max}</small>` : ''}</span>
+      <button class="v-btn" aria-label="${label} up" onclick="vitalsAdj('${field}',1)">+</button>
+    </div>`;
+  const sh = parseInt(char.shadow) || 0, sc = parseInt(char.scars) || 0;
+  host.innerHTML =
+    row('Endurance', 'endCur', parseInt(char.endCur) || 0, parseInt(char.endMax) || 0, 'Goes down when you are hurt or tire.') +
+    row('Hope', 'hopeCur', parseInt(char.hopeCur) || 0, parseInt(char.hopeMax) || 0, 'Spend it for +1 die. Rest restores it.') +
+    row('Shadow', 'shadow', sh, null, sc ? `Plus ${sc} permanent Scar${sc > 1 ? 's' : ''}.` : 'Dread and misdeeds add it.') +
+    row('Fatigue', 'fatigue', parseInt(char.fatigue) || 0, null, 'From travel. A Safe Haven rest clears it.') +
+    `<div class="v-actions">
+       <button class="btn btn-secondary" onclick="closeVitals();takeShortRest()">Short rest</button>
+       <button class="btn btn-secondary" onclick="closeVitals();takeProlongedRest()">Sleep (long rest)</button>
+     </div>
+     <button class="btn btn-quiet btn-block" onclick="closeVitals();openNavGroup('hero')">Open the full character sheet</button>`;
 }
 
 function _playConditionBanner() {
@@ -4599,9 +4655,9 @@ function _playConditionBanner() {
   if (!dying && char.miserable) notes.push('<strong>You are Miserable.</strong> Shadow has caught up with you: an 👁 on the Feat die now fails the roll automatically.');
   if (!dying && !char.miserable && char.weary) notes.push('<strong>You are Weary.</strong> Success dice showing 1–3 count as nothing until you rest.');
   if (!notes.length) return '';
-  return `<div class="card" style="border-color:var(--red);background:var(--red-soft)">
-    <h3 class="card-title" style="color:var(--red-dark);margin-bottom:6px"${dying ? ' data-hint="Dying"' : ''}>${dying ? '💀 You are Dying' : '⚠️ Take care'}</h3>
-    <p class="hint" style="text-align:left;line-height:1.6;margin:0">${notes.join('<br><br>')}</p>
+  return `<div class="card callout danger">
+    <h3 class="card-title"${dying ? ' data-hint="Dying"' : ''}>${dying ? 'You are Dying' : 'Take care'}</h3>
+    <p>${notes.join('</p><p>')}</p>
   </div>`;
 }
 
@@ -4610,48 +4666,50 @@ function renderPlay() {
   const s = sagaState();
 
   if (!char.culture) {
-    host.innerHTML = '<div class="card"><h3 class="card-title">Start here</h3>' +
-      '<p class="hint" style="text-align:left;line-height:1.6">You need a hero before you can play. That takes about a minute.</p>' +
-      '<button class="add-row-btn" style="width:100%;background:var(--gold);color:var(--ink);margin-bottom:6px" onclick="openPregens()">✨ Give me a ready-made hero</button>' +
-      '<button class="add-row-btn" style="width:100%" onclick="document.querySelector(\'.tab[data-tab=build]\').click()">🛠️ I\'ll make my own</button></div>';
+    host.innerHTML = '<div class="card play-empty"><div class="eyebrow">Welcome</div><h3 class="card-title">First, a hero</h3>' +
+      '<p>You need someone to play. A ready-made hero takes one tap; making your own takes a few minutes.</p>' +
+      '<button class="btn btn-block" onclick="openPregens()">Give me a ready-made hero</button>' +
+      '<button class="btn btn-secondary btn-block" onclick="document.querySelector(\'.tab[data-tab=build]\').click()">I\'ll make my own</button></div>';
     return;
   }
   if (!s.started) {
-    host.innerHTML = '<div class="card"><h3 class="card-title">Your story hasn\'t started</h3>' +
-      '<p class="hint" style="text-align:left;line-height:1.6">You have a hero. Now they need a reason to leave home — that is all a campaign needs to begin.</p>' +
-      '<button class="add-row-btn" style="width:100%;background:var(--gold);color:var(--ink)" onclick="sagaBegin().then(renderPlay)">▶ Begin — give me a reason to go</button></div>';
+    host.innerHTML = '<div class="card play-empty"><div class="eyebrow">Ready</div><h3 class="card-title">Your story hasn\'t started</h3>' +
+      '<p>You have a hero. Now they need a reason to leave home — that is all a campaign needs to begin.</p>' +
+      '<button class="btn btn-block" onclick="sagaBegin().then(renderPlay)">Begin — give me a reason to go</button></div>';
     return;
   }
   if (s.ended) {
-    host.innerHTML = '<div class="card"><h3 class="card-title">🏁 The tale is told</h3>' +
-      `<p class="hint" style="text-align:left;line-height:1.6"><em>${escapeHtml(s.endedHow)}</em></p>` +
-      '<button class="add-row-btn" style="width:100%" onclick="sagaReopen().then(renderPlay)">↩ Actually, continue it</button></div>';
+    host.innerHTML = '<div class="card play-empty"><div class="eyebrow">The end</div><h3 class="card-title">The tale is told</h3>' +
+      `<p><em>${escapeHtml(s.endedHow)}</em></p>` +
+      '<button class="btn btn-secondary btn-block" onclick="sagaReopen().then(renderPlay)">Actually, continue it</button></div>';
     return;
   }
 
   const sit = char.retired ? _playRetiredSituation() : _playSituation();
   const choices = _playChoices();
   const feed = _playFeed.length
-    ? _playFeed.slice(-8).map(f => `<p style="margin:0 0 8px;line-height:1.6;font-size:var(--fs-sm);${f.kind === 'aside' ? 'color:var(--text-muted);font-size:var(--fs-xs)' : 'color:var(--ink)'}">${f.text}</p>`).join('')
-    : '<p class="hint" style="text-align:left;margin:0">Pick something below. Whatever you choose, the app rolls what needs rolling and tells you what happened.</p>';
+    ? _playFeed.slice(-8).map(f => `<p class="${f.kind === 'aside' ? 'aside' : ''}">${f.text}</p>`).join('')
+    : '';
+  const split = lbl => {
+    const m = String(lbl).match(/^(\p{Extended_Pictographic}\uFE0F?|[▶↩✔✖🏁])\s*/u);
+    return m ? [m[1], lbl.slice(m[0].length)] : ['', lbl];
+  };
 
   host.innerHTML =
     _playConditionBanner() +
-    `<div class="card" style="border-color:var(--gold)">
-       <h3 class="card-title" style="color:var(--gold)">${escapeHtml(sit.title)}</h3>
-       <p class="hint" style="text-align:left;line-height:1.6;margin:0 0 10px">${sit.text}</p>
-       <div style="background:var(--bg-deep);border-radius:var(--r-sm);padding:10px;margin-bottom:10px;max-height:260px;overflow-y:auto">${feed}</div>
-       ${choices.map(c =>
-         `<button class="add-row-btn" style="width:100%;margin-bottom:6px;text-align:left;padding:11px 12px" onclick="${c.fn}">
-            <strong>${escapeHtml(c.label)}</strong>${c.hint ? `<br><small style="opacity:.75;font-weight:400">${escapeHtml(c.hint)}</small>` : ''}
-          </button>`).join('')}
+    `<div class="card play-scene">
+       <div class="eyebrow">Where you are</div>
+       <h3 class="card-title">${escapeHtml(sit.title)}</h3>
+       <div class="play-sit">${sit.text}</div>
+       ${feed ? `<div class="play-feed" aria-live="polite">${feed}</div>` : ''}
      </div>
-     <div class="card">
-       <p class="hint" style="text-align:left;line-height:1.55;margin:0">
-         <strong>Vitals</strong> — Endurance ${char.endCur ?? '—'}/${char.endMax ?? '—'} ·
-         Hope ${char.hopeCur ?? '—'}/${char.hopeMax ?? '—'} ·
-         Shadow ${(parseInt(char.shadow)||0) + (parseInt(char.scars)||0)}${isSolo() ? ` · 👁 ${parseInt(char.eyeAwareness)||0}` : ''}${_playStateTags()}<br>
-         Everything you do here is written into your <strong>Chronicle</strong> automatically.
-       </p>
-     </div>`;
+     <div class="play-choices" role="group" aria-label="What do you do?">
+       <div class="eyebrow">What do you do?</div>
+       ${choices.map((c, i) => { const [ico, txt] = split(c.label); return `<button class="choice${i === 0 ? ' primary' : ''}" onclick="${c.fn}">
+            <span class="c-ico" aria-hidden="true">${ico || '•'}</span>
+            <span class="c-txt"><strong>${escapeHtml(txt)}</strong>${c.hint ? `<small>${escapeHtml(c.hint)}</small>` : ''}</span>
+            <svg class="ic c-chev" aria-hidden="true"><use href="#i-chev"/></svg>
+          </button>`; }).join('')}
+     </div>
+     ${isSolo() ? '<p class="play-foot">Everything that happens here is written into your Chronicle for you.</p>' : ''}`;
 }
