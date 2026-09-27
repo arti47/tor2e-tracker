@@ -1230,6 +1230,7 @@ async function requireStep(message, tabId, cardId, title) {
     const t = document.querySelector('.tab[data-tab=' + tabId + ']');
     if (t) t.click();
     if (cardId && tabId === 'build' && typeof buildGoToCard === 'function') buildGoToCard(cardId);
+    if (cardId && tabId === 'character' && typeof setCharEditing === 'function') { const c = document.getElementById(cardId); if (c && c.closest('#char-edit')) setCharEditing(true); }
     if (cardId) setTimeout(() => { const c = document.getElementById(cardId); if (c) c.scrollIntoView({ block: 'center' }); }, 60);
   }
   return false;

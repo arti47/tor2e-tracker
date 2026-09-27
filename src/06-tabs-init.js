@@ -1478,6 +1478,7 @@ function _tutRender() {
     let tgt = step.sel ? document.querySelector(step.sel) : null;
     // A Build-tab target may sit on another wizard step — bring that step on screen first.
     if (tgt && typeof buildGoToCard === 'function') { const bc = tgt.closest('.bw-hidden'); if (bc && bc.id) buildGoToCard(bc.id); }
+    if (tgt && tgt.closest('#char-edit') && !document.getElementById('panel-character').classList.contains('editing') && typeof setCharEditing === 'function') setCharEditing(true);
     if (tgt && !step.exact) tgt = tgt.closest('.card') || tgt;
     let r = tgt ? tgt.getBoundingClientRect() : null;
     if (tgt && r && (r.width === 0 && r.height === 0)) { tgt = null; r = null; }  // hidden → no frame

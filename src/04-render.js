@@ -97,6 +97,7 @@ function render() {
 
   if (typeof renderNewcomerBanner === 'function') renderNewcomerBanner();   // A: newcomer 'start here' card
   renderHud();
+  renderHeroSheet();
   // Quick Build shows what the hero already is, not "— Select —" (setting .value fires no change
   // event, so nothing is re-applied; the player still has to press Apply to change anything).
   [['culture-pick', char.culture], ['calling-pick', char.calling], ['patron-pick', char.patron]].forEach(([id, v]) => {
@@ -4605,6 +4606,81 @@ function advanceDays(n) {
   }
 }
 
+/* ---------- HERO SHEET (read-only) ----------
+   The Character tab opens on a one-screen sheet — crest, identity, attributes, skills, gear,
+   traits — the way the paper sheet reads. "Edit" reveals the full form (#char-edit, unchanged,
+   so every control, guard and spec still finds it). In-play actions live in the vitals sheet. */
+function setCharEditing(on) {
+  const p = document.getElementById('panel-character'); if (!p) return;
+  p.classList.toggle('editing', !!on);
+  if (on) { const e = document.getElementById('char-edit'); if (e) e.scrollIntoView({ block: 'start' }); }
+  else { if (typeof adjustMode !== 'undefined' && adjustMode) toggleAdjustMode(false); window.scrollTo(0, 0); }
+  renderHeroSheet();
+}
+function _chips(txt, cls) {
+  const parts = String(txt || '').split(/\n|,(?![^(]*\))/).map(x => x.replace(/\s*—.*$/, '').trim()).filter(Boolean);
+  return parts.map(x => `<span class="trait ${cls || ''}">${escapeHtml(x)}</span>`).join('');
+}
+function _pips(n, max) { let h = ''; for (let i = 0; i < (max || 6); i++) h += `<i class="${i < n ? 'on' : ''}"></i>`; return `<span class="pipset">${h}</span>`; }
+function renderHeroSheet() {
+  const host = document.getElementById('hero-sheet'); if (!host) return;
+  if (!char.culture) { host.innerHTML = ''; return; }
+  const n = v => parseInt(v) || 0;
+  const meta = [
+    char.patron && ['Patron', char.patron], char.safeHaven && ['Safe Haven', char.safeHaven],
+    char.standard && ['Living', char.standard], char.age && ['Age', char.age]
+  ].filter(Boolean).map(([k, v]) => `<span class="meta"><small>${k}</small>${escapeHtml(String(v))}</span>`).join('');
+  const attr = (k, label, gloss) => `<div class="s-attr"><span class="s-lab">${label}</span><strong>${n(char[k + 'Rating'])}</strong><span class="s-tn">TN ${n(char[k + 'TN'])}</span><span class="s-gl">${gloss}</span></div>`;
+  const stat = (label, v) => `<div class="s-stat"><strong>${v}</strong><span>${label}</span></div>`;
+  const skillCol = (k, title) => `<div class="s-skillcol"><div class="s-h">${title}</div>` + SKILLS[k].map(sk => {
+    const d = (char.skills || {})[sk] || {}; const r = n(d.rating);
+    return `<div class="s-skill${r ? '' : ' zero'}"><span>${d.favoured ? '<b class="fav" title="Favoured">★</b>' : ''}${escapeHtml(sk)}</span>${_pips(r)}</div>`;
+  }).join('') + '</div>';
+  const profs = ['Axes', 'Bows', 'Spears', 'Swords'].map(pn => `<div class="s-skill${n((char.profs || {})[pn]) ? '' : ' zero'}"><span>${pn}</span>${_pips(n((char.profs || {})[pn]))}</div>`).join('');
+  const weapons = (char.weapons || []).filter(w => w && w.name).map(w =>
+    `<div class="s-weapon"><strong>${escapeHtml(w.name)}</strong><span>Damage ${escapeHtml(String(w.dmg ?? '–'))} · Injury ${escapeHtml(String(w.inj ?? '–'))}</span></div>`).join('')
+    || '<p class="s-empty">No weapon yet — <a href="#" onclick="document.querySelector(\'.tab[data-tab=combat]\').click();return false">equip one</a>.</p>';
+  const protection = n(char.armourProt) + n(char.helmProt);
+  const armourBits = [char.armourNotes && escapeHtml(char.armourNotes), n(char.helmProt) ? 'helm' : '', char.shieldNotes && escapeHtml(char.shieldNotes)].filter(Boolean).join(' · ');
+  const eye = isSolo() ? `<div class="s-eye">Eye of Mordor <strong>${n(char.eyeAwareness)}</strong> / ${typeof huntThreshold === 'function' ? huntThreshold(char) : 16}</div>` : '';
+  const traits = [
+    ['Distinctive Features', _chips(char.features)], ['Flaws', _chips(char.flaws, 'flaw')],
+    ['Rewards', _chips(char.rewards, 'reward')], ['Virtues', _chips(char.virtues, 'virtue')]
+  ].filter(([, h]) => h).map(([t, h]) => `<div class="s-h">${t}</div><div class="traits">${h}</div>`).join('');
+  host.innerHTML = `
+  <div class="card sheet-head">
+    <div class="sh-crest">${cultureCrest(char.culture, 76, char.name)}</div>
+    <div class="sh-id">
+      <h2 class="sh-name">${escapeHtml(heroLabel(char))}</h2>
+      <div class="sh-sub">${escapeHtml([char.culture, char.calling].filter(Boolean).join(' · '))}${char.shadowPath ? ` <span class="sh-path">· ${escapeHtml(char.shadowPath)}</span>` : ''}</div>
+      <div class="sh-meta">${meta}</div>
+    </div>
+    <button class="btn btn-secondary sh-edit" onclick="setCharEditing(true)">Edit</button>
+  </div>
+  <div class="card">
+    <div class="s-attrs">${attr('str', 'Strength', 'body')}${attr('hrt', 'Heart', 'spirit')}${attr('wit', 'Wits', 'mind')}</div>
+    <div class="s-stats">${stat('Parry', n(char.parry) + n(char.shieldTotal))}${stat('Armour', protection + 'd')}${stat('Valour', n(char.valour))}${stat('Wisdom', n(char.wisdom))}${stat('Fellowship', n(char.fellowshipRating))}</div>
+  </div>
+  <div class="card">
+    <h3 class="card-title">Skills</h3>
+    <div class="s-skills">${skillCol('str', 'Strength')}${skillCol('hrt', 'Heart')}${skillCol('wit', 'Wits')}</div>
+    <div class="s-h">Combat</div><div class="s-profs">${profs}</div>
+  </div>
+  <div class="card">
+    <h3 class="card-title">War gear</h3>
+    ${weapons}
+    <div class="s-armour"><span>Protection <strong>${protection}d</strong></span>${armourBits ? `<span>${armourBits}</span>` : ''}</div>
+  </div>
+  ${traits ? `<div class="card"><h3 class="card-title">Traits</h3>${traits}</div>` : ''}
+  <div class="card">
+    <h3 class="card-title">Experience &amp; wealth</h3>
+    <div class="s-stats">${stat('Skill points', n(char.skillPts))}${stat('Adventure pts', n(char.advPts))}${stat('Treasure', n(char.treasure))}${stat('Fellowship pts', n(char.fellowship))}</div>
+    <div class="s-actions"><button class="btn btn-secondary" onclick="openSpendXP('skill')">Spend Skill points</button><button class="btn btn-secondary" onclick="openSpendXP('adv')">Spend Adventure points</button></div>
+    ${eye}
+  </div>
+  ${String(char.history || '').trim() ? `<div class="card"><h3 class="card-title">History</h3><p class="s-history">${escapeHtml(char.history)}</p></div>` : ''}`;
+}
+
 /* ---------- VITALS BAR (header HUD) ----------
    The numbers a player watches in play — Endurance, Hope with Shadow creeping into it,
    the Eye, and any condition the rules impose — on every tab, not only the Character tab.
@@ -4648,6 +4724,30 @@ function renderHud() {
   document.getElementById('hud-chips').innerHTML = (sh ? `<span class="chip shadow" title="Shadow (incl. Scars). When it reaches your Hope you are Miserable.">Shadow ${sh}</span>` : '') + _hudConditions()
     .map(c => `<span class="chip ${c.k}${c.set ? '' : ' auto'}" title="${c.set ? '' : 'The rules say this applies — tap Weary/Miserable on the Character tab to confirm.'}">${c.label}</span>`).join('');
 }
+// Conditions + the in-play actions that used to live on the Character tab form.
+function _vitalsConditions() {
+  const c = (k, label, help) => `<button class="v-cond${char[k] ? ' on' : ''}" aria-pressed="${!!char[k]}" onclick="vitalsCondition('${k}')"><strong>${label}</strong><small>${help}</small></button>`;
+  const wound = char.wounded ? `<div class="v-wound"><span>${escapeHtml(char.injury || 'Wounded')}</span>
+      <button class="btn btn-secondary" onclick="closeVitals();rollFirstAid()">Tend the wound</button>
+      <button class="btn btn-quiet" onclick="closeVitals();clearWound()">The wound has passed</button></div>` : '';
+  return `<div class="v-h">Conditions</div><div class="v-conds">${c('weary', 'Weary', '1–3 on success dice count 0')}${c('miserable', 'Miserable', 'an Eye fails the roll')}${c('wounded', 'Wounded', 'needs healing')}</div>${wound}`;
+}
+function vitalsCondition(k) {
+  const b = document.querySelector(`#panel-character .cond-btn[data-cond="${k}"]`);
+  if (b) b.click();                      // the real toggle: severity roll, snapshot, journal, undo
+  setTimeout(renderVitalsBody, 60);
+}
+function _vitalsActions() {
+  const A = (label, fn, sub) => `<button class="v-act" onclick="closeVitals();${fn}"><strong>${label}</strong>${sub ? `<small>${sub}</small>` : ''}</button>`;
+  const shadow = (parseInt(char.shadow) || 0);
+  return `<div class="v-h">Actions</div><div class="v-acts">` +
+    (shadow > 0 ? A('Harden your will', 'hardenWill()', 'Shadow becomes one permanent Scar') : '') +
+    A('Support an ally', 'spendHopeToSupport()', 'Spend 1 Hope for their roll') +
+    ((parseInt(char.fellowship) || 0) > 0 ? A('Fellowship → Hope', 'spendFPforHope()', 'During a rest') : '') +
+    (char.experienceMode === 'milestone' ? A('Award a milestone', 'openMilestonePicker()', 'Experience for a deed') : A('End the session', 'awardSessionXP()', '+3 Skill & Adventure points')) +
+    A('Fellowship Phase', "(char.moriaMode ? (openNavGroup('adventure'), document.querySelector('.tab[data-tab=band]').click()) : openFPWizard())", 'Rest between adventures') +
+    `</div>`;
+}
 function openVitals() {
   renderVitalsBody();
   document.getElementById('vitals-overlay').classList.add('show');
@@ -4673,6 +4773,8 @@ function renderVitalsBody() {
        <button class="btn btn-secondary" onclick="closeVitals();takeShortRest()">Short rest</button>
        <button class="btn btn-secondary" onclick="closeVitals();takeProlongedRest()">Sleep (long rest)</button>
      </div>
+     ${_vitalsConditions()}
+     ${_vitalsActions()}
      <button class="btn btn-quiet btn-block" onclick="closeVitals();openNavGroup('hero')">Open the full character sheet</button>`;
 }
 

@@ -458,6 +458,11 @@
     <div id="play-body"></div>
     <aside id="play-aside" class="play-aside" aria-label="Your hero at a glance"></aside>
   </div>
+  <details class="campaign-box" id="campaign-box">
+    <summary><span>Your campaign</span><small>sessions · the adventure loop · ending the saga</small></summary>
+  <div class="card" id="saga-card"></div>
+  <div class="card" id="adventure-loop" style="display:none"></div>
+  </details>
 </section>
 
 <section class="panel" id="panel-character">
@@ -469,10 +474,12 @@
     <button class="btn btn-block" onclick="toggleAdjustMode(false)">Done fixing</button>
   </div>
 
-  <div class="card" id="saga-card"></div>
 
-  <div class="card" id="adventure-loop" style="display:none"></div>
 
+  <!-- Read-only hero sheet (renderHeroSheet). The full form below opens with "Edit". -->
+  <div id="hero-sheet"></div>
+  <div id="char-edit" class="char-edit">
+    <div class="edit-bar"><span>Editing <strong>your hero</strong></span><button class="btn" onclick="setCharEditing(false)">Done</button></div>
   <div class="card tab-intro"><p class="hint" style="text-align:left;line-height:1.55;margin:0"><strong>This is your hero’s sheet.</strong> Most numbers here are <em>calculated</em> — a 🔒 means the app owns that value, so change its source instead (the <strong>Build</strong> tab, or <strong>Spend XP</strong>). The +/− counters are yours to move in play: Endurance and Hope go down as you strain and hope fades, Shadow goes up as dread gathers. Tap any <span style="font-weight:700">?</span> to learn what a term means.</p></div>
 
   <div class="card">
@@ -848,6 +855,7 @@
     <h3 class="card-title">History</h3>
     <textarea class="full" data-field="history" style="min-height:120px"></textarea>
   </div>
+  </div><!-- /char-edit -->
 
 </section>
 

@@ -984,7 +984,8 @@ module.exports = {
     // the app owner could not work out how to start, continue or finish a campaign from it.
     const saga = await page.evaluate(async () => {
       const out = {};
-      const txt = () => document.getElementById('saga-card').innerText;
+      // The saga controls live in Play's collapsible "Your campaign" box — open it, as a player would.
+      const txt = () => { const b = document.getElementById('campaign-box'); if (b) b.open = true; return document.getElementById('saga-card').innerText; };
       char = JSON.parse(JSON.stringify(DEFAULT_CHARACTER)); saveCharacter(); render();
       out.offersStart = /not yet begun/i.test(txt()) && /Begin your saga/.test(txt());
 
