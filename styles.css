@@ -1436,7 +1436,7 @@ body.dark[data-group="adventure"] { --grp: #97c483; } body.dark[data-group="roll
 /* ---- Terrain vignette on the Play scene ---- */
 .play-scene { overflow: hidden; }
 .scene-art { margin: calc(-1 * var(--sp-4)) calc(-1 * var(--sp-4)) var(--sp-2); height: 84px; color: var(--ink);
-  -webkit-mask-image: linear-gradient(#000 60%, transparent); mask-image: linear-gradient(#000 60%, transparent); opacity: .7; }
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); opacity: .72; }
 .scene-art svg { width: 100%; height: 100%; display: block; fill: none; stroke: currentColor; stroke-width: 1.3; stroke-linecap: round; stroke-linejoin: round; }
 .scene-art .f { fill: currentColor; fill-opacity: .14; }
 .scene-art .f2 { fill: currentColor; fill-opacity: .06; }
@@ -1460,7 +1460,7 @@ body.dark[data-group="adventure"] { --grp: #97c483; } body.dark[data-group="roll
 
 /* ---- Culture silhouette behind the name on the hero sheet ---- */
 .sheet-head { overflow: hidden; }
-.sheet-head .silhouette { position: absolute; right: 64px; bottom: -6px; width: 110px; height: 132px; fill: var(--ink); opacity: .1; pointer-events: none; }
+.sheet-head .silhouette { position: absolute; right: 6px; top: 4px; width: 92px; height: 112px; fill: var(--ink); opacity: .11; pointer-events: none; }
 .sheet-head .silhouette .s-line { fill: none; stroke: var(--ink); stroke-width: 3; stroke-linecap: round; }
 .sheet-head .silhouette .s-thin { fill: none; stroke: var(--ink); stroke-width: 1; }
 .sheet-head .silhouette .s-gold { fill: none; stroke: var(--gold); stroke-width: 2; }
@@ -1498,3 +1498,12 @@ body.dark[data-group="adventure"] { --grp: #97c483; } body.dark[data-group="roll
     background: linear-gradient(90deg, transparent calc(50% - 16px), rgba(90,60,30,.10) 50%, transparent calc(50% + 16px)), var(--card-bg); }
   #ch-timeline > * { break-inside: avoid; }
 }
+/* Phones: the meter labels need their room — the icons ride on wider screens only. */
+@media (max-width: 480px) { .m-ic { display: none; } }
+/* Chronicle lines: the words take the full measure; the small edit controls sit below, right. */
+#ch-timeline .ch-auto, #ch-timeline div:has(> .ch-p) { flex-wrap: wrap; justify-content: flex-end; row-gap: 0; }
+#ch-timeline .ch-auto > span:nth-child(2) { flex: 1 1 calc(100% - 70px) !important; }
+#ch-timeline .ch-p { flex: 1 1 100% !important; }
+#ch-timeline .ch-auto > button, #ch-timeline div:has(> .ch-p) > button { opacity: .55; padding: 2px 5px !important; }
+
+.play-scene:has(.scene-art)::after { display: none; }   /* the vignette replaces the watermark */

@@ -34,13 +34,19 @@ function artIcon(id, cls) { return `<svg class="${cls || 'ic'}" aria-hidden="tru
    the Safe Haven at the start and end of an adventure, the land the road runs through,
    or the place travelled to. Keywords from the destination win; the journey's region
    decides when the name says nothing. */
-function _trees(n, x0, x1, base, tall) {
-  let s = '';
-  for (let i = 0; i < n; i++) {
-    const x = x0 + (x1 - x0) * i / Math.max(1, n - 1) + (i % 3) * 3;
-    const h = tall * (0.62 + ((i * 37) % 10) / 26);
-    s += `<path d="M${x.toFixed(1)} ${(base - h).toFixed(1)} l${(-h * .3).toFixed(1)} ${(h * .78).toFixed(1)} h${(h * .6).toFixed(1)} z" class="f"/>` +
-         `<path d="M${x.toFixed(1)} ${(base - h * .22).toFixed(1)} V${base}"/>`;
+function _trees(n, x0, x1, base, tall, seed) {
+  // Irregular spacing and a mix of firs and round-crowned trees, so a wood reads as a wood
+  // and not as a saw-blade of mountains.
+  let s = '', x = x0, i = 0;
+  while (x < x1 && i < n) {
+    const r = ((i + (seed || 0)) * 47) % 19;
+    const h = tall * (0.55 + r / 40);
+    if (r % 3 === 0) {
+      s += `<circle cx="${x.toFixed(1)}" cy="${(base - h * .62).toFixed(1)}" r="${(h * .3).toFixed(1)}" class="f"/><path d="M${x.toFixed(1)} ${(base - h * .35).toFixed(1)} V${base}"/>`;
+    } else {
+      s += `<path d="M${x.toFixed(1)} ${(base - h).toFixed(1)} l${(-h * .22).toFixed(1)} ${(h * .38).toFixed(1)} h${(h * .1).toFixed(1)} l${(-h * .12).toFixed(1)} ${(h * .34).toFixed(1)} h${(h * .48).toFixed(1)} l${(-h * .12).toFixed(1)} ${(-h * .34).toFixed(1)} h${(h * .1).toFixed(1)} z" class="f"/><path d="M${x.toFixed(1)} ${(base - h * .28).toFixed(1)} V${base}"/>`;
+    }
+    x += 14 + r * 1.6; i++;
   }
   return s;
 }
@@ -49,7 +55,7 @@ const TERRAIN_ART = {
     `<path d="M112 90 C150 80 186 71 206 63 S234 57 240 55"/><path d="M204 90 C207 80 216 72 223 64 S237 57 241 55"/>` +
     `<path d="M26 82 l3-7 l3 7 M34 83 l2-5 l2 5 M300 80 l3-7 l3 7 M308 81 l2-5 l2 5 M60 72 l2-5 l2 5"/>` +
     `<path d="M282 84 v-13 q5-6 10 0 v13 z" class="f"/><path d="M298 22 q4-4 8 0 q4-4 8 0 M318 30 q3-3 6 0 q3-3 6 0"/>`,
-  forest: () => `<path d="M0 86 H360"/>` + _trees(14, 12, 348, 86, 58) + _trees(9, 30, 330, 70, 30).replace(/class="f"/g, 'class="f2"'),
+  forest: () => `<path d="M0 86 H360"/>` + _trees(9, 40, 350, 72, 34, 3).replace(/class="f"/g, 'class="f2"') + _trees(12, 8, 352, 86, 56, 0),
   hills: () => `<path d="M0 68 Q50 40 110 60 T220 56 T360 62" class="f2"/><path d="M0 86 Q80 64 160 78 T360 74"/>` +
     `<path d="M226 58 q20-16 40 0"/><path d="M300 76 l2-18 h6 l1 18 z" class="f"/><path d="M60 80 l2-5 l2 5 M180 82 l2-5 l2 5"/>`,
   mountains: () => `<path d="M0 80 L40 42 L60 56 L95 16 L130 58 L150 44 L190 72 L232 24 L272 62 L300 38 L342 74 L360 64" class="f2"/>` +
