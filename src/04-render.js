@@ -97,6 +97,15 @@ function render() {
 
   if (typeof renderNewcomerBanner === 'function') renderNewcomerBanner();   // A: newcomer 'start here' card
   renderHud();
+  // Quick Build shows what the hero already is, not "— Select —" (setting .value fires no change
+  // event, so nothing is re-applied; the player still has to press Apply to change anything).
+  [['culture-pick', char.culture], ['calling-pick', char.calling], ['patron-pick', char.patron]].forEach(([id, v]) => {
+    const sel = document.getElementById(id);
+    if (!sel || !v || sel.value || document.activeElement === sel) return;
+    const opt = [...sel.options].find(o => o.value === v || o.textContent.trim() === v ||
+      (typeof patronKey === 'function' && id === 'patron-pick' && patronKey(o.value) === patronKey(v)));
+    if (opt) sel.value = opt.value;
+  });
 }
 
 function renderDerivedStats() {

@@ -126,7 +126,7 @@
   /* Text size: scales the type tokens (not zoom — zoom broke hit-testing and sticky layout). */
   body.text-small { --fs-xs: 11px; --fs-sm: 12px; --fs-md: 14px; --fs-lg: 16px; --fs-xl: 20px; --fs-2xl: 26px; }
   body.text-large { --fs-xs: 14px; --fs-sm: 15px; --fs-md: 17px; --fs-lg: 20px; --fs-xl: 25px; --fs-2xl: 34px; }
-  body.dark input, body.dark select, body.dark textarea {
+  body.dark input:not([readonly]), body.dark select, body.dark textarea:not([readonly]) {
     background: var(--bg-deep) !important; color: var(--ink) !important; border-color: var(--border) !important;
   }
   body.dark .menu-overlay { background: rgba(0,0,0,0.66); }
@@ -893,8 +893,8 @@ body.dark .m-bar > i.shadow { background: repeating-linear-gradient(135deg, #000
   font-size: var(--fs-xs); font-weight: 600; padding: 4px 10px;
 }
 .menu-status { font-size: var(--fs-xs); color: var(--text-faint); text-align: center; margin: -6px 0 var(--sp-3); }
-.menu button { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); }
-.menu button.close { justify-content: center; }
+.main-menu button { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); }
+.main-menu button.close { justify-content: center; }
 .m-state { font-size: var(--fs-xs); font-weight: 600; color: var(--text-muted); white-space: nowrap; }
 .menu-sec { border-top: 1px solid var(--line); }
 .menu-sec > summary { list-style: none; cursor: pointer; display: flex; justify-content: space-between; align-items: center; padding: var(--sp-3) 2px; margin: 0; }
@@ -1010,3 +1010,29 @@ body.dark .hud-eye { background: var(--card-bg); }
 #panel-skills:not(.notes-on) .skill-note:placeholder-shown:not(:focus) { display: none; }
 .notes-toggle { float: right; margin: -42px 26px 0 0; padding: 4px 8px; min-height: 0; font-size: var(--fs-xs); }
 .menu .v-btn { display: inline-flex; align-items: center; justify-content: center; }
+
+/* ---- Round 2 fixes ---- */
+/* Destructive actions are the quietest button on screen, never the loudest. */
+.btn-danger, .menu .btn-danger { background: transparent; color: var(--error-text); border: 1px solid color-mix(in srgb, var(--error-text) 40%, transparent); }
+/* Close / Cancel in sheets: secondary, not a heavy black slab. */
+.menu button.close { background: var(--card-bg); color: var(--ink); border: 1px solid var(--border); font-weight: 600; }
+.menu button.close:active { background: var(--bg-deep); }
+#j-cancel-btn, #c-cancel-btn, #se-cancel-btn { background: transparent !important; color: var(--error-text) !important; border: 1px solid color-mix(in srgb, var(--error-text) 40%, transparent) !important; }
+/* Encounter foe cards */
+.foe-card { background: var(--bg); border-radius: var(--r-md); padding: var(--sp-3); margin-bottom: var(--sp-3); }
+.foe-card.slain { opacity: .5; }
+.foe-bars { display: grid; gap: 6px; margin-top: var(--sp-2); }
+.foe-bar { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 6px; font-size: var(--fs-sm); }
+.foe-bar i { grid-column: 1 / -1; height: 6px; border-radius: 3px; background: var(--bg-deep); overflow: hidden; }
+.foe-bar i b { display: block; height: 100%; background: linear-gradient(90deg, #7f2a1d, #b5493b); transition: width .3s var(--ease); }
+.foe-bar.hate i b { background: linear-gradient(90deg, #3b2d22, #6d5c4b); }
+.foe-bar button { width: 28px !important; height: 28px !important; border-radius: 50% !important; }
+.foe-stats { font-size: var(--fs-xs); color: var(--text-muted); margin-top: 6px; }
+.foe-you { margin-top: var(--sp-3) !important; }
+.foe-them { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: var(--sp-2); }
+.foe-them > span { flex-basis: 100%; font-size: var(--fs-xs); color: var(--text-muted); }
+.foe-them .btn { margin: 0; flex: 1 1 140px; }
+/* Sub-tab strip: fade + the active tab kept in view, so "Battl…" never hides the rest. */
+.tabs { -webkit-mask-image: linear-gradient(90deg, #000 88%, transparent); mask-image: linear-gradient(90deg, #000 88%, transparent); padding-right: 28px; }
+.tabs.fits { -webkit-mask-image: none; mask-image: none; }
+[tabindex="-1"]:focus { outline: none; }

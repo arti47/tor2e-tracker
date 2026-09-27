@@ -1413,15 +1413,16 @@ function renderEncounter() {
   }
   // Sequence: bring foes in, fight them, then close the encounter.
   if (canGm) html += `<button onclick="openBestiary()" class="add-row-btn" style="width:100%;margin-bottom:8px;background:var(--gold)">+ Add Adversary</button>`;
-  if (encEngagedFoes().length > 1) html += `<button onclick="allFoesAttack()" class="add-row-btn" style="width:100%;margin-bottom:8px;background:var(--btn-alert-bg)">🗡️ All engaged foes attack</button>`;
+  if (encEngagedFoes().length > 1) html += `<button onclick="allFoesAttack()" class="btn btn-secondary btn-block" style="margin:0 0 8px">Every engaged foe attacks you</button>`;
   (e.foes || []).forEach(f => { html += _renderFoeCard(f, canGm); });
-  if (canGm) html += `<button onclick="endEncounter()" class="add-row-btn" style="width:100%;margin-top:10px;background:var(--btn-secondary-bg);color:white">🏁 End encounter</button>`;
+  if (canGm) html += `<button onclick="endEncounter()" class="btn btn-quiet btn-block" style="margin-top:10px">End encounter</button>`;
   card.innerHTML = html;
 }
 function _renderFoeCard(f, canGm = true) {
   const slain = f.slain;
   const step = (field, d, lbl) => canGm ? `<button onclick="adjFoe('${f.id}','${field}',${d})" style="width:24px;height:24px;border:1px solid var(--border);background:var(--card-bg);color:var(--ink);border-radius:var(--r-sm);cursor:pointer">${lbl}</button>` : '';
-  let h = `<div style="border:1px solid var(--border);border-radius:var(--r-sm);padding:8px;margin-bottom:8px;${slain ? 'opacity:0.55' : ''}">
+  const pct = (c, m) => Math.max(0, Math.min(100, (parseInt(c) || 0) / Math.max(1, parseInt(m) || 1) * 100));
+  let h = `<div class="foe-card${slain ? ' slain' : ''}">
     <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
       <strong style="font-size:var(--fs-md)">${escapeHtml(f.name)}</strong>
       ${slain ? '<span class="result-tag tag-fail">SLAIN</span>' : (f.wounded ? '<span class="result-tag" style="background:var(--btn-warn-bg);color:white">WOUNDED</span>' : '')}
@@ -1430,17 +1431,18 @@ function _renderFoeCard(f, canGm = true) {
       ${canGm ? `<button onclick="toggleFoeEdit('${f.id}')" title="Edit stats" style="background:none;border:none;cursor:pointer;color:var(--text-faint)">✎</button>
       <button onclick="removeFoe('${f.id}')" title="Remove" style="background:none;border:none;cursor:pointer;color:var(--text-faint)">×</button>` : ''}
     </div>
-    <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;font-size:var(--fs-sm);margin-top:5px">
-      <span>End <strong>${f.endCur}/${f.endMax}</strong></span>${step('endCur', -1, '−')}${step('endCur', 1, '+')}
-      <span style="margin-left:6px">Hate <strong>${f.hateCur}/${f.hateMax}</strong></span>${step('hateCur', -1, '−')}${step('hateCur', 1, '+')}
-      <span style="margin-left:6px;color:var(--text-muted)">Parry ${f.parry} · Armour ${f.armour}${f.might ? ` · Might ${f.might}` : ''}</span>
+    <div class="foe-bars">
+      <div class="foe-bar"><span>Endurance <strong>${f.endCur}/${f.endMax}</strong></span>${step('endCur', -1, '−')}${step('endCur', 1, '+')}<i><b style="width:${pct(f.endCur, f.endMax)}%"></b></i></div>
+      <div class="foe-bar hate"><span>Hate <strong>${f.hateCur}/${f.hateMax}</strong></span>${step('hateCur', -1, '−')}${step('hateCur', 1, '+')}<i><b style="width:${pct(f.hateCur, f.hateMax)}%"></b></i></div>
     </div>
+    <div class="foe-stats">Parry ${f.parry} · Armour ${f.armour}${f.might ? ` · Might ${f.might}` : ''}</div>
     ${f.fell ? `<div style="font-size:var(--fs-xs);color:var(--text-muted);margin-top:3px">⚜ ${escapeHtml(f.fell)}</div>` : ''}`;
   if (!slain) {
-    h += `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
-        <button onclick="heroAttackFoe('${f.id}')" class="add-row-btn" style="flex:1;min-width:110px;background:var(--gold)">⚔️ Attack</button>
-        ${(f.attacks || []).map((atk, i) => `<button onclick="foeAttackHero('${f.id}',${i})" class="add-row-btn" style="flex:1;min-width:110px;background:var(--btn-alert-bg)">🗡️ ${escapeHtml(atk.name)} ${atk.dice}d</button>`).join('')}
-      </div>`;
+    // Two turns, two looks: YOUR attack is the one primary button; the foe's attacks sit under
+    // "…attacks you" as secondary buttons. They used to be identical red buttons side by side.
+    h += `<button onclick="heroAttackFoe('${f.id}')" class="btn btn-block foe-you">⚔ You attack ${escapeHtml(f.name)}</button>
+      ${(f.attacks || []).length ? `<div class="foe-them"><span>When ${escapeHtml(f.name)} attacks you:</span>
+        ${(f.attacks || []).map((atk, i) => `<button onclick="foeAttackHero('${f.id}',${i})" class="btn btn-secondary">${escapeHtml(atk.name)} · ${atk.dice}d</button>`).join('')}</div>` : ''}`;
   }
   if (_encResults[f.id]) h += `<div style="font-size:var(--fs-xs);margin-top:6px;padding:6px;background:var(--bg-deep);border-radius:var(--r-sm);line-height:1.45">${_encResults[f.id]}</div>`;
   const ps = _encPierceState[f.id];

@@ -539,12 +539,12 @@ function renderRoster() {
           ${sub ? `<br><small style="color:var(--text-muted)">${escapeHtml(sub)}</small>` : ''}
           ${endBit ? `<br><small style="color:var(--text-faint)">${escapeHtml(endBit)}</small>` : ''}
         </div>
-        ${isActive ? '' : `<button class="add-row-btn" onclick="switchCharacter('${e.id}')" style="background:var(--gold);flex:0 0 auto">Switch</button>`}
+        ${isActive ? '' : `<button class="btn" onclick="switchCharacter('${e.id}')" style="flex:0 0 auto;margin:0">Play as</button>`}
       </div>
       <div style="display:flex;gap:6px;margin-top:8px">
-        <button class="add-row-btn" onclick="renameCharacter('${e.id}')" style="flex:1;background:var(--btn-secondary-bg);font-size:var(--fs-xs)">✏️ Rename</button>
-        <button class="add-row-btn" onclick="duplicateCharacter('${e.id}')" style="flex:1;background:var(--btn-secondary-bg);font-size:var(--fs-xs)">⧉ Duplicate</button>
-        <button class="add-row-btn" onclick="deleteCharacter('${e.id}')"${r.list.length === 1 ? ' disabled' : ''} style="flex:1;background:var(--btn-alert-bg);font-size:var(--fs-xs)${r.list.length === 1 ? ';opacity:.4' : ''}">🗑️ Delete</button>
+        <button class="btn btn-secondary" onclick="renameCharacter('${e.id}')" style="flex:1;margin:0">Rename</button>
+        <button class="btn btn-secondary" onclick="duplicateCharacter('${e.id}')" style="flex:1;margin:0">Duplicate</button>
+        <button class="btn btn-danger" onclick="deleteCharacter('${e.id}')"${r.list.length === 1 ? ' disabled' : ''} style="flex:1;margin:0">Delete</button>
       </div>
     </div>`;
   }).join('');

@@ -62,6 +62,10 @@ function refreshNav() {
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('nav-out', !cur.tabs.includes(t.dataset.tab)));
   const nav = document.querySelector('.tabs');
   if (nav) nav.classList.toggle('single', cur.tabs.filter(_tabShown).length <= 1);
+  if (nav) {
+    nav.classList.toggle('fits', nav.scrollWidth <= nav.clientWidth + 2);
+    if (active && !active.classList.contains('nav-out')) { try { active.scrollIntoView({ block: 'nearest', inline: 'nearest' }); } catch (e) {} }
+  }
   document.querySelectorAll('.bn-item').forEach(b => {
     const g = NAV_GROUPS.find(x => x.id === b.dataset.group);
     const shown = g ? g.tabs.filter(_tabShown) : [];
@@ -1812,8 +1816,16 @@ function initA11y() {
       const wasShown = (m.oldValue || '').split(/\s+/).includes('show');
       if (shown && !wasShown) {
         opener = document.activeElement;
+        // Focus the dialog's TITLE, not its first button: a highlighted first button looked
+        // pre-selected, Enter would fire it, and focusing a search box popped the phone keyboard.
+        const title = ov.querySelector('h3, h2, [id$="-title"]');
         const f = focusables(ov);
-        if (f.length) setTimeout(() => { try { f[0].focus(); } catch (e) {} }, 30);
+        setTimeout(() => {
+          try {
+            if (title && title.offsetParent !== null) { if (!title.hasAttribute('tabindex')) title.setAttribute('tabindex', '-1'); title.focus({ preventScroll: true }); }
+            else if (f.length) f[0].focus();
+          } catch (e) {}
+        }, 30);
       } else if (!shown && wasShown) {
         if (opener && typeof opener.focus === 'function') { try { opener.focus(); } catch (e) {} opener = null; }
       }
