@@ -167,7 +167,8 @@ function terrainVignette(key) {
 /* ---------- The inked route map ----------
    A winding road between two named places, inked where the hero has walked and dashed
    ahead, with small marks of the land along it, the hero's pennant, and the next event. */
-function routeMap(cur, total, nextEvent, from, to, terrain) {
+function routeMap(cur, total, nextEvent, from, to, terrain, opts) {
+  opts = opts || {};
   const W = 340, H = 104, x0 = 22, x1 = W - 22, N = 72;
   const pt = t => [x0 + (x1 - x0) * t, 48 + 15 * Math.sin(t * Math.PI * 2.3 + .5) + 5 * Math.sin(t * Math.PI * 5.1)];
   const pts = Array.from({ length: N + 1 }, (_, i) => pt(i / N));
@@ -195,6 +196,20 @@ function routeMap(cur, total, nextEvent, from, to, terrain) {
     const [ex, ey] = pt(Math.min(1, nextEvent / total));
     ev = `<g class="rm-ev"><path d="M${ex.toFixed(1)} ${(ey - 7).toFixed(1)} l6 7 -6 7 -6-7 z"/><text x="${ex.toFixed(1)}" y="${(ey + 3.5).toFixed(1)}" text-anchor="middle">!</text></g>`;
   }
+  // round 4: where you camped (each march ends at a camp) and what happened on the way
+  let past = '';
+  const seen = new Set();
+  (opts.log || []).forEach(e => {
+    const h = parseInt(e && e.hex); if (!total || isNaN(h) || h <= 0 || h > cur || h >= total) return;
+    const txt = String(e.text || '');
+    const kind = /Marching Test/i.test(txt) ? 'camp' : /Arrived/i.test(txt) ? '' : 'event';
+    if (!kind || seen.has(kind + h)) return; seen.add(kind + h);
+    const [x, y] = pt(Math.min(1, h / total));
+    past += kind === 'camp'
+      ? `<path class="rm-camp" d="M${(x - 5).toFixed(1)} ${(y + 13).toFixed(1)} l5-8 5 8 z M${x.toFixed(1)} ${(y + 5).toFixed(1)} v8"><title>Camped here${e.day ? ' — day ' + e.day : ''}</title></path>`
+      : `<path class="rm-past" d="M${x.toFixed(1)} ${(y - 12).toFixed(1)} l4 5 -4 5 -4-5 z"><title>${escapeHtml(txt.replace(/<[^>]+>/g, '').slice(0, 80))}</title></path>`;
+  });
+  const dayTag = opts.days ? `<text x="${Math.min(x1 - 20, Math.max(x0 + 20, hx)).toFixed(1)}" y="${Math.max(10, hy - 24).toFixed(1)}" class="rm-day" text-anchor="middle">Day ${opts.days}</text>` : '';
   const lab = s => escapeHtml(String(s || '').slice(0, 22));
   return `<div class="route" role="img" aria-label="${cur} of ${total} stretches travelled${to ? ' toward ' + lab(to) : ''}">
     <svg viewBox="0 0 ${W} ${H}" class="route-svg">
@@ -202,12 +217,13 @@ function routeMap(cur, total, nextEvent, from, to, terrain) {
       <path d="${d(pts.slice(k))}" class="rm-ahead"/>
       <path d="${d(pts.slice(0, k + 1))}" class="rm-done"/>
       <circle cx="${x0}" cy="${pts[0][1].toFixed(1)}" r="4" class="rm-end"/><circle cx="${x1}" cy="${pts[N][1].toFixed(1)}" r="4" class="rm-end"/>
-      ${ev}
+      ${past}${ev}
+      ${dayTag}
       <g class="rm-here route-here"><path d="M${hx.toFixed(1)} ${(hy - 3).toFixed(1)} v-17 l11 4 -11 4"/><circle cx="${hx.toFixed(1)}" cy="${hy.toFixed(1)}" r="5.5"/></g>
       <text x="${x0}" y="${H - 4}" class="rm-place">${lab(from) || 'Setting out'}</text>
       <text x="${x1}" y="${H - 4}" class="rm-place" text-anchor="end">${lab(to) || 'Journey’s end'}</text>
     </svg>
-    <div class="route-count">${cur} of ${total} stretches</div></div>`;
+    <div class="route-count">${cur} of ${total} stretches${opts.days ? ` · day ${opts.days}` : ''}${seen.size ? ` · ${[...seen].filter(k => k.startsWith('camp')).length} camps` : ''}</div></div>`;
 }
 
 /* ---------- Culture silhouettes ----------

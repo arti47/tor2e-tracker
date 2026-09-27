@@ -4987,7 +4987,7 @@ function renderPlay() {
   const terrain = typeof sceneTerrain === 'function' ? sceneTerrain() : 'road';
   const road = (jr.active && parseInt(jr.totalHexes) > 0)
     ? (typeof routeMap === 'function'
-        ? routeMap(parseInt(jr.currentHex) || 0, parseInt(jr.totalHexes), jr.nextEventHex, jr.origin || char.safeHaven, jr.destination, terrain)
+        ? routeMap(parseInt(jr.currentHex) || 0, parseInt(jr.totalHexes), jr.nextEventHex, jr.origin || char.safeHaven, jr.destination, terrain, { log: jr.events, days: parseInt(jr.daysElapsed) || 0 })
         : _roadStrip(parseInt(jr.currentHex) || 0, parseInt(jr.totalHexes), jr.nextEventHex)) : '';
   host.innerHTML =
     _playConditionBanner() +

@@ -1714,3 +1714,7 @@ input[type="radio"]:checked::after { content: ''; position: absolute; inset: 3px
 .foe-card > .foe-sil { position: absolute; right: -8px; top: 6px; width: 96px; height: 96px; color: var(--ink); opacity: .1; pointer-events: none; }
 .foe-card.slain > .foe-sil { opacity: .05; }
 .bestiary-sil { width: 26px; height: 26px; flex: 0 0 26px; color: var(--text-muted); vertical-align: middle; margin-right: 8px; }
+/* Route map: camps, past events, the day (round 4) */
+.route .rm-camp { fill: color-mix(in srgb, var(--ink) 20%, transparent); stroke: color-mix(in srgb, var(--ink) 70%, transparent); stroke-width: 1.1; stroke-linejoin: round; }
+.route .rm-past { fill: var(--red); stroke: var(--card-bg); stroke-width: 1; }
+.route .rm-day { fill: var(--red); font: 600 9.5px var(--font-display, serif); letter-spacing: .3px; }
