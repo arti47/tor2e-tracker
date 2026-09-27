@@ -906,3 +906,13 @@ body.dark .m-bar > i.shadow { background: repeating-linear-gradient(135deg, #000
 .hint-clamp { cursor: pointer; text-align: left !important; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
 .hint-clamp::before { content: 'ⓘ '; color: var(--gold); font-style: normal; }
 .hint-clamp.open { display: block; -webkit-line-clamp: unset; overflow: visible; }
+
+/* Hand-edit mode: rule-owned −/+ appear only when asked for. */
+body:not(.adjust-mode) .adj-lock, body:not(.adjust-mode) .adj-only { display: none !important; }
+body.adjust-mode .adj-lock { background: var(--gold-soft); border-color: var(--gold); }
+.adjust-toggle { float: right; margin: -44px 0 0; padding: 4px 8px; min-height: 0; font-size: var(--fs-xs); }
+.menu .btn { background: var(--red); color: var(--accent-ink); border: 1px solid var(--red); justify-content: center; text-align: center; font-weight: 600; margin: 0; }
+.menu .btn-secondary { background: var(--card-bg); color: var(--ink); border-color: var(--border); }
+.menu .btn-quiet { background: transparent; color: var(--red); border-color: transparent; }
+#styled-modal-title:empty { display: none; }
+#styled-modal-buttons { margin-top: var(--sp-2); }

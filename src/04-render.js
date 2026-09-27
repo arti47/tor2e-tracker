@@ -371,7 +371,7 @@ let fpState = null;
 async function awardSessionXP() {
   const sp = parseInt(char.skillPts) || 0;
   const ap = parseInt(char.advPts) || 0;
-  if (!await confirmStyled(`📜 <strong>End Session — award XP</strong><br><br><strong>+3 Skill Points + 3 Adventure Points</strong> per session attended.<br><br>SP: ${sp} → ${sp + 3}<br>AP: ${ap} → ${ap + 3}`, '📜 End Session')) return;
+  if (!await confirmStyled(`📜 <strong>End Session — award XP</strong><br><br><strong>+3 Skill Points + 3 Adventure Points</strong> per session attended.<br><br>SP: ${sp} → ${sp + 3}<br>AP: ${ap} → ${ap + 3}`, '📜 End Session', {yes:'Award the XP', no:'Not yet'})) return;
   char.skillPts = sp + 3;
   char.advPts = ap + 3;
   saveCharacter();
@@ -472,7 +472,7 @@ async function fpNextStep() {
     return;
   }
   if (fpState.step === 2 && !fpState.recoveryApplied) {
-    if (!await confirmStyled('You haven\'t tapped "Apply Recovery" yet. Skip Spiritual Recovery?')) return;
+    if (!await confirmStyled('You haven\'t tapped "Apply Recovery" yet. Skip Spiritual Recovery?', undefined, {yes:'Skip recovery', no:'Go back'})) return;
   }
   fpState.step = Math.min(4, fpState.step + 1);
   fpPersist();
@@ -747,7 +747,7 @@ async function fpComplete() {
     }
   } catch (e) {}
   if (fpState.selectedUndertakings.length === 0) {
-    if (!await confirmStyled('No undertakings selected. Complete phase anyway?')) return;
+    if (!await confirmStyled('No undertakings selected. Complete phase anyway?', undefined, {yes:'Finish the phase', no:'Pick one first'})) return;
   }
   const log = [];
   if (typeof logTimeline === 'function') logTimeline('fp', 'Fellowship Phase' + (fpState.phaseType === 'yule' ? ' (Yule)' : '') + ' completed.');
@@ -895,7 +895,7 @@ function startSkillEndeavour() {
 }
 
 async function cancelSkillEndeavour() {
-  if (!await confirmStyled('Cancel this endeavour? All progress will be discarded.', 'Cancel Endeavour')) return;
+  if (!await confirmStyled('Cancel this endeavour? All progress will be discarded.', 'Cancel Endeavour', {yes:'Abandon endeavour', no:'Keep going'})) return;
   char.skillEndeavour.active = false;
   saveCharacter();
   renderSkillEndeavour();
@@ -1161,7 +1161,7 @@ function startCouncil() {
 }
 
 async function cancelCouncil() {
-  if (!await confirmStyled('Cancel this council? All progress will be discarded.', 'Cancel Council')) return;
+  if (!await confirmStyled('Cancel this council? All progress will be discarded.', 'Cancel Council', {yes:'Abandon council', no:'Keep going'})) return;
   char.council.active = false;
   saveCharacter();
   renderCouncil();
@@ -1270,7 +1270,7 @@ function renderCouncilHistory() {
 }
 
 async function clearCouncilHistory() {
-  if (!await confirmStyled('Clear all saved council summaries? This cannot be undone.', 'Clear Council History')) return;
+  if (!await confirmStyled('Clear all saved council summaries? This cannot be undone.', 'Clear Council History', {yes:'Clear summaries', no:'Keep them'})) return;
   char.councilHistory = [];
   saveCharacter();
   renderCouncil();
@@ -1533,7 +1533,7 @@ function startJourney() {
 }
 
 async function endJourney() {
-  if (!await confirmStyled('Cancel this journey? All progress will be discarded.<br><br><small>(Does not retroactively undo Fatigue / Shadow already applied.)</small>', 'Cancel Journey')) return;
+  if (!await confirmStyled('Cancel this journey? All progress will be discarded.<br><br><small>(Does not retroactively undo Fatigue / Shadow already applied.)</small>', 'Cancel Journey', {yes:'Abandon journey', no:'Keep travelling'})) return;
   char.journey.active = false;
   saveCharacter();
   renderJourney();
@@ -2070,7 +2070,7 @@ function _battleAddArchfoeToEncounter(harried) {
 async function addAdvantagePrompt() {
   const name = await promptStyled('Name this Advantage (e.g. High Ground):', '');
   if (!name) return;
-  const persist = await confirmStyled('Make this Advantage <strong>persistent</strong> (lasts until a failed Clash)?<br><br>Cancel = temporary (next Clash only).');
+  const persist = await confirmStyled('Make this Advantage <strong>persistent</strong> (lasts until a failed Clash)?<br><br>Cancel = temporary (next Clash only).', undefined, {yes:'Make it persistent', no:'Just this clash'});
   char.battle.advantages.push({ name, persistent: !!persist });
   battleLog(`+ Advantage "${name}"${persist ? ' (persistent)' : ''}`);
   saveCharacter(); renderBattle();
@@ -2078,7 +2078,7 @@ async function addAdvantagePrompt() {
 async function addComplicationPrompt() {
   const name = await promptStyled('Name this Complication (e.g. Broken Ranks):', '');
   if (!name) return;
-  const persist = await confirmStyled('Make this Complication <strong>persistent</strong> (lasts until removed with a success)?<br><br>Cancel = temporary (next Clash only).');
+  const persist = await confirmStyled('Make this Complication <strong>persistent</strong> (lasts until removed with a success)?<br><br>Cancel = temporary (next Clash only).', undefined, {yes:'Make it persistent', no:'Just this clash'});
   char.battle.complications.push({ name, persistent: !!persist });
   battleLog(`+ Complication "${name}"${persist ? ' (persistent)' : ''}`);
   saveCharacter(); renderBattle();
@@ -2097,7 +2097,7 @@ function checkBattleEnd() {
   }
 }
 async function endBattle() {
-  if (!await confirmStyled('End this battle? (Use for a successful flight, a surrender, or to abandon the tracker.)')) return;
+  if (!await confirmStyled('End this battle? (Use for a successful flight, a surrender, or to abandon the tracker.)', undefined, {yes:'End the battle', no:'Keep fighting'})) return;
   char.battle.active = false;
   battleLog('Battle ended.');
   saveCharacter(); render();
@@ -2219,7 +2219,7 @@ async function recruitAllies() {
   const cur = char.band.allies.length;
   let n;
   if (cur < 4) n = 4 - cur; else n = Math.max(1, parseInt(char.valour) || 1);
-  if (!await confirmStyled(`Recruit Allies undertaking:<br><br>${cur < 4 ? `Your Band is below 4 — gain ${n} to reach 4.` : `Gain ${n} ally(ies) — one per Valour rank (Valour ${char.valour || 1}).`}<br><br>Proceed?`)) return;
+  if (!await confirmStyled(`Recruit Allies undertaking:<br><br>${cur < 4 ? `Your Band is below 4 — gain ${n} to reach 4.` : `Gain ${n} ally(ies) — one per Valour rank (Valour ${char.valour || 1}).`}<br><br>Proceed?`, undefined, {yes:'Recruit', no:'Not now'})) return;
   for (let i = 0; i < n; i++) char.band.allies.push(_rollUniqueAlly());
   saveCharacter(); render();
   alert(`Recruited ${n} new all${n === 1 ? 'y' : 'ies'}. Your Band now numbers ${char.band.allies.length}.`);
@@ -2227,7 +2227,7 @@ async function recruitAllies() {
 
 async function reclaimSafeHavenUndertaking() {
   if (!isMoria()) return;
-  if (!await confirmStyled('Reclaim a Safe Haven (Extended phase, once/year, requires a secured strategic location):<br><br>The points between the existing haven and the new one become a <strong>Wild Land</strong>. You gain <strong>+3 SP and +3 AP</strong> (a milestone).<br><br>Establish the new Safe Haven?')) return;
+  if (!await confirmStyled('Reclaim a Safe Haven (Extended phase, once/year, requires a secured strategic location):<br><br>The points between the existing haven and the new one become a <strong>Wild Land</strong>. You gain <strong>+3 SP and +3 AP</strong> (a milestone).<br><br>Establish the new Safe Haven?', undefined, {yes:'Reclaim it', no:'Not now'})) return;
   char.skillPts = (parseInt(char.skillPts) || 0) + 3;
   char.advPts = (parseInt(char.advPts) || 0) + 3;
   char.huntRegion = 'wild';  // the secured stretch is now a Wild Land (Hunt 16)
@@ -2568,7 +2568,7 @@ function _ordinalWord(n) {
   return ['', '', 'Younger', 'Third', 'Fourth', 'Fifth', 'Sixth', 'Seventh', 'Eighth'][n] || ('#' + n);
 }
 async function removeAlly(id) {
-  if (!await confirmStyled('Remove this ally from the Band?')) return;
+  if (!await confirmStyled('Remove this ally from the Band?', undefined, {yes:'Remove ally', no:'Keep ally'})) return;
   char.band.allies = char.band.allies.filter(a => a.id !== id);
   saveCharacter(); renderBand();
 }
@@ -2607,7 +2607,7 @@ async function giveKinglyGift(id) {
 }
 async function removeKinglyGift(id) {
   const a = char.band.allies.find(x => x.id === id); if (!a) return;
-  if (!await confirmStyled('Reclaim this Kingly Gift from the ally?')) return;
+  if (!await confirmStyled('Reclaim this Kingly Gift from the ally?', undefined, {yes:'Take it back', no:'Leave it'})) return;
   a.kinglyGift = null;
   saveCharacter(); renderBand();
 }
@@ -2924,7 +2924,7 @@ function resolveJourneyEvent(isPeril) {
 async function arriveAtDestination() {
   const j = char.journey;
   if (!j || !j.active) return;
-  if (!await confirmStyled('Arrive at destination?<br><br>This applies end-of-journey Fatigue reduction (mount Vigour + your TRAVEL roll), adds lingering Fatigue to your regular Fatigue counter, then closes the journey.', '🏁 Arrive')) return;
+  if (!await confirmStyled('Arrive at destination?<br><br>This applies end-of-journey Fatigue reduction (mount Vigour + your TRAVEL roll), adds lingering Fatigue to your regular Fatigue counter, then closes the journey.', '🏁 Arrive', {yes:'We have arrived', no:'Not yet'})) return;
 
   let totalFat = j.travelFatigue;
   const lines = [`Travel Fatigue accumulated: <strong>${totalFat}</strong>.`];
@@ -2976,7 +2976,7 @@ async function arriveAtDestination() {
   const recap = 'Journey complete!\n\n' + lines.map(l => l.replace(/<[^>]+>/g, '')).join('\n');
   // In solo play, offer to open a fresh "at the landmark" scene in the Chronicle (montage → play hand-off).
   const dest = j.destination || 'the destination';
-  if (isSolo() && await confirmStyled(escapeHtml(recap).replace(/\n/g, '<br>') + `<br><br>Start a Chronicle scene at <strong>${escapeHtml(dest)}</strong>?`, '🏁 Arrived')) {
+  if (isSolo() && await confirmStyled(escapeHtml(recap).replace(/\n/g, '<br>') + `<br><br>Start a Chronicle scene at <strong>${escapeHtml(dest)}</strong>?`, '🏁 Arrived', {yes:'Open a scene', no:'Not now'})) {
     const sc = { id: genCharId(), title: `At ${dest}`, date: { ...journal.clock }, ts: nowStamp(), state: captureState() };
     journal.scenes.push(sc);
     journal.activeSceneId = sc.id;
@@ -3012,10 +3012,10 @@ async function takeShortRest() {
   }
   // Frequency: one Short Rest per day (Core Rules p.71). Allow an explicit override.
   if (char.shortRestUsedToday) {
-    if (!await confirmStyled(`You have already taken a Short Rest on Day ${char.dayCount || 1}.<br><br>The rules allow one Short Rest per day. Take another anyway?`, '☀️ Already Rested Today')) return;
+    if (!await confirmStyled(`You have already taken a Short Rest on Day ${char.dayCount || 1}.<br><br>The rules allow one Short Rest per day. Take another anyway?`, '☀️ Already Rested Today', {yes:'Rest again anyway', no:'Don’t rest'})) return;
   }
   const recovered = Math.min(str, max - cur);
-  if (!await confirmStyled(`Recover <strong>+${recovered}</strong> Endurance (your STRENGTH ${str}).<br>End: ${cur} → ${cur + recovered} / ${max}<br><br><small>At least 1 hour of inactivity. Marks your Short Rest for Day ${char.dayCount || 1}.</small>`, '☀️ Short Rest')) return;
+  if (!await confirmStyled(`Recover <strong>+${recovered}</strong> Endurance (your STRENGTH ${str}).<br>End: ${cur} → ${cur + recovered} / ${max}<br><br><small>At least 1 hour of inactivity. Marks your Short Rest for Day ${char.dayCount || 1}.</small>`, '☀️ Short Rest', {yes:'Take the rest', no:'Not now'})) return;
   char.endCur = cur + recovered;
   char.shortRestUsedToday = true;
   saveCharacter();
@@ -3037,9 +3037,9 @@ async function takeProlongedRest() {
   // Ask Safe Haven question only if there's Fatigue to clear
   let inSafeHaven = false;
   if (wouldClearFatigue) {
-    inSafeHaven = await confirmStyled(`🌙 Prolonged Rest (a night's sleep)\n\nEndurance recovery: +${endRecover}\n${hopeRecover ? 'Hope recovery: +1 (you were at 0)\n' : ''}\nYou have ${fat} Fatigue. Are you resting in a Safe Haven? Tap OK if yes (Fatigue will be reduced by 1), Cancel if no.`);
+    inSafeHaven = await confirmStyled(`🌙 Prolonged Rest (a night's sleep)\n\nEndurance recovery: +${endRecover}\n${hopeRecover ? 'Hope recovery: +1 (you were at 0)\n' : ''}\nYou have ${fat} Fatigue. Are you resting in a Safe Haven? Tap OK if yes (Fatigue will be reduced by 1), Cancel if no.`, undefined, {yes:'Sleep', no:'Not now'});
   } else {
-    if (!await confirmStyled(`🌙 Prolonged Rest (a night's sleep)\n\nEndurance recovery: +${endRecover}${char.wounded ? ' (Wounded: STRENGTH only)' : ' (full)'}\n${hopeRecover ? 'Hope recovery: +1 (you were at 0)' : ''}\n\nMax one Prolonged Rest per day (LM may allow more in safe/comfortable places).`)) return;
+    if (!await confirmStyled(`🌙 Prolonged Rest (a night's sleep)\n\nEndurance recovery: +${endRecover}${char.wounded ? ' (Wounded: STRENGTH only)' : ' (full)'}\n${hopeRecover ? 'Hope recovery: +1 (you were at 0)' : ''}\n\nMax one Prolonged Rest per day (LM may allow more in safe/comfortable places).`, undefined, {yes:'Sleep', no:'Not now'})) return;
   }
 
   char.endCur = Math.min(max, cur + endRecover);
@@ -3263,7 +3263,7 @@ async function hoardTakeTreasureShare() {
   for (const tier of SOL_THRESHOLDS) {
     if (char.treasure >= tier.treasure && before < tier.treasure && SOL_RANK[tier.sol] > curRank) {
       setTimeout(async () => {
-        if (await confirmStyled(`💰 Treasure (${char.treasure}) crossed ${tier.sol}'s threshold (${tier.treasure}).\n\nPromote Standard of Living from ${char.standard || '(none)'} to ${tier.sol}?`)) {
+        if (await confirmStyled(`💰 Treasure (${char.treasure}) crossed ${tier.sol}'s threshold (${tier.treasure}).\n\nPromote Standard of Living from ${char.standard || '(none)'} to ${tier.sol}?`, undefined, {yes:'Raise my Standard of Living', no:'Keep it as is'})) {
           char.standard = tier.sol;
           saveCharacter();
           render();
@@ -3433,7 +3433,7 @@ async function confirmAddMagicalItem() {
     const greedAmt = GREED_SHADOW[type] || 1;
     const wisdomRating = parseInt(char.wisdom) || 1;
     const wisdomTN = parseInt(char.witTN) || 14;
-    if (await confirmStyled(`⚠ TAINTED HOARD\n\nGreed Shadow gain for ${type}: +${greedAmt} Shadow.\n\nMake a WISDOM Shadow Test now to reduce? Success reduces by 1+icons.`)) {
+    if (await confirmStyled(`⚠ TAINTED HOARD\n\nGreed Shadow gain for ${type}: +${greedAmt} Shadow.\n\nMake a WISDOM Shadow Test now to reduce? Success reduces by 1+icons.`, undefined, {yes:'Take the Greed test'})) {
       const r = _doInlineRoll(wisdomRating, 'normal', wisdomTN);
       const success = r.outcome.startsWith('SUCCESS') && !(char.miserable && r.featSpecial === 'eye');
       const reduction = success ? Math.min(greedAmt, 1 + r.icons) : 0;
@@ -3459,7 +3459,7 @@ async function confirmAddMagicalItem() {
 async function removeMagicalItem(i) {
   const item = char.magicalItems[i];
   if (!item) return;
-  if (!await confirmStyled(`Remove <strong>"${escapeHtml(item.name)}"</strong>?<br><br>Load will decrease by 1.`, 'Remove Magical Item')) return;
+  if (!await confirmStyled(`Remove <strong>"${escapeHtml(item.name)}"</strong>?<br><br>Load will decrease by 1.`, 'Remove Magical Item', {yes:'Remove item', no:'Keep item'})) return;
   char.magicalItems.splice(i, 1);
   char.otherLoad = Math.max(0, (parseInt(char.otherLoad) || 0) - 1);
   saveCharacter();
@@ -3632,7 +3632,7 @@ async function spendHopeToSupport() {
   if (cur <= 0) { alert('No Hope to spend.'); return; }
   const focus = char.fellowshipFocus || '';
   const focusBit = focus ? `\n\nNote: if the ally you're supporting is your Fellowship Focus (${focus}), they gain +2d instead of +1d.` : '';
-  if (!await confirmStyled(`Spend 1 Hope to support an ally's roll?\n\nHope: ${cur} → ${cur - 1}\nAlly gains +1d (or +2d if you are their Focus).${focusBit}\n\nThe ally should toggle "Receive Support" on their Dice tab.`)) return;
+  if (!await confirmStyled(`Spend 1 Hope to support an ally's roll?\n\nHope: ${cur} → ${cur - 1}\nAlly gains +1d (or +2d if you are their Focus).${focusBit}\n\nThe ally should toggle "Receive Support" on their Dice tab.`, undefined, {yes:'Spend 1 Hope', no:'Don’t spend'})) return;
   char.hopeCur = cur - 1;
   saveCharacter();
   render();
@@ -3650,7 +3650,7 @@ async function spendFPforHope() {
     alert('Hope is already at maximum.');
     return;
   }
-  if (!await confirmStyled(`Spend 1 Fellowship point to gain +1 Hope?\n\nFP: ${fp} → ${fp - 1}\nHope: ${curHope} → ${curHope + 1} / ${maxHope}\n\n(only during a resting scene.)`)) return;
+  if (!await confirmStyled(`Spend 1 Fellowship point to gain +1 Hope?\n\nFP: ${fp} → ${fp - 1}\nHope: ${curHope} → ${curHope + 1} / ${maxHope}\n\n(only during a resting scene.)`, undefined, {yes:'Spend the point', no:'Don’t spend'})) return;
   char.fellowship = fp - 1;
   char.hopeCur = Math.min(maxHope, curHope + 1);
   saveCharacter();
@@ -3771,7 +3771,7 @@ async function sagaEndSession() {
         ? 'You will be awarded the session\'s experience (+3 Skill Points, +3 Adventure Points), and told whether a '
         : 'You are on the <strong>Milestone</strong> experience scheme, so no session XP is awarded — award it with 🏆 Award Milestone XP when something notable happens. You will be told whether a ') +
       '<strong>Fellowship Phase</strong> is due — the rest between adventures where your hero heals and grows.',
-      '🌙 End session')) return;
+      '🌙 End session', {yes:'End the session', no:'Keep playing'})) return;
   // Strider Mode advises AGAINST session-based XP for solo play: sessions "might last for a few
   // minutes or a few hours, which can make session-based rewards disconnected from events and
   // achievements in your story" — it recommends Experience Milestones instead. So only award
@@ -3829,7 +3829,7 @@ async function sagaEnd() {
 }
 
 async function sagaReopen() {
-  if (!await confirmStyled('Continue this saga after all? The ending you wrote stays in the Chronicle.', '↩ Reopen')) return;
+  if (!await confirmStyled('Continue this saga after all? The ending you wrote stays in the Chronicle.', '↩ Reopen', {yes:'Continue the saga', no:'Leave it ended'})) return;
   const s = sagaState(); s.ended = false; saveCharacter(); render();
 }
 

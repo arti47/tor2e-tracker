@@ -462,6 +462,11 @@
 <section class="panel" id="panel-character">
 
   <div id="newcomer-banner" style="display:none"></div>
+  <div id="adjust-banner" class="card callout info" style="display:none">
+    <strong>Hand-edit mode.</strong> The extra − / + buttons change numbers directly and skip the rules
+    (Valour and Wisdom normally go up through Spend XP). Use it to correct a mistake.
+    <button class="btn btn-block" onclick="toggleAdjustMode(false)">Done fixing</button>
+  </div>
 
   <div class="card" id="saga-card"></div>
 
@@ -583,14 +588,14 @@
         </div>
       </div>
     </div>
-    <div style="margin-top:10px;display:flex;align-items:center;gap:10px;justify-content:center;padding:8px;background:var(--bg-deep);border-radius:var(--r-sm);flex-wrap:wrap">
+    <div class="adj-only" style="margin-top:10px;display:flex;align-items:center;gap:10px;justify-content:center;padding:8px;background:var(--bg-deep);border-radius:var(--r-sm);flex-wrap:wrap">
       <span style="font-size:var(--fs-xs);color:var(--red-dark);font-weight:600">Virtue Bonus:</span>
       <button onclick="adjVirtueBonus('end',-1)" style="width:30px;height:30px;border:1px solid var(--red);background:var(--card-bg);color:var(--red);border-radius:var(--r-sm);font-weight:700;cursor:pointer">−</button>
       <span id="end-virtue-v" style="font-size:var(--fs-md);font-weight:700;color:var(--red-dark);min-width:24px;text-align:center">0</span>
       <button onclick="adjVirtueBonus('end',1)" style="width:30px;height:30px;border:1px solid var(--red);background:var(--card-bg);color:var(--red);border-radius:var(--r-sm);font-weight:700;cursor:pointer">+</button>
       <small style="color:var(--text-muted);font-size:var(--fs-xs)">(Hardiness +2, etc.)</small>
     </div>
-    <div style="margin-top:6px;display:flex;align-items:center;gap:10px;justify-content:center;padding:8px;background:var(--bg-deep);border-radius:var(--r-sm);flex-wrap:wrap">
+    <div class="adj-only" style="margin-top:6px;display:flex;align-items:center;gap:10px;justify-content:center;padding:8px;background:var(--bg-deep);border-radius:var(--r-sm);flex-wrap:wrap">
       <span style="font-size:var(--fs-xs);color:var(--red-dark);font-weight:600">Other Load:</span>
       <button onclick="adj('otherLoad',-1)" style="width:30px;height:30px;border:1px solid var(--red);background:var(--card-bg);color:var(--red);border-radius:var(--r-sm);font-weight:700;cursor:pointer">−</button>
       <span id="other-load-v" style="font-size:var(--fs-md);font-weight:700;color:var(--red-dark);min-width:24px;text-align:center">0</span>
@@ -634,12 +639,12 @@
         <div class="counter-label">Scars</div>
         <div class="counter-value" id="scar-v">0</div>
         <div class="counter-buttons">
-          <button onclick="adj('scars',-1)" title="Heal Scars (Yule undertaking, 5 AP each)">−</button>
-          <button onclick="adj('scars',1)" title="Harden Will to add Scar — use button below">+</button>
+          <button class="adj-lock" onclick="adj('scars',-1)" title="Heal Scars (Yule undertaking, 5 AP each)">−</button>
+          <button class="adj-lock" onclick="adj('scars',1)" title="Harden Will to add Scar — use button below">+</button>
         </div>
       </div>
     </div>
-    <div style="margin-top:10px;display:flex;align-items:center;gap:10px;justify-content:center;padding:8px;background:var(--bg-deep);border-radius:var(--r-sm);flex-wrap:wrap">
+    <div class="adj-only" style="margin-top:10px;display:flex;align-items:center;gap:10px;justify-content:center;padding:8px;background:var(--bg-deep);border-radius:var(--r-sm);flex-wrap:wrap">
       <span style="font-size:var(--fs-xs);color:var(--red-dark);font-weight:600">Virtue Bonus:</span>
       <button onclick="adjVirtueBonus('hope',-1)" style="width:30px;height:30px;border:1px solid var(--red);background:var(--card-bg);color:var(--red);border-radius:var(--r-sm);font-weight:700;cursor:pointer">−</button>
       <span id="hope-virtue-v" style="font-size:var(--fs-md);font-weight:700;color:var(--red-dark);min-width:24px;text-align:center">0</span>
@@ -715,6 +720,7 @@
 
   <div class="card">
     <h3 class="card-title">Advancement</h3>
+    <button class="btn btn-quiet adjust-toggle" onclick="toggleAdjustMode()" aria-pressed="false">Fix a number by hand</button>
     <div class="adv-step">① Earn<span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-muted)"> — at the end of a session</span></div>
     <div style="margin-top:14px;padding:10px;background:var(--bg-deep);border:1px solid var(--border);border-radius:var(--r-sm)">
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
@@ -731,8 +737,8 @@
         <div class="counter-label">Skill Pts</div>
         <div class="counter-value" id="skp-v">0</div>
         <div class="counter-buttons">
-          <button onclick="adj('skillPts',-1)">−</button>
-          <button onclick="adj('skillPts',1)">+</button>
+          <button class="adj-lock" onclick="adj('skillPts',-1)">−</button>
+          <button class="adj-lock" onclick="adj('skillPts',1)">+</button>
         </div>
         <button class="add-row-btn" onclick="openSpendXP('skill')" aria-label="Spend Skill Points" style="padding:5px 8px;font-size:var(--fs-xs);margin-top:5px;width:100%">Spend SP</button>
       </div>
@@ -740,8 +746,8 @@
         <div class="counter-label">Adventure Pts</div>
         <div class="counter-value" id="adv-v">0</div>
         <div class="counter-buttons">
-          <button onclick="adj('advPts',-1)">−</button>
-          <button onclick="adj('advPts',1)">+</button>
+          <button class="adj-lock" onclick="adj('advPts',-1)">−</button>
+          <button class="adj-lock" onclick="adj('advPts',1)">+</button>
         </div>
         <button class="add-row-btn" onclick="openSpendXP('adv')" aria-label="Spend Adventure Points" style="padding:5px 8px;font-size:var(--fs-xs);margin-top:5px;width:100%">Spend AP</button>
       </div>
@@ -762,16 +768,16 @@
         <div class="counter-label">Valour</div>
         <div class="counter-value" id="valour-v">1</div>
         <div class="counter-buttons">
-          <button onclick="adj('valour',-1)">−</button>
-          <button onclick="adj('valour',1)">+</button>
+          <button class="adj-lock" onclick="adj('valour',-1)">−</button>
+          <button class="adj-lock" onclick="adj('valour',1)">+</button>
         </div>
       </div>
       <div class="counter">
         <div class="counter-label">Wisdom</div>
         <div class="counter-value" id="wisdom-v">1</div>
         <div class="counter-buttons">
-          <button onclick="adj('wisdom',-1)">−</button>
-          <button onclick="adj('wisdom',1)">+</button>
+          <button class="adj-lock" onclick="adj('wisdom',-1)">−</button>
+          <button class="adj-lock" onclick="adj('wisdom',1)">+</button>
         </div>
       </div>
       <div class="counter">
@@ -2040,7 +2046,7 @@
 <div class="menu-overlay" id="styled-modal-overlay">
   <div class="menu" style="max-width:440px;width:92%">
     <h3 id="styled-modal-title">Confirm</h3>
-    <div id="styled-modal-body" style="font-size:var(--fs-sm);line-height:1.6;color:var(--ink);white-space:pre-wrap;margin-bottom:10px"></div>
+    <div id="styled-modal-body" style="font-size:var(--fs-md);line-height:1.55;color:var(--ink);white-space:pre-wrap;margin-bottom:10px"></div>
     <input id="styled-modal-input" style="display:none;width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--bg);color:var(--ink);font-size:var(--fs-md);margin-bottom:10px">
     <div id="styled-modal-buttons" style="display:flex;flex-direction:column;gap:6px"></div>
   </div>

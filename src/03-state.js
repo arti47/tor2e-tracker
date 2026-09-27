@@ -321,7 +321,7 @@ function renderRestorePoints() {
 async function restoreSnapshot(idx) {
   const list = loadBackups()[activeCharId] || [];
   const snap = list[idx]; if (!snap) return;
-  if (!await confirmStyled(`Roll <strong>this hero</strong> back to the snapshot from <strong>${new Date(snap.ts).toLocaleString()}</strong>?<br><br>A snapshot of the current state is taken first, so this restore is itself undoable.`, '♻️ Restore')) return;
+  if (!await confirmStyled(`Roll <strong>this hero</strong> back to the snapshot from <strong>${new Date(snap.ts).toLocaleString()}</strong>?<br><br>A snapshot of the current state is taken first, so this restore is itself undoable.`, '♻️ Restore', {yes:'Restore this snapshot', no:'Keep current'})) return;
   snapshotHero(activeCharId, 'pre-restore');               // safety snapshot of current state
   localStorage.setItem(CHAR_PREFIX + activeCharId, snap.data);
   applyActiveCharacter();
@@ -398,7 +398,7 @@ async function deleteCharacter(id) {
   if (!r) return;
   const entry = r.list.find(e => e.id === id);
   if (!entry) return;
-  if (!await confirmStyled(`Delete <strong>${escapeHtml(entry.name || 'this hero')}</strong>?<br><br>This permanently removes the character and their roll history. Export a JSON backup first if you might want them back.`, '🗑️ Delete Hero')) return;
+  if (!await confirmStyled(`Delete <strong>${escapeHtml(entry.name || 'this hero')}</strong>?<br><br>This permanently removes the character and their roll history. Export a JSON backup first if you might want them back.`, '🗑️ Delete Hero', {yes:'Delete hero', no:'Keep hero'})) return;
   localStorage.removeItem(CHAR_PREFIX + id);
   localStorage.removeItem(ROLLS_PREFIX + id);
   localStorage.removeItem(JOURNAL_PREFIX + id);
@@ -663,11 +663,11 @@ async function campaignJoin() {
   catch (e) { alertStyled('Could not join: ' + (e && e.message ? e.message : e)); }
 }
 async function campaignLeave() {
-  if (!(await confirmStyled('Leave this campaign? Your hero stays on your device.'))) return;
+  if (!(await confirmStyled('Leave this campaign? Your hero stays on your device.', undefined, {yes:'Leave campaign', no:'Stay'}))) return;
   Sync.leaveCampaign(); renderCampaign();
 }
 async function campaignDelete() {
-  if (!(await confirmStyled('Delete this campaign for everyone? This removes it and its join code — it cannot be undone.'))) return;
+  if (!(await confirmStyled('Delete this campaign for everyone? This removes it and its join code — it cannot be undone.', undefined, {yes:'Delete for everyone', no:'Keep campaign'}))) return;
   try { await Sync.deleteCampaign(); renderCampaign(); }
   catch (e) { alertStyled('Could not delete: ' + (e && e.message ? e.message : e)); }
 }
@@ -853,7 +853,7 @@ function openTimeline() {
 }
 function closeTimeline() { document.getElementById('timeline-overlay').classList.remove('show'); }
 async function clearTimeline() {
-  if (!await confirmStyled('Clear this hero’s entire campaign timeline? This cannot be undone.', 'Clear Timeline')) return;
+  if (!await confirmStyled('Clear this hero’s entire campaign timeline? This cannot be undone.', 'Clear Timeline', {yes:'Clear timeline', no:'Keep it'})) return;
   char.timeline = []; saveCharacter(); renderTimeline();
 }
 function renderTimeline() {
@@ -997,7 +997,7 @@ async function importFromHash() {
   try { payload = decodeShare(m[1]); } catch(e) { alert('That shared link is invalid or corrupted.'); return; }
   if (!validCharacterShape(payload)) { alert('That shared link does not contain a TOR2E character.'); return; }
   const obj = migrateCharacter(payload);
-  if (!await confirmStyled(`Import shared character <strong>${escapeHtml(obj.name || 'New Hero')}</strong>?<br><br>It will be added as a new hero on this device — nothing is overwritten.`, '🔗 Import Shared Character')) return;
+  if (!await confirmStyled(`Import shared character <strong>${escapeHtml(obj.name || 'New Hero')}</strong>?<br><br>It will be added as a new hero on this device — nothing is overwritten.`, '🔗 Import Shared Character', {yes:'Add this hero', no:'Not now'})) return;
   saveCharacter();                       // persist current hero
   const id = genCharId();
   activeCharId = id;
@@ -1236,7 +1236,7 @@ async function renameScene(id) {
   sc.title = t.trim() || sc.title; saveJournal(); renderChronicle();
 }
 async function deleteScene(id) {
-  if (!await confirmStyled('Delete this whole scene and all its entries?', 'Delete Scene')) return;
+  if (!await confirmStyled('Delete this whole scene and all its entries?', 'Delete Scene', {yes:'Delete scene', no:'Keep scene'})) return;
   journal.scenes = journal.scenes.filter(s => s.id !== id);
   journal.entries = journal.entries.filter(e => e.sceneId !== id);
   if (journal.activeSceneId === id) journal.activeSceneId = journal.scenes.length ? journal.scenes[journal.scenes.length - 1].id : null;
@@ -1320,7 +1320,7 @@ function loadSampleChronicle() {
   saveJournal(); renderChronicle();
 }
 async function deleteChronicleEntry(id) {
-  if (!await confirmStyled('Delete this entry?', 'Delete Entry')) return;
+  if (!await confirmStyled('Delete this entry?', 'Delete Entry', {yes:'Delete entry', no:'Keep entry'})) return;
   journal.entries = journal.entries.filter(e => e.id !== id);
   if (_editingBlockId === id) _editingBlockId = null;
   saveJournal(); renderChronicleTimeline();
@@ -1604,7 +1604,7 @@ async function foeAttacks(id) {
   // marks Wounded and rolls Wound Severity (shared with the Dice-tab Protection card).
   if (piercing) {
     const injTN = parseInt(f.atkInj) || 14;
-    if (await confirmStyled(`🗡️ <strong>Piercing Blow!</strong> ${escapeHtml(possessive(c.foeName))} blow finds a gap.<br><br>Roll your Protection vs Injury <strong>${injTN}</strong>?`, 'Piercing Blow')) {
+    if (await confirmStyled(`🗡️ <strong>Piercing Blow!</strong> ${escapeHtml(possessive(c.foeName))} blow finds a gap.<br><br>Roll your Protection vs Injury <strong>${injTN}</strong>?`, 'Piercing Blow', {yes:'Roll Protection', no:'Take the blow'})) {
       const protDice = (parseInt(char.armourProt) || 0) + (parseInt(char.helmProt) || 0);
       const P = _protectionRoll(injTN, protDice);
       const pScore = P.isAutoSuccess ? '★' : (P.isAutoFail ? '✗' : P.total);
@@ -1650,7 +1650,7 @@ async function endCombat(id) {
   saveJournal(); renderChronicle();
 }
 async function deleteCombat(id) {
-  if (!await confirmStyled('Delete this combat log?', 'Delete Combat')) return;
+  if (!await confirmStyled('Delete this combat log?', 'Delete Combat', {yes:'Delete log', no:'Keep log'})) return;
   journal.combats = journal.combats.filter(x => x.id !== id);
   saveJournal(); renderChronicle();
 }

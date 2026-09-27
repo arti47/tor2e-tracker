@@ -110,7 +110,8 @@ function showModal(opts) {
     (opts.buttons || [{label:'OK', value:true}]).forEach(b => {
       const btn = document.createElement('button');
       btn.textContent = b.label;
-      btn.style.cssText = b.style || 'background:var(--red);color:white;border:1px solid var(--red-dark);border-radius:var(--r-sm);padding:10px;font-size:var(--fs-md);font-weight:500;cursor:pointer';
+      if (b.style) btn.style.cssText = b.style;
+      btn.className = (b.cancel || b.value === false || b.secondary) ? 'btn btn-secondary btn-block' : 'btn btn-block';
       btn.onclick = () => {
         ov.classList.remove('show');
         if (opts.input) {
@@ -128,13 +129,16 @@ function showModal(opts) {
 }
 
 // Convenience helpers — async, drop-in for common patterns.
-async function confirmStyled(message, title) {
+// labels: a verb for the yes button ('Take the rest'), or {yes, no}. Never OK/Cancel —
+// a player should be able to read the button and know what it does.
+async function confirmStyled(message, title, labels) {
+  const L = typeof labels === 'string' ? { yes: labels } : (labels || {});
   const result = await showModal({
-    title: title || 'Confirm',
+    title: title || 'Are you sure?',
     message,
     buttons: [
-      {label:'OK', value:true},
-      {label:'Cancel', value:false, style:'background:var(--btn-secondary-bg);color:white;border:1px solid var(--btn-secondary-bg);border-radius:var(--r-sm);padding:10px;font-size:var(--fs-md);cursor:pointer'}
+      {label: L.yes || 'Yes, continue', value:true},
+      {label: L.no || 'No, go back', value:false}
     ]
   });
   return !!result;
@@ -142,23 +146,23 @@ async function confirmStyled(message, title) {
 
 async function alertStyled(message, title) {
   await showModal({
-    title: title || 'Notice',
+    title: title || '',
     message,
-    buttons: [{label:'OK', value:true}]
+    buttons: [{label:'Got it', value:true}]
   });
 }
 
 // Promise-based prompt() replacement. Returns the entered string on OK, null on Cancel.
-async function promptStyled(message, defaultValue, title, placeholder) {
+async function promptStyled(message, defaultValue, title, placeholder, okLabel) {
   return showModal({
-    title: title || 'Input',
+    title: title || '',
     message,
     input: true,
     inputValue: defaultValue || '',
     inputPlaceholder: placeholder || '',
     buttons: [
-      {label:'OK'},
-      {label:'Cancel', cancel: true, style:'background:var(--btn-secondary-bg);color:white;border:1px solid var(--btn-secondary-bg);border-radius:var(--r-sm);padding:10px;font-size:var(--fs-md);cursor:pointer'}
+      {label: okLabel || 'Continue'},
+      {label:'Cancel', cancel: true}
     ]
   });
 }
@@ -303,7 +307,7 @@ async function toggleStriderMode() {
   const msg = turningOn
     ? `<strong>Play on your own, with no Game Master?</strong><br><br>Normally one player is the <em>Loremaster</em>, who describes the world and decides what happens. In Strider Mode <strong>you play both parts</strong>: you act as your hero, and you ask the <strong>Oracle</strong> whenever you don't know what the world does.<br><br>New to solo play? Read <strong>📖 Ref → Playing Solo</strong> — it walks through a whole session step by step.<br><br>Rules changes:<ul style="text-align:left;font-size:var(--fs-xs);padding-left:18px;margin:6px 0"><li>PE budget: 10 → <strong>15</strong></li><li>Attribute TN: <strong>18 − Rating</strong> (was 20 − Rating)</li><li>Fellowship Rating starts at <strong>3</strong></li><li>Adds free <strong>Strider</strong> Distinctive Feature (Inspired while journeying)</li><li>Unlocks <strong>Oracle tab</strong> (Telling / Lore / Fortune / Ill-Fortune tables)</li><li>Unlocks <strong>Skirmish stance</strong> + <strong>Gain Ground</strong> combat task</li><li>Unlocks <strong>Eye of Mordor</strong> tracking</li></ul>You can switch back any time. Attribute TNs will recalculate.`
     : `<strong>Disable Strider Mode?</strong><br><br>Revert to standard play. PE budget → 10, TN → 20 − Rating, Strider Distinctive Feature can be removed manually. Oracle tab + Skirmish stance + Eye of Mordor will hide.`;
-  if (!await confirmStyled(msg, turningOn ? '🗡️ Strider Mode' : 'Disable Strider Mode')) return;
+  if (!await confirmStyled(msg, turningOn ? '🗡️ Strider Mode' : 'Disable Strider Mode', {yes: turningOn ? 'Play solo (Strider Mode)' : 'Turn Strider Mode off', no: 'Cancel'})) return;
   char.striderMode = turningOn;
   // Strider Mode explicitly steers solo play away from session-based XP ("your sessions might last
   // for a few minutes or a few hours, which can make session-based rewards disconnected from events
@@ -337,7 +341,7 @@ async function toggleMoriaMode() {
   const msg = turningOn
     ? `<strong>Play the Moria campaign on your own?</strong><br><br>A second solo mode — no Game Master needed. You lead a <strong>Band</strong> of dwarf allies into Moria under Balin's expedition, with its own journey, battle and oracle tables.<br><br>New to solo play? Read <strong>📖 Ref → Playing Solo</strong> first.<br><br>Rules changes:<ul style="text-align:left;font-size:var(--fs-xs);padding-left:18px;margin:6px 0"><li>PE budget: 10 → <strong>15</strong> (solo)</li><li><strong>+5 max Hope</strong> (support of your Band)</li><li>Patron becomes <strong>Balin</strong> — <em>Balin's Counsel</em>: spend Fellowship to make a combat/battle roll Favoured. Your current Patron is remembered and restored if you switch back.</li><li>Fellowship Rating starts at <strong>3</strong> (+1 from Balin)</li><li>Safe Haven → <strong>Moria — First Hall</strong> (likewise restored)</li><li>Journeys use the <strong>Moria</strong> event table (Dark Land, Ill-Favoured)</li><li>Unlocks <strong>Oracle tab</strong> + <strong>Eye of Mordor</strong> (Moria: Dark Land, Hunt 12)</li><li>Unlocks the <strong>Band</strong> and <strong>Battle</strong> tabs, and the Moria oracle tables (chambers, orc-bands, Moria Lore)</li></ul>You can switch back any time.`
     : `<strong>Disable Moria Solo Mode?</strong><br><br>Revert to standard play. The +5 Hope band bonus is removed; journeys/oracle return to normal (or Strider, if that's still on).`;
-  if (!await confirmStyled(msg, turningOn ? '⛏️ Moria Solo Mode' : 'Disable Moria Solo Mode')) return;
+  if (!await confirmStyled(msg, turningOn ? '⛏️ Moria Solo Mode' : 'Disable Moria Solo Mode', {yes: turningOn ? 'Start the Moria campaign' : 'Turn Moria mode off', no: 'Cancel'})) return;
   char.moriaMode = turningOn;
   if (turningOn) {
     // +5 max Hope (band support) — applied as a tracked, reversible delta.
@@ -389,11 +393,11 @@ async function toggleMoriaMode() {
 async function toggleMoriaMadnessPath() {
   const onMoria = char.shadowPath === 'Moria-Madness';
   if (onMoria) {
-    if (!await confirmStyled('Restore your original Shadow Path?<br><br>Switches back from Moria-Madness to <strong>' + escapeHtml(char.shadowPathOrig || '(none)') + '</strong>.')) return;
+    if (!await confirmStyled('Restore your original Shadow Path?<br><br>Switches back from Moria-Madness to <strong>' + escapeHtml(char.shadowPathOrig || '(none)') + '</strong>.', undefined, {yes:'Restore my Shadow Path'})) return;
     char.shadowPath = char.shadowPathOrig || '';
     char.shadowPathOrig = '';
   } else {
-    if (!await confirmStyled('Follow the <strong>Moria-Madness</strong> Shadow Path?<br><br>A Dwarf overcome by the sacred memory of Khazad-dûm may suffer Moria-Madness — Flaws: <em>Distracted, Mistrustful, Blinded, Jealous</em> — instead of the Flaws of "' + escapeHtml(char.shadowPath || '(none)') + '". Reversible.', '⛏️ Moria-Madness')) return;
+    if (!await confirmStyled('Follow the <strong>Moria-Madness</strong> Shadow Path?<br><br>A Dwarf overcome by the sacred memory of Khazad-dûm may suffer Moria-Madness — Flaws: <em>Distracted, Mistrustful, Blinded, Jealous</em> — instead of the Flaws of "' + escapeHtml(char.shadowPath || '(none)') + '". Reversible.', '⛏️ Moria-Madness', {yes:'Follow Moria-Madness', no:'Keep my path'})) return;
     char.shadowPathOrig = char.shadowPath || '';
     char.shadowPath = 'Moria-Madness';
   }
@@ -1031,7 +1035,7 @@ function deleteOracleRollAt(i) {
 // Delete the whole oracle history (🗑 Clear button; confirmed). Device-global, not per-hero.
 async function clearOracleHistory() {
   if (!oracleHistory.length) { alert('No oracle rolls to clear.'); return; }
-  if (!await confirmStyled(`Delete all ${oracleHistory.length} oracle roll(s)? This history is shared across heroes on this device.`, 'Clear Oracle History')) return;
+  if (!await confirmStyled(`Delete all ${oracleHistory.length} oracle roll(s)? This history is shared across heroes on this device.`, 'Clear Oracle History', {yes:'Delete oracle history', no:'Keep it'})) return;
   oracleHistory.length = 0;
   saveOracleHistory();
   renderOracleHistory();
@@ -1208,7 +1212,7 @@ async function switchXpMode() {
   const msg = to === 'milestone'
     ? 'Switch to <strong>Milestone XP</strong>?<br><br>The Strider Mode alternative: instead of a flat +3 SP / +3 AP per session, you award XP when your hero achieves specific milestones (completing a journey, facing a Noteworthy Encounter, and so on).'
     : 'Switch to <strong>Session XP</strong>?<br><br>The standard rule: +3 Skill Points and +3 Adventure Points at the end of each play session.';
-  if (!await confirmStyled(msg, '🏆 Experience scheme')) return;
+  if (!await confirmStyled(msg, '🏆 Experience scheme', {yes:'Switch scheme', no:'Keep current'})) return;
   char.experienceMode = to;
   char._xpModeChosen = true;   // an explicit choice is never overridden by a mode toggle
   saveCharacter();

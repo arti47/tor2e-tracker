@@ -12,6 +12,7 @@ function bindTabs() {
       if (t.dataset.tab !== 'skills' && editMode) {
         toggleEditMode();
       }
+      if (t.dataset.tab !== 'character' && typeof adjustMode !== 'undefined' && adjustMode) toggleAdjustMode(false);
       if (t.dataset.tab === 'play' && typeof renderPlay === 'function') renderPlay();
       if (t.dataset.tab === 'chronicle') renderChronicle();
       if (t.dataset.tab === 'reference') renderReference();
@@ -188,7 +189,7 @@ function importAllHeroes(e) {
     if (!valid.length) { alert('No valid heroes found in that file.'); e.target.value = ''; return; }
     if (!await confirmStyled(
       `Add <strong>${valid.length}</strong> hero(es) from this backup?<br><br>They are added as <strong>new</strong> heroes — your existing heroes are never changed or overwritten.`,
-      '📦 Restore Heroes')) { e.target.value = ''; return; }
+      '📦 Restore Heroes', {yes:'Add these heroes', no:'Cancel'})) { e.target.value = ''; return; }
     let roster = loadRoster() || { activeId: null, list: [] };
     valid.forEach(h => {
       const id = genCharId();
@@ -226,7 +227,7 @@ function importData(e) {
     // Importing REPLACES the active hero, so confirm before destroying data.
     if (!await confirmStyled(
       `This replaces the <strong>active hero</strong> (“${escapeHtml(char.name || 'current')}”) with “${escapeHtml(incomingChar.name || 'Imported hero')}”.<br><br>Export a backup first if unsure, or use <strong>New Character</strong> to keep both. Proceed?`,
-      '📥 Import Character')) return;
+      '📥 Import Character', {yes:'Replace this hero', no:'Cancel'})) return;
     char = migrateCharacter(incomingChar);
     saveCharacter();
     if (incomingJournal && typeof incomingJournal === 'object') {
@@ -243,7 +244,7 @@ function importData(e) {
 }
 
 async function resetCharacter() {
-  if (await confirmStyled('Erase character and start fresh? This cannot be undone.\n\nRoll history and the Chronicle will also be cleared.')) {
+  if (await confirmStyled('Erase character and start fresh? This cannot be undone.\n\nRoll history and the Chronicle will also be cleared.', undefined, {yes:'Erase this hero', no:'Keep hero'})) {
     char = JSON.parse(JSON.stringify(DEFAULT_CHARACTER));
     history = [];
     journal = defaultJournal();
@@ -1119,7 +1120,7 @@ function deleteRollAt(i) {
 // Delete the whole roll history for the active hero (🗑 Clear button; confirmed).
 async function clearRollHistory() {
   if (!history.length) { alert('No rolls to clear.'); return; }
-  if (!await confirmStyled(`Delete all ${history.length} stored roll(s) for this hero? This cannot be undone.`, 'Clear Roll History')) return;
+  if (!await confirmStyled(`Delete all ${history.length} stored roll(s) for this hero? This cannot be undone.`, 'Clear Roll History', {yes:'Clear roll history', no:'Keep it'})) return;
   history.length = 0;
   saveHistory();
   renderHistory();
@@ -1262,7 +1263,7 @@ function renderTutMenu() {
 }
 // Clear all tutorial progress (✓ completed marks + resume points) and re-arm the first-run welcome.
 async function resetTutorial() {
-  if (!await confirmStyled(`Reset the whole tutorial?<br><br>This clears every ✓ completed mark and resume point, and the one-time welcome offer will appear again. Your characters are not affected.`, '↺ Reset Tutorial')) return;
+  if (!await confirmStyled(`Reset the whole tutorial?<br><br>This clears every ✓ completed mark and resume point, and the one-time welcome offer will appear again. Your characters are not affected.`, '↺ Reset Tutorial', {yes:'Reset tutorial', no:'Keep progress'})) return;
   try { localStorage.removeItem(TUTORIAL_KEY); } catch (e) {}
   renderTutMenu();
   alert('Tutorial reset — all lessons are marked unread again.');

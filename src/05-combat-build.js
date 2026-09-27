@@ -190,7 +190,7 @@ async function clearWound() {
     kind === 'grievous'
       ? 'Your hero came through a <strong>Grievous Injury</strong> — unconscious and dying, brought round and mended.<br><br>Clear the <strong>Wounded</strong> condition?'
       : 'Clear the <strong>Wounded</strong> condition? Use this once the injury has passed in the fiction.',
-    '🩹 The wound has passed');
+    '🩹 The wound has passed', {yes:'Clear Wounded', no:'Not yet'});
   if (!ok) return;
   char.wounded = false;
   char.injury = '';
@@ -204,7 +204,7 @@ async function clearWound() {
 }
 
 async function resetFirstAid() {
-  if (!await confirmStyled('Reset First Aid for this injury? Use this when a day has passed in fiction and you want to retry a failed Healing roll.')) return;
+  if (!await confirmStyled('Reset First Aid for this injury? Use this when a day has passed in fiction and you want to retry a failed Healing roll.', undefined, {yes:'A day has passed', no:'Not yet'})) return;
   char.firstAidUsed = false;
   saveCharacter();
   refreshFirstAidRow();
@@ -266,7 +266,7 @@ async function hardenWill() {
     if (!char.retired) { char.boutDue = true; saveCharacter(); if (typeof renderBoutDue === 'function') renderBoutDue(); }
     return;
   }
-  const ok = await confirmStyled(`Clear all <strong>${shadow}</strong> current Shadow → gain <strong>1 permanent Shadow Scar</strong> (now ${scars} → ${scars + 1}).<br><br>A Scar counts as Shadow for Miserable / Bout of Madness, but can only be removed by the Heal Scars undertaking at Yule (5 AP per Scar).`, '🔥 Harden Will');
+  const ok = await confirmStyled(`Clear all <strong>${shadow}</strong> current Shadow → gain <strong>1 permanent Shadow Scar</strong> (now ${scars} → ${scars + 1}).<br><br>A Scar counts as Shadow for Miserable / Bout of Madness, but can only be removed by the Heal Scars undertaking at Yule (5 AP per Scar).`, '🔥 Harden Will', {yes:'Harden my will', no:'Not now'});
   if (!ok) return;
   char.shadow = 0;
   char.scars = scars + 1;
@@ -372,7 +372,7 @@ async function generateRandomName() {
   const data = NAMES[char.culture];
   const gender = (char.gender || '').toLowerCase();
   if (!gender || (gender !== 'male' && gender !== 'female')) {
-    if (!await confirmStyled('No Gender set — pick a random name from either list?')) return;
+    if (!await confirmStyled('No Gender set — pick a random name from either list?', undefined, {yes:'Pick from either'})) return;
   }
   const pool = (gender === 'female') ? data.female : (gender === 'male') ? data.male
               : (Math.random() < 0.5 ? data.male : data.female);
@@ -683,7 +683,7 @@ function closeWeaponPicker() {
 async function pickWeapon(i) {
   const w = WEAPONS[i];
   const restriction = isWeaponRestricted(w.name, char.culture);
-  if (restriction && !await confirmStyled(`⚠ ${restriction}\n\nEquip anyway?`)) return;
+  if (restriction && !await confirmStyled(`⚠ ${restriction}\n\nEquip anyway?`, undefined, {yes:'Equip anyway', no:'Pick another'})) return;
   if (!char.weapons) char.weapons = [];
   // Versatile weapons have inj like "16/18" — parse into inj1h/inj2h. Default grip '1h'.
   const injStr = String(w.inj);
@@ -827,7 +827,7 @@ function pickArmour(i) {
 }
 
 async function clearArmour() {
-  if (!await confirmStyled('Clear body armour?')) return;
+  if (!await confirmStyled('Clear body armour?', undefined, {yes:'Remove armour', no:'Keep it'})) return;
   char.armourProt = 0; char.armourLoad = 0; char.armourNotes = '';
   saveCharacter(); render();
 }
@@ -869,7 +869,7 @@ async function pickShield(i) {
   const s = SHIELDS[i];
   // Hobbits and Dwarves cannot use great shield
   if (s.name === 'Great Shield' && (char.culture === 'Hobbits of the Shire' || isDwarfCulture())) {
-    if (!await confirmStyled(`${char.culture} cannot use a Great Shield per cultural restrictions. Equip anyway?`)) return;
+    if (!await confirmStyled(`${char.culture} cannot use a Great Shield per cultural restrictions. Equip anyway?`, undefined, {yes:'Equip anyway', no:'Pick another'})) return;
   }
   char.shieldBase = s.parry;
   char.shieldTotal = s.parry;
@@ -881,7 +881,7 @@ async function pickShield(i) {
 }
 
 async function clearShield() {
-  if (!await confirmStyled('Clear shield?')) return;
+  if (!await confirmStyled('Clear shield?', undefined, {yes:'Remove shield', no:'Keep it'})) return;
   char.shieldBase = 0; char.shieldTotal = 0; char.shieldLoad = 0; char.shieldNotes = '';
   saveCharacter(); render();
 }
@@ -992,7 +992,7 @@ async function rollProtection() {
   document.getElementById('prot-summary').innerHTML = summary;
 
   if (outcome === 'FAIL') {
-    if (await confirmStyled('Failed Protection Roll!\n\nMark Wounded and roll Wound Severity?')) {
+    if (await confirmStyled('Failed Protection Roll!\n\nMark Wounded and roll Wound Severity?', undefined, {yes:'Mark Wounded', no:'Not now'})) {
       await _applyWoundFromFail();
     }
   }
@@ -1053,7 +1053,7 @@ async function _encRoundFellPrompt(round) {
 }
 async function endEncounter() {
   const e = enc();
-  if (e.foes.length && !await confirmStyled('End the encounter and clear all adversaries?', 'End Encounter')) return;
+  if (e.foes.length && !await confirmStyled('End the encounter and clear all adversaries?', 'End Encounter', {yes:'End encounter', no:'Keep fighting'})) return;
   // A whole fight used to leave no mark on the Campaign Timeline; record it before it is cleared.
   if (typeof logTimeline === 'function' && e.foes.length) {
     const slain = e.foes.filter(f => f.slain).length;
@@ -1240,7 +1240,7 @@ async function heroAttackFoe(foeId) {
     const ok = await confirmStyled(
       `<strong>${escapeHtml(w.name)}</strong> is a melee weapon, and from <strong>${stanceName}</strong> stance melee weapons cannot attack at all — you are too far back to reach the foe.<br><br>` +
       'Your options: attack with a <strong>ranged</strong> weapon instead, or step into a closer stance.<br><br>Switch to <strong>Open</strong> stance now?',
-      `⚠️ Cannot attack from ${stanceName}`);
+      `⚠️ Cannot attack from ${stanceName}`, {yes:'Switch to Open stance', no:'Stay here'});
     if (ok) { char.stance = 'open'; saveCharacter(); render(); }
     return;
   }
@@ -1353,7 +1353,7 @@ async function foeAttackHero(foeId, attackIdx) {
   } else { line += `miss`; }
   if (piercing && atk.inj && atk.inj !== '—' && parseInt(atk.inj) > 0) {
     const injTN = parseInt(atk.inj) || 14;
-    if (await confirmStyled(`🗡️ <strong>Piercing Blow!</strong> ${escapeHtml(f.name)}'s ${escapeHtml(atk.name)} finds a gap.<br><br>Roll your Protection vs Injury <strong>${injTN}</strong>?`, 'Piercing Blow')) {
+    if (await confirmStyled(`🗡️ <strong>Piercing Blow!</strong> ${escapeHtml(f.name)}'s ${escapeHtml(atk.name)} finds a gap.<br><br>Roll your Protection vs Injury <strong>${injTN}</strong>?`, 'Piercing Blow', {yes:'Roll Protection', no:'Take the blow'})) {
       const protDice = (parseInt(char.armourProt) || 0) + (parseInt(char.helmProt) || 0);
       const P = _protectionRoll(injTN, protDice);
       const pScore = P.isAutoSuccess ? '★' : (P.isAutoFail ? '✗' : P.total);
@@ -1572,6 +1572,21 @@ const SOL_THRESHOLDS = [
 ];
 const SOL_RANK = { 'Poor': 0, 'Frugal': 1, 'Common': 2, 'Prosperous': 3, 'Rich': 4, 'Very Rich': 5 };
 
+/* Hand-edit mode. Numbers the rules own (Valour, Wisdom, Skill/Adventure points, Scars,
+   virtue bonuses, extra Load) only move through their proper flows — Spend XP, the
+   Fellowship Phase, Harden Will. Their raw −/+ buttons exist for corrections and are hidden
+   until the player asks for them, so nobody raises Valour by accident and skips the rules. */
+let adjustMode = false;
+function toggleAdjustMode(force) {
+  adjustMode = typeof force === 'boolean' ? force : !adjustMode;
+  document.body.classList.toggle('adjust-mode', adjustMode);
+  const b = document.getElementById('adjust-banner'); if (b) b.style.display = adjustMode ? '' : 'none';
+  document.querySelectorAll('.adjust-toggle').forEach(t => {
+    t.setAttribute('aria-pressed', adjustMode ? 'true' : 'false');
+    t.textContent = adjustMode ? 'Done fixing' : 'Fix a number by hand';
+  });
+  if (adjustMode && b) b.scrollIntoView({ block: 'nearest' });
+}
 function adj(field, delta) {
   snapshot();   // undo support
   let v = Math.max(0, (parseInt(char[field]) || 0) + delta);
@@ -1633,7 +1648,7 @@ function adj(field, delta) {
       if (v >= tier.treasure && prevValue < tier.treasure && SOL_RANK[tier.sol] > curRank) {
         // Crossed this threshold upward and current SoL is below it
         setTimeout(async () => {
-          if (await confirmStyled(`💰 Treasure (${v}) crossed ${tier.sol}'s threshold (${tier.treasure}).\n\nPromote your Standard of Living from ${char.standard || '(none)'} to ${tier.sol}?`)) {
+          if (await confirmStyled(`💰 Treasure (${v}) crossed ${tier.sol}'s threshold (${tier.treasure}).\n\nPromote your Standard of Living from ${char.standard || '(none)'} to ${tier.sol}?`, undefined, {yes:'Raise my Standard of Living', no:'Keep it as is'})) {
             char.standard = tier.sol;
             saveCharacter();
             render();
@@ -1717,7 +1732,7 @@ function bindInputs() {
 
       // Wound severity prompt on first wound
       if (c === 'wounded' && wasOff) {
-        if (await confirmStyled('Roll Wound Severity now?')) {
+        if (await confirmStyled('Roll Wound Severity now?', undefined, {yes:'Roll severity', no:'Later'})) {
           const result = rollWoundSeverity();
           char.injury = `${result.label} — ${result.detail}`;
           char.injuryDays = result.days;
@@ -1906,7 +1921,7 @@ function rollBackstory() {
 async function applyBackstory(die) {
   const lp = LIFEPATHS[char.culture]?.find(x => x.die === die);
   if (!lp) return;
-  if (!await confirmStyled(`Apply "${lp.name}" lifepath?\n\nThis overwrites:\n• Attributes (Str ${lp.attrs.str} / Hrt ${lp.attrs.hrt} / Wit ${lp.attrs.wit})\n• Culture Favoured (${lp.favouredSkill})\n• Distinctive Features (${lp.features.join(', ')})\n• History (backstory text added)`)) return;
+  if (!await confirmStyled(`Apply "${lp.name}" lifepath?\n\nThis overwrites:\n• Attributes (Str ${lp.attrs.str} / Hrt ${lp.attrs.hrt} / Wit ${lp.attrs.wit})\n• Culture Favoured (${lp.favouredSkill})\n• Distinctive Features (${lp.features.join(', ')})\n• History (backstory text added)`, undefined, {yes:'Apply lifepath', no:'Keep my hero'})) return;
 
   char.strRating = lp.attrs.str; char.hrtRating = lp.attrs.hrt; char.witRating = lp.attrs.wit;
   recomputeAttrTNs();
@@ -1959,7 +1974,7 @@ function rollMajorEvent() {
 async function applyMajorEvent(die) {
   const me = MAJOR_EVENTS.find(e => String(e.die) === String(die));
   if (!me) return;
-  if (!await confirmStyled(`Apply major event "...${me.name}"?\n\nEffect: ${me.short}\n\nSome effects may require you to make choices (e.g. which Attribute TN to lower).`)) return;
+  if (!await confirmStyled(`Apply major event "...${me.name}"?\n\nEffect: ${me.short}\n\nSome effects may require you to make choices (e.g. which Attribute TN to lower).`, undefined, {yes:'Apply event', no:'Skip'})) return;
 
   // Apply each effect token
   for (const e of me.effects) {
@@ -2188,7 +2203,7 @@ function adjPE(kind, name, delta) {
 }
 
 async function resetPE() {
-  if (!await confirmStyled('Reset all PE spending? Skills and Combat Proficiencies will revert to Culture defaults.')) return;
+  if (!await confirmStyled('Reset all PE spending? Skills and Combat Proficiencies will revert to Culture defaults.', undefined, {yes:'Reset spending', no:'Keep it'})) return;
   Object.keys(char.skillsBaseline || {}).forEach(s => {
     if (char.skills[s]) char.skills[s].rating = char.skillsBaseline[s];
   });
@@ -3072,7 +3087,7 @@ async function applyCulture() {
     attrs = c.attrSets[parseInt(setIdx)];
   }
 
-  if (!await confirmStyled(`Apply ${name} defaults?\n\nThis will overwrite:\n• Culture, Cultural Blessing, Standard, Age\n• Attributes (Str ${attrs[0]} / Hrt ${attrs[1]} / Wit ${attrs[2]})\n• Endurance & Hope max\n• Skills & Combat Proficiencies\n• Distinctive Features list`)) return;
+  if (!await confirmStyled(`Apply ${name} defaults?\n\nThis will overwrite:\n• Culture, Cultural Blessing, Standard, Age\n• Attributes (Str ${attrs[0]} / Hrt ${attrs[1]} / Wit ${attrs[2]})\n• Endurance & Hope max\n• Skills & Combat Proficiencies\n• Distinctive Features list`, undefined, {yes:'Apply', no:'Keep my choices'})) return;
 
   // Apply
   char.culture = name;
@@ -3153,7 +3168,7 @@ async function applyPatron() {
   const p = (typeof patronFor === 'function' ? patronFor(name) : null) || PATRONS[name];
   if (!p) return;
 
-  if (!await confirmStyled(`Apply ${name} as your Patron?\n\nThis will set your Patron field and add +${p.fpBonus} to your Fellowship.`)) return;
+  if (!await confirmStyled(`Apply ${name} as your Patron?\n\nThis will set your Patron field and add +${p.fpBonus} to your Fellowship.`, undefined, {yes:'Choose this Patron', no:'Pick another'})) return;
 
   char.patron = name;
   char.fellowshipRating = (parseInt(char.fellowshipRating) || 0) + p.fpBonus;
@@ -3169,7 +3184,7 @@ async function applyCalling() {
   if (!name) return;
   const c = CALLINGS[name];
 
-  if (!await confirmStyled(`Apply ${name} defaults?\n\nThis will overwrite:\n• Calling, Shadow Path\n• First 2 of 3 Favoured skills will be pre-selected (use Favoured Skills picker to adjust)`)) return;
+  if (!await confirmStyled(`Apply ${name} defaults?\n\nThis will overwrite:\n• Calling, Shadow Path\n• First 2 of 3 Favoured skills will be pre-selected (use Favoured Skills picker to adjust)`, undefined, {yes:'Apply', no:'Keep my choices'})) return;
 
   char.calling = name;
   char.shadowPath = c.shadowPath;
