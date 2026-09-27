@@ -1968,6 +1968,40 @@ module.exports = {
       msg: `the printed sheet is the character, not every tab (play=${printed.play} gm=${printed.gm} char=${printed.character})`
     });
 
+    // A deleted hero stays deleted: the cloud copy is tombstoned, and sign-in does not restore it.
+    // The harness blocks the Firebase SDK, so the cloud is a stub that records writes and serves reads.
+    const del = await page.evaluate(async () => {
+      const saved = { enabled: Sync.enabled, uid: Sync.uid, db: Sync.db, confirm: window.confirmStyled, toast: window.showToast };
+      const store = {};
+      Sync.enabled = true; Sync.uid = 'u1'; Sync._migrated = true;
+      Sync.db = { ref: path => ({
+        set: v => { store[path] = v; return Promise.resolve(); },
+        orderByChild: () => ({ equalTo: () => ({ once: () => Promise.resolve({ val: () => {
+          const out = {}; Object.keys(store).forEach(k => { out[k.replace('characters/', '')] = store[k]; }); return out; } }) }) })
+      }) };
+      window.confirmStyled = async () => true; window.showToast = () => {};
+      // two heroes on this device, both already in the cloud
+      const r = loadRoster();
+      ['hdel', 'hkeep'].forEach(id => { const c = JSON.parse(JSON.stringify(DEFAULT_CHARACTER)); c.name = id;
+        localStorage.setItem(CHAR_PREFIX + id, JSON.stringify(c)); r.list.push({ id, name: id });
+        store['characters/' + id] = { owner: 'u1', name: id, data: c }; });
+      saveRoster(r);
+      await deleteCharacter('hdel');
+      const tomb = !!(store['characters/hdel'] && store['characters/hdel'].data && store['characters/hdel'].data._deleted);
+      // another device's hero, never seen here, must still restore — the fix may not break real restores
+      const other = JSON.parse(JSON.stringify(DEFAULT_CHARACTER)); other.name = 'hother';
+      store['characters/hother'] = { owner: 'u1', name: 'hother', data: other };
+      Sync._syncDown(); await new Promise(res => setTimeout(res, 50));
+      const ids = loadRoster().list.map(e => e.id);
+      const out = { tomb, gone: !ids.includes('hdel') && !localStorage.getItem(CHAR_PREFIX + 'hdel'), restored: ids.includes('hother') };
+      // tidy up
+      const r2 = loadRoster(); r2.list = r2.list.filter(e => !['hkeep', 'hother'].includes(e.id)); saveRoster(r2);
+      ['hkeep', 'hother'].forEach(id => localStorage.removeItem(CHAR_PREFIX + id));
+      Object.assign(Sync, { enabled: saved.enabled, uid: saved.uid, db: saved.db }); window.confirmStyled = saved.confirm; window.showToast = saved.toast;
+      return out;
+    });
+    checks.push({ ok: del.tomb && del.gone && del.restored, msg: `a deleted hero is tombstoned in the cloud and not restored on sign-in; other heroes still restore (${JSON.stringify(del)})` });
+
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length})` });
     await context.close();
     return { checks };

@@ -1355,6 +1355,7 @@ async function _tutExitSandbox() {
     if (char.name === 'Practice Hero') char.name = 'Hero';
     saveCharacter();  // leaves it active, in the roster, renamed
   } else {
+    if (typeof Sync !== 'undefined' && Sync.deleteChar) Sync.deleteChar(sb.practiceId);   // or the cloud copy comes back
     localStorage.removeItem(CHAR_PREFIX + sb.practiceId);
     localStorage.removeItem(ROLLS_PREFIX + sb.practiceId);
     localStorage.removeItem(JOURNAL_PREFIX + sb.practiceId);

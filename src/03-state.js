@@ -398,7 +398,9 @@ async function deleteCharacter(id) {
   if (!r) return;
   const entry = r.list.find(e => e.id === id);
   if (!entry) return;
-  if (!await confirmStyled(`Delete <strong>${escapeHtml(entry.name || 'this hero')}</strong>?<br><br>This permanently removes the character and their roll history. Export a JSON backup first if you might want them back.`, '🗑️ Delete Hero', {yes:'Delete hero', no:'Keep hero'})) return;
+  const cloud = typeof Sync !== 'undefined' && Sync.isEnabled && Sync.isEnabled();
+  if (!await confirmStyled(`Delete <strong>${escapeHtml(entry.name || 'this hero')}</strong>?<br><br>This permanently removes the character and their roll history${cloud ? ' — from this device <strong>and from the cloud</strong>, so it will not come back on your other devices' : ''}. Export a JSON backup first if you might want them back.`, '🗑️ Delete Hero', {yes:'Delete hero', no:'Keep hero'})) return;
+  if (typeof Sync !== 'undefined' && Sync.deleteChar) Sync.deleteChar(id);
   localStorage.removeItem(CHAR_PREFIX + id);
   localStorage.removeItem(ROLLS_PREFIX + id);
   localStorage.removeItem(JOURNAL_PREFIX + id);

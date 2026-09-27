@@ -115,6 +115,23 @@ const Sync = {
     }).catch(e => console.warn('cloud push failed:', e && e.message));
   },
 
+  /* Deleting a hero must delete it in the cloud too, or the next sign-in's _syncDown "restores"
+     it. A tombstone rather than a plain remove(): another device that still holds the hero would
+     otherwise re-upload it through its first-run migration. The tombstone keeps only the name —
+     the sheet, rolls and journal are gone. The rules already allow the owner to write it. */
+  deleteChar(id) {
+    if (!id) return;
+    clearTimeout(this._pushTimers[id]); delete this._pushTimers[id];
+    if (!this.enabled || !this.uid) return;
+    return this.db.ref('characters/' + id).set({
+      owner: this.uid,
+      updated: (typeof firebase !== 'undefined' && firebase.database.ServerValue) ? firebase.database.ServerValue.TIMESTAMP : Date.now(),
+      name: 'deleted',
+      data: { _deleted: true }
+    }).catch(e => console.warn('cloud delete failed:', e && e.message));
+  },
+  _isTombstone(rec) { return !!(rec && rec.data && rec.data._deleted); },
+
   // Cross-device restore + first-run migration. Never overwrites a locally-present hero.
   _syncDown() {
     if (!this.enabled || !this.uid) return;
@@ -124,7 +141,7 @@ const Sync = {
       let added = 0;
       Object.keys(cloud).forEach(id => {
         const rec = cloud[id];
-        if (!rec || !rec.data) return;
+        if (!rec || !rec.data || this._isTombstone(rec)) return;   // deleted heroes stay deleted
         if (localStorage.getItem(CHAR_PREFIX + id)) return;   // present locally → don't clobber (last-write-wins locally)
         localStorage.setItem(CHAR_PREFIX + id, JSON.stringify(rec.data));
         if (rec.rolls) localStorage.setItem(ROLLS_PREFIX + id, JSON.stringify(rec.rolls));
