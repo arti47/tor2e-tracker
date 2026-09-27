@@ -1788,7 +1788,9 @@ module.exports = {
       let said = '';
       window.alert = (m) => { said += String(m); };
       await checkAutoTriggers();
-      await new Promise(r => setTimeout(r, 250));
+      // The bout fires on a timer: wait for its outcome (up to 2s) rather than a fixed 250ms,
+      // which flaked under load (GOTCHA 22 — a probe must not depend on timing luck either).
+      for (let i = 0; i < 40 && !said; i++) await new Promise(r => setTimeout(r, 50));
       out.boutOffersButtons = boutButtons.length >= 2 && FLAWS_BY_PATH['Path of Despair'].indexOf(boutButtons[0]) >= 0;
       out.boutTookFlaw = String(char.flaws).indexOf(boutButtons[0]) >= 0 && (parseInt(char.shadow) || 0) === 0;
       out.boutSaidSo = /Flaw|bout passes/i.test(said);
