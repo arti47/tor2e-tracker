@@ -229,8 +229,8 @@ function _pin(rc, kind, name) {
 function _mapSetVB(x, y, w) {
   const svg = document.getElementById('map-svg'); if (!svg) return;
   const box = svg.getBoundingClientRect(); const ar = (box.height || 1) / (box.width || 1);
-  // stop zooming at ~2.5 screen px per pixel of the picture — past that it is only blur
-  const maxK = 2.5 * (MAP_DATA.srcW || MAP_DATA.W) / MAP_DATA.W;
+  // stop zooming at ~1.6 screen px per pixel of the picture — past that it is only blur
+  const maxK = 1.6 * (MAP_DATA.srcW || MAP_DATA.W) / MAP_DATA.W;
   w = Math.max(160, (box.width || 0) / maxK, Math.min(MAP_DATA.W, w)); const h = w * ar;
   x = Math.max(-w * 0.25, Math.min(MAP_DATA.W - w * 0.75, x)); y = Math.max(-h * 0.25, Math.min(MAP_DATA.H - h * 0.75, y));
   MapPick.vb = { x, y, w, h };

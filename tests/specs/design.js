@@ -987,8 +987,8 @@ module.exports = {
       await page.evaluate(() => closeMapPicker());
     } catch (e) { td.err = String(e); }
     await page.setViewportSize(vp2); await page.waitForTimeout(150);
-    checks.push({ ok: !td.err && td.town[0] === 'Rivendell' && td.town[1] === 'Rivendell' && td.spot === 'a spot on the map' && td.maxScale <= 2.58 && td.names > 0 && td.dots >= 50 && !td.dotsInHex.length,
-      msg: `tapping near a town's printed dot chooses the town; an empty spot names nothing; zoom stops at ~2.5x the picture with names drawn sharp (${JSON.stringify(td)})` });
+    checks.push({ ok: !td.err && td.town[0] === 'Rivendell' && td.town[1] === 'Rivendell' && td.spot === 'a spot on the map' && td.maxScale <= 1.66 && td.names > 0 && td.dots >= 50 && !td.dotsInHex.length,
+      msg: `tapping near a town's printed dot chooses the town; an empty spot names nothing; zoom stops at ~1.6x the picture with names drawn sharp (${JSON.stringify(td)})` });
     await hero();
 
 
