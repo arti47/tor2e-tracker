@@ -953,7 +953,9 @@ module.exports = {
     // Tapping a town's printed dot chooses that town by name — a fingertip off the dot still counts,
     // an empty spot names nothing. Zoom stops where the picture turns to blur; names stay vector.
     const td = {};
+    const vp2 = page.viewportSize();
     try {
+      await page.setViewportSize({ width: 1180, height: 820 }); await page.waitForTimeout(200);   // a tablet: the zoom cap bites
       await page.evaluate(() => { Object.assign(MapPick, { from: null, to: null, via: null }); closeMapPicker(); char.safeHaven = 'Bree'; saveCharacter(); openMapPicker(); _mapSetVB(700, 300, 700); });
       await page.waitForTimeout(250);
       const scr = (x, y) => page.evaluate(([x, y]) => { const svg = document.getElementById('map-svg'); const q = Object.assign(svg.createSVGPoint(), { x, y }).matrixTransform(svg.getScreenCTM()); return [q.x, q.y]; }, [x, y]);
@@ -971,6 +973,7 @@ module.exports = {
       td.dotsInHex = await page.evaluate(() => MAP_DATA.places.filter(p => p.length > 4 && Math.hypot(p[3] - HexMap.center(p[1], p[2])[0], p[4] - HexMap.center(p[1], p[2])[1]) > MAP_DATA.grid.w * 1.6).map(p => p[0]));
       await page.evaluate(() => closeMapPicker());
     } catch (e) { td.err = String(e); }
+    await page.setViewportSize(vp2); await page.waitForTimeout(150);
     checks.push({ ok: !td.err && td.town[0] === 'Rivendell' && td.town[1] === 'Rivendell' && td.spot === 'a spot on the map' && td.maxScale <= 2.51 && td.names > 0 && td.dots >= 50 && !td.dotsInHex.length,
       msg: `tapping near a town's printed dot chooses the town; an empty spot names nothing; zoom stops at 2.5x with names drawn sharp (${JSON.stringify(td)})` });
     await hero();
