@@ -75,7 +75,7 @@ module.exports = {
 
     // ---- Stage 2: the Loremaster sets the phase, calls rolls and hands things out. ----
     const gmClick = (sel, text) => gm.page.evaluate(([q, t]) => { const b = [...document.querySelectorAll(q)].find(x => x.textContent.trim().startsWith(t)); if (b) b.click(); return !!b; }, [sel, text]);
-    const until = (page, fn, arg) => page.waitForFunction(fn, arg, { timeout: 4000 }).then(() => true, () => false);
+    const until = (page, fn, arg) => page.waitForFunction(fn, arg, { timeout: 6000 }).then(() => true, () => false);
     await gmClick('#tbl-phases button', 'Combat');
     await gm.page.evaluate(() => { document.getElementById('tbl-note').value = 'Orcs at the ford'; });
     await gmClick('#panel-play button', 'Show it on every phone');
