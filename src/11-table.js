@@ -29,6 +29,7 @@ const Table = {
   _partyCb: null,
   _callsPrimed: false,
   _answering: null,
+  _done: {},
   _ref(path) { return Sync.db.ref('campaigns/' + Sync.currentCampaign() + '/' + path); },
   _on(ref, fn) { ref.on('value', fn, () => {}); this._refs.push(ref); },
   start() {
@@ -40,7 +41,7 @@ const Table = {
       if (this._callsPrimed && !tableIsGm()) Object.keys(this.calls).forEach(id => { if (!prev[id] && _tblCallForMe(this.calls[id])) _tblAnnounceCall(this.calls[id]); });
       this._callsPrimed = true; tableRefresh();
     });
-    this._on(this._ref('feed').limitToLast(30), snap => { const v = snap.val() || {}; this.feed = Object.keys(v).map(k => Object.assign({ id: k }, v[k])).sort((a, b) => (a.ts || 0) - (b.ts || 0)); tableRefresh(); });
+    this._on(this._ref('feed').limitToLast(30), snap => { const v = snap.val() || {}; this.feed = Object.keys(v).map(k => Object.assign({ id: k }, v[k])).sort((a, b) => (a.ts || 0) - (b.ts || 0)); if (tableIsGm()) tableGmProcess(); tableRefresh(); });
     if (!Sync.isLoremaster()) this._on(this._ref('handouts/' + Sync.uid), snap => { const v = snap.val() || {}; Object.keys(v).forEach(id => tableApplyHandout(id, v[id])); });
     this._partyCb = m => { this.party = m || {}; tableRefresh(); };
     Sync.subscribeParty(this._partyCb);
@@ -51,7 +52,7 @@ const Table = {
     this._refs = [];
     if (this._partyCb && typeof Sync !== 'undefined') Sync.unsubscribeParty(this._partyCb);
     this._partyCb = null;
-    this.state = { phase: 'story' }; this.party = {}; this.calls = {}; this.feed = []; this._callsPrimed = false; this._answering = null;
+    this.state = { phase: 'story' }; this.party = {}; this.calls = {}; this.feed = []; this._callsPrimed = false; this._answering = null; this._done = {};
   }
 };
 const _TS = () => (typeof firebase !== 'undefined' && firebase.database && firebase.database.ServerValue) ? firebase.database.ServerValue.TIMESTAMP : Date.now();
@@ -101,7 +102,7 @@ function _tblSheetHtml() {
     `<li><strong>${escapeHtml(w.name)}</strong> <small>Damage ${n(w.dmg)} · Injury ${escapeHtml(String(w.inj || '—'))}</small></li>`).join('');
   const solo = isSolo() ? `<div class="card callout info"><strong>This hero is set up for solo play.</strong> At a table the Target Numbers are 20 − Rating, not 18 − Rating.
     <button class="btn btn-block" onclick="openWhereAmI()">Switch to table rules</button></div>` : '';
-  return solo + _tblCallsForMeHtml() + _tblPhaseCard() +
+  return solo + _tblCallsForMeHtml() + _tblPhaseCard() + _tblJourneyPlayerHtml() +
     `<div class="card tbl-hero">
        <div class="tbl-hero-head">${typeof cultureCrest === 'function' ? cultureCrest(char.culture, 40, char.name) : ''}
          <div><h3 class="card-title">${escapeHtml(heroLabel(char))}</h3><small>${escapeHtml([char.culture, char.calling].filter(Boolean).join(' · '))}</small></div></div>
@@ -160,6 +161,18 @@ function _tblConsoleShell() {
       <div class="field"><label for="tbl-note">Tell the table</label><input type="text" id="tbl-note" placeholder="e.g. Night falls on the Old Forest Road"></div>
       <button type="button" class="btn btn-secondary btn-block" onclick="tableSetNote()">Show it on every phone</button>
     </div>
+    <div class="card tbl-journey" id="tbl-journey"><h3 class="card-title">The journey</h3>
+      <div id="tbl-jsetup">
+        <p class="hint">Pick the road on the map, or type it. Every phone shows the route; each player picks a role.</p>
+        <button type="button" class="btn btn-secondary btn-block" onclick="openMapPicker()">Pick on the map</button>
+        <div class="field"><label for="tj-from">From</label><input type="text" id="tj-from" placeholder="e.g. Bree"></div>
+        <div class="field"><label for="tj-to">To</label><input type="text" id="tj-to" placeholder="e.g. Rivendell"></div>
+        <div class="field"><label for="tj-hexes">Hexes</label><input type="number" id="tj-hexes" value="9" min="1" max="200"></div>
+        <div class="field"><label for="tj-season">Season</label><select id="tj-season"><option>Spring</option><option>Summer</option><option>Autumn</option><option>Winter</option></select></div>
+        <button type="button" class="btn btn-secondary btn-block" onclick="tableStartJourney()">Set out with the Company</button>
+      </div>
+      <div id="tbl-jlive"></div>
+    </div>
     <div class="card"><h3 class="card-title">Call for a roll</h3>
       <div class="field"><label for="tbl-call-skill">Roll</label><select id="tbl-call-skill">${TABLE_ROLLS().map(r => opt(r, r)).join('')}</select></div>
       <div class="field"><label for="tbl-call-who">Who</label><select id="tbl-call-who">${opt('all', 'Everyone')}</select></div>
@@ -199,6 +212,10 @@ function _tblConsoleUpdate() {
       <span>End ${v.endCur ?? '?'}/${v.endMax ?? '?'} · Hope ${v.hopeCur ?? '?'}/${v.hopeMax ?? '?'} · Shadow ${v.shadow ?? 0}${v.dying ? ' · <b>Dying</b>' : ''}${cond ? ' · ' + cond : ''}</span></div>`;
   }).join('') || '<p class="hint">No players yet. Give them the join code from Menu → Fellowship campaign.</p>';
   const calls = document.getElementById('tbl-calls'); if (calls) calls.innerHTML = _tblOpenCallsGmHtml();
+  const tj = _tj();
+  const jc = document.getElementById('tbl-journey'); if (jc) jc.style.display = (_tblPhase() === 'journey' || tj.active) ? '' : 'none';
+  const js = document.getElementById('tbl-jsetup'); if (js) js.style.display = tj.active ? 'none' : '';
+  const jl = document.getElementById('tbl-jlive'); if (jl) jl.innerHTML = tj.active ? _tblJourneyGmHtml(tj) : '';
   const feed = document.getElementById('tbl-feed-slot'); if (feed) feed.innerHTML = _tblFeedHtml(15);
 }
 
@@ -278,8 +295,10 @@ function tablePostRoll(r) {
   let callId = Table._answering;
   if (!callId && skill) { const c = _tblMyOpenCalls().find(x => x.skill === skill); if (c) callId = c.id; }
   const result = `${r.total} vs ${r.tn} → ${r.outcome}${r.icons ? ' (' + r.icons + '✦)' : ''}`;
-  const entry = { uid: Sync.uid, name: _tblMyName(), text: `${r.label} — ${result}`, skill, result, outcome: String(r.outcome || ''), ts: _TS() };
+  const entry = { uid: Sync.uid, name: _tblMyName(), text: `${r.label} — ${result}`, skill, result, outcome: String(r.outcome || ''), icons: parseInt(r.icons) || 0, ts: _TS() };
   if (callId) entry.callId = callId;
+  const call = callId && Table.calls[callId];
+  if (call && call.kind === 'arrive') _tblArrivalFatigue(call, /SUCCESS/.test(entry.outcome), entry.icons);
   return Table._ref('feed').push(entry).catch(() => {});
 }
 function tablePostLine(text) {
@@ -384,4 +403,172 @@ async function offerTableRules() {
     setStriderMode(false);
     refreshWhereLabel();
   }
+}
+
+/* ----- the table journey (the Loremaster's phone runs it; everyone sees it) -----
+   table/journey holds one shared journey. The arithmetic is the hero's own journey's, shared:
+   marchAdvance() for the Marching Test, journeyEventFor() for the event, journeyRegionNow() for
+   the land of the hex. Rolls are calls to the player holding the role; the Loremaster's phone
+   reads the answers from the feed (tableGmProcess) and applies the result — to the journey, or
+   as hand-outs to the heroes. Arrival is each hero's own Travel roll, applied on their phone. */
+const JOURNEY_ROLES = [['guide', 'Guide', 'Travel'], ['hunter', 'Hunter', 'Hunting'], ['lookout', 'Look-out', 'Awareness'], ['scout', 'Scout', 'Explore']];
+function _tj() {
+  const j = Object.assign({ active: false }, Table.state.journey || {});
+  ['route', 'events'].forEach(k => { if (j[k] && !Array.isArray(j[k])) j[k] = Object.values(j[k]); });
+  if (j.routeLands && typeof j.routeLands !== 'string') j.routeLands = Object.values(j.routeLands).join('');
+  j.events = j.events || [];
+  ['currentHex', 'totalHexes', 'hardTerrainHexes', 'daysElapsed', 'travelFatigue'].forEach(k => { j[k] = parseInt(j[k]) || 0; });
+  if (j.nextEventHex === undefined) j.nextEventHex = null;
+  return j;
+}
+function _tjSave(j) { Table.state.journey = j; tableRefresh(); return Table._ref('table/journey').set(j); }
+function _tjLog(j, text) { j.events.push({ day: j.daysElapsed, hex: j.currentHex, text }); if (j.events.length > 20) j.events = j.events.slice(-20); }
+function _tblRoleHolders(role) { return _tblPlayers().filter(m => m.jroles && m.jroles[role]); }
+function _tjEventDue(j) { return j.nextEventHex !== null && j.currentHex >= j.nextEventHex; }
+
+/** After "Use this route" on the map, copy the route into the console's journey form. */
+function tableJourneyFromMap() {
+  if (!tableIsGm()) return;
+  const v = id => (document.getElementById(id) || {}).value || '';
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+  set('tj-from', v('j-origin')); set('tj-to', v('j-destination')); set('tj-hexes', v('j-totalHexes'));
+}
+function tableStartJourney() {
+  if (!tableIsGm()) return;
+  const v = id => String((document.getElementById(id) || {}).value || '').trim();
+  const hexes = parseInt(v('tj-hexes')) || 0;
+  if (hexes <= 0) return alertStyled('How far is it? Enter the number of hexes, or pick the road on the map.', 'The journey');
+  const routed = typeof takePendingRoute === 'function' ? takePendingRoute(hexes) : {};
+  const j = Object.assign({
+    active: true, origin: v('tj-from'), destination: v('tj-to'), totalHexes: hexes,
+    hardTerrainHexes: routed.route ? (parseInt(v('j-hardTerrainHexes')) || 0) : 0,
+    currentHex: 0, daysElapsed: 0, travelFatigue: 0, nextEventHex: null, events: [],
+    season: v('tj-season') || 'Spring', region: v('j-region') || 'Wild'
+  }, routed);
+  _tjLog(j, `The Company sets out${j.origin ? ' from ' + j.origin : ''}${j.destination ? ' for ' + j.destination : ''} — ${hexes} hexes.`);
+  Table.state.phase = 'journey';
+  return Promise.all([_tjSave(j), Table._ref('table').update({ phase: 'journey', since: _TS() })]);
+}
+function tableMarch() {
+  const j = _tj(); if (!tableIsGm() || !j.active || j.pending || _tjEventDue(j) || j.currentHex >= j.totalHexes) return;
+  const guides = _tblRoleHolders('guide');
+  const who = guides.length ? guides[0].uid : 'all';
+  const note = guides.length ? 'Marching Test — the Guide leads the way' : 'Marching Test — nobody is the Guide, so the first Travel roll counts';
+  const ref = Table._ref('calls').push();   // the key first, so the journey can wait on this call
+  j.pending = { type: 'march', callId: ref.key };
+  return Promise.all([ref.set({ skill: 'Travel', who, note, kind: 'march', ts: _TS(), from: _tblMyName() }), _tjSave(j)]);
+}
+function tableJourneyEvent() {
+  const j = _tj(); if (!tableIsGm() || !j.active || j.pending || !_tjEventDue(j)) return;
+  const t = Math.floor(Math.random() * 6) + 1;
+  const [role, roleLabel, skill] = t <= 2 ? JOURNEY_ROLES[3] : t <= 4 ? JOURNEY_ROLES[2] : JOURNEY_ROLES[1];
+  const land = typeof journeyRegionNow === 'function' ? journeyRegionNow(j, j.currentHex) : j.region;
+  const fav = (land === 'Free' || land === 'Border') ? 'fav' : (land === 'Shadow' || land === 'Dark') ? 'ill' : 'normal';
+  _suspendInlineEye(true); const r = _doInlineRoll(0, fav, null); _suspendInlineEye(false);
+  const ev = journeyEventFor(r, false);
+  j.travelFatigue += ev.fatigue;
+  j.nextEventHex = null;
+  const holders = _tblRoleHolders(role);
+  const who = holders.length ? holders[0].uid : 'all';
+  const plain = String(ev.effect || '').replace(/<[^>]+>/g, '');
+  _tjLog(j, `${ev.name} (${land} land) — the ${roleLabel} rolls ${skill}. +${ev.fatigue} Travel Fatigue. ${plain}`);
+  const note = `${ev.name}: the ${roleLabel} rolls ${skill}${j.hardTerrainHexes ? ' (hard ground: roll one die fewer)' : ''}. ${plain}`;
+  const ref = Table._ref('calls').push();
+  j.pending = { type: 'event', callId: ref.key, eventKey: ev.key, eventName: ev.name };
+  return Promise.all([ref.set({ skill, who, note, kind: 'event', eventKey: ev.key, ts: _TS(), from: _tblMyName() }), _tjSave(j)]);
+}
+/** Read the answers the Loremaster is waiting for and apply them, once. */
+function tableGmProcess() {
+  const j = _tj(); const p = j.pending; if (!j.active || !p || Table._done[p.callId]) return;
+  const ans = Table.feed.find(f => f.callId === p.callId); if (!ans) return;
+  Table._done[p.callId] = true;
+  const ok = /SUCCESS/.test(ans.outcome || '');
+  const icons = parseInt(ans.icons) || 0;
+  if (p.type === 'march') {
+    const m = marchAdvance(j, ok, icons);
+    _tjLog(j, `Marching Test by ${ans.name}: ${ok ? 'success' : 'failure'} — ${m.hexes} hex${m.hexes === 1 ? '' : 'es'} in ${m.days} day${m.days === 1 ? '' : 's'}.`);
+  } else if (p.type === 'event') {
+    const out = _tjEventOutcome(j, p.eventKey, ok, ans.uid);
+    _tjLog(j, `${ans.name} rolled for ${p.eventName}: ${ok ? 'success' : 'failure'}${out ? ' — ' + out : ''}.`);
+  }
+  delete j.pending;
+  tableCloseCall(p.callId);
+  return _tjSave(j);
+}
+/** What an event roll does, at a table: the journey's days on the Loremaster's phone, and each
+    hero's cost as a hand-out to that hero (the same path every hand-out takes). */
+function _tjEventOutcome(j, key, ok, uid) {
+  const all = 'all', one = uid;
+  switch (key) {
+    case 'shortcut': if (ok) { j.daysElapsed = Math.max(0, j.daysElapsed - 1); return '−1 day'; } return '';
+    case 'joyful': if (ok) { tableSendHandout(all, { kind: 'hope', amount: 1, note: 'Joyful Sight' }); return 'every hero +1 Hope'; } return '';
+    case 'mishap': if (!ok) { j.daysElapsed += 1; tableSendHandout(one, { kind: 'fatigue', amount: 1, note: 'Mishap' }); return '+1 day, +1 Fatigue for the roller'; } return '';
+    case 'ill': if (!ok) { tableSendHandout(one, { kind: 'shadow', amount: 1, note: 'Ill Choices' }); return '+1 Shadow for the roller'; } return '';
+    case 'despair': if (!ok) { tableSendHandout(all, { kind: 'shadow', amount: 1, note: 'Despair' }); return 'every hero +1 Shadow'; } return '';
+    case 'terrible': if (!ok) { tableSendHandout(one, { kind: 'wounded', amount: 1, note: 'Terrible Misfortune' }); return 'the roller is Wounded'; } return '';
+    default: return '';
+  }
+}
+function tableCancelPending() {
+  const j = _tj(); if (!tableIsGm() || !j.pending) return;
+  tableCloseCall(j.pending.callId); delete j.pending; return _tjSave(j);
+}
+/** Arrival: every hero rolls Travel; a success sheds 1 + ✦ of the journey's Travel Fatigue, and
+    what lingers lands on their own Fatigue (applied on their phone as they roll). */
+function tableArrive() {
+  const j = _tj(); if (!tableIsGm() || !j.active) return;
+  const f = j.travelFatigue;
+  return Table._ref('calls').push({ skill: 'Travel', who: 'all', kind: 'arrive', fatigue: f, note: `You have arrived${j.destination ? ' at ' + j.destination : ''}. The road cost ${f} Travel Fatigue; a success sheds 1 + ✦ of it.`, ts: _TS(), from: _tblMyName() }).then(() => {
+    j.active = false; delete j.pending;
+    _tjLog(j, `Arrived${j.destination ? ' at ' + j.destination : ''} after ${j.daysElapsed} days.`);
+    return _tjSave(j);
+  });
+}
+function _tblArrivalFatigue(call, ok, icons) {
+  const f = Math.max(0, parseInt(call.fatigue) || 0);
+  const keep = ok ? Math.max(0, f - 1 - (parseInt(icons) || 0)) : f;
+  if (keep > 0) adj('fatigue', keep);
+  showToast(`Arrival: ${keep} of the road's ${f} Travel Fatigue stays with you (Fatigue ${char.fatigue}).`);
+}
+async function tableAbandonJourney() {
+  if (!tableIsGm()) return;
+  if (!await confirmStyled('Abandon this journey for the whole table?', 'The journey', { yes: 'Abandon journey', no: 'Keep travelling' })) return;
+  const j = _tj(); if (j.pending) tableCloseCall(j.pending.callId);
+  return _tjSave({ active: false });
+}
+function _tjProgressHtml(j) {
+  const map = (Array.isArray(j.route) && typeof liveRouteMap === 'function') ? liveRouteMap(j) : '';
+  const pct = j.totalHexes ? Math.round(100 * j.currentHex / j.totalHexes) : 0;
+  return `<div class="tbl-jhead"><strong>${escapeHtml(j.origin || 'Setting out')} → ${escapeHtml(j.destination || 'the journey’s end')}</strong>
+    <span>Day ${j.daysElapsed} · ${j.currentHex} of ${j.totalHexes} hexes · Travel Fatigue ${j.travelFatigue}</span></div>
+    ${map || `<div class="tbl-jbar" role="img" aria-label="${pct}% of the way"><i style="width:${pct}%"></i></div>`}`;
+}
+function _tjLogHtml(j, n) { return j.events.length ? `<ul class="tbl-jlog">${j.events.slice(-n).reverse().map(e => `<li>Day ${e.day}: ${escapeHtml(e.text)}</li>`).join('')}</ul>` : ''; }
+function _tblJourneyGmHtml(j) {
+  const roles = JOURNEY_ROLES.map(([k, l]) => { const h = _tblRoleHolders(k).map(m => (m.vitals && m.vitals.name) || m.displayName); return `<div><span>${l}</span> ${h.length ? escapeHtml(h.join(', ')) : '<em>nobody</em>'}</div>`; }).join('');
+  let act;
+  if (j.pending) act = `<p class="hint">Waiting for the ${j.pending.type === 'march' ? 'Marching Test' : escapeHtml(j.pending.eventName || 'event') + ' roll'}…</p><button type="button" class="btn btn-quiet btn-block" onclick="tableCancelPending()">Cancel this roll</button>`;
+  else if (_tjEventDue(j)) act = `<button type="button" class="btn btn-block" onclick="tableJourneyEvent()">Something happens on the road</button>`;
+  else if (j.currentHex >= j.totalHexes) act = `<button type="button" class="btn btn-block" onclick="tableArrive()">We have arrived</button>`;
+  else act = `<button type="button" class="btn btn-block" onclick="tableMarch()">Marching Test</button>`;
+  return _tjProgressHtml(j) + `<div class="tbl-roles">${roles}</div>` + act + _tjLogHtml(j, 6) +
+    `<button type="button" class="btn btn-quiet btn-block" onclick="tableAbandonJourney()">Abandon the journey</button>`;
+}
+function _tblJourneyPlayerHtml() {
+  const j = _tj(); if (_tblPhase() !== 'journey' && !j.active) return '';
+  const me = (Table.party || {})[Sync.uid] || {};
+  const mine = me.jroles || {};
+  const chips = JOURNEY_ROLES.map(([k, l, sk]) => `<button type="button" class="tbl-role${mine[k] ? ' on' : ''}" aria-pressed="${!!mine[k]}" onclick="tableToggleRole('${k}')"><strong>${l}</strong><small>rolls ${sk}</small></button>`).join('');
+  return `<div class="card tbl-journey"><h3 class="card-title">The journey</h3>
+    ${j.active ? _tjProgressHtml(j) : '<p class="hint">The Loremaster is planning the road.</p>'}
+    <div class="eyebrow">Your role on the road</div><div class="tbl-roles-pick">${chips}</div>
+    ${_tjLogHtml(j, 4)}</div>`;
+}
+function tableToggleRole(role) {
+  if (!tableActive()) return;
+  const me = (Table.party || {})[Sync.uid] || {};
+  const roles = Object.assign({}, me.jroles || {});
+  if (roles[role]) delete roles[role]; else roles[role] = true;
+  me.jroles = roles; tableRefresh();
+  return Table._ref('members/' + Sync.uid + '/jroles').set(Object.keys(roles).length ? roles : null);
 }

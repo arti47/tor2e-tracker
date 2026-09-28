@@ -1806,28 +1806,29 @@ async function rollMarchingTest() {
   applyMarchingTestResult(success, r.icons, `Feat ${r.featLabel}, total ${r.total ?? '★'}, ${r.icons} ✦, vs Heart TN ${tn}${char.miserable ? ' (Miserable)' : ''}`);
 }
 
+/** The Marching Test's arithmetic, shared by the hero's own journey and the table journey
+    (src/11-table.js) so the two can never disagree: success = 3 + ✦ hexes, failure = 2 in spring
+    and summer, 1 otherwise; hard ground adds days in proportion; a forced march halves the days
+    and costs 1 Travel Fatigue per day. Mutates j; returns what it did. */
+function marchAdvance(j, success, icons) {
+  let hexesToNext = success ? 3 + (parseInt(icons) || 0) : ((j.season === 'Spring' || j.season === 'Summer') ? 2 : 1);
+  hexesToNext = Math.min(hexesToNext, j.totalHexes - j.currentHex);
+  const hardRatio = j.hardTerrainHexes > 0 && j.totalHexes > 0 ? j.hardTerrainHexes / j.totalHexes : 0;
+  let daysSpent = hexesToNext + Math.round(hexesToNext * hardRatio);
+  if (j.forcedMarch) daysSpent = Math.ceil(daysSpent / 2);
+  j.daysElapsed = (parseInt(j.daysElapsed) || 0) + daysSpent;
+  if (j.forcedMarch) j.travelFatigue = (parseInt(j.travelFatigue) || 0) + daysSpent;
+  j.currentHex += hexesToNext;
+  j.nextEventHex = j.currentHex;  // event happens at landing hex
+  return { hexes: hexesToNext, days: daysSpent };
+}
+
 function applyMarchingTestResult(success, icons, detail, quiet) {
   const j = char.journey;
-  let hexesToNext;
-  if (success) {
-    hexesToNext = 3 + icons;
-  } else {
-    hexesToNext = (j.season === 'Spring' || j.season === 'Summer') ? 2 : 1;
-  }
-  // Cap by remaining hexes
-  hexesToNext = Math.min(hexesToNext, j.totalHexes - j.currentHex);
-  // Days: 1 per hex baseline + hard terrain bonus distributed; forced march halves time
-  const hardRatio = j.hardTerrainHexes > 0 && j.totalHexes > 0 ? j.hardTerrainHexes / j.totalHexes : 0;
-  const hardHexesNow = Math.round(hexesToNext * hardRatio);
-  let daysSpent = hexesToNext + hardHexesNow;
-  if (j.forcedMarch) daysSpent = Math.ceil(daysSpent / 2);
-  j.daysElapsed += daysSpent;
+  const { hexes: hexesToNext, days: daysSpent } = marchAdvance(j, success, icons);
   // The journey kept its own day counter and the hero's calendar never moved — after a nine-day
   // march the Endurance card still read "Day 1", and a Wounded hero's injury days never ticked.
   advanceDays(daysSpent);
-  if (j.forcedMarch) j.travelFatigue += daysSpent;  // +1 Fatigue per forced-march day
-  j.currentHex += hexesToNext;
-  j.nextEventHex = j.currentHex;  // event happens at landing hex
   j.events.push({
     day: j.daysElapsed,
     hex: j.currentHex,
@@ -2876,6 +2877,33 @@ function renderBand() {
   }
 }
 
+/** The Journey Event a Feat die picks (Core Rules; Strider Mode splits 4–10 differently). Shared by
+    the hero's own journey and the table journey (src/11-table.js). */
+function journeyEventFor(r, solo) {
+  let event;
+  const f = r.featValue;
+  if (r.featSpecial === 'eye') {
+    event = { key: 'terrible', name: 'Terrible Misfortune 👁', fatigue: 3, effect: 'If the skill roll fails: target is <strong>Wounded</strong>' };
+  } else if (r.featSpecial === 'rune') {
+    event = { key: 'joyful', name: 'Joyful Sight ᚱ', fatigue: 0, effect: 'If the skill roll succeeds: every hero recovers <strong>+1 Hope</strong>' };
+  } else if (f === 1) {
+    event = { key: 'despair', name: 'Despair', fatigue: 2, effect: 'If the skill roll fails: <strong>every hero present</strong> gains +1 Shadow (Dread)' };
+  } else if (f >= 2 && f <= 3) {
+    event = { key: 'ill', name: 'Ill Choices', fatigue: 2, effect: 'If the skill roll fails: <strong>target</strong> gains +1 Shadow (Dread)' };
+  } else if (solo ? (f >= 4 && f <= 7) : (f >= 4 && f <= 9)) {
+    event = { key: 'mishap', name: 'Mishap', fatigue: 2, effect: 'If the skill roll fails: +1 day to journey length, target gains +1 additional Fatigue' };
+  } else if (solo && f >= 8 && f <= 9) {
+    event = { key: 'shortcut', name: 'Short Cut', fatigue: 1, effect: 'If the skill roll succeeds: −1 day to journey' };
+  } else if (solo && f === 10) {
+    event = { key: 'chance', name: 'Chance-meeting', fatigue: 1, effect: 'If the skill roll succeeds: no Fatigue, favourable encounter' };
+  } else if (!solo && f === 10) {
+    event = { key: 'shortcut', name: 'Short Cut / Chance-meeting', fatigue: 1, effect: 'If the skill roll succeeds: −1 day to journey OR a favourable encounter — your choice' };
+  } else {
+    event = { key: 'unknown', name: 'Event ('+f+')', fatigue: 1, effect: 'GM adjudicates' };
+  }
+  return event;
+}
+
 function resolveJourneyEvent(isPeril) {
   const j = char.journey;
   if (isPeril) {
@@ -2935,24 +2963,8 @@ function resolveJourneyEvent(isPeril) {
     // Moria solo journey events table (👁 Deadly Dark / 1-2 Long Dark / 3-5 Watchful Eyes /
     // 6-9 Branching Stairs / 10 Right Way / ᚱ Dread & Wonder).
     event = mapMoriaEvent(r);
-  } else if (r.featSpecial === 'eye') {
-    event = { key: 'terrible', name: 'Terrible Misfortune 👁', fatigue: 3, effect: 'If the skill roll fails: target is <strong>Wounded</strong>' };
-  } else if (r.featSpecial === 'rune') {
-    event = { key: 'joyful', name: 'Joyful Sight ᚱ', fatigue: 0, effect: 'If the skill roll succeeds: every hero recovers <strong>+1 Hope</strong>' };
-  } else if (f === 1) {
-    event = { key: 'despair', name: 'Despair', fatigue: 2, effect: 'If the skill roll fails: <strong>every hero present</strong> gains +1 Shadow (Dread)' };
-  } else if (f >= 2 && f <= 3) {
-    event = { key: 'ill', name: 'Ill Choices', fatigue: 2, effect: 'If the skill roll fails: <strong>target</strong> gains +1 Shadow (Dread)' };
-  } else if (solo ? (f >= 4 && f <= 7) : (f >= 4 && f <= 9)) {
-    event = { key: 'mishap', name: 'Mishap', fatigue: 2, effect: 'If the skill roll fails: +1 day to journey length, target gains +1 additional Fatigue' };
-  } else if (solo && f >= 8 && f <= 9) {
-    event = { key: 'shortcut', name: 'Short Cut', fatigue: 1, effect: 'If the skill roll succeeds: −1 day to journey' };
-  } else if (solo && f === 10) {
-    event = { key: 'chance', name: 'Chance-meeting', fatigue: 1, effect: 'If the skill roll succeeds: no Fatigue, favourable encounter' };
-  } else if (!solo && f === 10) {
-    event = { key: 'shortcut', name: 'Short Cut / Chance-meeting', fatigue: 1, effect: 'If the skill roll succeeds: −1 day to journey OR a favourable encounter — your choice' };
   } else {
-    event = { key: 'unknown', name: 'Event ('+f+')', fatigue: 1, effect: 'GM adjudicates' };
+    event = journeyEventFor(r, solo);
   }
 
   // Solo: roll the Event Detail sub-table to envision the specific event.

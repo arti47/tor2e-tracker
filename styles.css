@@ -1847,3 +1847,15 @@ body.theme-sepia .card { background-image: linear-gradient(180deg, rgba(255,245,
 .tbl-ans.ok { color: var(--success-text); } .tbl-ans.no { color: var(--error-text); }
 .tbl-frow { font-size: var(--fs-xs); padding: 3px 0; border-bottom: 1px dotted var(--border); }
 .tbl-frow.me strong { color: var(--red); }
+.tbl-jhead { display: flex; flex-direction: column; gap: 2px; margin-bottom: var(--sp-2); }
+.tbl-jhead span { font-size: var(--fs-xs); color: var(--text-muted); }
+.tbl-jbar { height: 10px; border-radius: 5px; background: var(--bg-deep); border: 1px solid var(--border); overflow: hidden; margin: var(--sp-2) 0; }
+.tbl-jbar i { display: block; height: 100%; background: var(--red); }
+.tbl-roles { display: grid; grid-template-columns: 1fr 1fr; gap: 2px var(--sp-3); font-size: var(--fs-xs); margin: var(--sp-2) 0; }
+.tbl-roles span { color: var(--text-muted); margin-right: 4px; }
+.tbl-roles-pick { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-2); margin-top: var(--sp-1); }
+.tbl-role { min-height: 48px; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; padding: var(--sp-2); border: 1px solid var(--border); border-radius: var(--r-md); background: var(--card-bg); color: var(--ink); cursor: pointer; text-align: left; }
+.tbl-role small { font-size: var(--fs-xs); color: var(--text-muted); }
+.tbl-role.on { border: 2px solid var(--red); }
+.tbl-jlog { list-style: none; padding: 0; margin: var(--sp-2) 0; font-size: var(--fs-xs); }
+.tbl-jlog li { padding: 2px 0; border-bottom: 1px dotted var(--border); }

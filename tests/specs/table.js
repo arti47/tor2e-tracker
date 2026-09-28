@@ -122,6 +122,58 @@ module.exports = {
     const shadow = await pl.page.evaluate(() => ({ s: (parseInt(char.shadow) || 0) + (parseInt(char.scars) || 0), max: parseInt(char.hopeMax) }));
     checks.push({ ok: capped && shadow.s <= shadow.max && shadow.s > 0, msg: `a Shadow hand-out keeps the rules' cap (${shadow.s} ≤ ${shadow.max})` });
 
+    // ---- Stage 3: the journey. The Loremaster picks the road on the map; every phone sees it. ----
+    await gm.page.evaluate(() => { openMapPicker(); mapChoosePlace('from', 26, 42, 'Bree'); mapChoosePlace('to', 26, 57, 'Rivendell'); useMapRoute(); });
+    const form = await gm.page.evaluate(() => ({ from: document.getElementById('tj-from').value, to: document.getElementById('tj-to').value, hexes: +document.getElementById('tj-hexes').value }));
+    await gmClick('#panel-play button', 'Set out with the Company');
+    const mapOnPhone = await until(pl.page, () => !!document.querySelector('#panel-play .tbl-journey .live-map') && /Bree/.test(document.querySelector('#panel-play .tbl-journey').textContent));
+    checks.push({ ok: form.from === 'Bree' && form.to === 'Rivendell' && form.hexes > 10 && mapOnPhone, msg: `a road picked on the Loremaster's map fills the journey and shows on the player's phone (${JSON.stringify(form)}, map ${mapOnPhone})` });
+    // Start over with a short road typed by hand, so one march reaches the end.
+    await gm.page.evaluate(() => { confirmStyled = async () => true; });
+    await gmClick('#panel-play button', 'Abandon the journey');
+    await until(gm.page, () => document.getElementById('tbl-jsetup').style.display !== 'none');
+    await gm.page.evaluate(() => { document.getElementById('tj-from').value = 'Bree'; document.getElementById('tj-to').value = 'Archet'; document.getElementById('tj-hexes').value = '3'; });
+    await gmClick('#panel-play button', 'Set out with the Company');
+
+    // The player picks a role; the Loremaster sees who covers it.
+    await until(pl.page, () => !!document.querySelector('#panel-play .tbl-role'));
+    await pl.page.evaluate(() => [...document.querySelectorAll('#panel-play .tbl-role')].filter(b => /Guide|Look-out/.test(b.textContent)).forEach(b => b.click()));
+    const rolesSeen = await until(gm.page, () => { const r = document.querySelector('#tbl-jlive .tbl-roles'); return r && /Guide\s*Geira/.test(r.textContent) && /Look-out\s*Geira/.test(r.textContent); });
+    checks.push({ ok: rolesSeen, msg: "journey roles picked on a player's phone show on the Loremaster's console" });
+
+    // Marching Test: a call to the Guide; the answer moves the Company along.
+    const answer = async (rnd) => {
+      await until(pl.page, () => !!document.querySelector('#panel-play .tbl-call-btn'));
+      await pl.page.evaluate(x => { const R = Math.random; Math.random = () => x; try { const b = document.querySelector('#panel-play .tbl-call-btn'); if (b) b.click(); } finally { Math.random = R; } }, rnd);
+    };
+    await gmClick('#panel-play button', 'Marching Test');
+    const marchCall = await until(pl.page, () => [...document.querySelectorAll('#panel-play .tbl-call-btn')].some(b => /Roll Travel/.test(b.textContent)));
+    await answer(0.99);   // a Gandalf rune: an automatic success
+    const marched = await until(gm.page, () => _tj().currentHex === 3 && !_tj().pending);
+    const due = await until(gm.page, () => [...document.querySelectorAll('#tbl-jlive button')].some(b => /Something happens/.test(b.textContent)));
+    checks.push({ ok: marchCall && marched && due, msg: `the Marching Test is called to the Guide and its answer moves the Company (${marchCall}/${marched}/${due})` });
+
+    // A journey event: the Eye on the event die is Terrible Misfortune; the player's failed roll wounds them.
+    await gm.page.evaluate(() => { const D = _doInlineRoll; _doInlineRoll = (a, b, c) => Object.assign(D(a, b, c), { featSpecial: 'eye', featValue: 11 }); window._restoreDIR = () => { _doInlineRoll = D; }; });
+    await gmClick('#panel-play button', 'Something happens');
+    await gm.page.evaluate(() => window._restoreDIR());
+    const evCall = await until(pl.page, () => [...document.querySelectorAll('#panel-play .tbl-call')].some(c => /Terrible Misfortune/.test(c.textContent)));
+    await answer(0.01);   // the lowest dice: a failure
+    const wounded = await until(pl.page, () => !!char.wounded);
+    const tf = await gm.page.evaluate(() => _tj().travelFatigue);
+    checks.push({ ok: evCall && wounded && tf >= 3, msg: `a journey event calls the role's roll, and its failure lands on that hero (wounded ${wounded}, Travel Fatigue ${tf})` });
+
+    // Arrival: every hero rolls Travel; what the road cost lingers on their own Fatigue.
+    await gm.page.evaluate(() => document.querySelectorAll('.menu-overlay.show').forEach(o => o.classList.remove('show')));
+    await pl.page.evaluate(() => document.querySelectorAll('.menu-overlay.show').forEach(o => o.classList.remove('show')));
+    const fat0 = await pl.page.evaluate(() => parseInt(char.fatigue) || 0);
+    await until(gm.page, () => [...document.querySelectorAll('#tbl-jlive button')].some(b => /We have arrived/.test(b.textContent)));
+    await gmClick('#panel-play button', 'We have arrived');
+    await answer(0.01);
+    const lingered = await until(pl.page, ([f0, t]) => (parseInt(char.fatigue) || 0) === f0 + t, [fat0, tf]);
+    checks.push({ ok: lingered, msg: `on arrival each hero's Travel roll decides how much of the road's ${tf} Fatigue stays (${fat0} → ${await pl.page.evaluate(() => char.fatigue)})` });
+    await gmClick('#tbl-phases button', 'Story');
+
     // Out of a campaign, ▶ Play is the solo story exactly as before.
     const solo = await device(browser, baseUrl, null, 'solo', errors);
     await solo.page.evaluate(() => loadPregen(0)); await closeModals(solo.page); await openPlay(solo.page);

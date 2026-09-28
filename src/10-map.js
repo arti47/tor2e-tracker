@@ -379,6 +379,7 @@ function useMapRoute() {
   if (typeof jSyncGuided === 'function') jSyncGuided();
   closeMapPicker();
   renderMapRouteNote();
+  if (typeof tableJourneyFromMap === 'function') tableJourneyFromMap();   // the table journey's form, when the Loremaster picked
   if (R.destPeril) { const d = document.querySelector('#journey-setup-card .j-more'); if (d) d.open = true; }
 }
 /** A route is only kept while the setup still describes it — change the hexes and it is dropped. */
