@@ -17,9 +17,12 @@ async function device(browser, baseUrl, db, uid, errors) {
 }
 const closeModals = page => page.evaluate(() => document.querySelectorAll('.menu-overlay.show').forEach(o => o.classList.remove('show')));
 // Press a dialog button by its visible words (GOTCHA 17).
+// Returns false (rather than throwing) when no such button appears, so a check can name the failure.
 async function press(page, text) {
-  await page.waitForFunction(t => [...document.querySelectorAll('#styled-modal-buttons button')].some(b => b.textContent.includes(t)), text, { timeout: 3000 });
+  try { await page.waitForFunction(t => [...document.querySelectorAll('#styled-modal-buttons button')].some(b => b.textContent.includes(t)), text, { timeout: 3000 }); }
+  catch (e) { return false; }
   await page.evaluate(t => [...document.querySelectorAll('#styled-modal-buttons button')].find(b => b.textContent.includes(t)).click(), text);
+  return true;
 }
 const openPlay = page => page.evaluate(() => { openNavGroup('play'); });
 
@@ -59,7 +62,8 @@ module.exports = {
 
     const rolled = await pl.page.evaluate(() => {
       const before = history.length;
-      [...document.querySelectorAll('#panel-play .tbl-roll')].find(b => b.textContent.startsWith('Stealth')).click();
+      const b = [...document.querySelectorAll('#panel-play .tbl-roll')].find(x => x.textContent.startsWith('Stealth'));
+      if (b) b.click();
       return { grew: history.length === before + 1, label: history[0] && history[0].label };
     });
     checks.push({ ok: rolled.grew && /Stealth/.test(rolled.label || ''), msg: `tapping a roll button on the table sheet rolls that skill (${rolled.label})` });
@@ -103,10 +107,10 @@ module.exports = {
     await pl2.page.evaluate(() => setStriderMode(true));
     await pl2.page.evaluate(c => { openCampaign(); document.getElementById('camp-code').value = c; document.getElementById('camp-role').value = 'player'; campaignJoin(); }, code);
     await press(pl2.page, 'Got it');
-    await press(pl2.page, 'Use table rules');
+    const offered = await press(pl2.page, 'Use table rules');
     await pl2.page.waitForTimeout(200);
     const joined = await pl2.page.evaluate(() => ({ strider: !!char.striderMode, feat: String(char.features || '') }));
-    checks.push({ ok: !joined.strider && !/Strider —/.test(joined.feat), msg: 'joining a table with a solo hero offers table rules, and accepting switches cleanly' });
+    checks.push({ ok: offered && !joined.strider && !/Strider —/.test(joined.feat), msg: 'joining a table with a solo hero offers table rules, and accepting switches cleanly' });
 
     checks.push({ ok: errors.length === 0, msg: `no page errors across the table devices (${errors.slice(0, 3).join(' | ')})` });
     for (const d of [gm, pl, pl2, solo]) await d.context.close();
