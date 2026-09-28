@@ -1227,6 +1227,7 @@ function encLogRoll(plain) {
   saveHistory(); renderHistory();
   _encEnsureGroup();  // open/refresh the group BEFORE logging so the block carries its combatId
   if (typeof journalAuto === 'function') journalAuto('dice', 'roll', clean);
+  if (typeof tablePostLine === 'function') tablePostLine(clean);   // group play: the fight shows in the table feed
 }
 /** Per-foe Pierce offer from the last attack: { feat, icons, bonus, prof, weaponIdx }. */
 let _encPierceState = {};

@@ -1166,6 +1166,7 @@ function rollDice(skillLabel) {
   saveHistory();
   renderHistory();
   if (typeof journalAuto === 'function') journalAuto('dice', 'roll', `${label} — ${isAutoSuccess ? '★' : (isAutoFail ? '✗' : total)} vs ${tn} → ${outcome}${icons ? ' (' + icons + '✦)' : ''}`);
+  if (typeof tablePostRoll === 'function') tablePostRoll({ label, skill: skillLabel, total: isAutoSuccess ? '★' : (isAutoFail ? '✗' : total), tn, outcome, icons });   // the table feed (group play)
 
   // Mirror an attack roll into the active Chronicle Combat Log: auto-append an editable round
   // built from the roll, and apply the equipped weapon's Damage to the foe's Endurance on a hit.

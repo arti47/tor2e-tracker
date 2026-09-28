@@ -1836,3 +1836,14 @@ body.theme-sepia .card { background-image: linear-gradient(180deg, rgba(255,245,
 .tbl-prow span { font-size: var(--fs-xs); color: var(--text-muted); }
 .tbl-prow.off { opacity: .6; }
 @media (max-width: 380px) { .tbl-vitals { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.tbl-phases { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: var(--sp-2); margin: var(--sp-2) 0; }
+.tbl-phases .btn.on { background: var(--red); color: #fff; border-color: transparent; }
+.tbl-call { border: 2px solid var(--gold); }
+.tbl-call-btn { min-height: 56px; font-size: var(--fs-md); animation: tbl-pulse 1.6s ease-in-out infinite; }
+@keyframes tbl-pulse { 50% { box-shadow: 0 0 0 6px rgba(166, 122, 34, .25); } }
+@media (prefers-reduced-motion: reduce) { .tbl-call-btn { animation: none; } }
+.tbl-callrow { padding: var(--sp-2) 0; border-top: 1px solid var(--border); font-size: var(--fs-sm); }
+.tbl-ans { font-size: var(--fs-xs); padding-left: var(--sp-2); }
+.tbl-ans.ok { color: var(--success-text); } .tbl-ans.no { color: var(--error-text); }
+.tbl-frow { font-size: var(--fs-xs); padding: 3px 0; border-bottom: 1px dotted var(--border); }
+.tbl-frow.me strong { color: var(--red); }

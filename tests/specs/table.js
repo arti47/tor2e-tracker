@@ -70,8 +70,57 @@ module.exports = {
 
     // The Loremaster's Play tab is the table console, listing the player's hero live.
     await openPlay(gm.page); await gm.page.waitForTimeout(1800);
-    const con = await gm.page.evaluate(() => { renderPlay(); const c = document.querySelector('#panel-play .tbl-console'); return { has: !!c, text: c ? c.textContent : '', rolls: document.querySelectorAll('#panel-play .tbl-roll').length }; });
+    const con = await gm.page.evaluate(() => { renderPlay(); const c = document.getElementById('tbl-party'); return { has: !!c, text: c ? c.textContent : '', rolls: document.querySelectorAll('#panel-play .tbl-roll').length }; });
     checks.push({ ok: con.has && /Geira/.test(con.text) && con.rolls === 0, msg: `the Loremaster's Play tab is the table console and lists the players (${con.text.slice(0, 80)})` });
+
+    // ---- Stage 2: the Loremaster sets the phase, calls rolls and hands things out. ----
+    const gmClick = (sel, text) => gm.page.evaluate(([q, t]) => { const b = [...document.querySelectorAll(q)].find(x => x.textContent.trim().startsWith(t)); if (b) b.click(); return !!b; }, [sel, text]);
+    const until = (page, fn, arg) => page.waitForFunction(fn, arg, { timeout: 4000 }).then(() => true, () => false);
+    await gmClick('#tbl-phases button', 'Combat');
+    await gm.page.evaluate(() => { document.getElementById('tbl-note').value = 'Orcs at the ford'; });
+    await gmClick('#panel-play button', 'Show it on every phone');
+    const phaseSeen = await until(pl.page, () => { const c = document.querySelector('#panel-play .tbl-phase'); return c && /Combat/.test(c.textContent) && /Orcs at the ford/.test(c.textContent); });
+    checks.push({ ok: phaseSeen, msg: "the Loremaster's phase and note appear on the player's phone" });
+
+    // A roll call for everyone pops a big button; pressing it answers the call in the shared feed.
+    await gm.page.evaluate(() => { document.getElementById('tbl-call-skill').value = 'Awareness'; document.getElementById('tbl-call-who').value = 'all'; document.getElementById('tbl-call-note').value = 'Something moves in the reeds'; });
+    await gmClick('#panel-play button', 'Ask for the roll');
+    const popped = await until(pl.page, () => [...document.querySelectorAll('#panel-play .tbl-call-btn')].some(b => /Roll Awareness/.test(b.textContent)));
+    await pl.page.evaluate(() => { const b = [...document.querySelectorAll('#panel-play .tbl-call-btn')].find(x => /Awareness/.test(x.textContent)); if (b) b.click(); });
+    const answered = await until(gm.page, () => { const c = document.getElementById('tbl-calls'); return c && /Geira/.test(c.textContent) && /vs/.test(c.textContent); });
+    const cleared = await until(pl.page, () => !document.querySelector('#panel-play .tbl-call-btn'));
+    checks.push({ ok: popped && answered && cleared, msg: `a roll call pops on the player's phone, and the answer reaches the Loremaster (${popped}/${answered}/${cleared})` });
+
+    // Rolling the same skill from the sheet also answers an open call for it.
+    await gm.page.evaluate(() => { document.getElementById('tbl-call-skill').value = 'Athletics'; document.getElementById('tbl-call-who').value = Object.keys(Table.party).find(u => Table.party[u].role === 'player'); });
+    await gmClick('#panel-play button', 'Ask for the roll');
+    await until(pl.page, () => !!document.querySelector('#panel-play .tbl-call-btn'));
+    await pl.page.evaluate(() => { const b = [...document.querySelectorAll('#panel-play .tbl-roll')].find(x => x.textContent.startsWith('Athletics')); if (b) b.click(); });
+    const viaSheet = await until(gm.page, () => { const call = Object.keys(Table.calls).find(id => Table.calls[id].skill === 'Athletics'); return call && Table.feed.some(f => f.callId === call); });
+    checks.push({ ok: viaSheet, msg: 'rolling the called skill from the sheet answers the call too' });
+
+    // Hand-outs land on the hero's own phone through the normal rules, exactly once.
+    const end0 = await pl.page.evaluate(() => parseInt(char.endCur));
+    await gm.page.evaluate(() => { const u = Object.keys(Table.party).find(k => Table.party[k].role === 'player'); document.getElementById('tbl-ho-who').value = u; document.getElementById('tbl-ho-kind').value = 'damage'; document.getElementById('tbl-ho-amt').value = '3'; });
+    await gmClick('#panel-play button', 'Hand it out');
+    const hit = await until(pl.page, e => parseInt(char.endCur) === e - 3, end0);
+    const pluid = await pl.page.evaluate(() => Sync.uid);
+    await pl.page.waitForTimeout(300);
+    const gone = !db.get('campaigns/' + (await gm.page.evaluate(() => Sync.currentCampaign())) + '/handouts/' + pluid);
+    // The same hand-out delivered again (a remove that failed) must not apply twice.
+    const cid = await gm.page.evaluate(() => Sync.currentCampaign());
+    const doneId = await pl.page.evaluate(() => (JSON.parse(localStorage.getItem('tor2e-handouts-done')) || []).slice(-1)[0]);
+    await db.set(`campaigns/${cid}/handouts/${pluid}/${doneId}`, { kind: 'damage', amount: 3, ts: 1, from: 'x' });
+    await pl.page.waitForTimeout(500);
+    const endAfter = await pl.page.evaluate(() => parseInt(char.endCur));
+    checks.push({ ok: hit && gone && endAfter === end0 - 3, msg: `a hand-out applies itself once on the hero's phone and is removed (${end0}→${endAfter}, removed ${gone})` });
+
+    // Shadow goes through adj(): its cap (Shadow + Scars ≤ Max Hope) still holds.
+    await gm.page.evaluate(() => { document.getElementById('tbl-ho-kind').value = 'shadow'; document.getElementById('tbl-ho-amt').value = '30'; });
+    await gmClick('#panel-play button', 'Hand it out');
+    const capped = await until(pl.page, () => (parseInt(char.shadow) || 0) > 0);
+    const shadow = await pl.page.evaluate(() => ({ s: (parseInt(char.shadow) || 0) + (parseInt(char.scars) || 0), max: parseInt(char.hopeMax) }));
+    checks.push({ ok: capped && shadow.s <= shadow.max && shadow.s > 0, msg: `a Shadow hand-out keeps the rules' cap (${shadow.s} ≤ ${shadow.max})` });
 
     // Out of a campaign, ▶ Play is the solo story exactly as before.
     const solo = await device(browser, baseUrl, null, 'solo', errors);
