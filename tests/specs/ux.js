@@ -99,7 +99,7 @@ module.exports = {
     const tm = await page.evaluate(() => {
       openTableMode();
       const shown = document.getElementById('table-mode-overlay').classList.contains('show');
-      const heroCards = document.querySelectorAll('#table-mode-body div[style*="border:3px solid #d4a635"]').length;
+      const heroCards = document.querySelectorAll('#table-mode-body .tv-hero:not(.foe)').length;
       ensureEncounterActive();
       enc().foes.push({ id: 'tmf', name: 'TM Foe', source: 'T', endMax: 10, endCur: 7, might: 1, hateMax: 2, hateCur: 2, parry: 1, armour: 0, atkTN: 14, attacks: [{ name: 'a', dice: 2, dmg: 3, inj: 0, special: '' }], engaged: true, wounded: false, slain: false });
       renderTableMode();
@@ -877,7 +877,7 @@ module.exports = {
       window.alertStyled = async (m, t) => { said = String(t || m); };
       openCampaign();
       const ov = document.getElementById('campaign-overlay');
-      out.campaignExplains = ov.classList.contains('show') && /Cloud sync is not active/i.test(ov.innerText);
+      out.campaignExplains = ov.classList.contains('show') && /not connected/i.test(ov.innerText) && /online/i.test(ov.innerText);
       ov.classList.remove('show');
       said = ''; await Sync.linkGoogle();
       out.linkExplains = /Cloud sync is not active/i.test(said);

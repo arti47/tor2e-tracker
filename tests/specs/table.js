@@ -226,7 +226,8 @@ module.exports = {
     const ordered = await until(gm.page, n => { const li = [...document.querySelectorAll('#tbl-flive .tbl-order li')].map(x => x.textContent); return li.length === 2 && /Geira/.test(li[0]) && /Forward/.test(li[0]) && li[1].includes(n) && /Rearward/.test(li[1]); }, n2);
     const plTurn = await until(pl.page, () => /Your turn/.test((document.querySelector('#panel-play .tbl-turn') || {}).textContent || ''));
     const pl2Waits = await until(pl2.page, () => /Waiting for\s*Geira/.test((document.querySelector('#panel-play .tbl-turn') || {}).textContent || ''));
-    checks.push({ ok: alphaFirst && fightOn && ordered && plTurn && pl2Waits, msg: `heroes act in stance order, Forward before Rearward, and the phone says whose turn it is (${alphaFirst}/${fightOn}/${ordered}/${plTurn}/${pl2Waits})` });
+    const dbg = (alphaFirst && fightOn && ordered && plTurn && pl2Waits) ? '' : await gm.page.evaluate(() => JSON.stringify({ li: [...document.querySelectorAll('#tbl-flive .tbl-order li')].map(x => x.textContent.replace(/\s+/g, ' ').trim()), party: Object.values(Table.party).map(m => [m.role, (m.vitals || {}).name, (m.vitals || {}).stance, m.turnDone]), round: enc().round }));
+    checks.push({ ok: alphaFirst && fightOn && ordered && plTurn && pl2Waits, msg: `heroes act in stance order, Forward before Rearward, and the phone says whose turn it is (${alphaFirst}/${fightOn}/${ordered}/${plTurn}/${pl2Waits}) ${dbg}` });
 
     // An attack is the hero's one action: it ends their turn and the next hero's phone lights up.
     await pl.page.evaluate(() => { const b = [...document.querySelectorAll('#panel-play .tbl-turn button')].find(x => /Attack New foe/.test(x.textContent)); if (b) b.click(); });
