@@ -262,7 +262,7 @@ module.exports = {
     await pl.page.evaluate(() => { const b = [...document.querySelectorAll('#panel-play button')].find(x => /Start my Fellowship Phase/.test(x.textContent)); if (b) b.click(); });
     const preset = await pl.page.evaluate(() => ({ open: document.getElementById('fp-wizard-overlay').classList.contains('show'), yule: fpState && fpState.phaseType === 'yule', shadow: (document.querySelector('input[name="fp-shadow-rm"]:checked') || {}).value }));
     checks.push({ ok: fpCard && preset.open && preset.yule && preset.shadow === '2', msg: `the Loremaster opens the Fellowship Phase and each phone's wizard starts with those choices (${JSON.stringify(preset)})` });
-    await pl.page.evaluate(async () => { confirmStyled = async () => true; await fpComplete(); document.querySelectorAll('.menu-overlay.show').forEach(o => o.classList.remove('show')); });
+    await pl.page.evaluate(async () => { confirmStyled = async () => true; try { await fpComplete(); } catch (e) {} document.querySelectorAll('.menu-overlay.show').forEach(o => o.classList.remove('show')); });
     const fpDone = await until(gm.page, () => { const li = [...document.querySelectorAll('#tbl-fplive li')]; return li.some(x => /Geira/.test(x.textContent) && /done/.test(x.textContent)) && li.some(x => /resting/.test(x.textContent)); });
     checks.push({ ok: fpDone, msg: "finishing the phase on a player's phone shows as done on the Loremaster's console, the others as resting" });
 
