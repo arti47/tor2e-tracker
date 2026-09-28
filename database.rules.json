@@ -98,6 +98,12 @@
               ".validate": "!newData.exists() || newData.hasChildren(['kind','ts'])"
             }
           }
+        },
+        "pool": {
+          "fellowship": {
+            ".write": "auth != null && root.child('campaigns').child($cid).child('members').child(auth.uid).exists()",
+            ".validate": "newData.isNumber() && newData.val() >= 0"
+          }
         }
       }
     }

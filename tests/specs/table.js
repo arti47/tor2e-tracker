@@ -254,6 +254,43 @@ module.exports = {
     const round2 = await until(pl.page, () => /round 2/.test((document.querySelector('#panel-play .tbl-fight .card-title') || {}).textContent || '') && /Your turn/.test((document.querySelector('#panel-play .tbl-turn') || {}).textContent || ''));
     checks.push({ ok: round2, msg: 'the next round starts the turn order again' });
 
+    // ---- Stage 5: the Fellowship Phase, the Company's pool, and first-time explanations. ----
+    await closeModals(pl.page); await closeModals(gm.page);
+    await gm.page.evaluate(() => { document.getElementById('tfp-kind').value = 'yule'; document.getElementById('tfp-shadow').value = '2'; });
+    await gmClick('#panel-play button', 'Begin the Fellowship Phase');
+    const fpCard = await until(pl.page, () => [...document.querySelectorAll('#panel-play button')].some(b => /Start my Fellowship Phase/.test(b.textContent)));
+    await pl.page.evaluate(() => { const b = [...document.querySelectorAll('#panel-play button')].find(x => /Start my Fellowship Phase/.test(x.textContent)); if (b) b.click(); });
+    const preset = await pl.page.evaluate(() => ({ open: document.getElementById('fp-wizard-overlay').classList.contains('show'), yule: fpState && fpState.phaseType === 'yule', shadow: (document.querySelector('input[name="fp-shadow-rm"]:checked') || {}).value }));
+    checks.push({ ok: fpCard && preset.open && preset.yule && preset.shadow === '2', msg: `the Loremaster opens the Fellowship Phase and each phone's wizard starts with those choices (${JSON.stringify(preset)})` });
+    await pl.page.evaluate(async () => { confirmStyled = async () => true; await fpComplete(); document.querySelectorAll('.menu-overlay.show').forEach(o => o.classList.remove('show')); });
+    const fpDone = await until(gm.page, () => { const li = [...document.querySelectorAll('#tbl-fplive li')]; return li.some(x => /Geira/.test(x.textContent) && /done/.test(x.textContent)) && li.some(x => /resting/.test(x.textContent)); });
+    checks.push({ ok: fpDone, msg: "finishing the phase on a player's phone shows as done on the Loremaster's console, the others as resting" });
+
+    // The Company's Fellowship pool: one shared number, spent for Hope.
+    await gm.page.evaluate(() => { const b = [...document.querySelectorAll('#tbl-pool button')].find(x => /Refill/.test(x.textContent)); if (b) b.click(); });
+    const refilled = await until(pl.page, () => Table.pool === 2);
+    const h0 = await pl.page.evaluate(() => { char.hopeCur = Math.max(0, parseInt(char.hopeMax) - 3); saveCharacter(); render(); return parseInt(char.hopeCur); });
+    await pl.page.evaluate(() => { const b = [...document.querySelectorAll('#panel-play .tbl-pool-card button')].find(x => /Spend 1/.test(x.textContent)); if (b) b.click(); });
+    const spent = await until(pl2.page, () => Table.pool === 1);
+    const h1 = await pl.page.evaluate(() => parseInt(char.hopeCur));
+    await gm.page.evaluate(() => tableAdjPool(-1));
+    await until(pl.page, () => Table.pool === 0);
+    await pl.page.evaluate(() => { spendFPforHope(); });   // it answers with a dialog; do not wait on it
+    await pl.page.waitForTimeout(300);
+    const h2 = await pl.page.evaluate(() => parseInt(char.hopeCur));
+    await closeModals(pl.page);
+    checks.push({ ok: refilled && spent && h1 === h0 + 1 && h2 === h1, msg: `the Company's Fellowship pool is shared: a spend lowers it on every phone and gives +1 Hope, and an empty pool gives nothing (${h0}→${h1}→${h2})` });
+
+    // First-time explanations: shown once per hero, then never again for the same thing.
+    const lessonCount = await pl.page.evaluate(async () => { let n = 0; for (let i = 0; i < 20; i++) { const b = document.querySelector('#panel-play .tbl-learn button'); if (!b) break; b.click(); n++; await new Promise(r => setTimeout(r, 30)); } return n; });
+    await gmClick('#tbl-phases button', 'Story'); await pl.page.waitForTimeout(400);
+    await gmClick('#tbl-phases button', 'Fellowship Phase');
+    await until(pl.page, () => /Fellowship Phase/.test((document.querySelector('#panel-play .tbl-phase .card-title') || {}).textContent || ''));
+    const again = await pl.page.evaluate(() => !!document.querySelector('#panel-play .tbl-learn'));
+    await gmClick('#tbl-phases button', 'A council');
+    const fresh = await until(pl.page, () => /A council/.test((document.querySelector('#panel-play .tbl-learn') || {}).textContent || ''));
+    checks.push({ ok: lessonCount >= 3 && !again && fresh, msg: `first-time explanations appear once per hero and not again (${lessonCount} seen, repeat ${again}, new one ${fresh})` });
+
     checks.push({ ok: errors.length === 0, msg: `no page errors across the table devices (${errors.slice(0, 3).join(' | ')})` });
     for (const d of [gm, pl, pl2, solo]) await d.context.close();
     return { checks };

@@ -1877,3 +1877,9 @@ body.theme-sepia .card { background-image: linear-gradient(180deg, rgba(255,245,
 .tbl-foerow { display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: center; padding: var(--sp-2) 0; border-top: 1px solid var(--border); font-size: var(--fs-sm); }
 .tbl-foerow span { color: var(--text-muted); font-size: var(--fs-xs); flex: 1; }
 .tbl-foerow select { max-width: 45%; }
+.tbl-pool { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; margin-top: var(--sp-2); }
+.tbl-pool span { font-size: var(--fs-sm); color: var(--text-muted); }
+.tbl-pool strong { font-family: var(--font-display, serif); font-size: var(--fs-lg); margin-right: auto; }
+.tbl-pool .btn-quiet { min-width: 40px; }
+.tbl-learn { border-left: 4px solid var(--gold); }
+.tbl-learn p { margin: var(--sp-1) 0 var(--sp-2); }

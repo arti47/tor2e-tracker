@@ -871,6 +871,7 @@ async function fpComplete() {
   char.fpWizardState = null;
   saveCharacter();
   fpClose();
+  if (typeof tableFpDone === 'function') tableFpDone();   // table play: tell the Loremaster this hero is done
   if (log.length > 0) alert('Fellowship Phase complete!\n\n' + log.map(l => l.replace(/✅|⚠️|📝/g, '')).join('\n'));
 }
 
@@ -3762,6 +3763,8 @@ async function spendHopeToSupport() {
 }
 
 async function spendFPforHope() {
+  // At a table the Company's Fellowship points are one shared pool (src/11-table.js).
+  if (typeof tableActive === 'function' && tableActive() && !Sync.isLoremaster()) return tableSpendPool();
   const fp = parseInt(char.fellowship) || 0;
   if (fp <= 0) {
     alert('No Fellowship points to spend.\n\nEarned by rest scenes, certain virtues, or Strengthen Fellowship undertaking.');

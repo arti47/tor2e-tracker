@@ -25,6 +25,8 @@ const Table = {
   party: {},
   calls: {},
   feed: [],
+  pool: 0,
+  lessons: [],
   _refs: [],
   _partyCb: null,
   _callsPrimed: false,
@@ -35,7 +37,7 @@ const Table = {
   start() {
     if (!tableActive()) return;
     this.stop();
-    this._on(this._ref('table'), snap => { const was = this.state.phase; this.state = Object.assign({ phase: 'story' }, snap.val() || {}); if (was !== this.state.phase) tablePhaseChanged(was); tableRefresh(); });
+    this._on(this._ref('table'), snap => { const was = this.state.phase; this.state = Object.assign({ phase: 'story' }, snap.val() || {}); if (was !== this.state.phase) tablePhaseChanged(was); if (!tableIsGm() && this.state.phase !== 'story') tableLearn('phase_' + this.state.phase); tableRefresh(); });
     this._on(this._ref('calls').limitToLast(20), snap => {
       const prev = this.calls; this.calls = snap.val() || {};
       if (this._callsPrimed && !tableIsGm()) Object.keys(this.calls).forEach(id => { const c = this.calls[id]; if (!prev[id] && _tblCallForMe(c) && c.kind !== 'foe-attack') _tblAnnounceCall(c); });
@@ -43,6 +45,7 @@ const Table = {
       this._callsPrimed = true; tableRefresh();
     });
     this._on(this._ref('feed').limitToLast(30), snap => { const v = snap.val() || {}; this.feed = Object.keys(v).map(k => Object.assign({ id: k }, v[k])).sort((a, b) => (a.ts || 0) - (b.ts || 0)); if (tableIsGm()) tableGmProcess(); tableRefresh(); });
+    this._on(this._ref('pool/fellowship'), snap => { this.pool = parseInt(snap.val()) || 0; tableRefresh(); });
     if (!Sync.isLoremaster()) this._on(this._ref('handouts/' + Sync.uid), snap => { const v = snap.val() || {}; Object.keys(v).forEach(id => tableApplyHandout(id, v[id])); });
     this._partyCb = m => { this.party = m || {}; tableRefresh(); };
     Sync.subscribeParty(this._partyCb);
@@ -53,7 +56,7 @@ const Table = {
     this._refs = [];
     if (this._partyCb && typeof Sync !== 'undefined') Sync.unsubscribeParty(this._partyCb);
     this._partyCb = null;
-    this.state = { phase: 'story' }; this.party = {}; this.calls = {}; this.feed = []; this._callsPrimed = false; this._answering = null; this._done = {};
+    this.state = { phase: 'story' }; this.party = {}; this.calls = {}; this.feed = []; this.pool = 0; this.lessons = []; this._callsPrimed = false; this._answering = null; this._done = {};
   }
 };
 const _TS = () => (typeof firebase !== 'undefined' && firebase.database && firebase.database.ServerValue) ? firebase.database.ServerValue.TIMESTAMP : Date.now();
@@ -103,7 +106,7 @@ function _tblSheetHtml() {
     `<li><strong>${escapeHtml(w.name)}</strong> <small>Damage ${n(w.dmg)} · Injury ${escapeHtml(String(w.inj || '—'))}</small></li>`).join('');
   const solo = isSolo() ? `<div class="card callout info"><strong>This hero is set up for solo play.</strong> At a table the Target Numbers are 20 − Rating, not 18 − Rating.
     <button class="btn btn-block" onclick="openWhereAmI()">Switch to table rules</button></div>` : '';
-  return solo + _tblCallsForMeHtml() + _tblPhaseCard() + _tblCombatPlayerHtml() + _tblJourneyPlayerHtml() +
+  return solo + _tblLessonHtml() + _tblCallsForMeHtml() + _tblPhaseCard() + _tblFpPlayerHtml() + _tblCombatPlayerHtml() + _tblJourneyPlayerHtml() +
     `<div class="card tbl-hero">
        <div class="tbl-hero-head">${typeof cultureCrest === 'function' ? cultureCrest(char.culture, 40, char.name) : ''}
          <div><h3 class="card-title">${escapeHtml(heroLabel(char))}</h3><small>${escapeHtml([char.culture, char.calling].filter(Boolean).join(' · '))}</small></div></div>
@@ -117,7 +120,7 @@ function _tblSheetHtml() {
        ${conds || dying ? `<div class="tbl-chips">${dying}${conds}</div>` : ''}
        ${weapons ? `<ul class="tbl-weapons">${weapons}</ul>` : ''}
      </div>` +
-    _tblRollsHtml() + _tblFeedHtml(6) +
+    _tblPoolPlayerHtml() + _tblRollsHtml() + _tblFeedHtml(6) +
     `<button class="btn btn-quiet btn-block" onclick="openWhereAmI()">Where am I playing? · ${isSolo() ? 'on my own' : 'at the table'}</button>`;
 }
 
@@ -167,6 +170,13 @@ function _tblConsoleShell() {
       <div class="tbl-row2"><button type="button" class="btn btn-secondary" onclick="openBestiary()">Add a foe</button><button type="button" class="btn btn-secondary" onclick="tableNextRound()">Next round</button></div>
       <div id="tbl-flive"></div>
     </div>
+    <div class="card tbl-fp" id="tbl-fp"><h3 class="card-title">The Fellowship Phase</h3>
+      <p class="hint">You set the kind of phase and how much Shadow the adventure washed away; each player then rests, recovers and spends on their own phone.</p>
+      <div class="field"><label for="tfp-kind">Kind</label><select id="tfp-kind"><option value="ordinary">An ordinary Fellowship Phase</option><option value="yule">Yule — the year turns</option></select></div>
+      <div class="field"><label for="tfp-shadow">Shadow removed</label><select id="tfp-shadow"><option value="0">None — nothing hurt the Enemy</option><option value="1" selected>−1 · they got in the Enemy's way</option><option value="2">−2 · they hindered or harmed the Enemy</option><option value="3">−3 · they drew the Dark Lord's eye</option></select></div>
+      <button type="button" class="btn btn-secondary btn-block" onclick="tableOpenFp()">Begin the Fellowship Phase for everyone</button>
+      <div id="tbl-fplive"></div>
+    </div>
     <div class="card tbl-journey" id="tbl-journey"><h3 class="card-title">The journey</h3>
       <div id="tbl-jsetup">
         <p class="hint">Pick the road on the map, or type it. Every phone shows the route; each player picks a role.</p>
@@ -194,7 +204,7 @@ function _tblConsoleShell() {
       <div class="field"><label for="tbl-ho-note">Because</label><input type="text" id="tbl-ho-note" placeholder="e.g. the orc's blade"></div>
       <button type="button" class="btn btn-secondary btn-block" onclick="tableHandout()">Hand it out</button>
     </div>
-    <div class="card tbl-console"><h3 class="card-title">Your table</h3><div id="tbl-party"></div></div>
+    <div class="card tbl-console"><h3 class="card-title">Your table</h3><div id="tbl-party"></div><div id="tbl-pool"></div></div>
     <div id="tbl-feed-slot"></div>
   </div>`;
 }
@@ -218,6 +228,9 @@ function _tblConsoleUpdate() {
       <span>End ${v.endCur ?? '?'}/${v.endMax ?? '?'} · Hope ${v.hopeCur ?? '?'}/${v.hopeMax ?? '?'} · Shadow ${v.shadow ?? 0}${v.dying ? ' · <b>Dying</b>' : ''}${cond ? ' · ' + cond : ''}</span></div>`;
   }).join('') || '<p class="hint">No players yet. Give them the join code from Menu → Fellowship campaign.</p>';
   const calls = document.getElementById('tbl-calls'); if (calls) calls.innerHTML = _tblOpenCallsGmHtml();
+  const fpc = document.getElementById('tbl-fp'); if (fpc) fpc.style.display = _tblPhase() === 'fellowship' ? '' : 'none';
+  const fpl = document.getElementById('tbl-fplive'); if (fpl) fpl.innerHTML = _tblFpGmHtml();
+  const party2 = document.getElementById('tbl-pool'); if (party2) party2.innerHTML = _tblPoolGmHtml();
   const fc = document.getElementById('tbl-fight'); if (fc) fc.style.display = (_tblPhase() === 'combat' || enc().active) ? '' : 'none';
   const fl = document.getElementById('tbl-flive'); if (fl) fl.innerHTML = _tblCombatGmHtml();
   const tj = _tj();
@@ -254,6 +267,7 @@ function _tblMyOpenCalls() {
     .filter(c => _tblCallForMe(c) && c.kind !== 'foe-attack' && !_tblAnsweredBy(c.id, Sync.uid)).sort((a, b) => (a.ts || 0) - (b.ts || 0));
 }
 function _tblAnnounceCall(c) {
+  tableLearn('call');
   showToast('The Loremaster asks you to roll ' + c.skill + (c.note ? ' — ' + c.note : ''));
   if (navigator.vibrate) try { navigator.vibrate([80, 60, 80]); } catch (e) {}
 }
@@ -372,6 +386,7 @@ async function tableApplyHandout(id, h) {
     default: msg = String(h.kind);
   }
   showToast(`${h.from || 'The Loremaster'}: ${msg}${why}`);
+  if (['shadow', 'wounded', 'fatigue', 'damage'].includes(h.kind)) tableLearn(h.kind);
   if (typeof logTimeline === 'function' && ['shadow', 'sp', 'ap', 'treasure', 'wounded'].includes(h.kind)) logTimeline('table', `From the Loremaster: ${msg}${why}`);
   ref.remove().catch(() => {});
 }
@@ -700,4 +715,106 @@ function _tblCombatPlayerHtml() {
   return `<div class="card tbl-fight"><h3 class="card-title">The fight · round ${r}</h3>
     <div class="eyebrow">Your stance</div><div class="tbl-roles-pick">${stances}</div>
     ${turn}${_tcOrderHtml(false)}${_tcFoesHtml()}</div>`;
+}
+
+/* ----- the Fellowship Phase at a table -----
+   The Loremaster opens it for everyone (table/fp: kind + the Shadow the adventure washed away);
+   each player runs the normal wizard on their own phone, preset to those choices, and the console
+   shows who has finished (members/{uid}/fpDone = the phase's id). */
+function tableOpenFp() {
+  if (!tableIsGm()) return;
+  const yule = document.getElementById('tfp-kind').value === 'yule';
+  const shadow = parseInt(document.getElementById('tfp-shadow').value) || 0;
+  const fp = { id: 'fp' + Date.now().toString(36), yule, shadow, ts: _TS() };
+  Table.state.fp = fp; Table.state.phase = 'fellowship'; tableRefresh();
+  return Table._ref('table').update({ fp, phase: 'fellowship', since: _TS() });
+}
+function _tblFpOpen() { const fp = Table.state.fp; return fp && fp.id && _tblPhase() === 'fellowship' ? fp : null; }
+function _tblFpGmHtml() {
+  const fp = _tblFpOpen(); if (!fp) return '';
+  const rows = _tblPlayers().map(m => `<li class="${m.fpDone === fp.id ? 'done' : ''}"><strong>${escapeHtml((m.vitals || {}).name || m.displayName || 'Hero')}</strong> <em>${m.fpDone === fp.id ? 'done' : 'resting…'}</em></li>`).join('');
+  return `<div class="tbl-round">${fp.yule ? 'Yule' : 'An ordinary phase'} · Shadow −${fp.shadow}</div><ol class="tbl-order">${rows}</ol>`;
+}
+function _tblFpPlayerHtml() {
+  const fp = _tblFpOpen(); if (!fp) return '';
+  const me = (Table.party || {})[Sync.uid] || {};
+  if (me.fpDone === fp.id) return `<div class="card tbl-fp"><h3 class="card-title">The Fellowship Phase</h3><p>You are done. Wait for the others, or tell the table what your hero did.</p></div>`;
+  return `<div class="card tbl-fp"><h3 class="card-title">The Fellowship Phase</h3>
+    <p>${fp.yule ? '<strong>Yule.</strong> The year turns: you grow a year older and your Hope is restored. ' : ''}The Loremaster says the adventure washed away <strong>${fp.shadow} Shadow</strong>. Rest, recover, spend your points and choose what your hero does.</p>
+    <button type="button" class="btn btn-block tbl-call-btn" onclick="tableStartMyFp()">Start my Fellowship Phase</button></div>`;
+}
+/** The normal wizard, preset to the Loremaster's choices (a phase already in progress resumes). */
+function tableStartMyFp() {
+  const fp = _tblFpOpen(); if (!fp) return;
+  const resume = char.fpWizardState && char.fpWizardState.inProgress && char.fpWizardState.tableFp === fp.id;
+  openFPWizard(!resume);
+  if (!resume) {
+    fpSetPhaseType(fp.yule ? 'yule' : 'ordinary');
+    fpState.tableFp = fp.id; fpPersist();
+  }
+  const r = document.querySelector(`input[name="fp-shadow-rm"][value="${parseInt(fp.shadow) || 0}"]`); if (r) r.checked = true;
+}
+function tableFpDone() {
+  const fp = _tblFpOpen(); if (!fp || !tableActive() || Sync.isLoremaster()) return;
+  const me = (Table.party || {})[Sync.uid]; if (me) me.fpDone = fp.id;
+  tableRefresh();
+  return Table._ref('members/' + Sync.uid + '/fpDone').set(fp.id).catch(() => {});
+}
+
+/* ----- the Company's Fellowship pool (one shared number at a table) ----- */
+function _tblPoolGmHtml() {
+  return `<div class="tbl-pool"><span>Fellowship pool</span><strong>${Table.pool}</strong>
+    <button type="button" class="btn btn-quiet" aria-label="Remove a Fellowship point" onclick="tableAdjPool(-1)">−</button>
+    <button type="button" class="btn btn-quiet" aria-label="Add a Fellowship point" onclick="tableAdjPool(1)">+</button>
+    <button type="button" class="btn btn-quiet" onclick="tableRefillPool()">Refill (${_tblPlayers().length} heroes)</button></div>`;
+}
+function _tblPoolPlayerHtml() {
+  return `<div class="card tbl-pool-card"><div class="tbl-pool"><span>Company Fellowship</span><strong>${Table.pool}</strong>
+    <button type="button" class="btn btn-secondary" onclick="spendFPforHope()">Spend 1 for +1 Hope</button></div>
+    <p class="hint">One pool for the whole Company. Spend it during a rest, when you all agree.</p></div>`;
+}
+function tableAdjPool(d) { if (tableIsGm()) return Table._ref('pool/fellowship').transaction(cur => Math.max(0, (parseInt(cur) || 0) + d)); }
+function tableRefillPool() { if (tableIsGm()) return Table._ref('pool/fellowship').set(_tblPlayers().length); }
+/** Spend one point of the Company's pool for +1 Hope. A transaction, so two players tapping at
+    once cannot both spend the last point. */
+async function tableSpendPool() {
+  const curHope = parseInt(char.hopeCur) || 0, maxHope = parseInt(char.hopeMax) || 0;
+  if (curHope >= maxHope) return alertStyled('Your Hope is already full.', 'Company Fellowship');
+  const res = await Table._ref('pool/fellowship').transaction(cur => { const n = parseInt(cur) || 0; return n > 0 ? n - 1 : undefined; });
+  if (!res || !res.committed) return alertStyled('The Company\'s Fellowship pool is empty. The Loremaster refills it.', 'Company Fellowship');
+  adj('hopeCur', 1);
+  tablePostLine(`spent a Company Fellowship point: Hope ${curHope} → ${char.hopeCur}.`);
+  showToast(`Company Fellowship spent: Hope ${curHope} → ${char.hopeCur}.`);
+}
+
+/* ----- first-time explanations: once per hero, never in the way ----- */
+const TABLE_LESSONS = {
+  phase_journey:    ['A journey', 'The Company travels hex by hex. Pick a role: the Guide rolls Travel to move everyone on; the Hunter, Look-out and Scout roll when something happens on the road. Every event costs Fatigue — when you arrive, a good Travel roll sheds some of it.'],
+  phase_combat:     ['A fight', 'Pick a stance: Forward hits harder but gets hit more, Defensive is harder to hit, Rearward is for bows. Heroes act in stance order, one action each; then every foe attacks. At 0 Endurance you are Dying.'],
+  phase_council:    ['A council', 'You are trying to win someone over. Speak as your hero; the Loremaster asks for rolls like Courtesy, Persuade or Insight. Good roleplay earns extra dice.'],
+  phase_fellowship: ['The Fellowship Phase', 'The adventure is over for now. You recover Hope, lose some Shadow, and spend the Skill and Adventure points you earned — one rank per skill each phase.'],
+  call:             ['A roll', 'Tap the button to roll: one Feat die plus a Success die for each rank of the skill. Reach the Target Number or more to succeed. A ✦ on a Success die makes it a great success.'],
+  shadow:           ['Shadow', 'Shadow is creeping despair. When your Shadow reaches your Hope you are Miserable, and worse can follow. A Fellowship Phase washes some away.'],
+  wounded:          ['Wounded', 'A Wound takes days to heal. Another Wound while Wounded, or Endurance at 0, and you are Dying. A companion can roll Healing to help.'],
+  fatigue:          ['Fatigue', 'Fatigue adds to what you carry. When your Endurance falls to your Load or lower you are Weary, and your dice count for less. A rest in a safe place clears it.'],
+  damage:           ['Endurance', 'Endurance is how much punishment you can take before you drop. A rest recovers it.']
+};
+const LESSON_KEY = 'tor2e-explained';
+function _tblSeen() { try { return JSON.parse(localStorage.getItem(LESSON_KEY)) || {}; } catch (e) { return {}; } }
+function tableLearn(key) {
+  if (!TABLE_LESSONS[key] || tableIsGm()) return;
+  const seen = _tblSeen()[activeCharId] || {};
+  if (seen[key] || Table.lessons.includes(key)) return;
+  Table.lessons.push(key); tableRefresh();
+}
+function tableLearnDone(key) {
+  const all = _tblSeen(); all[activeCharId] = Object.assign({}, all[activeCharId], { [key]: 1 });
+  try { localStorage.setItem(LESSON_KEY, JSON.stringify(all)); } catch (e) {}
+  Table.lessons = Table.lessons.filter(k => k !== key); tableRefresh();
+}
+function _tblLessonHtml() {
+  const key = Table.lessons[0]; if (!key) return '';
+  const [title, text] = TABLE_LESSONS[key];
+  return `<div class="card tbl-learn" role="note"><div class="eyebrow">New here</div><h3 class="card-title">${escapeHtml(title)}</h3><p>${escapeHtml(text)}</p>
+    <button type="button" class="btn btn-secondary" onclick="tableLearnDone('${key}')">Got it</button></div>`;
 }
