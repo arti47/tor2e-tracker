@@ -184,18 +184,19 @@ module.exports = {
     checks.push({ ok: ['Rename', 'Delete'].every(t => mg.built.includes(t)) && mg.built.includes('−1 End') && ['Play as', 'Rename', 'Delete'].every(t => mg.blank.includes(t)), msg: `every hero card on the GM tab can be renamed and deleted, and another hero played as (${JSON.stringify(mg.built)} / ${JSON.stringify(mg.blank)})` });
     checks.push({ ok: /Not built yet/.test(mg.blankNote) && !mg.blank.includes('−1 End') && mg.tidy, msg: 'an unbuilt hero is marked as such, carries no hand-outs, and the tab offers to remove empty heroes' });
     // Delete one from its card (confirmed), then clear the other (it holds a roll, so it asks first).
-    await page.evaluate(() => { document.querySelector('#gm-party-body .gm-hero[data-id="u1"] button[onclick^="gmDeleteHero"]').click(); });
+    await page.evaluate(() => { const b = document.querySelector('#gm-party-body .gm-hero[data-id="u1"] button[onclick^="gmDeleteHero"]'); if (b) b.click(); });
     await page.waitForTimeout(150); const delAsked = await press(/Delete hero/); await page.waitForTimeout(150);
     const afterDel = await page.evaluate(() => ({ ids: loadRoster().list.map(e => e.id), card: !!document.querySelector('#gm-party-body .gm-hero[data-id="u1"]') }));
-    await page.evaluate(() => { document.querySelector('#gm-party-body .gm-tidy button').click(); });
+    await page.evaluate(() => { const b = document.querySelector('#gm-party-body .gm-tidy button'); if (b) b.click(); });
     await page.waitForTimeout(150); const tidyAsked = await press(/Remove 1/); await page.waitForTimeout(150);
     const afterTidy = await page.evaluate(() => ({ ids: loadRoster().list.map(e => e.id), tidy: !!document.querySelector('#gm-party-body .gm-tidy'), rolls: localStorage.getItem('tor2e-rolls-u2') }));
     checks.push({ ok: delAsked && !afterDel.ids.includes('u1') && !afterDel.card && tidyAsked && !afterTidy.ids.includes('u2') && !afterTidy.tidy && afterTidy.rolls === null && afterTidy.ids.includes(mg.active), msg: `Delete on a GM card removes that hero after asking; "Remove empty heroes" clears an unbuilt hero even with a roll in it, after asking (${JSON.stringify({ delAsked, afterDel, tidyAsked, afterTidy })})` });
     // Play as switches the hero this device is on.
     const played = await page.evaluate(() => {
       const other = loadRoster().list.find(e => e.id !== activeCharId); if (!other) return { skipped: true };
-      document.querySelector(`#gm-party-body .gm-hero[data-id="${other.id}"] button[onclick^="gmPlayAs"]`).click();
-      return { want: other.id, now: activeCharId, star: document.querySelector(`#gm-party-body .gm-hero[data-id="${other.id}"]`).textContent.includes('Playing now') };
+      const b = document.querySelector(`#gm-party-body .gm-hero[data-id="${other.id}"] button[onclick^="gmPlayAs"]`); if (b) b.click();
+      const card = document.querySelector(`#gm-party-body .gm-hero[data-id="${other.id}"]`);
+      return { button: !!b, want: other.id, now: activeCharId, star: !!card && card.textContent.includes('Playing now') };
     });
     checks.push({ ok: played.want && played.now === played.want && played.star, msg: `"Play as" on a GM card switches to that hero (${JSON.stringify(played)})` });
 
@@ -204,7 +205,7 @@ module.exports = {
     const boutA = await page.evaluate(() => {
       const a = activeCharId; char.boutDue = false; char._boutPrompted = false; char.shadow = 0; char.scars = 0; saveCharacter();
       adj('shadow', char.hopeMax);
-      const other = loadRoster().list.find(e => e.id !== a).id; switchCharacter(other);
+      const o = loadRoster().list.find(e => e.id !== a); const other = o && o.id; if (other) switchCharacter(other);
       return { a, other };
     });
     await page.waitForTimeout(400);
