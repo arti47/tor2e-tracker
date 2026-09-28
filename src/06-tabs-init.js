@@ -272,7 +272,9 @@ function toggleMenu() {
     const el = document.getElementById('sync-status-line');
     if (el && typeof Sync !== 'undefined') {
       const on = Sync.isEnabled();
-      el.textContent = on ? 'Cloud: ' + Sync.status() : 'Saved locally on this device.';
+      const st = Sync.status();
+      el.textContent = on ? (Sync.uid ? 'Saved on this device and in the cloud.' : 'Connecting to the cloud…') : 'Saved locally on this device.';
+      el.title = st;
       el.style.color = on ? 'var(--success-text)' : 'var(--text-muted)';
     }
   }
@@ -2042,6 +2044,17 @@ function initA11y() {
       if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
       else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
     }
+  });  // Tapping the dimmed backdrop around a sheet closes it, as it does in every phone app — through
+  // the sheet's own close control, so its cleanup runs. Not for a pending question (the styled
+  // modal waits for an answer), a full-screen view, or the Fellowship Phase wizard mid-flow.
+  document.addEventListener('click', e => {
+    const ov = e.target;
+    if (!ov || !ov.classList || !ov.classList.contains('menu-overlay') || !ov.classList.contains('show')) return;
+    if (['styled-modal-overlay', 'table-mode-overlay', 'fp-wizard-overlay', 'map-overlay'].includes(ov.id)) return;
+    // Only a control that does nothing but close — never a row whose handler also closes (a hero
+    // row in Your heroes switches hero, then closes).
+    const closeBtn = ov.querySelector('button.close') || [...ov.querySelectorAll('button')].find(b => /^\s*(close\w*|toggleMenu)\(\)\s*;?\s*$/.test(b.getAttribute('onclick') || ''));
+    if (closeBtn) closeBtn.click();
   });
 }
 
@@ -2084,6 +2097,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   if (typeof snapshotHero === 'function') snapshotHero(activeCharId, 'load');   // U12: one auto-backup per load
   importFromHash();   // offer to import a character if the URL carries a shared payload
+  if (typeof joinFromHash === 'function') joinFromHash();   // a table's invite link / QR code
   _tutRecoverSandbox();   // unwind a tutorial the app was closed during (before offering a new one)
   maybeBackupNudge();       // U14: gentle export reminder (14-day threshold, 3-day throttle)
 

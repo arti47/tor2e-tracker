@@ -66,6 +66,7 @@
       <span class="hn-text" id="char-name-text">Unnamed hero</span>
       <svg class="ic hn-chev" aria-hidden="true"><use href="#i-chev"/></svg>
     </button>
+    <button type="button" class="char-name lm-title" id="lm-title" onclick="openCampaign()" aria-label="Your table — code and players" hidden><span class="lm-kicker">Loremaster</span><span class="hn-text" id="lm-title-text">Your table</span><svg class="ic hn-chev" aria-hidden="true"><use href="#i-chev"/></svg></button>
     <span id="retired-pill" style="display:none;background:var(--btn-alert-bg);color:white;padding:3px 10px;border-radius:10px;font-size:var(--fs-xs);font-weight:700;letter-spacing:1px;text-transform:uppercase" title=""></span>
     <button id="campaign-pill" onclick="openCampaign()" style="display:none;background:var(--gold-soft);color:var(--ink);border:1px solid var(--gold);padding:3px 10px;border-radius:10px;font-size:var(--fs-xs);font-weight:700" title="Fellowship campaign" aria-label="Fellowship campaign — open campaign panel"></button>
     <button class="menu-btn" id="undo-btn" onclick="undoLast()" aria-label="Undo" title="Undo last change" style="display:none"><svg class="ic"><use href="#i-undo"/></svg></button>
@@ -223,7 +224,7 @@
 <section class="panel" id="panel-gm">
   <div class="card">
     <h2>🎲 GM Screen</h2>
-    <p class="hint" style="text-align:left">Every hero on this device, with quick hand-out controls — deal or heal Endurance, toggle conditions, add a Shadow point. Writes go through each hero's normal save path (and sync to the cloud if enabled). In a campaign, the live Fellowship, sheet peek, and broadcast appear below.</p>
+    <p class="hint" style="text-align:left" id="gm-intro">Loremaster tools. At a table you run the game from ▶ Play; this tab holds the extras — reading a hero's sheet, group Shadow tests, NPCs, tactics and tables.</p>
   </div>
   <div id="gm-campaign-body"></div>
   <div id="gm-party-body"></div>
@@ -243,10 +244,10 @@
   <div class="card">
     <h3 class="card-title" data-hint="Encounter">Encounter</h3>
     <p class="hint" id="gm-enc-line" style="text-align:left">No active encounter.</p>
-    <button onclick="openBestiary()" style="width:100%">➕ Drop a foe into the Encounter</button>
-    <p class="hint" style="text-align:left;margin-top:6px">Adds to the active hero's Combat-tab encounter. A single <b>shared</b> encounter arrives with cloud campaigns.</p>
+    <button onclick="openBestiary()" class="btn btn-secondary btn-block">➕ Add a foe to the fight</button>
+    <p class="hint" style="text-align:left;margin-top:6px" id="gm-enc-note">Adds to this device's Combat-tab encounter. At a table the fight is shared with every player.</p>
   </div>
-  <div class="card">
+  <div class="card" id="gm-eye-card">
     <h3 class="card-title" data-hint="Eye of Mordor">Eye of Mordor</h3>
     <div id="gm-eye-body"></div>
     <p class="hint" style="text-align:left;margin-top:6px">Each hero's Eye Awareness vs their Hunt threshold (solo modes track this). ⚠ = a Revelation is due.</p>
@@ -2142,6 +2143,7 @@
     <div id="menu-search-results" class="menu-search-results"></div>
     <button onclick="openRoster()"><span>Your heroes</span><span class="m-state">switch · new · share</span></button>
     <button onclick="openTutorial()"><span>Learn to play (tutorial)</span></button>
+    <button onclick="openCampaign()" id="table-menu-btn"><span>Play at a table</span></button>
     <button onclick="openWhereAmI()" id="where-btn"><span>Where am I playing?</span></button>
     <button onclick="openReferenceTab()"><span>Rules reference</span></button>
 
@@ -2161,9 +2163,9 @@
 
     <details class="menu-sec">
       <summary class="menu-group">Play with others</summary>
-      <button onclick="openCampaign()">Fellowship campaign…</button>
+      <button onclick="openCampaign()">Play at a table (join or start)</button>
       <button onclick="openPartyView()">Party view</button>
-      <button onclick="openTableMode()">Table mode (big screen)</button>
+      <button onclick="openTableMode()">Show on a big screen (TV or tablet)</button>
       <button onclick="toggleGmScreen()" id="gm-mode-btn">Enable GM Screen</button>
     </details>
 
@@ -2212,7 +2214,7 @@
 <div class="menu-overlay" id="party-view-overlay">
   <div class="menu" style="max-width:640px;width:96%;max-height:90vh;overflow-y:auto">
     <h3>Party View</h3>
-    <p class="hint" style="text-align:left;margin-bottom:10px">Read-only snapshot of every hero on this device — for the table at a glance.</p>
+    <p class="hint" style="text-align:left;margin-bottom:10px">Everyone's Endurance, Hope and Shadow at a glance — your table's heroes when you are at one, otherwise the heroes on this device.</p>
     <div id="party-view-body" style="overflow-x:auto"></div>
     <button class="close" onclick="closePartyView()" style="margin-top:10px">Close</button>
   </div>
@@ -2276,7 +2278,7 @@
 
 <div class="menu-overlay" id="campaign-overlay">
   <div class="menu" style="max-width:560px;width:96%;max-height:90vh;overflow-y:auto">
-    <h3>Fellowship Campaign</h3>
+    <h3>Play at a table</h3>
     <p class="hint" id="campaign-cloud-hint" style="text-align:left;margin-bottom:10px"></p>
     <div id="campaign-body"></div>
     <button class="close" onclick="closeCampaign()" style="margin-top:10px">Close</button>
@@ -2293,13 +2295,14 @@
   </div>
 </div>
 
-<div class="menu-overlay" id="table-mode-overlay" style="background:#0d0d0d;align-items:flex-start">
-  <div style="width:100%;max-width:1100px;margin:0 auto;padding:18px;max-height:100vh;overflow-y:auto">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-      <h2 style="margin:0;color:#d4a635;font-size:1.5em">📺 Table Mode</h2>
-      <button onclick="closeTableMode()" style="font-size:1em;padding:8px 18px">✕ Close</button>
+<div class="menu-overlay bigscreen" id="table-mode-overlay" role="dialog" aria-labelledby="bs-title">
+  <div class="bs-wrap">
+    <div class="bs-top">
+      <button type="button" class="bs-back close" onclick="closeTableMode()"><svg class="ic" aria-hidden="true"><use href="#i-chev"/></svg><span>Back to the app</span></button>
+      <h2 id="bs-title">The table</h2>
     </div>
     <div id="table-mode-body"></div>
+    <button type="button" class="bs-back bs-back-bottom" onclick="closeTableMode()"><span>Back to the app</span></button>
   </div>
 </div>
 

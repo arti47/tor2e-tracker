@@ -178,7 +178,7 @@ const Sync = {
     try { const c = JSON.parse(localStorage.getItem('tor2e-campaign-v1')); if (c && c.id) { this.campaignId = c.id; return c.id; } } catch (e) {}
     return null;
   },
-  _saveCampaign(id, code, owner, role) { try { localStorage.setItem('tor2e-campaign-v1', JSON.stringify({ id, code, owner: !!owner, role: role === 'loremaster' ? 'loremaster' : 'player' })); } catch (e) {} this.campaignId = id; },
+  _saveCampaign(id, code, owner, role, name) { try { localStorage.setItem('tor2e-campaign-v1', JSON.stringify({ id, code, owner: !!owner, role: role === 'loremaster' ? 'loremaster' : 'player', name: name || '' })); } catch (e) {} this.campaignId = id; },
   isCampaignOwner() { try { return !!(JSON.parse(localStorage.getItem('tor2e-campaign-v1')) || {}).owner; } catch (e) { return false; } },
   myRole() { try { return (JSON.parse(localStorage.getItem('tor2e-campaign-v1')) || {}).role || 'player'; } catch (e) { return 'player'; } },
   isLoremaster() { return this.myRole() === 'loremaster'; },
@@ -222,7 +222,7 @@ const Sync = {
     updates['campaigns/' + cid + '/meta'] = meta;
     updates['campaigns/' + cid + '/members/' + this.uid] = member;
     updates['joinCodes/' + code] = cid;
-    return this.db.ref().update(updates).then(() => { this._saveCampaign(cid, code, true, member.role); this._setupPresence(); this.subscribeEncounter(); this.subscribeBroadcast(); this.queuePush(activeCharId); return { cid, code }; });
+    return this.db.ref().update(updates).then(() => { this._saveCampaign(cid, code, true, member.role, meta.name); this._setupPresence(); this.subscribeEncounter(); this.subscribeBroadcast(); this.queuePush(activeCharId); return { cid, code }; });
   },
 
   // Join by code: resolve joinCodes/{CODE} -> cid, then write our own membership.

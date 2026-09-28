@@ -13,11 +13,16 @@ function tableActive() { return typeof Sync !== 'undefined' && Sync.isEnabled &&
 function tableIsGm() { return tableActive() && Sync.isLoremaster(); }
 
 const TABLE_PHASES = {
-  story:      { label: 'Story',             text: 'The Loremaster is telling the story. Listen, say what your hero does, and roll when you are asked.' },
-  journey:    { label: 'On a journey',      text: 'The Company is travelling. The Loremaster runs the road; you roll for your journey role when it comes up.' },
-  combat:     { label: 'Combat',            text: 'A fight has started. Pick a stance, then act when it is your turn.' },
-  council:    { label: 'A council',         text: 'The Company is trying to persuade someone. Speak in character — the Loremaster will ask for rolls.' },
-  fellowship: { label: 'Fellowship Phase',  text: 'The adventure is over for now. Rest, recover, and spend what you have earned.' }
+  story:      { label: 'Story',             text: 'The Loremaster is telling the story. Listen, say what your hero does, and roll when you are asked.',
+                gm: 'Tell the story. When the outcome of something a hero tries is uncertain, ask for a roll.' },
+  journey:    { label: 'On a journey',      text: 'The Company is travelling. The Loremaster runs the road; you roll for your journey role when it comes up.',
+                gm: 'Plan the road below. Then run Marching Tests until something happens, and on to the end.' },
+  combat:     { label: 'Combat',            text: 'A fight has started. Pick a stance, then act when it is your turn.',
+                gm: 'Add the foes. Heroes act in stance order, one action each; then every foe attacks.' },
+  council:    { label: 'A council',         text: 'The Company is trying to persuade someone. Speak in character — the Loremaster will ask for rolls.',
+                gm: 'Say what is at stake. As they speak, ask for Courtesy, Persuade, Insight, Enhearten or Song.' },
+  fellowship: { label: 'Fellowship Phase',  text: 'The adventure is over for now. Rest, recover, and spend what you have earned.',
+                gm: 'Open the Fellowship Phase below; each player finishes it on their own phone.' }
 };
 
 const Table = {
@@ -27,6 +32,9 @@ const Table = {
   feed: [],
   pool: 0,
   lessons: [],
+  meta: {},
+  connected: true,
+  _connCb: null,
   _refs: [],
   _partyCb: null,
   _callsPrimed: false,
@@ -45,18 +53,31 @@ const Table = {
       this._callsPrimed = true; tableRefresh();
     });
     this._on(this._ref('feed').limitToLast(30), snap => { const v = snap.val() || {}; this.feed = Object.keys(v).map(k => Object.assign({ id: k }, v[k])).sort((a, b) => (a.ts || 0) - (b.ts || 0)); if (tableIsGm()) tableGmProcess(); tableRefresh(); });
+    this._on(this._ref('meta'), snap => {
+      this.meta = snap.val() || {};
+      if (this.meta.name) { try { const c = JSON.parse(localStorage.getItem('tor2e-campaign-v1')) || {}; if (c.name !== this.meta.name) { c.name = this.meta.name; localStorage.setItem('tor2e-campaign-v1', JSON.stringify(c)); } } catch (e) {} }
+      tableApplyRole(); tableRefresh();
+    });
+    // Connection: detached by its own callback, so the presence listener on the same path survives.
+    this._connRef = Sync.db.ref('.info/connected');
+    this._connCb = snap => { const was = this.connected; this.connected = snap.val() !== false; if (was !== this.connected) tableRefresh(); };
+    this._connRef.on('value', this._connCb, () => {});
     this._on(this._ref('pool/fellowship'), snap => { this.pool = parseInt(snap.val()) || 0; tableRefresh(); });
     if (!Sync.isLoremaster()) this._on(this._ref('handouts/' + Sync.uid), snap => { const v = snap.val() || {}; Object.keys(v).forEach(id => tableApplyHandout(id, v[id])); });
     this._partyCb = m => { this.party = m || {}; tableRefresh(); };
     Sync.subscribeParty(this._partyCb);
+    tableApplyRole();
     tableRefresh();
   },
   stop() {
     this._refs.forEach(r => { try { r.off(); } catch (e) {} });
     this._refs = [];
+    if (this._connRef && this._connCb) { try { this._connRef.off('value', this._connCb); } catch (e) {} }
+    this._connRef = null; this._connCb = null; this.connected = true; this.meta = {};
     if (this._partyCb && typeof Sync !== 'undefined') Sync.unsubscribeParty(this._partyCb);
     this._partyCb = null;
     this.state = { phase: 'story' }; this.party = {}; this.calls = {}; this.feed = []; this.pool = 0; this.lessons = []; this._callsPrimed = false; this._answering = null; this._done = {};
+    setTimeout(tableApplyRole, 0);   // after the campaign record is cleared
   }
 };
 const _TS = () => (typeof firebase !== 'undefined' && firebase.database && firebase.database.ServerValue) ? firebase.database.ServerValue.TIMESTAMP : Date.now();
@@ -66,6 +87,32 @@ function _tblMyName() { return heroLabel(char); }
 function tableRefresh() {
   const play = document.getElementById('panel-play');
   if (play && play.classList.contains('active') && typeof renderPlay === 'function') renderPlay();
+  const bs = document.getElementById('table-mode-overlay');
+  if (bs && bs.classList.contains('show') && typeof renderTableMode === 'function') renderTableMode();
+}
+
+/** Who this device is at the table decides the header, the tabs and the menu.
+    · Loremaster: the header names the table instead of a hero (a Loremaster plays no hero), and
+      the vitals bar goes — it would show some hero's Endurance that nobody is using.
+    · Player: the solo Journey and Council tabs go — at a table the Loremaster runs both, and a
+      player starting their own journey on their own phone would be a second, wrong journey. */
+function tableApplyRole() {
+  const at = tableActive(), lm = at && Sync.isLoremaster();
+  document.body.classList.toggle('at-table', at);
+  document.body.classList.toggle('is-lm', lm);
+  const t = document.getElementById('lm-title'); if (t) t.hidden = !lm;
+  const tt = document.getElementById('lm-title-text');
+  if (tt) tt.textContent = (Table.meta && Table.meta.name) || (typeof campaignInfo === 'function' && campaignInfo().name) || 'Your table';
+  let strandedOn = null;
+  ['journey', 'council'].forEach(id => {
+    const tab = document.querySelector(`.tab[data-tab="${id}"]`); if (!tab) return;
+    tab.style.display = (at && !lm) ? 'none' : '';
+    if (at && !lm && tab.classList.contains('active')) strandedOn = id;
+  });
+  const mb = document.getElementById('table-menu-btn');
+  if (mb && typeof setMenuLabel === 'function') setMenuLabel(mb, 'Play at a table', at ? (lm ? 'You are Loremaster' : 'Joined') : 'Join or start');
+  if (strandedOn && typeof openNavGroup === 'function') openNavGroup('play');
+  else if (typeof refreshNav === 'function') refreshNav();
 }
 
 function _tblPhase() { return TABLE_PHASES[Table.state.phase] ? Table.state.phase : 'story'; }
@@ -90,6 +137,9 @@ function renderTablePlay(host) {
   else document.getElementById('tbl-sheet').innerHTML = _tblSheetHtml();
 }
 
+function _tblConnHtml() {
+  return Table.connected ? '' : '<div class="card callout warn tbl-offline" role="status"><strong>Not connected.</strong> Your phone has lost the table. Rolls and changes are kept and reach the table when the connection is back.</div>';
+}
 function _tblPhaseCard() {
   const ph = TABLE_PHASES[_tblPhase()];
   const note = Table.state.note ? `<p class="tbl-note">“${escapeHtml(Table.state.note)}”</p>` : '';
@@ -106,7 +156,7 @@ function _tblSheetHtml() {
     `<li><strong>${escapeHtml(w.name)}</strong> <small>Damage ${n(w.dmg)} · Injury ${escapeHtml(String(w.inj || '—'))}</small></li>`).join('');
   const solo = isSolo() ? `<div class="card callout info"><strong>This hero is set up for solo play.</strong> At a table the Target Numbers are 20 − Rating, not 18 − Rating.
     <button class="btn btn-block" onclick="openWhereAmI()">Switch to table rules</button></div>` : '';
-  return solo + _tblLessonHtml() + _tblCallsForMeHtml() + _tblPhaseCard() + _tblFpPlayerHtml() + _tblCombatPlayerHtml() + _tblJourneyPlayerHtml() +
+  return _tblConnHtml() + solo + _tblLessonHtml() + _tblCallsForMeHtml() + _tblPhaseCard() + _tblFpPlayerHtml() + _tblCombatPlayerHtml() + _tblJourneyPlayerHtml() +
     `<div class="card tbl-hero">
        <div class="tbl-hero-head">${typeof cultureCrest === 'function' ? cultureCrest(char.culture, 40, char.name) : ''}
          <div><h3 class="card-title">${escapeHtml(heroLabel(char))}</h3><small>${escapeHtml([char.culture, char.calling].filter(Boolean).join(' · '))}</small></div></div>
@@ -119,9 +169,11 @@ function _tblSheetHtml() {
        </div>
        ${conds || dying ? `<div class="tbl-chips">${dying}${conds}</div>` : ''}
        ${weapons ? `<ul class="tbl-weapons">${weapons}</ul>` : ''}
+       ${_tblPoolPlayerHtml()}
      </div>` +
-    _tblPoolPlayerHtml() + _tblRollsHtml() + _tblFeedHtml(6) +
-    `<button class="btn btn-quiet btn-block" onclick="openWhereAmI()">Where am I playing? · ${isSolo() ? 'on my own' : 'at the table'}</button>`;
+    _tblRollsHtml() + _tblFeedHtml(6) +
+    `<div class="tbl-foot"><button type="button" class="btn btn-quiet" onclick="openCampaign()">Table code &amp; players</button>
+     <button type="button" class="btn btn-quiet" onclick="campaignLeave()">Leave the table</button></div>`;
 }
 
 /** Every roll a Loremaster may ask for, as big buttons grouped by attribute. A skill at 0 is
@@ -134,11 +186,17 @@ function _tblRollsHtml() {
   let h = grp('Valour & Wisdom',
     b('Valour', dice(parseInt(char.valour) || 1) + ' · TN ' + (parseInt(TN.hrt) || '—'), char.culture === 'Bardings') +
     b('Wisdom', dice(parseInt(char.wisdom) || 1) + ' · TN ' + (parseInt(TN.wit) || '—'), char.culture === 'Hobbits of the Shire'));
+  // Skills the hero has ranks in (or favours) first; the rest fold away — still one tap to open,
+  // and a roll call for one of them brings its own button anyway.
+  const zero = [];
   [['str', 'Strength'], ['hrt', 'Heart'], ['wit', 'Wits']].forEach(([a, label]) => {
-    h += grp(`${label} · TN ${parseInt(TN[a]) || '—'}`, SKILLS[a].map(s => { const v = (char.skills || {})[s] || {}; return b(s, dice(parseInt(v.rating) || 0), v.favoured); }).join(''));
+    const have = SKILLS[a].filter(s => { const v = (char.skills || {})[s] || {}; if ((parseInt(v.rating) || 0) > 0 || v.favoured) return true; zero.push([s, a]); return false; });
+    if (have.length) h += grp(`${label} · TN ${parseInt(TN[a]) || '—'}`, have.map(s => { const v = char.skills[s] || {}; return b(s, dice(parseInt(v.rating) || 0), v.favoured); }).join(''));
   });
   const profs = COMBAT_PROFS.filter(p => (parseInt((char.profs || {})[p]) || 0) > 0);
   if (profs.length) h += grp('Combat', profs.map(p => b(p, dice(parseInt(char.profs[p]) || 0), false)).join(''));
+  if (zero.length) h += `<details class="tbl-more"><summary>${zero.length} skills with no ranks <small>— the Feat die alone</small></summary><div class="tbl-rolls">${
+    zero.map(([s, a]) => b(s, 'Feat die · TN ' + (parseInt(TN[a]) || '—'), false)).join('')}</div></details>`;
   return `<div class="card tbl-rollcard"><h3 class="card-title">Roll when you are asked</h3>${h}</div>`;
 }
 
@@ -155,23 +213,24 @@ const TABLE_HANDOUTS = [
   ['shadow', 'Gain Shadow'], ['fatigue', 'Gain Fatigue'], ['sp', 'Skill points'], ['ap', 'Adventure points'],
   ['treasure', 'Treasure'], ['weary', 'Make Weary'], ['miserable', 'Make Miserable'], ['wounded', 'Wound them (rolls severity)']
 ];
+const TABLE_QUICK_ROLLS = ['Awareness', 'Insight', 'Athletics', 'Stealth', 'Travel', 'Persuade', 'Courtesy', 'Valour', 'Wisdom'];
 function _tblConsoleShell() {
   const opt = (v, l) => `<option value="${v}">${escapeHtml(l)}</option>`;
-  return `<div class="tbl-root">
-    <div id="tbl-phase-slot"></div>
-    <div class="card tbl-console"><h3 class="card-title">Set the scene</h3>
-      <p class="hint">Every phone shows what the table is doing now.</p>
-      <div class="tbl-phases" id="tbl-phases">${Object.keys(TABLE_PHASES).map(k => `<button type="button" class="btn btn-secondary" data-phase="${k}" onclick="tableSetPhase('${k}')">${escapeHtml(TABLE_PHASES[k].label)}</button>`).join('')}</div>
-      <div class="field"><label for="tbl-note">Tell the table</label><input type="text" id="tbl-note" placeholder="e.g. Night falls on the Old Forest Road"></div>
-      <button type="button" class="btn btn-secondary btn-block" onclick="tableSetNote()">Show it on every phone</button>
+  return `<div class="tbl-root tbl-gm">
+   <div class="tbl-gm-main">
+    <div id="tbl-invite"></div>
+    <div class="card tbl-scene"><h3 class="card-title">What is the table doing?</h3>
+      <div class="tbl-phases" id="tbl-phases" role="group" aria-label="Phase">${Object.keys(TABLE_PHASES).map(k => `<button type="button" class="btn btn-secondary" data-phase="${k}" onclick="tableSetPhase('${k}')">${escapeHtml(TABLE_PHASES[k].label)}</button>`).join('')}</div>
+      <p class="tbl-gm-hint" id="tbl-gm-hint"></p>
+      <div class="tbl-say"><label for="tbl-note" class="sr-only">Tell the table</label><input type="text" id="tbl-note" placeholder="Say something to every phone — e.g. Night falls on the road">
+        <button type="button" class="btn btn-secondary" onclick="tableSetNote()">Show it on every phone</button></div>
+      <p class="tbl-lastnote" id="tbl-lastnote"></p>
     </div>
     <div class="card tbl-fight" id="tbl-fight"><h3 class="card-title">The fight</h3>
-      <p class="hint">Everyone picks a stance. Heroes act from Forward to Rearward, one action each; then the foes attack.</p>
       <div class="tbl-row2"><button type="button" class="btn btn-secondary" onclick="openBestiary()">Add a foe</button><button type="button" class="btn btn-secondary" onclick="tableNextRound()">Next round</button></div>
       <div id="tbl-flive"></div>
     </div>
     <div class="card tbl-fp" id="tbl-fp"><h3 class="card-title">The Fellowship Phase</h3>
-      <p class="hint">You set the kind of phase and how much Shadow the adventure washed away; each player then rests, recovers and spends on their own phone.</p>
       <div class="field"><label for="tfp-kind">Kind</label><select id="tfp-kind"><option value="ordinary">An ordinary Fellowship Phase</option><option value="yule">Yule — the year turns</option></select></div>
       <div class="field"><label for="tfp-shadow">Shadow removed</label><select id="tfp-shadow"><option value="0">None — nothing hurt the Enemy</option><option value="1" selected>−1 · they got in the Enemy's way</option><option value="2">−2 · they hindered or harmed the Enemy</option><option value="3">−3 · they drew the Dark Lord's eye</option></select></div>
       <button type="button" class="btn btn-secondary btn-block" onclick="tableOpenFp()">Begin the Fellowship Phase for everyone</button>
@@ -179,8 +238,8 @@ function _tblConsoleShell() {
     </div>
     <div class="card tbl-journey" id="tbl-journey"><h3 class="card-title">The journey</h3>
       <div id="tbl-jsetup">
-        <p class="hint">Pick the road on the map, or type it. Every phone shows the route; each player picks a role.</p>
-        <button type="button" class="btn btn-secondary btn-block" onclick="openMapPicker()">Pick on the map</button>
+        <button type="button" class="btn btn-secondary btn-block" onclick="openMapPicker()">Pick the road on the map</button>
+        <p class="hint">…or type it:</p>
         <div class="field"><label for="tj-from">From</label><input type="text" id="tj-from" placeholder="e.g. Bree"></div>
         <div class="field"><label for="tj-to">To</label><input type="text" id="tj-to" placeholder="e.g. Rivendell"></div>
         <div class="field"><label for="tj-hexes">Hexes</label><input type="number" id="tj-hexes" value="9" min="1" max="200"></div>
@@ -189,24 +248,57 @@ function _tblConsoleShell() {
       </div>
       <div id="tbl-jlive"></div>
     </div>
-    <div class="card"><h3 class="card-title">Call for a roll</h3>
-      <div class="field"><label for="tbl-call-skill">Roll</label><select id="tbl-call-skill">${TABLE_ROLLS().map(r => opt(r, r)).join('')}</select></div>
+   </div>
+   <div class="tbl-gm-side">
+    <div class="card tbl-callcard"><h3 class="card-title">Ask for a roll</h3>
+      <div class="tbl-chips-row" id="tbl-quick" role="group" aria-label="Common rolls">${TABLE_QUICK_ROLLS.map(r => `<button type="button" class="qchip" data-skill="${r}" onclick="tablePickRoll('${r}')">${r}</button>`).join('')}</div>
+      <div class="field"><label for="tbl-call-skill">Roll</label><select id="tbl-call-skill" onchange="tablePickRoll(this.value, true)">${TABLE_ROLLS().map(r => opt(r, r)).join('')}</select></div>
       <div class="field"><label for="tbl-call-who">Who</label><select id="tbl-call-who">${opt('all', 'Everyone')}</select></div>
       <div class="field"><label for="tbl-call-note">Why</label><input type="text" id="tbl-call-note" placeholder="e.g. the guard is watching the gate"></div>
       <button type="button" class="btn btn-block" onclick="tableCallRoll()">Ask for the roll</button>
       <div id="tbl-calls"></div>
     </div>
+    <div class="card"><h3 class="card-title">Your table</h3><div id="tbl-party"></div><div id="tbl-pool"></div></div>
     <div class="card"><h3 class="card-title">Hand out</h3>
-      <p class="hint">It lands on their sheet at once, with the app's rules and limits applied.</p>
+      <p class="hint">It lands on their sheet at once, with the rules' limits applied.</p>
       <div class="field"><label for="tbl-ho-who">To</label><select id="tbl-ho-who">${opt('all', 'Everyone')}</select></div>
-      <div class="field"><label for="tbl-ho-kind">What</label><select id="tbl-ho-kind">${TABLE_HANDOUTS.map(([k, l]) => opt(k, l)).join('')}</select></div>
-      <div class="field"><label for="tbl-ho-amt">How much</label><input type="number" id="tbl-ho-amt" value="1" min="1" max="30"></div>
+      <div class="field"><label for="tbl-ho-kind">What</label><select id="tbl-ho-kind" onchange="tableHoKind()">${TABLE_HANDOUTS.map(([k, l]) => opt(k, l)).join('')}</select></div>
+      <div class="field" id="tbl-ho-amt-row"><label for="tbl-ho-amt">How much</label><input type="number" id="tbl-ho-amt" value="1" min="1" max="30"></div>
       <div class="field"><label for="tbl-ho-note">Because</label><input type="text" id="tbl-ho-note" placeholder="e.g. the orc's blade"></div>
       <button type="button" class="btn btn-secondary btn-block" onclick="tableHandout()">Hand it out</button>
     </div>
-    <div class="card tbl-console"><h3 class="card-title">Your table</h3><div id="tbl-party"></div><div id="tbl-pool"></div></div>
     <div id="tbl-feed-slot"></div>
+   </div>
   </div>`;
+}
+/** Quick chips and the full list pick the same roll; the chip that matches is lit. */
+function tablePickRoll(skill, fromSelect) {
+  const sel = document.getElementById('tbl-call-skill'); if (!sel) return;
+  if (!fromSelect) { sel.value = skill; if (typeof syncPickers === 'function') syncPickers(); }
+  document.querySelectorAll('#tbl-quick .qchip').forEach(c => { const on = c.dataset.skill === sel.value; c.classList.toggle('on', on); c.setAttribute('aria-pressed', on ? 'true' : 'false'); });
+}
+/** Conditions take no amount — hide the box rather than ask for a number that means nothing. */
+function tableHoKind() {
+  const k = (document.getElementById('tbl-ho-kind') || {}).value;
+  const row = document.getElementById('tbl-ho-amt-row'); if (row) row.style.display = ['weary', 'miserable', 'wounded'].includes(k) ? 'none' : '';
+}
+let _tblInviteOpen = false;
+function tableToggleInvite() { _tblInviteOpen = !_tblInviteOpen; _tblConsoleUpdate(); }
+function _tblInviteUpdate() {
+  const box = document.getElementById('tbl-invite'); if (!box) return;
+  const code = (typeof campaignInfo === 'function' && campaignInfo().code) || '';
+  const show = _tblInviteOpen || !_tblPlayers().length;
+  if (!show) { box.innerHTML = ''; box.dataset.code = ''; return; }
+  if (box.dataset.code === code && box.firstChild) return;   // keep the drawn QR
+  box.dataset.code = code;
+  box.innerHTML = `<div class="card tbl-invite"><div class="eyebrow">Invite the players</div>
+    <div class="tbl-invite-row"><div id="tbl-invite-qr" class="camp-qr"></div>
+      <div><div class="camp-code-big">${escapeHtml(code)}</div>
+      <p class="hint">Each player opens <em>Menu → Play at a table → I play a hero</em> and types this code — or scans the square with their camera.</p></div></div>
+    <div class="camp-row"><button type="button" class="btn btn-secondary" onclick="copyJoin('link')">Copy invite link</button>
+      <button type="button" class="btn btn-secondary" onclick="openTableMode()">Show on a big screen</button>
+      ${_tblPlayers().length ? '<button type="button" class="btn btn-quiet" onclick="tableToggleInvite()">Hide</button>' : ''}</div></div>`;
+  if (typeof renderJoinQr === 'function') renderJoinQr(document.getElementById('tbl-invite-qr'), code, 132);
 }
 function _tblSetOptions(id, opts) {
   const sel = document.getElementById(id); if (!sel) return;
@@ -215,18 +307,23 @@ function _tblSetOptions(id, opts) {
   sel.value = opts.some(o => o[0] === keep) ? keep : opts[0][0];
 }
 function _tblConsoleUpdate() {
-  const slot = document.getElementById('tbl-phase-slot'); if (slot) slot.innerHTML = _tblPhaseCard();
+  _tblInviteUpdate();
+  const hint = document.getElementById('tbl-gm-hint'); if (hint) hint.textContent = TABLE_PHASES[_tblPhase()].gm;
+  const ln = document.getElementById('tbl-lastnote'); if (ln) ln.innerHTML = Table.state.note ? `On every phone: <em>“${escapeHtml(Table.state.note)}”</em>` : '';
+  tablePickRoll(null, true);
   document.querySelectorAll('#tbl-phases [data-phase]').forEach(b => { const on = b.dataset.phase === _tblPhase(); b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); });
   const who = [['all', 'Everyone'], ..._tblPlayers().map(m => [m.uid, (m.vitals && m.vitals.name) || m.displayName || 'Hero'])];
   _tblSetOptions('tbl-call-who', who); _tblSetOptions('tbl-ho-who', who);
   if (typeof syncPickers === 'function') syncPickers();
   const party = document.getElementById('tbl-party');
+  const code = (typeof campaignInfo === 'function' && campaignInfo().code) || '';
   if (party) party.innerHTML = _tblPlayers().map(m => {
     const v = m.vitals || {};
-    const cond = ['weary', 'miserable', 'wounded'].filter(k => v[k]).join(' · ');
-    return `<div class="tbl-prow${m.online === false ? ' off' : ''}"><strong>${escapeHtml(v.name || m.displayName || 'Hero')}</strong>
-      <span>End ${v.endCur ?? '?'}/${v.endMax ?? '?'} · Hope ${v.hopeCur ?? '?'}/${v.hopeMax ?? '?'} · Shadow ${v.shadow ?? 0}${v.dying ? ' · <b>Dying</b>' : ''}${cond ? ' · ' + cond : ''}</span></div>`;
-  }).join('') || '<p class="hint">No players yet. Give them the join code from Menu → Fellowship campaign.</p>';
+    const chips = [v.dying && 'Dying', v.weary && 'Weary', v.miserable && 'Miserable', v.wounded && 'Wounded'].filter(Boolean).map(t => `<span class="tbl-chip bad">${t}</span>`).join('');
+    return `<div class="tbl-prow${m.online === false ? ' off' : ''}"><div class="tbl-prow-head"><span class="dot" aria-hidden="true"></span><strong>${escapeHtml(v.name || m.displayName || 'Hero')}</strong>${m.online === false ? '<em>away</em>' : ''}
+        ${m.characterId && typeof gmPeek === 'function' ? `<button type="button" class="btn btn-quiet" onclick="gmPeek('${m.characterId}')">Sheet</button>` : ''}</div>
+      <span>Endurance ${v.endCur ?? '?'}/${v.endMax ?? '?'} · Hope ${v.hopeCur ?? '?'}/${v.hopeMax ?? '?'} · Shadow ${v.shadow ?? 0}</span>${chips ? `<div class="tbl-chips">${chips}</div>` : ''}</div>`;
+  }).join('') + `<div class="tbl-codeline">Code <strong>${escapeHtml(code)}</strong> · <button type="button" class="linkish" onclick="tableToggleInvite()">${_tblInviteOpen || !_tblPlayers().length ? 'hide invite' : 'invite more'}</button></div>`;
   const calls = document.getElementById('tbl-calls'); if (calls) calls.innerHTML = _tblOpenCallsGmHtml();
   const fpc = document.getElementById('tbl-fp'); if (fpc) fpc.style.display = _tblPhase() === 'fellowship' ? '' : 'none';
   const fpl = document.getElementById('tbl-fplive'); if (fpl) fpl.innerHTML = _tblFpGmHtml();
@@ -250,6 +347,9 @@ function tableSetNote() {
   if (!tableIsGm()) return;
   const el = document.getElementById('tbl-note'); const note = String(el ? el.value : '').trim().slice(0, 200);
   Table.state.note = note; tableRefresh();
+  if (el) el.value = '';
+  // The note is also a broadcast, so every phone gets a toast and it stays in the table's feed.
+  if (note && typeof Sync !== 'undefined' && Sync.sendBroadcast) Sync.sendBroadcast(note).catch(() => {});
   return Table._ref('table').update({ note }).then(() => showToast(note ? 'On every phone now.' : 'Note cleared.'));
 }
 function tablePhaseChanged(was) {
@@ -763,14 +863,15 @@ function tableFpDone() {
 
 /* ----- the Company's Fellowship pool (one shared number at a table) ----- */
 function _tblPoolGmHtml() {
-  return `<div class="tbl-pool"><span>Fellowship pool</span><strong>${Table.pool}</strong>
-    <button type="button" class="btn btn-quiet" aria-label="Remove a Fellowship point" onclick="tableAdjPool(-1)">−</button>
+  const n = _tblPlayers().length;
+  return `<div class="tbl-pool"><span>Company Fellowship</span><strong>${Table.pool}</strong>
+    <div class="tbl-pool-btns"><button type="button" class="btn btn-quiet" aria-label="Remove a Fellowship point" onclick="tableAdjPool(-1)">−</button>
     <button type="button" class="btn btn-quiet" aria-label="Add a Fellowship point" onclick="tableAdjPool(1)">+</button>
-    <button type="button" class="btn btn-quiet" onclick="tableRefillPool()">Refill (${_tblPlayers().length} heroes)</button></div>`;
+    <button type="button" class="btn btn-quiet" onclick="tableRefillPool()">Refill to ${n} (one per hero)</button></div></div>`;
 }
 function _tblPoolPlayerHtml() {
-  return `<div class="card tbl-pool-card"><div class="tbl-pool"><span>Company Fellowship</span><strong>${Table.pool}</strong>
-    <button type="button" class="btn btn-secondary" onclick="spendFPforHope()">Spend 1 for +1 Hope</button></div>
+  return `<div class="tbl-pool-card"><div class="tbl-pool"><span>Company Fellowship</span><strong>${Table.pool}</strong>
+    ${Table.pool > 0 ? '<button type="button" class="btn btn-secondary" onclick="spendFPforHope()">Spend 1 for +1 Hope</button>' : '<small>empty — the Loremaster refills it</small>'}</div>
     <p class="hint">One pool for the whole Company. Spend it during a rest, when you all agree.</p></div>`;
 }
 function tableAdjPool(d) { if (tableIsGm()) return Table._ref('pool/fellowship').transaction(cur => Math.max(0, (parseInt(cur) || 0) + d)); }
@@ -818,3 +919,15 @@ function _tblLessonHtml() {
   return `<div class="card tbl-learn" role="note"><div class="eyebrow">New here</div><h3 class="card-title">${escapeHtml(title)}</h3><p>${escapeHtml(text)}</p>
     <button type="button" class="btn btn-secondary" onclick="tableLearnDone('${key}')">Got it</button></div>`;
 }
+
+/* ----- joining by link or QR: #join=CODE opens the join step with the code filled in ----- */
+function joinFromHash() {
+  const m = location.hash.match(/[#&]join=([^&]+)/); if (!m) return;
+  try { window.history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+  let code = ''; try { code = normJoinCode(decodeURIComponent(m[1])); } catch (e) { code = normJoinCode(m[1]); }
+  openCampaign();
+  if (tableActive()) return;   // already at a table: the panel shows which
+  if (typeof campStep === 'function') campStep('pl');
+  const inp = document.getElementById('camp-code'); if (inp) inp.value = code;
+}
+window.addEventListener('hashchange', joinFromHash);

@@ -665,70 +665,127 @@ function closeCampaign() {
   document.getElementById('campaign-overlay').classList.remove('show');
 }
 function _campRole() { const el = document.getElementById('camp-role'); return el ? el.value : 'player'; }
+/** A join code as a person types it: any case, spaces or dashes — "lonely raven 30" works. */
+function normJoinCode(raw) { return String(raw || '').toUpperCase().replace(/[^A-Z0-9]+/g, '-').replace(/^-+|-+$/g, ''); }
+function campaignInfo() { try { return JSON.parse(localStorage.getItem('tor2e-campaign-v1')) || {}; } catch (e) { return {}; } }
+function joinLink(code) { return location.origin + location.pathname + '#join=' + encodeURIComponent(code || campaignInfo().code || ''); }
+function _goToTable() {
+  document.getElementById('campaign-overlay').classList.remove('show');
+  if (typeof openNavGroup === 'function') openNavGroup('play');
+  if (typeof renderPlay === 'function') renderPlay();
+}
 async function campaignCreate() {
-  const name = (document.getElementById('camp-name') || {}).value || '';
-  try { const r = await Sync.createCampaign(name, _campRole()); await alertStyled('Campaign created!\nShare this join code: ' + r.code); renderCampaign(); if (typeof offerTableRules === 'function') await offerTableRules(); if (typeof renderPlay === 'function') renderPlay(); }
-  catch (e) { alertStyled('Could not create campaign: ' + (e && e.message ? e.message : e)); }
+  const name = String((document.getElementById('camp-name') || {}).value || '').trim() || 'Our Fellowship';
+  const btn = document.getElementById('camp-create-btn'); if (btn) btn.disabled = true;
+  try {
+    await Sync.createCampaign(name, 'loremaster');
+    _goToTable();
+    showToast('Your table is ready. Show the players the code on screen.');
+  } catch (e) { alertStyled('The table could not be started: ' + (e && e.message ? e.message : e) + '<br><br>Check that this device is online, then try again.', 'Start a table'); }
+  finally { if (btn) btn.disabled = false; renderCampaign(); }
 }
 async function campaignJoin() {
-  const code = (document.getElementById('camp-code') || {}).value || '';
-  try { const r = await Sync.joinCampaign(code, _campRole()); await alertStyled('Joined campaign ' + r.code + '.'); renderCampaign(); if (typeof offerTableRules === 'function') await offerTableRules(); if (typeof renderPlay === 'function') renderPlay(); }
-  catch (e) { alertStyled('Could not join: ' + (e && e.message ? e.message : e)); }
+  const code = normJoinCode((document.getElementById('camp-code') || {}).value);
+  if (!code) return alertStyled('Type the code your Loremaster shows you — for example <strong>LONELY-RAVEN-30</strong>. Capitals and dashes do not matter.', 'Join a table');
+  const btn = document.getElementById('camp-join-btn'); if (btn) btn.disabled = true;
+  try {
+    await Sync.joinCampaign(code, _campRole());
+    _goToTable();
+    showToast('You are at the table. Keep this screen open — the Loremaster will ask you for rolls here.');
+    if (typeof offerTableRules === 'function') await offerTableRules();
+  } catch (e) {
+    const msg = String(e && e.message ? e.message : e);
+    alertStyled(/No campaign found/.test(msg)
+      ? `There is no table with the code <strong>${escapeHtml(code)}</strong>. Check it with your Loremaster — every word and the number must match.`
+      : 'You could not join: ' + escapeHtml(msg) + '<br><br>Check that this device is online, then try again.', 'Join a table');
+  } finally { if (btn) btn.disabled = false; renderCampaign(); }
 }
 async function campaignLeave() {
-  if (!(await confirmStyled('Leave this campaign? Your hero stays on your device.', undefined, {yes:'Leave campaign', no:'Stay'}))) return;
-  Sync.leaveCampaign(); renderCampaign();
+  if (!(await confirmStyled('Leave this table? Your hero stays on your phone, and you can join again with the same code.', 'Leave the table', {yes:'Leave the table', no:'Stay'}))) return;
+  Sync.leaveCampaign(); renderCampaign(); if (typeof renderPlay === 'function') renderPlay();
 }
 async function campaignDelete() {
-  if (!(await confirmStyled('Delete this campaign for everyone? This removes it and its join code — it cannot be undone.', undefined, {yes:'Delete for everyone', no:'Keep campaign'}))) return;
-  try { await Sync.deleteCampaign(); renderCampaign(); }
-  catch (e) { alertStyled('Could not delete: ' + (e && e.message ? e.message : e)); }
+  if (!(await confirmStyled('End this table for everyone? The code stops working and every player is sent back to playing alone. This cannot be undone.', 'End the table', {yes:'End it for everyone', no:'Keep the table'}))) return;
+  try { await Sync.deleteCampaign(); renderCampaign(); if (typeof renderPlay === 'function') renderPlay(); }
+  catch (e) { alertStyled('Could not end the table: ' + (e && e.message ? e.message : e)); }
+}
+function campStep(which) {
+  ['lm', 'pl'].forEach(k => { const f = document.getElementById('camp-form-' + k); if (f) f.hidden = k !== which; });
+  document.querySelectorAll('#campaign-body .camp-choose .opt-card').forEach(b => { const on = b.dataset.step === which; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); });
+  const f = document.getElementById(which === 'lm' ? 'camp-name' : 'camp-code'); if (f) setTimeout(() => f.focus(), 30);
+}
+/** The join code, drawn as a QR code players can scan with their phone camera. */
+function renderJoinQr(box, code, size) {
+  if (!box) return;
+  box.innerHTML = '';
+  if (typeof QRCode === 'undefined' || !code) return;
+  try { new QRCode(box, { text: joinLink(code), width: size || 160, height: size || 160, colorDark: '#000000', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.L }); } catch (e) {}
+}
+function copyJoin(what) {
+  const code = campaignInfo().code || '';
+  const text = what === 'link' ? joinLink(code) : code;
+  const done = () => showToast(what === 'link' ? 'Invite link copied — send it to the players.' : 'Code copied: ' + code);
+  try { navigator.clipboard.writeText(text).then(done, () => alertStyled(escapeHtml(text), 'Copy this')); } catch (e) { alertStyled(escapeHtml(text), 'Copy this'); }
 }
 function renderCampaign() {
   if (typeof refreshPartyPill === 'function') refreshPartyPill();   // keep the header pill in sync
   if (typeof refreshGmUI === 'function') refreshGmUI();             // P6: GM tab is role-controlled in a campaign
+  if (typeof tableApplyRole === 'function') tableApplyRole();
   const body = document.getElementById('campaign-body'); if (!body) return;
   const hint = document.getElementById('campaign-cloud-hint');
   const active = (typeof Sync !== 'undefined') && Sync.isEnabled();
-  const status = (typeof Sync !== 'undefined' && Sync.status) ? Sync.status() : 'Local only';
-  if (hint) hint.textContent = active
-    ? 'A campaign links a Fellowship across devices — share the join code so others can see the live party.'
-    : 'Cloud sync is not active — serve the app over http(s) with Firebase configured to use campaigns. (' + status + ')';
-  if (!active) { body.innerHTML = '<div class="hint" style="text-align:center;padding:12px">📴 Cloud sync required for campaigns.</div>'; return; }
+  if (hint) hint.textContent = '';
+  if (!active) {
+    body.innerHTML = `<div class="camp-offline"><strong>This device is not connected.</strong>
+      <p>Playing at a table needs every phone online, and the app opened from its web address (not from a saved file). Check the Wi-Fi, then open this again.</p></div>`;
+    return;
+  }
   const cid = Sync.currentCampaign();
   if (cid) {
-    let code = '';
-    try { code = (JSON.parse(localStorage.getItem('tor2e-campaign-v1')) || {}).code || ''; } catch (e) {}
+    const info = campaignInfo();
+    const code = info.code || '';
+    const lm = Sync.isLoremaster();
+    const name = (typeof Table !== 'undefined' && Table.meta && Table.meta.name) || info.name || 'Your table';
     body.innerHTML = `
-      <div class="card" style="border-color:var(--gold)">
-        <div style="font-weight:700">You are in a campaign.</div>
-        <div style="margin:6px 0">Join code: <b style="letter-spacing:1px;font-size:var(--fs-md)">${escapeHtml(code || '—')}</b>
-          ${code ? `<button onclick="navigator.clipboard&&navigator.clipboard.writeText('${code}');alertStyled('Copied ${code}')" style="font-size:var(--fs-xs);padding:2px 8px;margin-left:8px">Copy</button>` : ''}</div>
-        <button onclick="campaignLeave()" style="background:var(--btn-secondary-bg);color:#fff">Leave campaign</button>
-        ${Sync.isCampaignOwner() ? '<button onclick="campaignDelete()" style="background:var(--btn-alert-bg);color:#fff;margin-left:6px">Delete campaign</button>' : ''}
+      <div class="camp-here">
+        <div class="eyebrow">${lm ? 'You are the Loremaster' : 'You are a player'}</div>
+        <div class="camp-name">${escapeHtml(name)}</div>
+        <div class="camp-code-big" aria-label="Join code">${escapeHtml(code || '—')}</div>
+        <div class="camp-qr" id="camp-qr"></div>
+        <p class="hint">${lm ? 'Players scan this, or type the code in <em>Menu → Play at a table</em>.' : 'Others can join with this code too.'}</p>
+        <div class="camp-row"><button type="button" class="btn btn-secondary" onclick="copyJoin('code')">Copy code</button><button type="button" class="btn btn-secondary" onclick="copyJoin('link')">Copy invite link</button></div>
+        <button type="button" class="btn btn-block" onclick="_goToTable()">Go to the table</button>
       </div>
-      <div class="card"><h3 class="card-title">Party (live)</h3><div id="campaign-members"><div class="hint">Loading…</div></div></div>
-      <div class="card"><h3 class="card-title">Loremaster Feed</h3><div id="campaign-bcast"><div class="hint">No broadcasts yet.</div></div>
-        ${Sync.isLoremaster && Sync.isLoremaster() ? '<p class="hint" style="text-align:left;margin-top:6px">Send broadcasts from the 🎲 GM tab.</p>' : ''}</div>`;
+      <div class="card"><h3 class="card-title">Who is here</h3><div id="campaign-members"><div class="hint">Loading…</div></div></div>
+      <div class="card"><h3 class="card-title">From the Loremaster</h3><div id="campaign-bcast"><div class="hint">Nothing yet.</div></div></div>
+      <details class="camp-danger"><summary>Leave${Sync.isCampaignOwner() ? ' or end' : ''} the table</summary>
+        <button type="button" class="btn btn-secondary btn-block" onclick="campaignLeave()">Leave the table</button>
+        ${Sync.isCampaignOwner() ? '<button type="button" class="btn btn-quiet btn-block danger" onclick="campaignDelete()">End the table for everyone</button>' : ''}
+      </details>`;
+    renderJoinQr(document.getElementById('camp-qr'), code, 150);
     Sync.subscribeParty(renderCampaignMembers);
     renderBroadcastFeed(Sync.lastBroadcasts ? Sync.lastBroadcasts() : []);
   } else {
     body.innerHTML = `
-      <div class="card">
-        <h3 class="card-title">Create a campaign</h3>
-        <input type="text" id="camp-name" placeholder="Campaign name" style="${_CAMP_INPUT}">
-        <div style="margin:6px 0;font-size:var(--fs-sm)">Your role:
-          <select id="camp-role" style="padding:4px 8px;border-radius:var(--r-sm);background:var(--card-bg);color:var(--ink);border:1px solid var(--border)">
-            <option value="player">Player</option><option value="loremaster">Loremaster</option></select></div>
-        <button onclick="campaignCreate()" style="width:100%">Create + get a join code</button>
+      <p class="camp-lead">One person tells the story — the <strong>Loremaster</strong>. Everyone else plays a hero on their own phone.</p>
+      <div class="camp-choose">
+        <button type="button" class="opt-card" data-step="lm" aria-pressed="false" onclick="campStep('lm')"><strong>I tell the story</strong><small>Start a table and invite the players</small></button>
+        <button type="button" class="opt-card" data-step="pl" aria-pressed="false" onclick="campStep('pl')"><strong>I play a hero</strong><small>Join with the code your Loremaster shows you</small></button>
       </div>
-      <div class="card">
-        <h3 class="card-title">Join a campaign</h3>
-        <input type="text" id="camp-code" placeholder="Join code (e.g. SHADOW-DURIN-42)" style="${_CAMP_INPUT}">
-        <div style="margin:6px 0;font-size:var(--fs-sm)">Your role:
-          <select id="camp-role" style="padding:4px 8px;border-radius:var(--r-sm);background:var(--card-bg);color:var(--ink);border:1px solid var(--border)">
-            <option value="player">Player</option><option value="loremaster">Loremaster</option></select></div>
-        <button onclick="campaignJoin()" style="width:100%">Join</button>
+      <div id="camp-form-lm" class="camp-form" hidden>
+        <label for="camp-name">Name your table</label>
+        <input type="text" id="camp-name" placeholder="e.g. The Lonely Mountain" autocomplete="off">
+        <button type="button" class="btn btn-block" id="camp-create-btn" onclick="campaignCreate()">Start the table</button>
+        <p class="hint">You get a code and a QR code to show the players.</p>
+      </div>
+      <div id="camp-form-pl" class="camp-form" hidden>
+        <label for="camp-code">The code on the Loremaster's screen</label>
+        <input type="text" id="camp-code" placeholder="e.g. LONELY-RAVEN-30" autocomplete="off" autocapitalize="characters" spellcheck="false">
+        <button type="button" class="btn btn-block" id="camp-join-btn" onclick="campaignJoin()">Join the table</button>
+        <p class="hint">Your hero comes with you: <strong>${escapeHtml(typeof heroLabel === 'function' ? heroLabel(char) : (char.name || 'your hero'))}</strong>. Switch heroes first in <em>Menu → Your heroes</em> if you want another.</p>
+        <details class="camp-more"><summary>I am a second Loremaster</summary>
+          <select id="camp-role" data-native><option value="player">Join as a player</option><option value="loremaster">Join as a Loremaster</option></select>
+        </details>
       </div>`;
   }
 }
@@ -764,87 +821,106 @@ function renderBroadcastFeed(msgs) {
 
 function renderCampaignMembers(members, err) {
   const box = document.getElementById('campaign-members'); if (!box) return;
-  if (err) { box.innerHTML = '<div class="hint">Could not load the party (permission or network).</div>'; return; }
+  if (err) { box.innerHTML = '<div class="hint">Could not load who is here (check the connection).</div>'; return; }
   const keys = members ? Object.keys(members) : [];
-  if (!keys.length) { box.innerHTML = '<div class="hint">No members yet.</div>'; return; }
+  if (!keys.length) { box.innerHTML = '<div class="hint">Nobody yet.</div>'; return; }
   const myUid = (typeof Sync !== 'undefined') ? Sync.uid : null;
+  keys.sort((a, b) => ((members[b] || {}).role === 'loremaster') - ((members[a] || {}).role === 'loremaster'));
   box.innerHTML = keys.map(uid => {
     const m = members[uid] || {}; const v = m.vitals || {};
-    const conds = [v.weary && 'Weary', v.miserable && 'Miserable', v.wounded && 'Wounded', v.dying && 'DYING'].filter(Boolean).join(', ');
-    return `<div style="padding:6px 0;border-bottom:1px solid var(--border)">
-      <b>${escapeHtml(v.name || m.displayName || 'Hero')}</b>${uid === myUid ? ' ★' : ''}
-      <small style="color:var(--text-muted)">· ${m.role === 'loremaster' ? '🎲 Loremaster' : 'Player'}</small><br>
-      <small style="color:var(--text-muted)">❤ ${v.endCur ?? '?'}/${v.endMax ?? '?'} · ✦ ${v.hopeCur ?? '?'}/${v.hopeMax ?? '?'} · 🌑 ${v.shadow ?? 0} · V${v.valour ?? '?'}/W${v.wisdom ?? '?'}${conds ? ' · <span style="color:var(--error-text)">' + conds + '</span>' : ''}</small>
-    </div>`;
+    const lm = m.role === 'loremaster';
+    return `<div class="camp-member${m.online === false ? ' off' : ''}"><span class="dot" aria-hidden="true"></span>
+      <span><strong>${lm ? 'Loremaster' : escapeHtml(v.name || m.displayName || 'Hero')}</strong>${uid === myUid ? ' <em>(you)</em>' : ''}
+      <small>${lm ? 'tells the story' : `Endurance ${v.endCur ?? '?'}/${v.endMax ?? '?'} · Hope ${v.hopeCur ?? '?'}/${v.hopeMax ?? '?'}`}${m.online === false ? ' · away' : ''}</small></span></div>`;
   }).join('');
 }
 
 /* ---------- BIG-SCREEN TABLE MODE (U11) ----------
-   Full-screen, high-contrast, large-text read-only dashboard for casting to a TV at an in-person
-   table: every hero's vitals/conditions + the active encounter's foes. Fixed dark palette (not the
-   app theme) for legibility across a room; auto-refreshes every 2s while open so it stays current. */
+   Full-screen display for a TV or a tablet in the middle of the table. At a table (a campaign) it
+   shows what the table is doing: the phase and the Loremaster's words, rolls being asked for,
+   every hero, the fight or the road, the latest rolls, and the join code. Out of a campaign it
+   shows the heroes on this device and the encounter. Leaving must always be possible: a Back
+   button at the top (below the phone's status bar — the old Close sat under it on an iPhone in
+   app mode, where it could not be tapped) and at the bottom, Escape, and the phone's own Back. */
 let _tableModeTimer = null;
 function openTableMode() {
   document.getElementById('menu-overlay').classList.remove('show');
   renderTableMode();
   document.getElementById('table-mode-overlay').classList.add('show');
+  document.body.classList.add('bigscreen-on');
   clearInterval(_tableModeTimer);
   _tableModeTimer = setInterval(renderTableMode, 2000);
+  try { window.history.pushState({ tor2eBigScreen: 1 }, ''); } catch (e) {}
 }
 function closeTableMode() {
+  const wasOpen = document.getElementById('table-mode-overlay').classList.contains('show');
   document.getElementById('table-mode-overlay').classList.remove('show');
+  document.body.classList.remove('bigscreen-on');
   clearInterval(_tableModeTimer); _tableModeTimer = null;
+  if (wasOpen) { try { if (window.history.state && window.history.state.tor2eBigScreen) window.history.back(); } catch (e) {} }
+}
+// The phone's own Back gesture closes the big screen instead of leaving the app.
+window.addEventListener('popstate', () => {
+  const ov = document.getElementById('table-mode-overlay');
+  if (ov && ov.classList.contains('show')) { ov.classList.remove('show'); document.body.classList.remove('bigscreen-on'); clearInterval(_tableModeTimer); _tableModeTimer = null; }
+});
+function _bsMeter(cls, cur, max, extra) {
+  const c = parseInt(cur) || 0, m = Math.max(1, parseInt(max) || 0);
+  return `<div class="bs-meter ${cls}"><div class="bs-fill" style="width:${Math.max(0, Math.min(100, 100 * c / m))}%"></div>${extra || ''}<span>${cur ?? '?'}<small>/${max ?? '?'}</small></span></div>`;
+}
+function _bsHero(name, v, opts) {
+  const o = opts || {};
+  const sh = parseInt(v.shadow) || 0, hm = Math.max(1, parseInt(v.hopeMax) || 0);
+  const dying = v.dying || (parseInt(v.endCur) || 0) <= 0;
+  const chips = [dying && 'Dying', v.weary && 'Weary', v.miserable && 'Miserable', v.wounded && 'Wounded'].filter(Boolean)
+    .map(t => `<span class="bs-chip">${t}</span>`).join('');
+  return `<div class="bs-hero${o.now ? ' now' : ''}${o.off ? ' off' : ''}">
+    <div class="bs-name">${escapeHtml(name)}${o.tag ? `<small>${escapeHtml(o.tag)}</small>` : ''}</div>
+    <div class="bs-lab">Endurance</div>${_bsMeter('end', v.endCur, v.endMax)}
+    <div class="bs-lab">Hope${sh ? ` · Shadow ${sh}` : ''}</div>${_bsMeter('hope', v.hopeCur, v.hopeMax, sh ? `<div class="bs-shadow" style="width:${Math.min(100, 100 * sh / hm)}%"></div>` : '')}
+    ${chips ? `<div class="bs-chips">${chips}</div>` : ''}${o.now ? '<div class="bs-now">Acting now</div>' : ''}</div>`;
 }
 function renderTableMode() {
   const body = document.getElementById('table-mode-body'); if (!body) return;
-  const r = loadRoster() || { activeId: activeCharId, list: [] };
-  const pill = (t, bg) => `<span style="background:${bg};color:#fff;padding:3px 11px;border-radius:var(--r-sm);font-size:.5em;font-weight:800;letter-spacing:1px">${t}</span>`;
-  const card = (title, endCur, endMax, hopeCur, hopeMax, shadow, conds) =>
-    `<div style="border:3px solid #d4a635;border-radius:14px;padding:14px 18px;background:#1a1612">
-      <div style="font-size:1.25em;font-weight:800;color:#f1e4c4">${title}</div>
-      <div style="display:flex;gap:24px;flex-wrap:wrap;margin-top:8px;font-size:1.55em;font-weight:800">
-        <span style="color:#7ed07e">&#10084; ${endCur ?? '?'}/${endMax ?? '?'}</span>
-        <span style="color:#6fa8ff">&#10022; ${hopeCur ?? '?'}/${hopeMax ?? '?'}</span>
-        <span style="color:#e0a060">&#127769; ${shadow}</span>
-      </div>${conds ? `<div style="margin-top:10px">${conds}</div>` : ''}</div>`;
-  // In a campaign → show the LIVE Fellowship (with online dots); otherwise the local device roster.
-  const party = (typeof Sync !== 'undefined' && Sync.isEnabled() && Sync.currentCampaign() && Sync.lastParty) ? Sync.lastParty() : null;
-  let heroCards;
-  if (party && Object.keys(party).length) {
-    const myUid = (typeof Sync !== 'undefined') ? Sync.uid : null;
-    heroCards = Object.keys(party).map(uid => {
-      const m = party[uid] || {}; const v = m.vitals || {};
-      const dying = v.dying || (parseInt(v.endCur) || 0) <= 0;
-      const conds = (dying ? [pill('DYING', '#b01010')] : [])
-        .concat([v.weary && pill('WEARY', '#8a5a14'), v.miserable && pill('MISERABLE', '#6a1a6a'), v.wounded && pill('WOUNDED', '#7a1a1a')].filter(Boolean)).join(' ');
-      const title = (m.online ? '🟢 ' : '⚪ ') + escapeHtml(v.name || m.displayName || 'Hero') + (uid === myUid ? ' ★' : '');
-      return card(title, v.endCur, v.endMax, v.hopeCur, v.hopeMax, v.shadow ?? 0, conds);
-    }).join('');
-  } else {
-    heroCards = r.list.map(e => {
-      const d = (e.id === activeCharId) ? char : readSlot(e.id);
-      if (!d) return '';
-      const totalShadow = (parseInt(d.shadow) || 0) + (parseInt(d.scars) || 0);
-      const dying = (parseInt(d.endCur) || 0) <= 0;
-      const conds = (dying ? [pill('DYING', '#b01010')] : [])
-        .concat([d.weary && pill('WEARY', '#8a5a14'), d.miserable && pill('MISERABLE', '#6a1a6a'), d.wounded && pill('WOUNDED', '#7a1a1a')].filter(Boolean)).join(' ');
-      // "?" told a table full of people nothing. Fall back to what the hero IS.
-      const label = heroLabel(d);
-      return card(escapeHtml(label) + (e.id === activeCharId ? ' ★' : ''), d.endCur, d.endMax, d.hopeCur, d.hopeMax, totalShadow, conds);
-    }).filter(Boolean).join('');
-  }
-  // P5: shared-aware — in a campaign the shared encounter shows on the table screen for everyone.
+  const titleEl = document.getElementById('bs-title');
+  const atTable = typeof tableActive === 'function' && tableActive();
   const en = (typeof enc === 'function') ? enc() : (char.encounter || {});
-  const foes = (en && en.active && (en.foes || []).filter(f => !f.slain)) || [];
-  const foeHtml = foes.length
-    ? `<h2 style="margin:22px 0 10px;font-size:1.2em;color:#e06060">&#9876; Encounter &middot; Round ${en.round || 1}</h2>
-       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px">${foes.map(f =>
-        `<div style="border:3px solid #e06060;border-radius:14px;padding:12px 16px;background:#1a1612">
-          <div style="font-size:1.15em;font-weight:800;color:#f1e4c4">${escapeHtml(f.name)}</div>
-          <div style="font-size:1.45em;font-weight:800;color:#7ed07e;margin-top:4px">&#10084; ${f.endCur}/${f.endMax}</div>
-          ${f.wounded ? pill('WOUNDED', '#7a1a1a') : ''}</div>`).join('')}</div>`
-    : '';
-  body.innerHTML = `<div style="font-size:var(--fs-lg)"><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px">${heroCards}</div>${foeHtml}</div>`;
+  const foes = (en && en.active && (en.foes || [])) || [];
+  let html = '';
+  if (atTable) {
+    const info = campaignInfo();
+    if (titleEl) titleEl.textContent = (Table.meta && Table.meta.name) || info.name || 'The table';
+    const ph = TABLE_PHASES[_tblPhase()];
+    html += `<div class="bs-phase"><div class="bs-eyebrow">Now</div><div class="bs-phase-name">${escapeHtml(ph.label)}</div>
+      ${Table.state.note ? `<div class="bs-note">“${escapeHtml(Table.state.note)}”</div>` : ''}</div>`;
+    const calls = Object.keys(Table.calls).map(id => Object.assign({ id }, Table.calls[id])).filter(c => !c.closed && c.kind !== 'foe-attack');
+    if (calls.length) html += `<div class="bs-calls">${calls.map(c => {
+      const who = c.who === 'all' ? 'Everyone' : _tblPlayerName(c.who);
+      const done = Table.feed.filter(f => f.callId === c.id).map(f => `${escapeHtml(f.name)} ${/SUCCESS/.test(f.outcome || '') ? '✓' : '✗'}`).join(' · ');
+      return `<div class="bs-call"><strong>Roll ${escapeHtml(c.skill)}</strong> <span>${escapeHtml(who)}</span>${done ? `<small>${done}</small>` : ''}</div>`;
+    }).join('')}</div>`;
+    const inFight = _tblPhase() === 'combat' || en.active;
+    const now = inFight && typeof tableTurnNow === 'function' ? tableTurnNow() : null;
+    const players = _tblPlayers();
+    html += `<div class="bs-grid">${players.map(m => _bsHero((m.vitals || {}).name || m.displayName || 'Hero', m.vitals || {}, { now: now && now.uid === m.uid, off: m.online === false, tag: inFight && (m.vitals || {}).stance ? (m.vitals.stance[0].toUpperCase() + m.vitals.stance.slice(1)) : '' })).join('') || '<div class="bs-empty">Waiting for the players to join.</div>'}</div>`;
+    const j = _tj();
+    if (j.active) html += `<div class="bs-section"><div class="bs-eyebrow">The road</div>${_tjProgressHtml(j)}</div>`;
+    const recent = Table.feed.slice(-5).reverse();
+    if (recent.length) html += `<div class="bs-section"><div class="bs-eyebrow">Latest rolls</div>${recent.map(f => `<div class="bs-feed"><strong>${escapeHtml(f.name || '')}</strong> ${escapeHtml(f.text || '')}</div>`).join('')}</div>`;
+    html += `<div class="bs-join"><span>Join this table</span><strong>${escapeHtml(info.code || '')}</strong><div id="bs-qr"></div></div>`;
+  } else {
+    if (titleEl) titleEl.textContent = 'Heroes on this device';
+    const r = loadRoster() || { activeId: activeCharId, list: [] };
+    html += `<div class="bs-grid">${r.list.map(e => {
+      const d = (e.id === activeCharId) ? char : readSlot(e.id); if (!d) return '';
+      return _bsHero(heroLabel(d), { endCur: d.endCur, endMax: d.endMax, hopeCur: d.hopeCur, hopeMax: d.hopeMax, shadow: (parseInt(d.shadow) || 0) + (parseInt(d.scars) || 0), weary: d.weary, miserable: d.miserable, wounded: d.wounded }, { tag: e.id === activeCharId ? 'playing now' : '' });
+    }).join('')}</div>`;
+  }
+  const living = foes.filter(f => !f.slain);
+  if (living.length) html += `<div class="bs-section"><div class="bs-eyebrow">The fight · round ${en.round || 1}</div><div class="bs-grid foes">${living.map(f =>
+    `<div class="bs-hero foe"><div class="bs-name">${escapeHtml(f.name)}</div><div class="bs-lab">Endurance</div>${_bsMeter('foe', f.endCur, f.endMax)}${f.wounded ? '<div class="bs-chips"><span class="bs-chip">Wounded</span></div>' : ''}</div>`).join('')}</div></div>`;
+  body.innerHTML = html;
+  if (atTable) renderJoinQr(document.getElementById('bs-qr'), campaignInfo().code, 120);
 }
 
 /* ---------- CAMPAIGN TIMELINE (U15) ----------

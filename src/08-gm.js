@@ -58,6 +58,13 @@ function gmShadow(id, n) { gmMutateHero(id, d => { const cap = Math.max(0, (pars
 
 function renderGm() {
   const body = document.getElementById('gm-party-body'); if (!body) return;
+  // At a table the players' heroes live on their own phones: hand-outs go through ▶ Play, and this
+  // device's roster (the Loremaster's own saved heroes) and their solo Eye counts are beside the point.
+  const atTable = gmInCampaign();
+  const eyeCard = document.getElementById('gm-eye-card'); if (eyeCard) eyeCard.style.display = atTable ? 'none' : '';
+  const encNote = document.getElementById('gm-enc-note');
+  if (encNote) encNote.textContent = atTable ? 'The fight is shared with every player at the table. Run it from ▶ Play → The fight.' : "Adds to this device's Combat-tab encounter.";
+  if (atTable) { body.innerHTML = ''; renderGmNpc(); renderGmCampaign(); const el = document.getElementById('gm-enc-line'); if (el) { const en = enc(); const f = (en.foes || []).filter(x => !x.slain).length; el.textContent = en.active && f ? `${f} foe${f === 1 ? '' : 's'} standing · round ${en.round || 1}` : 'No fight right now.'; } return; }
   const r = loadRoster() || { activeId: activeCharId, list: [] };
   const rows = r.list.map(e => {
     const d = (e.id === activeCharId) ? char : readSlot(e.id);
@@ -105,7 +112,7 @@ function renderGmCampaign() {
   if (!gmInCampaign() || !Sync.isLoremaster()) { box.innerHTML = ''; return; }
   Sync.subscribeParty(_gmOnParty);   // multi-listener; replays the latest snapshot
   const members = (Sync.lastParty && Sync.lastParty()) || {};
-  const rows = Object.keys(members).map(uid => {
+  const rows = Object.keys(members).filter(uid => (members[uid] || {}).role !== 'loremaster').map(uid => {
     const m = members[uid] || {}; const v = m.vitals || {};
     const conds = [v.weary && 'Weary', v.miserable && 'Miserable', v.wounded && 'Wounded', v.dying && 'DYING'].filter(Boolean).join(', ');
     return `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)">
@@ -114,23 +121,12 @@ function renderGmCampaign() {
       ${m.characterId ? `<button onclick="gmPeek('${m.characterId}')" style="font-size:var(--fs-xs);padding:2px 9px" aria-label="Peek at ${escapeHtml(v.name || 'hero')}'s sheet">👁 Peek</button>` : ''}
     </div>`;
   }).join('');
-  box.innerHTML = `<div class="card" style="border-color:var(--gold)">
-    <h3 class="card-title">Campaign Fellowship (live)</h3>
-    <div>${rows || '<div class="hint">No members yet.</div>'}</div>
-  </div>
-  <div class="card">
-    <h3 class="card-title">Broadcast to the party</h3>
-    <textarea id="gm-bcast-text" rows="2" placeholder="Message every player sees as a toast + in their Loremaster Feed…" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--card-bg);color:var(--ink);font-size:var(--fs-sm)"></textarea>
-    <button onclick="gmBroadcastSend()" style="width:100%;margin-top:6px">📢 Send</button>
-    <div id="gm-bcast-feed" style="margin-top:8px"></div>
+  box.innerHTML = `<div class="card gm-at-table">
+    <h3 class="card-title">Your table</h3>
+    <p class="hint">Phases, roll calls, hand-outs, the road and the fight are all on <strong>▶ Play</strong>.</p>
+    <button type="button" class="btn btn-block" onclick="openNavGroup('play')">Go to the table console</button>
+    <div class="gm-members">${rows || '<div class="hint">Nobody has joined yet.</div>'}</div>
   </div>`;
-  if (typeof renderBroadcastFeed === 'function' && Sync.lastBroadcasts) renderBroadcastFeed(Sync.lastBroadcasts());
-}
-async function gmBroadcastSend() {
-  const el = document.getElementById('gm-bcast-text');
-  const text = el ? el.value : '';
-  try { await Sync.sendBroadcast(text); if (el) el.value = ''; }
-  catch (e) { alert('Broadcast failed: ' + (e && e.message ? e.message : e)); }
 }
 // Read-only peek at a member's full sheet (rule-enforced: loremaster of their campaign only).
 async function gmPeek(characterId) {
@@ -209,11 +205,11 @@ function renderGmNpc() {
     .filter(({ n }) => n.name.toLowerCase().includes(q) || (n.role || '').toLowerCase().includes(q) || (n.features || '').toLowerCase().includes(q));
   body.innerHTML = rows.map(({ n, custom }) => `
     <div style="padding:6px 0;border-bottom:1px solid var(--border)">
-      <b style="color:var(--gold-soft)">${escapeHtml(n.name)}</b>${n.role ? ` <small style="color:var(--text-muted)">(${escapeHtml(n.role)})</small>` : ''}
+      <b style="color:var(--ink)">${escapeHtml(n.name)}</b>${n.role ? ` <small style="color:var(--text-muted)">(${escapeHtml(n.role)})</small>` : ''}
       ${custom
       ? `<button onclick="gmDelNpc('${n.id}')" style="float:right;font-size:var(--fs-xs);padding:1px 7px;background:var(--btn-alert-bg);color:#fff" aria-label="Delete ${escapeHtml(n.name)}">×</button>`
       : '<span style="float:right;font-size:var(--fs-xs);color:var(--gold)">Lore</span>'}
-      ${n.features ? `<div style="font-size:var(--fs-xs);color:var(--warn-orange)">Features: ${escapeHtml(n.features)}</div>` : ''}
+      ${n.features ? `<div style="font-size:var(--fs-xs);color:var(--text-muted)">Features: ${escapeHtml(n.features)}</div>` : ''}
       ${n.notes ? `<div style="font-size:var(--fs-xs);color:var(--text-muted)">${escapeHtml(n.notes)}</div>` : ''}
     </div>`).join('') || '<div class="hint">No matching NPCs.</div>';
 }
