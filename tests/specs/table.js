@@ -2,8 +2,8 @@
 // relayed through tests/fakefb.js. Every check drives the UI the way a player or Loremaster does.
 const { createFakeDb } = require('../fakefb');
 
-async function device(browser, baseUrl, db, uid, errors) {
-  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
+async function device(browser, baseUrl, db, uid, errors, viewport) {
+  const context = await browser.newContext({ viewport: viewport || { width: 390, height: 844 }, serviceWorkers: 'block' });
   if (db) await db.attach(context, uid);
   else await context.route(/firebasejs/, r => r.fulfill({ status: 200, contentType: 'application/javascript', body: '' }));
   await context.addInitScript(() => { try { localStorage.setItem('tor2e-tutorial', JSON.stringify({ offered: true })); sessionStorage.setItem('tor2e-splashed', '1'); } catch (e) {} });
@@ -39,7 +39,7 @@ module.exports = {
     const pl = await device(browser, baseUrl, db, 'pl1', errors);
     await pl.page.evaluate(() => loadPregen(0)); await closeModals(pl.page);
     await pl.page.evaluate(c => { openCampaign(); document.getElementById('camp-code').value = c; document.getElementById('camp-role').value = 'player'; campaignJoin(); }, code);
-    await press(pl.page, 'Got it'); await closeModals(pl.page);
+    await pl.page.waitForFunction(() => tableActive(), null, { timeout: 4000 }).catch(() => {}); await closeModals(pl.page);
     await openPlay(pl.page); await pl.page.waitForTimeout(300);
 
     const sheet = await pl.page.evaluate(() => {
@@ -207,7 +207,6 @@ module.exports = {
     await pl2.page.evaluate(() => { loadPregen(2); }); await closeModals(pl2.page);
     await pl2.page.evaluate(() => setStriderMode(true));
     await pl2.page.evaluate(c => { openCampaign(); document.getElementById('camp-code').value = c; document.getElementById('camp-role').value = 'player'; campaignJoin(); }, code);
-    await press(pl2.page, 'Got it');
     const offered = await press(pl2.page, 'Use table rules');
     await pl2.page.waitForTimeout(200);
     const joined = await pl2.page.evaluate(() => ({ strider: !!char.striderMode, feat: String(char.features || '') }));
@@ -244,7 +243,8 @@ module.exports = {
     // A foe's attack runs on the target's own phone: its Parry, its Endurance.
     await pl.page.evaluate(() => { const D = _doInlineRoll; _doInlineRoll = (a, b, c) => Object.assign(D(a, b, c), { featSpecial: null, featValue: 5, total: 40, outcome: 'SUCCESS', icons: 0 }); });
     const end1 = await pl.page.evaluate(() => parseInt(char.endCur));
-    await gm.page.evaluate(() => { const row = [...document.querySelectorAll('#tbl-flive .tbl-foerow')].find(r => /New foe/.test(r.textContent)); const sel = row.querySelector('select'); sel.value = [...sel.options].find(o => /Geira/.test(o.textContent)).value; sel.dispatchEvent(new Event('change')); row.querySelector('button').click(); });
+    await until(gm.page, () => { const row = [...document.querySelectorAll('#tbl-flive .tbl-foerow')].find(r => /New foe/.test(r.textContent)); return !!row && [...row.querySelectorAll('option')].some(o => /Geira/.test(o.textContent)); });
+    await gm.page.evaluate(() => { const row = [...document.querySelectorAll('#tbl-flive .tbl-foerow')].find(r => /New foe/.test(r.textContent)); if (!row) return; const sel = row.querySelector('select'); const o = [...sel.options].find(x => /Geira/.test(x.textContent)); if (!o) return; sel.value = o.value; sel.dispatchEvent(new Event('change')); row.querySelector('button').click(); });
     const struck = await until(pl.page, e => parseInt(char.endCur) === e - 4, end1);
     const closed = await until(gm.page, () => Object.values(Table.calls).some(c => c.kind === 'foe-attack' && c.closed));
     checks.push({ ok: struck && closed, msg: `a foe's attack is rolled against the target's own Parry on their phone and lands on their Endurance (${end1} → ${await pl.page.evaluate(() => char.endCur)}, closed ${closed})` });
@@ -291,8 +291,105 @@ module.exports = {
     const fresh = await until(pl.page, () => /A council/.test((document.querySelector('#panel-play .tbl-learn') || {}).textContent || ''));
     checks.push({ ok: lessonCount >= 3 && !again && fresh, msg: `first-time explanations appear once per hero and not again (${lessonCount} seen, repeat ${again}, new one ${fresh})` });
 
+    // ---- UX round (2026-09-28): the big screen, joining, the console, the player's sheet ----
+    await closeModals(pl.page); await closeModals(gm.page);
+    // The big screen always has a way back: it was reported "stuck" — its only Close sat under an
+    // iPhone's status bar in app mode, where a tap does not reach the page.
+    const tv = await pl.page.evaluate(async () => {
+      const wait = ms => new Promise(r => setTimeout(r, ms));
+      const hit = el => { const r = el.getBoundingClientRect(); const e = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2); return r.width > 0 && (e === el || el.contains(e)); };
+      const ov = document.getElementById('table-mode-overlay');
+      openTableMode(); await wait(300);
+      const backs = [...ov.querySelectorAll('.tv-back')];
+      const allHit = backs.length === 2 && backs.every(hit);
+      const bottomFixed = backs[1] && getComputedStyle(backs[1]).position === 'fixed';
+      const rule = [...document.styleSheets].flatMap(x => { try { return [...x.cssRules]; } catch (e) { return []; } }).find(r => r.selectorText === '.bigscreen .tv-wrap');
+      const clearsStatusBar = !!rule && /padding:\s*calc\(var\(--safe-top\)/.test(rule.cssText);
+      window.history.back(); await wait(300);
+      const phoneBack = !ov.classList.contains('show');
+      openTableMode(); await wait(100);
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); await wait(150);
+      const escape = !ov.classList.contains('show');
+      openTableMode(); await wait(100);
+      if (backs[1]) backs[1].click();
+      const bottomButton = !ov.classList.contains('show') && _tableModeTimer === null;
+      await wait(300);
+      return { allHit, bottomFixed, clearsStatusBar, phoneBack, escape, bottomButton };
+    });
+    checks.push({ ok: Object.values(tv).every(v => v === true), msg: `the big screen always has a way back — two tappable Back buttons clear of the status bar, Escape and the phone's own Back (${JSON.stringify(tv)})` });
+    const tvc = await gm.page.evaluate(async () => { openTableMode(); await new Promise(r => setTimeout(r, 250)); const t = document.getElementById('table-mode-body').textContent; closeTableMode(); await new Promise(r => setTimeout(r, 250)); return { phase: /A council/.test(t), hero: /Geira/.test(t), code: t.includes(campaignInfo().code) }; });
+    checks.push({ ok: tvc.phase && tvc.hero && tvc.code, msg: `at a table the big screen shows the phase, the heroes and the join code (${JSON.stringify(tvc)})` });
+
+    // A Loremaster plays no hero: the header names the table; the GM tab drops this device's roster.
+    const lm = await gm.page.evaluate(async () => {
+      const vis = el => !!el && el.checkVisibility();
+      openNavGroup('adventure'); document.querySelector('.tab[data-tab="gm"]').click(); await new Promise(r => setTimeout(r, 200));
+      const out = { isLm: document.body.classList.contains('is-lm'), title: vis(document.getElementById('lm-title')) ? document.getElementById('lm-title-text').textContent : null,
+        hud: vis(document.getElementById('hud')), heroName: vis(document.getElementById('char-name')), localCards: document.getElementById('gm-party-body').children.length,
+        eye: vis(document.getElementById('gm-eye-card')), duplicateBroadcast: !!document.getElementById('gm-bcast-text'), toConsole: [...document.querySelectorAll('#gm-campaign-body button')].some(b => /Go to the table console/.test(b.textContent)) };
+      openNavGroup('play'); return out;
+    });
+    checks.push({ ok: lm.isLm && lm.title === 'Table' && !lm.hud && !lm.heroName && lm.localCards === 0 && !lm.eye && !lm.duplicateBroadcast && lm.toConsole, msg: `the Loremaster's header names the table, and the GM tab at a table drops the local roster, the solo Eye and the duplicate broadcast box (${JSON.stringify(lm)})` });
+
+    // Saying something to the table reaches every phone as a toast, not only the phase card.
+    await gm.page.evaluate(() => { document.getElementById('tbl-note').value = 'A cold wind from the north'; });
+    await gmClick('#panel-play button', 'Show it on every phone');
+    const toasted = await until(pl.page, () => [...document.querySelectorAll('#toast-wrap .toast')].some(t => /A cold wind/.test(t.textContent)));
+    checks.push({ ok: toasted, msg: "what the Loremaster says to the table pops up on the player's phone" });
+
+    // The player's sheet: skills with no ranks fold away; a lost connection says so.
+    await openPlay(pl.page); await pl.page.waitForTimeout(300);
+    const fold = await pl.page.evaluate(() => {
+      const d = document.querySelector('#panel-play .tbl-more');
+      const inside = d ? [...d.querySelectorAll('.tbl-roll strong')].map(x => x.textContent) : [];
+      const zero = Object.keys(char.skills).filter(k => !(parseInt(char.skills[k].rating) > 0) && !char.skills[k].favoured);
+      return { folded: !!d && !d.open, zero: zero.length, match: zero.length > 0 && inside.length === zero.length && zero.every(z => inside.some(t => t.startsWith(z))) };
+    });
+    checks.push({ ok: fold.folded && fold.match, msg: `skills a hero has no ranks in fold away under one line on the table sheet (${JSON.stringify(fold)})` });
+    const offline = await pl.page.evaluate(() => { Table._connCb({ val: () => false }); const shown = !!document.querySelector('#panel-play .tbl-offline'); Table._connCb({ val: () => true }); return shown && !document.querySelector('#panel-play .tbl-offline'); });
+    checks.push({ ok: offline, msg: "a phone that loses the table says so, and the notice goes when it is back" });
+
+    // Tapping the dim backdrop closes a sheet — but never a question waiting for an answer.
+    const bd = await pl.page.evaluate(() => {
+      openCampaign(); const ov = document.getElementById('campaign-overlay');
+      ov.dispatchEvent(new MouseEvent('click', { bubbles: true })); const closed = !ov.classList.contains('show');
+      showModal({ title: 'Q', message: 'q', buttons: [{ label: 'Answer', value: 1 }] }); const m = document.getElementById('styled-modal-overlay');
+      m.dispatchEvent(new MouseEvent('click', { bubbles: true })); const kept = m.classList.contains('show');
+      m.querySelector('button').click(); return { closed, kept };
+    });
+    checks.push({ ok: bd.closed && bd.kept, msg: `tapping the backdrop closes a sheet but not a pending question (${JSON.stringify(bd)})` });
+
+    // Joining by the invite link / QR, with the code typed any old way; no dialog in the way.
+    const pl3 = await device(browser, baseUrl, db, 'pl3', errors);
+    await pl3.page.evaluate(() => { loadPregen(3); }); await closeModals(pl3.page);
+    await pl3.page.evaluate(c => { location.hash = 'join=' + encodeURIComponent(c.toLowerCase().replace(/-/g, ' ')); }, code);
+    const linkOpens = await until(pl3.page, c => { const ov = document.getElementById('campaign-overlay'); const inp = document.getElementById('camp-code'); return ov.classList.contains('show') && !!inp && inp.value === c && !document.getElementById('camp-form-pl').hidden; }, code);
+    await pl3.page.evaluate(() => { const b = document.getElementById('camp-join-btn'); if (b) b.click(); });
+    const joined3 = await until(pl3.page, () => tableActive() && document.getElementById('panel-play').classList.contains('active') && !document.getElementById('campaign-overlay').classList.contains('show'));
+    const noDialog = await pl3.page.evaluate(() => !document.getElementById('styled-modal-overlay').classList.contains('show'));
+    checks.push({ ok: linkOpens && joined3 && noDialog, msg: `an invite link opens the join step with the code filled in, and joining lands on the table with no dialog (${linkOpens}/${joined3}/${noDialog})` });
+
+    // A player at a table does not get the solo Journey and Council tabs; leaving brings them back.
+    const tabs = await pl3.page.evaluate(async () => {
+      const vis = id => document.querySelector(`.tab[data-tab="${id}"]`).style.display !== 'none';
+      const at = [vis('journey'), vis('council'), vis('combat')];
+      Sync.leaveCampaign(); await new Promise(r => setTimeout(r, 150));
+      return { at, after: [vis('journey'), vis('council')] };
+    });
+    checks.push({ ok: !tabs.at[0] && !tabs.at[1] && tabs.at[2] && tabs.after[0] && tabs.after[1], msg: `a player at a table has no solo Journey or Council tab, and gets them back on leaving (${JSON.stringify(tabs)})` });
+
+    // Starting a table from the sheet lands on the console with the invite showing; on a tablet
+    // the console reads in two columns.
+    const gm3 = await device(browser, baseUrl, db, 'gm3', errors, { width: 1024, height: 1366 });
+    await gm3.page.evaluate(() => { openCampaign(); campStep('lm'); document.getElementById('camp-name').value = 'Weathertop'; document.getElementById('camp-create-btn').click(); });
+    const invite = await until(gm3.page, () => { const i = document.querySelector('#tbl-invite .tbl-invite'); return !!i && document.getElementById('panel-play').classList.contains('active') && !!i.querySelector('#tbl-invite-qr img, #tbl-invite-qr canvas') && i.textContent.includes(campaignInfo().code) && !document.getElementById('styled-modal-overlay').classList.contains('show'); });
+    const cols = await gm3.page.evaluate(() => { const m = document.querySelector('.tbl-gm-main').getBoundingClientRect(), sd = document.querySelector('.tbl-gm-side').getBoundingClientRect(); return { two: sd.left >= m.right - 1, main: Math.round(m.width), side: Math.round(sd.width) }; });
+    const noInviteWithPlayers = await gm.page.evaluate(() => !document.querySelector('#tbl-invite .tbl-invite'));
+    checks.push({ ok: invite && noInviteWithPlayers, msg: `starting a table goes straight to the console with the code and a QR to show; it steps aside once players are in (${invite}/${noInviteWithPlayers})` });
+    checks.push({ ok: cols.two && cols.main > 320 && cols.side > 320, msg: `on a tablet the console reads in two columns (${JSON.stringify(cols)})` });
+
     checks.push({ ok: errors.length === 0, msg: `no page errors across the table devices (${errors.slice(0, 3).join(' | ')})` });
-    for (const d of [gm, pl, pl2, solo]) await d.context.close();
+    for (const d of [gm, pl, pl2, solo, pl3, gm3]) await d.context.close();
     return { checks };
   }
 };

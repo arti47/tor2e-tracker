@@ -865,9 +865,9 @@ function tableFpDone() {
 function _tblPoolGmHtml() {
   const n = _tblPlayers().length;
   return `<div class="tbl-pool"><span>Company Fellowship</span><strong>${Table.pool}</strong>
-    <div class="tbl-pool-btns"><button type="button" class="btn btn-quiet" aria-label="Remove a Fellowship point" onclick="tableAdjPool(-1)">−</button>
-    <button type="button" class="btn btn-quiet" aria-label="Add a Fellowship point" onclick="tableAdjPool(1)">+</button>
-    <button type="button" class="btn btn-quiet" onclick="tableRefillPool()">Refill to ${n} (one per hero)</button></div></div>`;
+    <div class="tbl-pool-btns"><button type="button" class="btn btn-secondary" aria-label="Remove a Fellowship point" onclick="tableAdjPool(-1)">−</button>
+    <button type="button" class="btn btn-secondary" aria-label="Add a Fellowship point" onclick="tableAdjPool(1)">+</button>
+    ${n ? `<button type="button" class="btn btn-quiet" onclick="tableRefillPool()">Refill to ${n} (one per hero)</button>` : ''}</div></div>`;
 }
 function _tblPoolPlayerHtml() {
   return `<div class="tbl-pool-card"><div class="tbl-pool"><span>Company Fellowship</span><strong>${Table.pool}</strong>

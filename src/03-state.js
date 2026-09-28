@@ -691,7 +691,7 @@ async function campaignJoin() {
   try {
     await Sync.joinCampaign(code, _campRole());
     _goToTable();
-    showToast('You are at the table. Keep this screen open — the Loremaster will ask you for rolls here.');
+    showToast(Sync.isLoremaster() ? 'You are a Loremaster at this table.' : 'You are at the table. Keep this screen open — the Loremaster will ask you for rolls here.');
     if (typeof offerTableRules === 'function') await offerTableRules();
   } catch (e) {
     const msg = String(e && e.message ? e.message : e);
@@ -866,23 +866,23 @@ window.addEventListener('popstate', () => {
 });
 function _bsMeter(cls, cur, max, extra) {
   const c = parseInt(cur) || 0, m = Math.max(1, parseInt(max) || 0);
-  return `<div class="bs-meter ${cls}"><div class="bs-fill" style="width:${Math.max(0, Math.min(100, 100 * c / m))}%"></div>${extra || ''}<span>${cur ?? '?'}<small>/${max ?? '?'}</small></span></div>`;
+  return `<div class="tv-meter ${cls}"><div class="tv-fill" style="width:${Math.max(0, Math.min(100, 100 * c / m))}%"></div>${extra || ''}<span>${cur ?? '?'}<small>/${max ?? '?'}</small></span></div>`;
 }
 function _bsHero(name, v, opts) {
   const o = opts || {};
   const sh = parseInt(v.shadow) || 0, hm = Math.max(1, parseInt(v.hopeMax) || 0);
   const dying = v.dying || (parseInt(v.endCur) || 0) <= 0;
   const chips = [dying && 'Dying', v.weary && 'Weary', v.miserable && 'Miserable', v.wounded && 'Wounded'].filter(Boolean)
-    .map(t => `<span class="bs-chip">${t}</span>`).join('');
-  return `<div class="bs-hero${o.now ? ' now' : ''}${o.off ? ' off' : ''}">
-    <div class="bs-name">${escapeHtml(name)}${o.tag ? `<small>${escapeHtml(o.tag)}</small>` : ''}</div>
-    <div class="bs-lab">Endurance</div>${_bsMeter('end', v.endCur, v.endMax)}
-    <div class="bs-lab">Hope${sh ? ` · Shadow ${sh}` : ''}</div>${_bsMeter('hope', v.hopeCur, v.hopeMax, sh ? `<div class="bs-shadow" style="width:${Math.min(100, 100 * sh / hm)}%"></div>` : '')}
-    ${chips ? `<div class="bs-chips">${chips}</div>` : ''}${o.now ? '<div class="bs-now">Acting now</div>' : ''}</div>`;
+    .map(t => `<span class="tv-chip">${t}</span>`).join('');
+  return `<div class="tv-hero${o.now ? ' now' : ''}${o.off ? ' off' : ''}">
+    <div class="tv-name">${escapeHtml(name)}${o.tag ? `<small>${escapeHtml(o.tag)}</small>` : ''}</div>
+    <div class="tv-lab">Endurance</div>${_bsMeter('end', v.endCur, v.endMax)}
+    <div class="tv-lab">Hope${sh ? ` · Shadow ${sh}` : ''}</div>${_bsMeter('hope', v.hopeCur, v.hopeMax, sh ? `<div class="tv-shadow" style="width:${Math.min(100, 100 * sh / hm)}%"></div>` : '')}
+    ${chips ? `<div class="tv-chips">${chips}</div>` : ''}${o.now ? '<div class="tv-now">Acting now</div>' : ''}</div>`;
 }
 function renderTableMode() {
   const body = document.getElementById('table-mode-body'); if (!body) return;
-  const titleEl = document.getElementById('bs-title');
+  const titleEl = document.getElementById('tv-title');
   const atTable = typeof tableActive === 'function' && tableActive();
   const en = (typeof enc === 'function') ? enc() : (char.encounter || {});
   const foes = (en && en.active && (en.foes || [])) || [];
@@ -891,36 +891,36 @@ function renderTableMode() {
     const info = campaignInfo();
     if (titleEl) titleEl.textContent = (Table.meta && Table.meta.name) || info.name || 'The table';
     const ph = TABLE_PHASES[_tblPhase()];
-    html += `<div class="bs-phase"><div class="bs-eyebrow">Now</div><div class="bs-phase-name">${escapeHtml(ph.label)}</div>
-      ${Table.state.note ? `<div class="bs-note">“${escapeHtml(Table.state.note)}”</div>` : ''}</div>`;
+    html += `<div class="tv-phase"><div class="tv-eyebrow">Now</div><div class="tv-phase-name">${escapeHtml(ph.label)}</div>
+      ${Table.state.note ? `<div class="tv-note">“${escapeHtml(Table.state.note)}”</div>` : ''}</div>`;
     const calls = Object.keys(Table.calls).map(id => Object.assign({ id }, Table.calls[id])).filter(c => !c.closed && c.kind !== 'foe-attack');
-    if (calls.length) html += `<div class="bs-calls">${calls.map(c => {
+    if (calls.length) html += `<div class="tv-calls">${calls.map(c => {
       const who = c.who === 'all' ? 'Everyone' : _tblPlayerName(c.who);
       const done = Table.feed.filter(f => f.callId === c.id).map(f => `${escapeHtml(f.name)} ${/SUCCESS/.test(f.outcome || '') ? '✓' : '✗'}`).join(' · ');
-      return `<div class="bs-call"><strong>Roll ${escapeHtml(c.skill)}</strong> <span>${escapeHtml(who)}</span>${done ? `<small>${done}</small>` : ''}</div>`;
+      return `<div class="tv-call"><strong>Roll ${escapeHtml(c.skill)}</strong> <span>${escapeHtml(who)}</span>${done ? `<small>${done}</small>` : ''}</div>`;
     }).join('')}</div>`;
     const inFight = _tblPhase() === 'combat' || en.active;
     const now = inFight && typeof tableTurnNow === 'function' ? tableTurnNow() : null;
     const players = _tblPlayers();
-    html += `<div class="bs-grid">${players.map(m => _bsHero((m.vitals || {}).name || m.displayName || 'Hero', m.vitals || {}, { now: now && now.uid === m.uid, off: m.online === false, tag: inFight && (m.vitals || {}).stance ? (m.vitals.stance[0].toUpperCase() + m.vitals.stance.slice(1)) : '' })).join('') || '<div class="bs-empty">Waiting for the players to join.</div>'}</div>`;
+    html += `<div class="tv-grid">${players.map(m => _bsHero((m.vitals || {}).name || m.displayName || 'Hero', m.vitals || {}, { now: now && now.uid === m.uid, off: m.online === false, tag: inFight && (m.vitals || {}).stance ? (m.vitals.stance[0].toUpperCase() + m.vitals.stance.slice(1)) : '' })).join('') || '<div class="tv-empty">Waiting for the players to join.</div>'}</div>`;
     const j = _tj();
-    if (j.active) html += `<div class="bs-section"><div class="bs-eyebrow">The road</div>${_tjProgressHtml(j)}</div>`;
+    if (j.active) html += `<div class="tv-section"><div class="tv-eyebrow">The road</div>${_tjProgressHtml(j)}</div>`;
     const recent = Table.feed.slice(-5).reverse();
-    if (recent.length) html += `<div class="bs-section"><div class="bs-eyebrow">Latest rolls</div>${recent.map(f => `<div class="bs-feed"><strong>${escapeHtml(f.name || '')}</strong> ${escapeHtml(f.text || '')}</div>`).join('')}</div>`;
-    html += `<div class="bs-join"><span>Join this table</span><strong>${escapeHtml(info.code || '')}</strong><div id="bs-qr"></div></div>`;
+    if (recent.length) html += `<div class="tv-section"><div class="tv-eyebrow">Latest rolls</div>${recent.map(f => `<div class="tv-feed"><strong>${escapeHtml(f.name || '')}</strong> ${escapeHtml(f.text || '')}</div>`).join('')}</div>`;
   } else {
     if (titleEl) titleEl.textContent = 'Heroes on this device';
     const r = loadRoster() || { activeId: activeCharId, list: [] };
-    html += `<div class="bs-grid">${r.list.map(e => {
+    html += `<div class="tv-grid">${r.list.map(e => {
       const d = (e.id === activeCharId) ? char : readSlot(e.id); if (!d) return '';
       return _bsHero(heroLabel(d), { endCur: d.endCur, endMax: d.endMax, hopeCur: d.hopeCur, hopeMax: d.hopeMax, shadow: (parseInt(d.shadow) || 0) + (parseInt(d.scars) || 0), weary: d.weary, miserable: d.miserable, wounded: d.wounded }, { tag: e.id === activeCharId ? 'playing now' : '' });
     }).join('')}</div>`;
   }
   const living = foes.filter(f => !f.slain);
-  if (living.length) html += `<div class="bs-section"><div class="bs-eyebrow">The fight · round ${en.round || 1}</div><div class="bs-grid foes">${living.map(f =>
-    `<div class="bs-hero foe"><div class="bs-name">${escapeHtml(f.name)}</div><div class="bs-lab">Endurance</div>${_bsMeter('foe', f.endCur, f.endMax)}${f.wounded ? '<div class="bs-chips"><span class="bs-chip">Wounded</span></div>' : ''}</div>`).join('')}</div></div>`;
+  if (living.length) html += `<div class="tv-section"><div class="tv-eyebrow">The fight · round ${en.round || 1}</div><div class="tv-grid foes">${living.map(f =>
+    `<div class="tv-hero foe"><div class="tv-name">${escapeHtml(f.name)}</div><div class="tv-lab">Endurance</div>${_bsMeter('foe', f.endCur, f.endMax)}${f.wounded ? '<div class="tv-chips"><span class="tv-chip">Wounded</span></div>' : ''}</div>`).join('')}</div></div>`;
+  if (atTable) html += `<div class="tv-join"><span>Join this table</span><strong>${escapeHtml(campaignInfo().code || '')}</strong><div id="tv-qr"></div></div>`;
   body.innerHTML = html;
-  if (atTable) renderJoinQr(document.getElementById('bs-qr'), campaignInfo().code, 120);
+  if (atTable) renderJoinQr(document.getElementById('tv-qr'), campaignInfo().code, 120);
 }
 
 /* ---------- CAMPAIGN TIMELINE (U15) ----------
