@@ -428,8 +428,10 @@ const Sync = {
       this._bcastPrimed = true;
       if (typeof renderBroadcastFeed === 'function') renderBroadcastFeed(msgs);
     }, () => {});
+    if (typeof Table !== 'undefined') Table.start();   // table phase + the rest of group play
   },
   unsubscribeBroadcast() {
+    if (typeof Table !== 'undefined') Table.stop();
     if (this._bcastRef) { try { this._bcastRef.off('value'); } catch (e) {} this._bcastRef = null; }
     this._bcastMsgs = []; this._bcastPrimed = false; this._bcastLastTs = 0;
   },

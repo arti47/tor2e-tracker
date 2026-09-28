@@ -364,30 +364,46 @@ async function toggleStriderMode() {
   const turningOn = !char.striderMode;
   const msg = turningOn
     ? `<strong>Play on your own, with no Game Master?</strong><br><br>Normally one player is the <em>Loremaster</em>, who describes the world and decides what happens. In Strider Mode <strong>you play both parts</strong>: you act as your hero, and you ask the <strong>Oracle</strong> whenever you don't know what the world does.<br><br>New to solo play? Read <strong>📖 Ref → Playing Solo</strong> — it walks through a whole session step by step.<br><br>Rules changes:<ul style="text-align:left;font-size:var(--fs-xs);padding-left:18px;margin:6px 0"><li>PE budget: 10 → <strong>15</strong></li><li>Attribute TN: <strong>18 − Rating</strong> (was 20 − Rating)</li><li>Fellowship Rating starts at <strong>3</strong></li><li>Adds free <strong>Strider</strong> Distinctive Feature (Inspired while journeying)</li><li>Unlocks <strong>Oracle tab</strong> (Telling / Lore / Fortune / Ill-Fortune tables)</li><li>Unlocks <strong>Skirmish stance</strong> + <strong>Gain Ground</strong> combat task</li><li>Unlocks <strong>Eye of Mordor</strong> tracking</li></ul>You can switch back any time. Attribute TNs will recalculate.`
-    : `<strong>Disable Strider Mode?</strong><br><br>Revert to standard play. PE budget → 10, TN → 20 − Rating, Strider Distinctive Feature can be removed manually. Oracle tab + Skirmish stance + Eye of Mordor will hide.`;
+    : `<strong>Disable Strider Mode?</strong><br><br>Revert to standard play. Target Numbers go back to 20 − Rating and the PE budget to 10. What Strider Mode added is taken away again — the <strong>Strider</strong> feature, the Fellowship Rating it raised and the XP scheme it chose. Everything your hero <strong>earned</strong> stays: points, ranks, gear, wounds, Shadow. The Oracle tab, Skirmish stance and Eye of Mordor hide (your Eye count is kept for next time).`;
   if (!await confirmStyled(msg, turningOn ? '🗡️ Strider Mode' : 'Disable Strider Mode', {yes: turningOn ? 'Play solo (Strider Mode)' : 'Turn Strider Mode off', no: 'Cancel'})) return;
-  char.striderMode = turningOn;
-  // Strider Mode explicitly steers solo play away from session-based XP ("your sessions might last
-  // for a few minutes or a few hours, which can make session-based rewards disconnected from events
-  // and achievements in your story") and toward Experience Milestones. Default to that on the way
-  // in; the player can still switch back via the Advancement card.
-  if (turningOn && !char._xpModeChosen) char.experienceMode = 'milestone';
-  // Recalculate TNs based on new mode — through the shared helper, so the Prowess
-  // virtue's −1 (and any lifepath TN adjustment) survives the switch.
-  recomputeAttrTNs();
-  // Bump Fellowship to 3 on first activation if currently 0
-  if (turningOn && (parseInt(char.fellowshipRating) || 0) < 3) char.fellowshipRating = 3;
-  // Auto-add Strider distinctive feature
-  if (turningOn) {
+  setStriderMode(turningOn);
+  alert(turningOn ? '🗡️ Strider Mode enabled. Oracle tab visible; Eye of Mordor counter active.' : 'Strider Mode disabled. Standard rules restored.');
+}
+const STRIDER_FEATURE = 'Strider — Inspired on all Skill rolls while journeying';
+/** Switch Strider Mode on or off for the active hero — a CLEAN switch, so one hero can go from a
+    table game to solo play and back. Only what the mode itself changed is changed back: on the
+    way in we record the Fellowship Rating bump, the XP scheme and whether we added the Strider
+    feature (char._striderPrev); on the way out exactly those are undone. Everything earned in
+    either mode — points, ranks, gear, wounds, Shadow — carries both ways. TNs are derived
+    (GOTCHA 19), so recomputeAttrTNs() moves them between 18 − and 20 − Rating by itself. */
+function setStriderMode(on) {
+  on = !!on;
+  if (!!char.striderMode === on) return;
+  char.striderMode = on;
+  if (on) {
+    const prev = { fr: parseInt(char.fellowshipRating) || 0, xp: char.experienceMode || 'session', feature: false };
+    // Strider Mode steers solo play away from session XP and toward Experience Milestones;
+    // an explicit player choice (switchXpMode) is never overridden.
+    if (!char._xpModeChosen) char.experienceMode = 'milestone';
+    if (prev.fr < 3) char.fellowshipRating = 3;
     const features = String(char.features || '');
-    if (!features.includes('Strider')) {
-      char.features = features ? features + '\nStrider — Inspired on all Skill rolls while journeying' : 'Strider — Inspired on all Skill rolls while journeying';
+    if (!features.includes('Strider')) { char.features = features ? features + '\n' + STRIDER_FEATURE : STRIDER_FEATURE; prev.feature = true; }
+    char._striderPrev = prev;
+  } else {
+    const p = char._striderPrev;
+    // A hero switched on before this record existed still carries the auto-added line; remove that exact line.
+    const stripFeature = !p || p.feature;
+    if (p) {
+      if (p.fr < 3) char.fellowshipRating = Math.max(p.fr, (parseInt(char.fellowshipRating) || 0) - (3 - p.fr));
+      if (!char._xpModeChosen) char.experienceMode = p.xp || 'session';
     }
+    if (stripFeature) char.features = String(char.features || '').split('\n').filter(l => l.trim() !== STRIDER_FEATURE).join('\n');
+    delete char._striderPrev;
   }
+  recomputeAttrTNs();   // Prowess / Lifepath adjustments survive (GOTCHA 19)
   saveCharacter();
   render();
   refreshStriderUI();
-  alert(turningOn ? '🗡️ Strider Mode enabled. Oracle tab visible; Eye of Mordor counter active.' : 'Strider Mode disabled. Standard rules restored.');
 }
 
 // Moria Solo Mode (Moria — Through the Doors of Durin solo campaign). Self-contained solo
@@ -1498,6 +1514,7 @@ function orcBandToEncounter() {
 }
 
 function refreshStriderUI() {
+  if (typeof refreshWhereLabel === 'function') refreshWhereLabel();
   applySoloWording();   // swap Loremaster/Company phrasing for the solo equivalent
   const solo = isSolo();
   // Fellowship Focus is a group-play concept — a soloist has no Company to focus on. Hide the

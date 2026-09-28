@@ -667,12 +667,12 @@ function closeCampaign() {
 function _campRole() { const el = document.getElementById('camp-role'); return el ? el.value : 'player'; }
 async function campaignCreate() {
   const name = (document.getElementById('camp-name') || {}).value || '';
-  try { const r = await Sync.createCampaign(name, _campRole()); alertStyled('Campaign created!\nShare this join code: ' + r.code); renderCampaign(); }
+  try { const r = await Sync.createCampaign(name, _campRole()); await alertStyled('Campaign created!\nShare this join code: ' + r.code); renderCampaign(); if (typeof offerTableRules === 'function') await offerTableRules(); if (typeof renderPlay === 'function') renderPlay(); }
   catch (e) { alertStyled('Could not create campaign: ' + (e && e.message ? e.message : e)); }
 }
 async function campaignJoin() {
   const code = (document.getElementById('camp-code') || {}).value || '';
-  try { const r = await Sync.joinCampaign(code, _campRole()); alertStyled('Joined campaign ' + r.code + '.'); renderCampaign(); }
+  try { const r = await Sync.joinCampaign(code, _campRole()); await alertStyled('Joined campaign ' + r.code + '.'); renderCampaign(); if (typeof offerTableRules === 'function') await offerTableRules(); if (typeof renderPlay === 'function') renderPlay(); }
   catch (e) { alertStyled('Could not join: ' + (e && e.message ? e.message : e)); }
 }
 async function campaignLeave() {

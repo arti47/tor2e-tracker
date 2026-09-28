@@ -4963,6 +4963,10 @@ function renderPlay() {
   const host = document.getElementById('play-body'); if (!host) return;
   const s = sagaState();
   const pp = document.getElementById('panel-play'); if (pp) pp.classList.toggle('no-hero', !char.culture);
+  // In a cloud campaign ▶ Play is the table sheet (players) or the table console (Loremaster).
+  const atTable = typeof tableActive === 'function' && tableActive();
+  if (pp) pp.classList.toggle('table-mode', atTable);
+  if (atTable) return renderTablePlay(host);
 
   if (!char.culture) {
     host.innerHTML = '<div class="card play-empty"><div class="eyebrow">Welcome</div><h3 class="card-title">First, a hero</h3>' +

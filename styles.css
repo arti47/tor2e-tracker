@@ -1808,3 +1808,31 @@ body.theme-sepia .card { background-image: linear-gradient(180deg, rgba(255,245,
 #hexfix-land .opt-card strong { font-size: var(--fs-md); }
 #hexfix-overlay .field { flex-direction: column; align-items: flex-start; gap: 4px; }
 #hexfix-overlay .field > label { flex: none !important; }
+
+/* ---------- TABLE PLAY (group play with a Loremaster) ---------- */
+#panel-play.table-mode > .tab-intro, #panel-play.table-mode #campaign-box { display: none; }
+.tbl-phase .tbl-note { font-family: var(--font-display, serif); font-style: italic; margin: var(--sp-2) 0 0; }
+.tbl-hero-head { display: flex; align-items: center; gap: var(--sp-3); }
+.tbl-hero-head .card-title { margin: 0; }
+.tbl-hero-head small { color: var(--text-muted); }
+.tbl-vitals { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--sp-2); margin-top: var(--sp-3); text-align: center; }
+.tbl-vitals span { display: block; font-size: var(--fs-xs); color: var(--text-muted); }
+.tbl-vitals strong { font-family: var(--font-display, serif); font-size: var(--fs-lg); }
+.tbl-vitals small { font-size: var(--fs-xs); color: var(--text-muted); }
+.tbl-chips { display: flex; flex-wrap: wrap; gap: var(--sp-1); margin-top: var(--sp-2); }
+.tbl-chip { font-size: var(--fs-xs); padding: 2px var(--sp-2); border-radius: var(--r-sm); border: 1px solid var(--border); }
+.tbl-chip.bad { background: var(--btn-alert-bg); color: #fff; border-color: transparent; }
+.tbl-weapons { list-style: none; padding: 0; margin: var(--sp-2) 0 0; font-size: var(--fs-sm); }
+.tbl-weapons li { padding: 2px 0; }
+.tbl-weapons small { color: var(--text-muted); }
+.tbl-group { margin-top: var(--sp-3); }
+.tbl-rolls { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: var(--sp-2); margin-top: var(--sp-1); }
+.tbl-roll { min-height: 56px; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; text-align: left; padding: var(--sp-2); border: 1px solid var(--border); border-radius: var(--r-md); background: var(--card-bg); color: var(--ink); cursor: pointer; }
+.tbl-roll strong { font-size: var(--fs-sm); }
+.tbl-roll small { font-size: var(--fs-xs); color: var(--text-muted); }
+.tbl-roll.fav { border-color: var(--gold); }
+.tbl-roll:active { transform: scale(.98); }
+.tbl-prow { display: flex; flex-direction: column; padding: var(--sp-2) 0; border-bottom: 1px solid var(--border); }
+.tbl-prow span { font-size: var(--fs-xs); color: var(--text-muted); }
+.tbl-prow.off { opacity: .6; }
+@media (max-width: 380px) { .tbl-vitals { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
