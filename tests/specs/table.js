@@ -389,6 +389,53 @@ module.exports = {
     checks.push({ ok: invite && noInviteWithPlayers, msg: `starting a table goes straight to the console with the code and a QR to show; it steps aside once players are in (${invite}/${noInviteWithPlayers})` });
     checks.push({ ok: cols.two && cols.main > 320 && cols.side > 320, msg: `on a tablet the console reads in two columns (${JSON.stringify(cols)})` });
 
+    // ---- Empty heroes (2026-09-28): the owner's roster held five "Unnamed hero" rows nobody made ----
+    // (a) Five blank heroes on a device (what a synced account had piled up): start-up clears
+    //     all but the one you are on.
+    const heaped = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
+    await heaped.route(/firebasejs/, r => r.fulfill({ status: 200, contentType: 'application/javascript', body: '' }));
+    await heaped.route('**/sw.js', r => r.abort());
+    await heaped.addInitScript(() => {
+      if (sessionStorage.getItem('seeded')) return; sessionStorage.setItem('seeded', '1');
+      localStorage.setItem('tor2e-tutorial', JSON.stringify({ offered: true }));
+      const ids = ['e1', 'e2', 'e3', 'e4', 'e5'];
+      ids.forEach(id => localStorage.setItem('tor2e-char-' + id, JSON.stringify({ name: '', endCur: 20, endMax: 20, hopeCur: 10, hopeMax: 10 })));
+      localStorage.setItem('tor2e-roster-v1', JSON.stringify({ activeId: 'e5', list: ids.map(id => ({ id, name: 'New Hero' })) }));
+    });
+    const hp = await heaped.newPage(); hp.on('pageerror', e => errors.push('heaped: ' + e));
+    await hp.goto(baseUrl + '/character-tracker.html', { waitUntil: 'load' }); await hp.waitForTimeout(600);
+    const heapedRoster = await hp.evaluate(() => loadRoster().list.map(e => e.id));
+    checks.push({ ok: heapedRoster.length === 1 && heapedRoster[0] === 'e5', msg: `five blank heroes nobody built are cleared at start-up, keeping the one in use (${JSON.stringify(heapedRoster)})` });
+    // A ready-made hero replaces the blank one instead of sitting beside it.
+    await hp.evaluate(() => { loadPregen(0); document.querySelectorAll('.menu-overlay.show').forEach(o => o.classList.remove('show')); });
+    const afterPregen = await hp.evaluate(() => loadRoster().list.map(e => e.name));
+    // "New blank hero" on a blank hero does not make a second one.
+    const blankNew = await hp.evaluate(() => { const n = loadRoster().list.length; newCharacter(); newCharacter(); return loadRoster().list.length - n; });
+    checks.push({ ok: afterPregen.length === 1 && /Geira/.test(afterPregen[0]) && blankNew === 1, msg: `a ready-made hero replaces the blank one, and a second blank hero is never made (${JSON.stringify(afterPregen)}, +${blankNew})` });
+    // The roster offers one tap to clear empty heroes that arrive later.
+    const tidy = await hp.evaluate(() => {
+      ['x1', 'x2'].forEach(id => { localStorage.setItem('tor2e-char-' + id, JSON.stringify({ name: '' })); const r = loadRoster(); r.list.push({ id, name: 'New Hero' }); saveRoster(r); });
+      openRoster(); const btn = [...document.querySelectorAll('#roster-tidy button')].find(b => /Remove empty heroes/.test(b.textContent));
+      if (btn) btn.click();
+      const left = loadRoster().list.length; closeRoster(); return { offered: !!btn, left, on: char.name };
+    });
+    // The roster was Geira + the blank from New hero + two more blanks; you land on Geira.
+    checks.push({ ok: tidy.offered && tidy.left === 1 && /Geira/.test(tidy.on || ''), msg: `Your heroes offers "Remove empty heroes": it removes only the empty ones and moves you to a real hero (${JSON.stringify(tidy)})` });
+    await heaped.close();
+
+    // (b) With cloud sync, a blank hero is never uploaded, and one already in the cloud is not restored.
+    const fresh1 = await device(browser, baseUrl, db, 'fresh1', errors);
+    await fresh1.page.waitForTimeout(2000);
+    const freshId = await fresh1.page.evaluate(() => activeCharId);
+    const uploaded = !!db.get('characters/' + freshId);
+    await db.set('characters/oldblank', { owner: 'fresh1', name: 'New Hero', updated: 1, data: { name: '', endCur: 20, endMax: 20 } });
+    await db.set('characters/realone', { owner: 'fresh1', name: 'Bilbo', updated: 1, data: Object.assign({}, { name: 'Bilbo Baggins', culture: 'Hobbits of the Shire', endCur: 20, endMax: 20, hopeCur: 12, hopeMax: 12 }) });
+    const restored = await fresh1.page.evaluate(async () => { Sync._syncDown(); await new Promise(r => setTimeout(r, 800)); return { list: loadRoster().list.map(e => e.id), active: activeCharId }; });
+    const tomb = db.get('characters/oldblank');
+    checks.push({ ok: !uploaded && !restored.list.includes('oldblank') && restored.list.includes('realone') && restored.active === 'realone' && restored.list.length === 1 && tomb && tomb.data && tomb.data._deleted,
+      msg: `a blank hero is not uploaded; an old blank in the cloud is not restored (and is tombstoned), and a device's blank gives way to the real hero it restores (${JSON.stringify(restored)}, uploaded ${uploaded})` });
+    await fresh1.context.close();
+
     checks.push({ ok: errors.length === 0, msg: `no page errors across the table devices (${errors.slice(0, 3).join(' | ')})` });
     for (const d of [gm, pl, pl2, solo, pl3, gm3]) await d.context.close();
     return { checks };

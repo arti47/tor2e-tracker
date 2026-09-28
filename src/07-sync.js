@@ -102,6 +102,9 @@ const Sync = {
     let data = null, rolls = null, journal = null;
     try { data = JSON.parse(localStorage.getItem(CHAR_PREFIX + id)); } catch (e) {}
     if (!data) return;
+    // A blank hero nobody has started is not uploaded — every fresh install makes one, and they
+    // came back as "Unnamed hero" on every other device (isEmptyHero, 03-state.js).
+    if (typeof isEmptyHero === 'function' && isEmptyHero(data, id)) return;
     try { rolls = JSON.parse(localStorage.getItem(ROLLS_PREFIX + id)); } catch (e) {}
     try { journal = JSON.parse(localStorage.getItem(JOURNAL_PREFIX + id)); } catch (e) {}
     // campaignId (P6): lets the campaign's loremaster read this record for the read-only "peek"
@@ -142,6 +145,8 @@ const Sync = {
       Object.keys(cloud).forEach(id => {
         const rec = cloud[id];
         if (!rec || !rec.data || this._isTombstone(rec)) return;   // deleted heroes stay deleted
+        // An empty hero uploaded before this fix: leave it behind, and tombstone it so no device restores it.
+        if (typeof isEmptyHero === 'function' && isEmptyHero(rec.data)) { this.deleteChar(id); return; }
         if (localStorage.getItem(CHAR_PREFIX + id)) return;   // present locally → don't clobber (last-write-wins locally)
         localStorage.setItem(CHAR_PREFIX + id, JSON.stringify(rec.data));
         if (rec.rolls) localStorage.setItem(ROLLS_PREFIX + id, JSON.stringify(rec.rolls));
@@ -151,7 +156,12 @@ const Sync = {
       });
       if (added) {
         if (!roster.activeId && roster.list.length) roster.activeId = roster.list[0].id;
+        // A fresh device's blank hero gives way to the real heroes just restored.
+        if (typeof isEmptyHero === 'function' && isEmptyHero(readSlot(roster.activeId), roster.activeId)) {
+          const real = roster.list.find(e => !isEmptyHero(readSlot(e.id), e.id)); if (real) roster.activeId = real.id;
+        }
         saveRoster(roster);
+        if (typeof pruneEmptyHeroes === 'function') pruneEmptyHeroes(roster.activeId);
         if (typeof applyActiveCharacter === 'function') applyActiveCharacter();
         if (typeof showToast === 'function') showToast(`☁️ Restored ${added} hero(es) from the cloud.`);
       }

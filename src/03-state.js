@@ -229,6 +229,58 @@ function readSlot(id) {
   try { return JSON.parse(localStorage.getItem(CHAR_PREFIX + id)); } catch(e) { return null; }
 }
 
+/* ---------- EMPTY HEROES ----------
+   Every fresh install — each browser, and on an iPhone the home-screen app separately from
+   Safari — starts with a blank hero. With cloud sync on, each of those was uploaded and then
+   restored onto every other device, so a roster filled with "Unnamed hero" rows nobody made.
+   A hero is EMPTY when nobody has started it: no name, culture or calling, no saga, and nothing
+   in its rolls, journal or timeline. Empty heroes are never uploaded, never restored, are
+   replaced by the next hero you add, and are cleared away at start-up. */
+function isEmptyHero(d, id) {
+  if (!d || typeof d !== 'object') return true;
+  if (String(d.name || '').trim() || d.culture || d.calling) return false;
+  if (d.saga && d.saga.started) return false;
+  if (Array.isArray(d.timeline) && d.timeline.length) return false;
+  if (id) {
+    try { const h = JSON.parse(localStorage.getItem(ROLLS_PREFIX + id)); if (Array.isArray(h) && h.length) return false; } catch (e) {}
+    try { const j = JSON.parse(localStorage.getItem(JOURNAL_PREFIX + id)); if (j && Array.isArray(j.entries) && j.entries.length) return false; } catch (e) {}
+  }
+  return true;
+}
+function _dropHeroSlots(id) {
+  if (typeof Sync !== 'undefined' && Sync.deleteChar) Sync.deleteChar(id);   // and its cloud copy (GOTCHA 41)
+  localStorage.removeItem(CHAR_PREFIX + id);
+  localStorage.removeItem(ROLLS_PREFIX + id);
+  localStorage.removeItem(JOURNAL_PREFIX + id);
+}
+/** Remove every empty hero except `keepId`. Returns how many went. Never empties the roster. */
+function pruneEmptyHeroes(keepId) {
+  const r = loadRoster(); if (!r || r.list.length < 2) return 0;
+  const drop = r.list.filter(e => e.id !== keepId && isEmptyHero(e.id === activeCharId ? char : readSlot(e.id), e.id));
+  if (drop.length >= r.list.length) drop.shift();
+  if (!drop.length) return 0;
+  drop.forEach(e => _dropHeroSlots(e.id));
+  r.list = r.list.filter(e => !drop.includes(e));
+  if (!r.list.some(e => e.id === r.activeId)) r.activeId = r.list[0].id;
+  saveRoster(r);
+  return drop.length;
+}
+/** Menu → Your heroes → Remove empty heroes. If the hero you are on is itself empty and a real
+    one exists, you move to the real one. */
+function removeEmptyHeroes() {
+  const r = loadRoster(); if (!r) return;
+  let keep = activeCharId;
+  if (isEmptyHero(char, activeCharId)) { const real = r.list.find(e => e.id !== activeCharId && !isEmptyHero(readSlot(e.id), e.id)); if (real) keep = real.id; }
+  const n = pruneEmptyHeroes(keep);
+  if (keep !== activeCharId) { const r2 = loadRoster(); r2.activeId = keep; saveRoster(r2); applyActiveCharacter(); }
+  renderRoster();
+  showToast(n ? `Removed ${n} empty hero${n === 1 ? '' : 'es'}.` : 'No empty heroes to remove.');
+}
+function _emptyHeroCount() {
+  const r = loadRoster(); if (!r) return 0;
+  return r.list.filter(e => isEmptyHero(e.id === activeCharId ? char : readSlot(e.id), e.id)).length;
+}
+
 // Re-load the active hero from storage and repaint the whole app.
 function applyActiveCharacter() {
   char = loadCharacter();
@@ -342,6 +394,11 @@ function switchCharacter(id) {
 }
 
 function newCharacter() {
+  if (isEmptyHero(char, activeCharId)) {
+    closeRoster();
+    showToast('This hero is still blank — build it on Hero → Build, or pick a ready-made one.');
+    return;
+  }
   saveCharacter();                       // persist current hero first
   const id = genCharId();
   activeCharId = id;
@@ -492,6 +549,7 @@ function loadPregen(idx) {
   localStorage.setItem(CHAR_PREFIX + id, JSON.stringify(char));
   saveHistory(); saveJournal();
   if (typeof clearUndo === 'function') clearUndo();
+  pruneEmptyHeroes(id);                    // the blank hero it replaces goes
   render(); renderHistory(); renderChronicle();
   const ov = document.getElementById('pregen-overlay'); if (ov) ov.classList.remove('show');
   showToast(char.name + ' is ready to play.');
@@ -531,6 +589,10 @@ function renderRoster() {
   const list = document.getElementById('roster-list');
   if (!list) return;
   const r = loadRoster() || { activeId: activeCharId, list: [] };
+  const empties = r.list.length > 1 ? _emptyHeroCount() : 0;
+  const tidy = document.getElementById('roster-tidy');
+  if (tidy) tidy.innerHTML = empties ? `<div class="card callout info roster-tidy"><strong>${empties} empty hero${empties === 1 ? '' : 'es'}</strong> — never built, nothing in them. They come from opening the app on another browser or device.
+    <button type="button" class="btn btn-block" onclick="removeEmptyHeroes()">Remove empty heroes</button></div>` : '';
   list.innerHTML = r.list.map(e => {
     const isActive = e.id === r.activeId;
     const data = (e.id === activeCharId) ? char : readSlot(e.id);
@@ -1096,6 +1158,7 @@ async function importFromHash() {
   saveCharacter();                       // creates slot + roster entry, makes it active
   saveHistory();
   saveJournal();
+  pruneEmptyHeroes(id);                  // the blank hero it replaces goes
   render();
   renderHistory();
   renderChronicle();

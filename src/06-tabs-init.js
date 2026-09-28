@@ -2061,6 +2061,7 @@ function initA11y() {
 document.addEventListener('DOMContentLoaded', () => {
   if (typeof Sync !== 'undefined') Sync.init();   // P3: boot cloud sync if configured; else a no-op (stays local)
   initA11y();                                      // P8: dialog/focus/keyboard accessibility
+  if (typeof pruneEmptyHeroes === 'function') pruneEmptyHeroes(activeCharId);   // blank heroes nobody started
   bindInputs();
   bindTabs();
   bindDice();
