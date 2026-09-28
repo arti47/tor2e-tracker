@@ -317,7 +317,7 @@ module.exports = {
       return { allHit, bottomFixed, clearsStatusBar, phoneBack, escape, bottomButton };
     });
     checks.push({ ok: Object.values(tv).every(v => v === true), msg: `the big screen always has a way back — two tappable Back buttons clear of the status bar, Escape and the phone's own Back (${JSON.stringify(tv)})` });
-    const tvc = await gm.page.evaluate(async () => { openTableMode(); await new Promise(r => setTimeout(r, 250)); const t = document.getElementById('table-mode-body').textContent; closeTableMode(); await new Promise(r => setTimeout(r, 250)); return { phase: /A council/.test(t), hero: /Geira/.test(t), code: t.includes(campaignInfo().code) }; });
+    const tvc = await gm.page.evaluate(async () => { openTableMode(); await new Promise(r => setTimeout(r, 250)); const t = document.getElementById('table-mode-body').textContent; const heroCard = [...document.querySelectorAll('#table-mode-body .tv-hero .tv-name')].some(n => /Geira/.test(n.textContent)); closeTableMode(); await new Promise(r => setTimeout(r, 250)); return { phase: /A council/.test(t), hero: heroCard, code: t.includes(campaignInfo().code) }; });
     checks.push({ ok: tvc.phase && tvc.hero && tvc.code, msg: `at a table the big screen shows the phase, the heroes and the join code (${JSON.stringify(tvc)})` });
 
     // A Loremaster plays no hero: the header names the table; the GM tab drops this device's roster.
