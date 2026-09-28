@@ -213,6 +213,44 @@ module.exports = {
     const joined = await pl2.page.evaluate(() => ({ strider: !!char.striderMode, feat: String(char.features || '') }));
     checks.push({ ok: offered && !joined.strider && !/Strider —/.test(joined.feat), msg: 'joining a table with a solo hero offers table rules, and accepting switches cleanly' });
 
+    // ---- Stage 4: combat rounds. Stances order the heroes; each acts once; then the foes attack. ----
+    await closeModals(pl.page); await closeModals(pl2.page);
+    await gmClick('#tbl-phases button', 'Combat');
+    await gm.page.evaluate(() => { addCustomFoe(); document.querySelectorAll('.menu-overlay.show').forEach(o => o.classList.remove('show')); });
+    await openPlay(pl2.page);
+    const fightOn = await until(pl.page, () => /New foe/.test((document.querySelector('#panel-play .tbl-fight') || {}).textContent || ''));
+    const stance = (page, name) => page.evaluate(n => { const b = [...document.querySelectorAll('#panel-play .tbl-fight .tbl-role')].find(x => x.textContent.startsWith(n)); if (b) b.click(); return !!b; }, name);
+    await stance(pl.page, 'Rearward'); await until(pl2.page, () => !!document.querySelector('#panel-play .tbl-fight')); await stance(pl2.page, 'Forward');
+    const n2 = await pl2.page.evaluate(() => heroLabel(char));
+    const ordered = await until(gm.page, n => { const li = [...document.querySelectorAll('#tbl-flive .tbl-order li')].map(x => x.textContent); return li.length === 2 && li[0].includes(n) && /Forward/.test(li[0]) && /Geira/.test(li[1]) && /Rearward/.test(li[1]); }, n2);
+    const pl2Turn = await until(pl2.page, () => /Your turn/.test((document.querySelector('#panel-play .tbl-turn') || {}).textContent || ''));
+    const plWaits = await until(pl.page, n => new RegExp('Waiting for\\s*' + n).test((document.querySelector('#panel-play .tbl-turn') || {}).textContent || ''), n2);
+    checks.push({ ok: fightOn && ordered && pl2Turn && plWaits, msg: `heroes act in stance order, Forward before Rearward, and the phone says whose turn it is (${fightOn}/${ordered}/${pl2Turn}/${plWaits})` });
+
+    // An attack is the hero's one action: it ends their turn and the next hero's phone lights up.
+    await pl2.page.evaluate(() => { const b = [...document.querySelectorAll('#panel-play .tbl-turn button')].find(x => /Attack New foe/.test(x.textContent)); if (b) b.click(); });
+    const passed = await until(pl.page, () => /Your turn/.test((document.querySelector('#panel-play .tbl-turn') || {}).textContent || ''));
+    const fed = await until(gm.page, () => Table.feed.some(f => /New foe/.test(f.text || '') && /vs/.test(f.text || '')));
+    checks.push({ ok: passed && fed, msg: `attacking ends a hero's turn, the next hero is up, and the blow shows in the table feed (${passed}/${fed})` });
+
+    // The Loremaster can skip a hero; then it is the foes' turn.
+    await gm.page.evaluate(() => { const b = [...document.querySelectorAll('#tbl-flive .tbl-order button')].find(x => /Skip/.test(x.textContent)); if (b) b.click(); });
+    const foesTurn = await until(gm.page, () => /the foes attack/.test((document.querySelector('#tbl-flive .tbl-round') || {}).textContent || ''));
+    checks.push({ ok: foesTurn, msg: 'once every hero has acted or been skipped, it is the foes\' turn' });
+
+    // A foe's attack runs on the target's own phone: its Parry, its Endurance.
+    await pl.page.evaluate(() => { const D = _doInlineRoll; _doInlineRoll = (a, b, c) => Object.assign(D(a, b, c), { featSpecial: null, featValue: 5, total: 40, outcome: 'SUCCESS', icons: 0 }); });
+    const end1 = await pl.page.evaluate(() => parseInt(char.endCur));
+    await gm.page.evaluate(() => { const row = [...document.querySelectorAll('#tbl-flive .tbl-foerow')].find(r => /New foe/.test(r.textContent)); const sel = row.querySelector('select'); sel.value = [...sel.options].find(o => /Geira/.test(o.textContent)).value; sel.dispatchEvent(new Event('change')); row.querySelector('button').click(); });
+    const struck = await until(pl.page, e => parseInt(char.endCur) === e - 4, end1);
+    const closed = await until(gm.page, () => Object.values(Table.calls).some(c => c.kind === 'foe-attack' && c.closed));
+    checks.push({ ok: struck && closed, msg: `a foe's attack is rolled against the target's own Parry on their phone and lands on their Endurance (${end1} → ${await pl.page.evaluate(() => char.endCur)}, closed ${closed})` });
+
+    // Next round: everyone acts again.
+    await gmClick('#panel-play button', 'Next round');
+    const round2 = await until(pl2.page, () => /round 2/.test((document.querySelector('#panel-play .tbl-fight .card-title') || {}).textContent || '') && /Your turn/.test((document.querySelector('#panel-play .tbl-turn') || {}).textContent || ''));
+    checks.push({ ok: round2, msg: 'the next round starts the turn order again' });
+
     checks.push({ ok: errors.length === 0, msg: `no page errors across the table devices (${errors.slice(0, 3).join(' | ')})` });
     for (const d of [gm, pl, pl2, solo]) await d.context.close();
     return { checks };

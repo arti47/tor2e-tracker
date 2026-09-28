@@ -38,7 +38,8 @@ const Table = {
     this._on(this._ref('table'), snap => { const was = this.state.phase; this.state = Object.assign({ phase: 'story' }, snap.val() || {}); if (was !== this.state.phase) tablePhaseChanged(was); tableRefresh(); });
     this._on(this._ref('calls').limitToLast(20), snap => {
       const prev = this.calls; this.calls = snap.val() || {};
-      if (this._callsPrimed && !tableIsGm()) Object.keys(this.calls).forEach(id => { if (!prev[id] && _tblCallForMe(this.calls[id])) _tblAnnounceCall(this.calls[id]); });
+      if (this._callsPrimed && !tableIsGm()) Object.keys(this.calls).forEach(id => { const c = this.calls[id]; if (!prev[id] && _tblCallForMe(c) && c.kind !== 'foe-attack') _tblAnnounceCall(c); });
+      if (!tableIsGm()) _tcRunFoeAttacks();
       this._callsPrimed = true; tableRefresh();
     });
     this._on(this._ref('feed').limitToLast(30), snap => { const v = snap.val() || {}; this.feed = Object.keys(v).map(k => Object.assign({ id: k }, v[k])).sort((a, b) => (a.ts || 0) - (b.ts || 0)); if (tableIsGm()) tableGmProcess(); tableRefresh(); });
@@ -102,7 +103,7 @@ function _tblSheetHtml() {
     `<li><strong>${escapeHtml(w.name)}</strong> <small>Damage ${n(w.dmg)} · Injury ${escapeHtml(String(w.inj || '—'))}</small></li>`).join('');
   const solo = isSolo() ? `<div class="card callout info"><strong>This hero is set up for solo play.</strong> At a table the Target Numbers are 20 − Rating, not 18 − Rating.
     <button class="btn btn-block" onclick="openWhereAmI()">Switch to table rules</button></div>` : '';
-  return solo + _tblCallsForMeHtml() + _tblPhaseCard() + _tblJourneyPlayerHtml() +
+  return solo + _tblCallsForMeHtml() + _tblPhaseCard() + _tblCombatPlayerHtml() + _tblJourneyPlayerHtml() +
     `<div class="card tbl-hero">
        <div class="tbl-hero-head">${typeof cultureCrest === 'function' ? cultureCrest(char.culture, 40, char.name) : ''}
          <div><h3 class="card-title">${escapeHtml(heroLabel(char))}</h3><small>${escapeHtml([char.culture, char.calling].filter(Boolean).join(' · '))}</small></div></div>
@@ -161,6 +162,11 @@ function _tblConsoleShell() {
       <div class="field"><label for="tbl-note">Tell the table</label><input type="text" id="tbl-note" placeholder="e.g. Night falls on the Old Forest Road"></div>
       <button type="button" class="btn btn-secondary btn-block" onclick="tableSetNote()">Show it on every phone</button>
     </div>
+    <div class="card tbl-fight" id="tbl-fight"><h3 class="card-title">The fight</h3>
+      <p class="hint">Everyone picks a stance. Heroes act from Forward to Rearward, one action each; then the foes attack.</p>
+      <div class="tbl-row2"><button type="button" class="btn btn-secondary" onclick="openBestiary()">Add a foe</button><button type="button" class="btn btn-secondary" onclick="tableNextRound()">Next round</button></div>
+      <div id="tbl-flive"></div>
+    </div>
     <div class="card tbl-journey" id="tbl-journey"><h3 class="card-title">The journey</h3>
       <div id="tbl-jsetup">
         <p class="hint">Pick the road on the map, or type it. Every phone shows the route; each player picks a role.</p>
@@ -212,6 +218,8 @@ function _tblConsoleUpdate() {
       <span>End ${v.endCur ?? '?'}/${v.endMax ?? '?'} · Hope ${v.hopeCur ?? '?'}/${v.hopeMax ?? '?'} · Shadow ${v.shadow ?? 0}${v.dying ? ' · <b>Dying</b>' : ''}${cond ? ' · ' + cond : ''}</span></div>`;
   }).join('') || '<p class="hint">No players yet. Give them the join code from Menu → Fellowship campaign.</p>';
   const calls = document.getElementById('tbl-calls'); if (calls) calls.innerHTML = _tblOpenCallsGmHtml();
+  const fc = document.getElementById('tbl-fight'); if (fc) fc.style.display = (_tblPhase() === 'combat' || enc().active) ? '' : 'none';
+  const fl = document.getElementById('tbl-flive'); if (fl) fl.innerHTML = _tblCombatGmHtml();
   const tj = _tj();
   const jc = document.getElementById('tbl-journey'); if (jc) jc.style.display = (_tblPhase() === 'journey' || tj.active) ? '' : 'none';
   const js = document.getElementById('tbl-jsetup'); if (js) js.style.display = tj.active ? 'none' : '';
@@ -243,7 +251,7 @@ function _tblCallForMe(c) { return !!c && !c.closed && (c.who === 'all' || c.who
 function _tblAnsweredBy(callId, uid) { return Table.feed.some(f => f.callId === callId && f.uid === uid); }
 function _tblMyOpenCalls() {
   return Object.keys(Table.calls).map(id => Object.assign({ id }, Table.calls[id]))
-    .filter(c => _tblCallForMe(c) && !_tblAnsweredBy(c.id, Sync.uid)).sort((a, b) => (a.ts || 0) - (b.ts || 0));
+    .filter(c => _tblCallForMe(c) && c.kind !== 'foe-attack' && !_tblAnsweredBy(c.id, Sync.uid)).sort((a, b) => (a.ts || 0) - (b.ts || 0));
 }
 function _tblAnnounceCall(c) {
   showToast('The Loremaster asks you to roll ' + c.skill + (c.note ? ' — ' + c.note : ''));
@@ -303,7 +311,9 @@ function tablePostRoll(r) {
 }
 function tablePostLine(text) {
   if (!tableActive()) return;
-  return Table._ref('feed').push({ uid: Sync.uid, name: _tblMyName(), text: String(text).slice(0, 300), ts: _TS() }).catch(() => {});
+  const entry = { uid: Sync.uid, name: _tblMyName(), text: String(text).slice(0, 300), ts: _TS() };
+  if (Table._answering) entry.callId = Table._answering;
+  return Table._ref('feed').push(entry).catch(() => {});
 }
 function _tblFeedHtml(n) {
   const rows = Table.feed.slice(-n).reverse();
@@ -479,6 +489,7 @@ function tableJourneyEvent() {
 }
 /** Read the answers the Loremaster is waiting for and apply them, once. */
 function tableGmProcess() {
+  Object.keys(Table.calls).forEach(id => { const c = Table.calls[id]; if (c.kind === 'foe-attack' && !c.closed && !Table._done[id] && Table.feed.some(f => f.callId === id)) { Table._done[id] = true; tableCloseCall(id); } });
   const j = _tj(); const p = j.pending; if (!j.active || !p || Table._done[p.callId]) return;
   const ans = Table.feed.find(f => f.callId === p.callId); if (!ans) return;
   Table._done[p.callId] = true;
@@ -571,4 +582,122 @@ function tableToggleRole(role) {
   if (roles[role]) delete roles[role]; else roles[role] = true;
   me.jroles = roles; tableRefresh();
   return Table._ref('members/' + Sync.uid + '/jroles').set(Object.keys(roles).length ? roles : null);
+}
+
+/* ----- combat rounds -----
+   The shared Encounter (P5) holds the foes and the round. Turn order is derived, never stored:
+   heroes by stance (Forward, Open, Defensive, Rearward, then anyone without one), each acting
+   once per round (members/{uid}/turnDone = the round they finished; the Loremaster can skip a
+   hero, table/combat/skip/{uid}). When every hero has acted, the foes attack: each attack is a
+   call of kind 'foe-attack' that the target's own phone runs through foeAttackHero(), so
+   Parry, stance, armour, Piercing Blows and Wounds all come from the hero's own sheet. */
+const TC_STANCES = [['forward', 'Forward', 'hit harder, get hit more'], ['open', 'Open', 'balanced'], ['defensive', 'Defensive', 'harder to hit you'], ['rearward', 'Rearward', 'bows only, from behind']];
+function _tcRound() { return parseInt(enc().round) || 1; }
+function _tcStanceOf(m) { return ((m.vitals || {}).stance) || ''; }
+function _tcActed(m, round) {
+  const skip = ((Table.state.combat || {}).skip || {})[m.uid];
+  return (parseInt(m.turnDone) || 0) >= round || (parseInt(skip) || 0) >= round;
+}
+function tableTurnOrder() {
+  const rank = st => { const i = TC_STANCES.findIndex(x => x[0] === st); return i < 0 ? 9 : i; };
+  return _tblPlayers().filter(m => !((m.vitals || {}).dying)).sort((a, b) => rank(_tcStanceOf(a)) - rank(_tcStanceOf(b)) || String((a.vitals || {}).name).localeCompare(String((b.vitals || {}).name)));
+}
+/** Whose turn it is: a hero, or null when every hero has acted (the foes' turn). */
+function tableTurnNow() { const r = _tcRound(); return tableTurnOrder().find(m => !_tcActed(m, r)) || null; }
+function _tcFoes() { return (enc().foes || []).filter(f => !f.slain); }
+
+function tableSetStance(st) {
+  char.stance = st; saveCharacter();
+  if (typeof renderStance === 'function') renderStance();
+  const me = (Table.party || {})[Sync.uid]; if (me) { me.vitals = Object.assign({}, me.vitals, { stance: st }); }
+  tableRefresh();
+  if (tableActive()) return Table._ref('members/' + Sync.uid + '/vitals/stance').set(st).catch(() => {});
+}
+function tableEndTurn() {
+  if (!tableActive()) return;
+  const r = _tcRound();
+  const me = (Table.party || {})[Sync.uid]; if (me) me.turnDone = r;
+  tableRefresh();
+  return Table._ref('members/' + Sync.uid + '/turnDone').set(r).catch(() => {});
+}
+/** One action a round: an attack ends your turn. */
+async function tableAttack(foeId) {
+  await heroAttackFoe(foeId);
+  return tableEndTurn();
+}
+function tableSkipTurn(uid) {
+  if (!tableIsGm()) return;
+  const c = Table.state.combat || {}; c.skip = Object.assign({}, c.skip, { [uid]: _tcRound() });
+  Table.state.combat = c; tableRefresh();
+  return Table._ref('table/combat/skip/' + uid).set(_tcRound());
+}
+function tableNextRound() { if (tableIsGm()) return nextRound(); }
+const _tcTarget = {};
+function tableFoeAttack(foeId) {
+  if (!tableIsGm()) return;
+  const f = getFoe(foeId); if (!f) return;
+  const order = tableTurnOrder();
+  const who = _tcTarget[foeId] || (order[0] && order[0].uid);
+  if (!who) return alertStyled('There is no hero for it to attack.', 'The fight');
+  return Table._ref('calls').push({ skill: f.name, who, kind: 'foe-attack', foeId, attackIdx: 0, note: `${f.name} attacks`, ts: _TS(), from: _tblMyName() })
+    .then(() => showToast(`${f.name} attacks ${_tblPlayerName(who)}.`));
+}
+/** A foe's attack aimed at this phone's hero: run it here, once. */
+async function _tcRunFoeAttacks() {
+  const done = _tblDone();
+  const mine = Object.keys(Table.calls).filter(id => { const c = Table.calls[id]; return c.kind === 'foe-attack' && _tblCallForMe(c) && !done.includes(id); });
+  for (const id of mine) {
+    if (_tblDone().includes(id)) continue;
+    try { localStorage.setItem(HANDOUT_DONE_KEY, JSON.stringify(_tblDone().concat(id).slice(-200))); } catch (e) {}
+    const c = Table.calls[id];
+    showToast(`${c.skill} attacks you!`);
+    Table._answering = id;
+    try { await foeAttackHero(c.foeId, parseInt(c.attackIdx) || 0); }
+    finally { Table._answering = null; }
+    if (!Table.feed.some(f => f.callId === id)) { Table._answering = id; tablePostLine(`${c.skill}'s attack is done.`); Table._answering = null; }
+  }
+}
+function _tcFoesHtml() {
+  const foes = enc().foes || [];
+  if (!foes.length) return '<p class="hint">No foes yet.</p>';
+  return '<ul class="tbl-foes">' + foes.map(f => `<li class="${f.slain ? 'slain' : ''}"><strong>${escapeHtml(f.name)}</strong> <span>End ${parseInt(f.endCur) || 0}/${parseInt(f.endMax) || 0}${f.wounded ? ' · Wounded' : ''}${f.slain ? ' · Slain' : ''}</span></li>`).join('') + '</ul>';
+}
+function _tcOrderHtml(gm) {
+  const r = _tcRound(), now = tableTurnNow();
+  const rows = tableTurnOrder().map((m, i) => {
+    const st = (TC_STANCES.find(x => x[0] === _tcStanceOf(m)) || [0, 'no stance'])[1];
+    const acted = _tcActed(m, r), cur = now && now.uid === m.uid;
+    return `<li class="${acted ? 'done' : ''}${cur ? ' now' : ''}"><span>${i + 1}.</span> <strong>${escapeHtml((m.vitals || {}).name || m.displayName || 'Hero')}</strong> <small>${escapeHtml(st)}</small>
+      ${acted ? '<em>done</em>' : cur ? '<em>acting now</em>' : ''}${gm && !acted ? ` <button type="button" class="btn btn-quiet" onclick="tableSkipTurn('${m.uid}')">Skip</button>` : ''}</li>`;
+  }).join('');
+  return `<ol class="tbl-order">${rows || '<li>No heroes yet.</li>'}</ol>`;
+}
+function _tblCombatGmHtml() {
+  const r = _tcRound(), now = tableTurnNow();
+  const players = tableTurnOrder();
+  const foes = _tcFoes().map(f => {
+    const opts = players.map(m => `<option value="${m.uid}"${(_tcTarget[f.id] || (players[0] && players[0].uid)) === m.uid ? ' selected' : ''}>${escapeHtml((m.vitals || {}).name || 'Hero')}</option>`).join('');
+    return `<div class="tbl-foerow"><strong>${escapeHtml(f.name)}</strong> <span>End ${parseInt(f.endCur) || 0}/${parseInt(f.endMax) || 0}</span>
+      <select data-native aria-label="Target for ${escapeHtml(f.name)}" onchange="_tcTarget['${f.id}']=this.value">${opts}</select>
+      <button type="button" class="btn ${now ? 'btn-quiet' : 'btn-secondary'}" onclick="tableFoeAttack('${f.id}')">Attack</button></div>`;
+  }).join('');
+  return `<div class="tbl-round">Round ${r} · ${now ? 'the heroes act' : 'the foes attack'}</div>` + _tcOrderHtml(true) +
+    (foes ? `<div class="eyebrow">${now ? 'Foes (they attack once every hero has acted)' : 'The foes attack'}</div>${foes}` : '<p class="hint">Add a foe to begin.</p>');
+}
+function _tblCombatPlayerHtml() {
+  if (_tblPhase() !== 'combat' && !enc().active) return '';
+  const r = _tcRound(), now = tableTurnNow();
+  const me = (Table.party || {})[Sync.uid] || { uid: Sync.uid };
+  const mine = now && now.uid === Sync.uid;
+  const acted = _tcActed(Object.assign({ uid: Sync.uid }, me), r);
+  const stances = TC_STANCES.map(([k, l, d]) => `<button type="button" class="tbl-role${char.stance === k ? ' on' : ''}" aria-pressed="${char.stance === k}" onclick="tableSetStance('${k}')"><strong>${l}</strong><small>${d}</small></button>`).join('');
+  let turn;
+  if (mine) turn = `<div class="tbl-turn now"><strong>Your turn</strong><p>One action this round. Attack a foe, or do something else and tell the table.</p>
+      ${_tcFoes().filter(f => f.engaged !== false).map(f => `<button type="button" class="btn btn-block tbl-call-btn" onclick="tableAttack('${f.id}')">Attack ${escapeHtml(f.name)}</button>`).join('')}
+      <button type="button" class="btn btn-secondary btn-block" onclick="tableEndTurn()">I did something else — end my turn</button></div>`;
+  else if (acted) turn = `<div class="tbl-turn">You have acted this round.${now ? ` Now: <strong>${escapeHtml((now.vitals || {}).name || 'Hero')}</strong>.` : ' The foes attack next.'}</div>`;
+  else turn = `<div class="tbl-turn">${now ? `Waiting for <strong>${escapeHtml((now.vitals || {}).name || 'Hero')}</strong>.` : 'The foes attack.'}</div>`;
+  return `<div class="card tbl-fight"><h3 class="card-title">The fight · round ${r}</h3>
+    <div class="eyebrow">Your stance</div><div class="tbl-roles-pick">${stances}</div>
+    ${turn}${_tcOrderHtml(false)}${_tcFoesHtml()}</div>`;
 }

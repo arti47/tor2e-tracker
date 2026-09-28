@@ -202,7 +202,8 @@ const Sync = {
       shadow: (parseInt(d.shadow) || 0) + (parseInt(d.scars) || 0),
       valour: parseInt(d.valour) || 0, wisdom: parseInt(d.wisdom) || 0,
       weary: !!d.weary, miserable: !!d.miserable, wounded: !!d.wounded,
-      dying: (parseInt(d.endCur) || 0) <= 0
+      dying: (parseInt(d.endCur) || 0) <= 0,
+      stance: d.stance || ''   // table play: combat turn order is read from the heroes' stances
     };
   },
 
@@ -365,6 +366,7 @@ const Sync = {
       if (typeof encDeriveEngaged === 'function') encDeriveEngaged();
       if (typeof renderEncounter === 'function') renderEncounter();
       if (typeof renderGm === 'function' && document.querySelector('.tab[data-tab="gm"].active')) renderGm();
+      if (typeof tableRefresh === 'function') tableRefresh();   // table play: the fight on every phone
     }, () => {});
   },
   unsubscribeEncounter() {

@@ -1290,7 +1290,7 @@ async function heroAttackFoe(foeId) {
   const piercing = hit && (roll.featSpecial === 'rune' || roll.featValue === 10 || (a.keen && roll.featValue >= 9));
   if (hopeSpent) char.hopeCur = Math.max(0, (parseInt(char.hopeCur) || 0) - 1);
   const score = roll.featSpecial === 'rune' ? '★' : (roll.featSpecial === 'eye' ? '✗' : roll.total);
-  let line = `<strong>You</strong> · ${escapeHtml(w.name)} · ${score} vs TN ${tn} (${char.strTN} Str + Parry ${f.parry}) → ${roll.outcome}${roll.icons ? ` (${roll.icons}✦)` : ''}`;
+  let line = `<strong>You</strong> · ${escapeHtml(w.name)} at ${escapeHtml(f.name)} · ${score} vs TN ${tn} (${char.strTN} Str + Parry ${f.parry}) → ${roll.outcome}${roll.icons ? ` (${roll.icons}✦)` : ''}`;
   if (hit) {
     const dmg = parseInt(w.dmg) || 0;
     f.endCur = Math.max(0, (parseInt(f.endCur) || 0) - dmg);

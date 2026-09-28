@@ -1859,3 +1859,21 @@ body.theme-sepia .card { background-image: linear-gradient(180deg, rgba(255,245,
 .tbl-role.on { border: 2px solid var(--red); }
 .tbl-jlog { list-style: none; padding: 0; margin: var(--sp-2) 0; font-size: var(--fs-xs); }
 .tbl-jlog li { padding: 2px 0; border-bottom: 1px dotted var(--border); }
+.tbl-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-2); margin-bottom: var(--sp-2); }
+.tbl-round { font-family: var(--font-display, serif); font-size: var(--fs-md); margin: var(--sp-1) 0; }
+.tbl-order { padding-left: 0; list-style: none; margin: var(--sp-2) 0; font-size: var(--fs-sm); }
+.tbl-order li { padding: 4px 0; border-bottom: 1px dotted var(--border); display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.tbl-order li small { color: var(--text-muted); }
+.tbl-order li em { margin-left: auto; font-size: var(--fs-xs); color: var(--text-muted); }
+.tbl-order li.now { font-weight: 600; } .tbl-order li.now em { color: var(--red); }
+.tbl-order li.done { opacity: .6; }
+.tbl-order .btn { padding: 2px 8px; min-height: 0; }
+.tbl-turn { margin: var(--sp-2) 0; padding: var(--sp-2); border-radius: var(--r-md); background: var(--bg-deep); font-size: var(--fs-sm); }
+.tbl-turn.now { border: 2px solid var(--red); background: var(--card-bg); }
+.tbl-turn.now p { margin: 4px 0 var(--sp-2); }
+.tbl-foes { list-style: none; padding: 0; margin: var(--sp-2) 0 0; font-size: var(--fs-sm); }
+.tbl-foes li span { color: var(--text-muted); font-size: var(--fs-xs); }
+.tbl-foes li.slain { opacity: .5; text-decoration: line-through; }
+.tbl-foerow { display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: center; padding: var(--sp-2) 0; border-top: 1px solid var(--border); font-size: var(--fs-sm); }
+.tbl-foerow span { color: var(--text-muted); font-size: var(--fs-xs); flex: 1; }
+.tbl-foerow select { max-width: 45%; }
