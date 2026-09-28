@@ -22,7 +22,7 @@ module.exports = {
 
     // renderGm lists at least the active hero, with a control row.
     const listed = await page.evaluate(() => {
-      localStorage.setItem('tor2e-gm', '1'); refreshGmUI();
+      localStorage.setItem('tor2e-gm', '1'); char.name = 'Tester'; saveCharacter(); refreshGmUI();
       const body = document.getElementById('gm-party-body');
       const cards = body.querySelectorAll('.card').length;
       const hasCtrls = /−1 End/.test(body.innerHTML) && /Shadow/.test(body.innerHTML);
@@ -165,6 +165,51 @@ module.exports = {
     });
     checks.push({ ok: tables.sizes.decks === 4 && tables.sizes.deckCards && tables.sizes.water === 12 && tables.sizes.falseR === 12 && tables.sizes.genuine === 12 && tables.sizes.famous === 6 && tables.sizes.obscure === 12, msg: `ported tables sized 4×6 decks / 12 / 12 / 12 / 6 / 12` });
     checks.push({ ok: tables.deckDrawn && tables.waterShown && tables.rumourShown && tables.lmShown && tables.allResolve, msg: 'deck draw + water/rumour/landmark rollers render; feat rows always resolve' });
+
+    // ---- Managing heroes from the GM tab (2026-09-28): the owner could see two "Unnamed hero" cards
+    //      there and had no way to delete or change them ----
+    const press = async (re) => page.evaluate((src) => { const re = new RegExp(src); const b = [...document.querySelectorAll('#styled-modal-buttons button')].find(x => re.test(x.textContent)); if (b) b.click(); return !!b; }, re.source);
+    const mg = await page.evaluate(() => {
+      localStorage.setItem('tor2e-gm', '1'); refreshGmUI();
+      loadPregen(0); document.querySelectorAll('.menu-overlay.show').forEach(o => o.classList.remove('show'));
+      // Two heroes nobody built — one of them was rolled with, so start-up leaves it alone.
+      ['u1', 'u2'].forEach(id => { localStorage.setItem('tor2e-char-' + id, JSON.stringify({ name: '', endCur: 20, endMax: 20 })); const r = loadRoster(); r.list.push({ id, name: 'New Hero' }); saveRoster(r); });
+      localStorage.setItem('tor2e-rolls-u2', JSON.stringify([{ label: 'Awareness' }]));
+      renderGm();
+      const card = id => document.querySelector(`#gm-party-body .gm-hero[data-id="${id}"]`);
+      const btns = el => el ? [...el.querySelectorAll('button')].map(b => b.textContent.trim()) : [];
+      return { built: btns(card(activeCharId)), blank: btns(card('u1')), blankNote: card('u1') ? card('u1').textContent : '',
+               tidy: !!document.querySelector('#gm-party-body .gm-tidy button'), active: activeCharId };
+    });
+    checks.push({ ok: ['Rename', 'Delete'].every(t => mg.built.includes(t)) && mg.built.includes('−1 End') && ['Play as', 'Rename', 'Delete'].every(t => mg.blank.includes(t)), msg: `every hero card on the GM tab can be renamed and deleted, and another hero played as (${JSON.stringify(mg.built)} / ${JSON.stringify(mg.blank)})` });
+    checks.push({ ok: /Not built yet/.test(mg.blankNote) && !mg.blank.includes('−1 End') && mg.tidy, msg: 'an unbuilt hero is marked as such, carries no hand-outs, and the tab offers to remove empty heroes' });
+    // Delete one from its card (confirmed), then clear the other (it holds a roll, so it asks first).
+    await page.evaluate(() => { document.querySelector('#gm-party-body .gm-hero[data-id="u1"] button[onclick^="gmDeleteHero"]').click(); });
+    await page.waitForTimeout(150); const delAsked = await press(/Delete hero/); await page.waitForTimeout(150);
+    const afterDel = await page.evaluate(() => ({ ids: loadRoster().list.map(e => e.id), card: !!document.querySelector('#gm-party-body .gm-hero[data-id="u1"]') }));
+    await page.evaluate(() => { document.querySelector('#gm-party-body .gm-tidy button').click(); });
+    await page.waitForTimeout(150); const tidyAsked = await press(/Remove 1/); await page.waitForTimeout(150);
+    const afterTidy = await page.evaluate(() => ({ ids: loadRoster().list.map(e => e.id), tidy: !!document.querySelector('#gm-party-body .gm-tidy'), rolls: localStorage.getItem('tor2e-rolls-u2') }));
+    checks.push({ ok: delAsked && !afterDel.ids.includes('u1') && !afterDel.card && tidyAsked && !afterTidy.ids.includes('u2') && !afterTidy.tidy && afterTidy.rolls === null && afterTidy.ids.includes(mg.active), msg: `Delete on a GM card removes that hero after asking; "Remove empty heroes" clears an unbuilt hero even with a roll in it, after asking (${JSON.stringify({ delAsked, afterDel, tidyAsked, afterTidy })})` });
+    // Play as switches the hero this device is on.
+    const played = await page.evaluate(() => {
+      const other = loadRoster().list.find(e => e.id !== activeCharId); if (!other) return { skipped: true };
+      document.querySelector(`#gm-party-body .gm-hero[data-id="${other.id}"] button[onclick^="gmPlayAs"]`).click();
+      return { want: other.id, now: activeCharId, star: document.querySelector(`#gm-party-body .gm-hero[data-id="${other.id}"]`).textContent.includes('Playing now') };
+    });
+    checks.push({ ok: played.want && played.now === played.want && played.star, msg: `"Play as" on a GM card switches to that hero (${JSON.stringify(played)})` });
+
+    // A Bout of Madness triggered on one hero must not pop up on the next one: switching within the
+    // prompt's 100ms delay used to ask the new hero for a Flaw from the old one's Shadow Path.
+    const boutA = await page.evaluate(() => {
+      const a = activeCharId; char.boutDue = false; char._boutPrompted = false; char.shadow = 0; char.scars = 0; saveCharacter();
+      adj('shadow', char.hopeMax);
+      const other = loadRoster().list.find(e => e.id !== a).id; switchCharacter(other);
+      return { a, other };
+    });
+    await page.waitForTimeout(400);
+    const boutB = await page.evaluate((a) => ({ shown: document.getElementById('styled-modal-overlay').classList.contains('show') && /Bout of Madness/.test(document.getElementById('styled-modal-title').textContent), owed: !!(readSlot(a) || {}).boutDue }), boutA.a);
+    checks.push({ ok: !boutB.shown && boutB.owed, msg: `a Bout triggered on one hero does not ask the hero you switched to; it stays owed on its own hero (${JSON.stringify(boutB)})` });
 
     await page.evaluate(() => { localStorage.removeItem('tor2e-gm'); refreshGmUI(); });
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length})` });

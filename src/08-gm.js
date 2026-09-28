@@ -66,24 +66,41 @@ function renderGm() {
   if (encNote) encNote.textContent = atTable ? 'The fight is shared with every player at the table. Run it from ▶ Play → The fight.' : "Adds to this device's Combat-tab encounter.";
   if (atTable) { body.innerHTML = ''; renderGmNpc(); renderGmCampaign(); const el = document.getElementById('gm-enc-line'); if (el) { const en = enc(); const f = (en.foes || []).filter(x => !x.slain).length; el.textContent = en.active && f ? `${f} foe${f === 1 ? '' : 's'} standing · round ${en.round || 1}` : 'No fight right now.'; } return; }
   const r = loadRoster() || { activeId: activeCharId, list: [] };
+  const sb = 'font-size:var(--fs-xs);padding:2px 7px';
   const rows = r.list.map(e => {
     const d = (e.id === activeCharId) ? char : readSlot(e.id);
     if (!d) return '';
+    const here = e.id === activeCharId;
+    // Every hero on the device can be opened, renamed or deleted from here, not only from the menu.
+    const manage = `<div class="gm-manage" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px">
+        ${here ? '<span class="chip" style="font-size:var(--fs-xs)">Playing now</span>' : `<button class="btn-secondary" onclick="gmPlayAs('${e.id}')" style="${sb}">Play as</button>`}
+        <button class="btn-secondary" onclick="gmRenameHero('${e.id}')" style="${sb}">Rename</button>
+        <button class="btn-quiet" onclick="gmDeleteHero('${e.id}')" style="${sb}" aria-label="Delete ${escapeHtml(heroLabel(d))}">Delete</button>
+      </div>`;
+    if (isUnbuiltHero(d)) {
+      return `<div class="card gm-hero unbuilt" data-id="${e.id}" style="padding:10px 12px;margin-bottom:8px">
+        <div style="font-weight:700">${escapeHtml(heroLabel(d))}${here ? ' ★' : ''}</div>
+        <div class="hint" style="margin:2px 0 0">Not built yet — no name, culture or calling. Play as it to build it, or delete it.</div>
+        ${manage}</div>`;
+    }
     const totalShadow = (parseInt(d.shadow) || 0) + (parseInt(d.scars) || 0);
     const dying = (parseInt(d.endCur) || 0) <= 0;
-    const cbtn = (cond, label) => `<button onclick="gmCond('${e.id}','${cond}')" aria-pressed="${!!d[cond]}" style="font-size:var(--fs-xs);padding:2px 7px;background:${d[cond] ? 'var(--btn-alert-bg)' : 'var(--bg-deep)'};color:${d[cond] ? '#fff' : 'var(--ink)'}">${label}</button>`;
-    return `<div class="card" style="padding:10px 12px;margin-bottom:8px">
-      <div style="font-weight:700">${escapeHtml(heroLabel(d))}${e.id === activeCharId ? ' ★' : ''}${dying ? ' <span style="color:var(--error-text)">DYING</span>' : ''}</div>
+    const cbtn = (cond, label) => `<button onclick="gmCond('${e.id}','${cond}')" aria-pressed="${!!d[cond]}" style="${sb};background:${d[cond] ? 'var(--btn-alert-bg)' : 'var(--bg-deep)'};color:${d[cond] ? '#fff' : 'var(--ink)'}">${label}</button>`;
+    return `<div class="card gm-hero" data-id="${e.id}" style="padding:10px 12px;margin-bottom:8px">
+      <div style="font-weight:700">${escapeHtml(heroLabel(d))}${here ? ' ★' : ''}${dying ? ' <span style="color:var(--error-text)">DYING</span>' : ''}</div>
       <div style="font-size:var(--fs-xs);color:var(--text-muted);margin:2px 0 6px">❤ ${d.endCur ?? '?'}/${d.endMax ?? '?'} &middot; ✦ ${d.hopeCur ?? '?'}/${d.hopeMax ?? '?'} &middot; 🌑 ${totalShadow}</div>
       <div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center">
-        <button onclick="gmDamage('${e.id}',1)" style="font-size:var(--fs-xs);padding:2px 7px" aria-label="Deal 1 damage to ${escapeHtml(d.name || 'hero')}">−1 End</button>
-        <button onclick="gmDamage('${e.id}',3)" style="font-size:var(--fs-xs);padding:2px 7px">−3</button>
-        <button onclick="gmHeal('${e.id}',3)" style="font-size:var(--fs-xs);padding:2px 7px">+3</button>
+        <button onclick="gmDamage('${e.id}',1)" style="${sb}" aria-label="Deal 1 damage to ${escapeHtml(d.name || 'hero')}">−1 End</button>
+        <button onclick="gmDamage('${e.id}',3)" style="${sb}">−3</button>
+        <button onclick="gmHeal('${e.id}',3)" style="${sb}">+3</button>
         ${cbtn('weary', 'Weary')} ${cbtn('miserable', 'Miserable')} ${cbtn('wounded', 'Wounded')}
-        <button onclick="gmShadow('${e.id}',1)" style="font-size:var(--fs-xs);padding:2px 7px">+Shadow</button>
-      </div></div>`;
+        <button onclick="gmShadow('${e.id}',1)" style="${sb}">+Shadow</button>
+      </div>${manage}</div>`;
   }).join('');
-  body.innerHTML = rows || '<div class="hint" style="text-align:center;padding:10px">No heroes on this device yet.</div>';
+  const empties = _emptyHeroCount();
+  const tidy = empties ? `<div class="card callout info gm-tidy" style="margin-bottom:8px"><strong>${empties} empty hero${empties === 1 ? '' : 'es'}</strong> — never built. They appear when the app is opened on another browser or device.
+    <button type="button" class="btn btn-block" onclick="gmRemoveEmpty()" style="margin-top:6px">Remove empty heroes</button></div>` : '';
+  body.innerHTML = tidy + rows || '<div class="hint" style="text-align:center;padding:10px">No heroes on this device yet.</div>';
   // Encounter line + the Eye and NPC sub-panels (present only when the GM tab is rendered).
   const encLine = document.getElementById('gm-enc-line');
   if (encLine) {
@@ -100,6 +117,12 @@ function renderGm() {
   renderGmNpc();
   renderGmCampaign();
 }
+
+/* Roster management from the GM tab — the same functions as Menu → Your heroes. */
+function gmPlayAs(id) { switchCharacter(id); renderGm(); }
+async function gmRenameHero(id) { await renameCharacter(id); renderGm(); }
+async function gmDeleteHero(id) { await deleteCharacter(id); renderGm(); }
+async function gmRemoveEmpty() { await removeEmptyHeroes(); renderGm(); }
 
 /* ---------- P6: campaign Fellowship (live members + peek + broadcast) ---------- */
 function _gmOnParty() {

@@ -265,21 +265,39 @@ function pruneEmptyHeroes(keepId) {
   saveRoster(r);
   return drop.length;
 }
-/** Menu → Your heroes → Remove empty heroes. If the hero you are on is itself empty and a real
-    one exists, you move to the real one. */
-function removeEmptyHeroes() {
-  const r = loadRoster(); if (!r) return;
+/** A hero nobody has built: no name, culture or calling, and no saga begun. It may carry a few
+    test rolls, so it is not "empty" enough to clear on its own — but the player can clear it. */
+function isUnbuiltHero(d) {
+  if (!d || typeof d !== 'object') return true;
+  return !String(d.name || '').trim() && !d.culture && !d.calling && !(d.saga && d.saga.started);
+}
+/** Ids "Remove empty heroes" would take: every unbuilt hero except the one you end up on. */
+function _unbuiltTargets() {
+  const r = loadRoster(); if (!r || r.list.length < 2) return { keep: activeCharId, drop: [] };
+  const dataOf = e => e.id === activeCharId ? char : readSlot(e.id);
   let keep = activeCharId;
-  if (isEmptyHero(char, activeCharId)) { const real = r.list.find(e => e.id !== activeCharId && !isEmptyHero(readSlot(e.id), e.id)); if (real) keep = real.id; }
-  const n = pruneEmptyHeroes(keep);
-  if (keep !== activeCharId) { const r2 = loadRoster(); r2.activeId = keep; saveRoster(r2); applyActiveCharacter(); }
+  if (isUnbuiltHero(char)) { const real = r.list.find(e => !isUnbuiltHero(dataOf(e))); if (real) keep = real.id; }
+  return { keep, drop: r.list.filter(e => e.id !== keep && isUnbuiltHero(dataOf(e))) };
+}
+/** Menu → Your heroes (and the GM tab) → Remove empty heroes. If the hero you are on is itself
+    unbuilt and a built one exists, you move to the built one. Unbuilt heroes that hold rolls or
+    notes are listed and confirmed first; truly empty ones just go. */
+async function removeEmptyHeroes() {
+  const { keep, drop } = _unbuiltTargets();
+  if (!drop.length) { showToast('No empty heroes to remove.'); return 0; }
+  const used = drop.filter(e => !isEmptyHero(e.id === activeCharId ? char : readSlot(e.id), e.id));
+  if (used.length && !await confirmStyled(`${drop.length} hero${drop.length === 1 ? ' has' : 'es have'} never been built — no name, culture or calling. ${used.length === 1 ? 'One of them has' : used.length + ' of them have'} a few rolls or notes; those go too.`, 'Remove empty heroes', { yes: `Remove ${drop.length}`, no: 'Keep them' })) return 0;
+  drop.forEach(e => _dropHeroSlots(e.id));
+  const r = loadRoster();
+  r.list = r.list.filter(e => !drop.some(d => d.id === e.id));
+  const moved = keep !== activeCharId;
+  r.activeId = keep; saveRoster(r);
+  if (moved) applyActiveCharacter();
   renderRoster();
-  showToast(n ? `Removed ${n} empty hero${n === 1 ? '' : 'es'}.` : 'No empty heroes to remove.');
+  showToast(`Removed ${drop.length} empty hero${drop.length === 1 ? '' : 'es'}.`);
+  return drop.length;
 }
-function _emptyHeroCount() {
-  const r = loadRoster(); if (!r) return 0;
-  return r.list.filter(e => isEmptyHero(e.id === activeCharId ? char : readSlot(e.id), e.id)).length;
-}
+function _emptyHeroCount() { return _unbuiltTargets().drop.length; }
 
 // Re-load the active hero from storage and repaint the whole app.
 function applyActiveCharacter() {
@@ -589,9 +607,9 @@ function renderRoster() {
   const list = document.getElementById('roster-list');
   if (!list) return;
   const r = loadRoster() || { activeId: activeCharId, list: [] };
-  const empties = r.list.length > 1 ? _emptyHeroCount() : 0;
+  const empties = _emptyHeroCount();
   const tidy = document.getElementById('roster-tidy');
-  if (tidy) tidy.innerHTML = empties ? `<div class="card callout info roster-tidy"><strong>${empties} empty hero${empties === 1 ? '' : 'es'}</strong> — never built, nothing in them. They come from opening the app on another browser or device.
+  if (tidy) tidy.innerHTML = empties ? `<div class="card callout info roster-tidy"><strong>${empties} empty hero${empties === 1 ? '' : 'es'}</strong> — never built (no name, culture or calling). They come from opening the app on another browser or device.
     <button type="button" class="btn btn-block" onclick="removeEmptyHeroes()">Remove empty heroes</button></div>` : '';
   list.innerHTML = r.list.map(e => {
     const isActive = e.id === r.activeId;

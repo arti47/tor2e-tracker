@@ -203,7 +203,12 @@ async function checkAutoTriggers() {
     char.boutDue = true;
     saveCharacter();
     if (typeof renderBoutDue === 'function') renderBoutDue();
+    const boutHero = activeCharId;
     setTimeout(async () => {
+      // The hero may have changed in the 100ms before this fires (switching heroes, loading a
+      // ready-made one). Then it is not this hero's bout: the owed one stays on its own hero
+      // as `boutDue`, claimable from its sheet.
+      if (activeCharId !== boutHero || !char.boutDue) return;
       const path = char.shadowPath;
       const flaws = FLAWS_BY_PATH[path];
       const scarsBit = (parseInt(char.scars) || 0) > 0 ? ` + ${char.scars} Scar${char.scars>1?'s':''}` : '';
