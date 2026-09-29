@@ -152,7 +152,7 @@ module.exports = {
     await go('oracle');
     const os = await safe(`
       document.getElementById('ask-q').value = 'Is it safe?'; askYesNo(); await new Promise(r => setTimeout(r, 60));
-      const s = document.querySelector('#oracle-history .or-slip .or-seal'); const r = s && s.getBoundingClientRect();
+      const s = document.querySelector('#oracle-history .or-slip .or-seal'); const r = s && s.querySelector('svg').getBoundingClientRect();
       const res = oracleHistory[0].result;
       return { seal: !!s, w: r && Math.round(r.width), cls: s && [...s.classList].find(c => /^seal-/.test(c)), res };`);
     checks.push({ ok: !os.err && os.seal && os.w <= 30 && ((/^YES/.test(os.res) && /seal-(yes|and)/.test(os.cls)) || (/^NO/.test(os.res) && /seal-(no|worse)/.test(os.cls))), msg: `an Oracle answer in the history wears a small seal of its colour (${JSON.stringify(os)})` });
@@ -181,6 +181,7 @@ module.exports = {
 
     // ---- Card-title rubrics on tool cards, none on the numbered Band steps ----
     const rb = await safe(`
+      await new Promise(r => requestAnimationFrame(() => setTimeout(r, 30)));
       const war = [...document.querySelectorAll('#hero-sheet .card-title')].find(h => /War gear/.test(h.textContent));
       return { war: !!(war && war.querySelector('.rubric')), band: document.querySelectorAll('#panel-band .rubric').length };`);
     checks.push({ ok: !rb.err && rb.war && rb.band === 0, msg: `tool card titles carry a small drawn mark (${JSON.stringify(rb)})` });
@@ -231,7 +232,7 @@ module.exports = {
     // ---- Loremaster on a phone: the table's name is never cut off ----
     const lm = await safe(`
       const t = document.getElementById('lm-title'); const tx = document.getElementById('lm-title-text');
-      const was = t.hidden; t.hidden = false; tx.textContent = 'The Lonely Mountain'; document.body.classList.add('is-lm');
+      const was = t.hidden; t.hidden = false; tx.textContent = 'The Lonely Mountain of Erebor'; document.body.classList.add('is-lm');
       const r = { fits: tx.scrollWidth <= tx.clientWidth + 1, h: Math.round(tx.getBoundingClientRect().height) };
       t.hidden = was; document.body.classList.remove('is-lm'); return r;`);
     checks.push({ ok: !lm.err && lm.fits, msg: `the Loremaster header shows the whole table name on a phone (${JSON.stringify(lm)})` });
