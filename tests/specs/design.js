@@ -646,6 +646,8 @@ module.exports = {
     const hn = await safe(`
       const n = document.getElementById('char-name');
       const isBtn = n.tagName === 'BUTTON' && !document.querySelector('.header input');
+      // a folded (slim) header answers a tap by unfolding, by design — start from the full header
+      window.scrollTo(0, 0); if (typeof setSlimHeader === 'function') setSlimHeader(false);
       n.click(); const open = document.getElementById('roster-overlay').classList.contains('show'); closeRoster && closeRoster();
       document.getElementById('roster-overlay').classList.remove('show');
       return { isBtn, open, text: document.getElementById('char-name-text').textContent };`);

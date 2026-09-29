@@ -1100,7 +1100,9 @@ function renderOracleHistory() {
     el.innerHTML = emptyState('No rolls yet.', 'dice', { label: 'Ask the Oracle', fn: "(document.getElementById('ask-q')||{}).focus&&document.getElementById('ask-q').focus();document.getElementById('ask-q')&&document.getElementById('ask-q').scrollIntoView({block:'center'})" });
     return;
   }
-  el.innerHTML = oracleHistory.map((h, i) => `<div style="padding:5px 8px;border-bottom:1px solid var(--border)"><strong>${h.label}</strong> · ${h.result} <span style="float:right;color:var(--text-muted);font-size:var(--fs-xs)">${h.time} <button onclick="deleteOracleRollAt(${i})" aria-label="Delete this oracle roll" title="Delete this roll" style="background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:var(--fs-md);padding:0 0 0 4px;vertical-align:middle">×</button></span></div>`).join('');
+  // Round 8: each ask is a small slip; a yes/no answer carries its wax seal
+  const sealOf = r => { const t = String(r || ''); if (/^YES/i.test(t)) return /rune|and\b/i.test(t) ? ['Y', 'seal-and'] : ['Y', 'seal-yes']; if (/^NO/i.test(t)) return /eye|worse/i.test(t) ? ['N', 'seal-worse'] : ['N', 'seal-no']; return null; };
+  el.innerHTML = oracleHistory.map((h, i) => { const sl = sealOf(h.result); return `<div class="or-slip${sl ? ' has-seal' : ''}">${sl && typeof waxSeal === 'function' ? waxSeal(sl[0], 'or-seal ' + sl[1]) : '<span class="or-quill" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#i-feather"/></svg></span>'}<span class="or-txt"><strong>${h.label}</strong> · ${h.result}</span> <span class="or-time" style="color:var(--text-muted);font-size:var(--fs-xs)">${h.time} <button onclick="deleteOracleRollAt(${i})" aria-label="Delete this oracle roll" title="Delete this roll" style="background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:var(--fs-md);padding:0 0 0 4px;vertical-align:middle">×</button></span></div>`; }).join('');
 }
 // Delete one oracle roll (× on a row). Rows render in array order, so the index is direct.
 function deleteOracleRollAt(i) {

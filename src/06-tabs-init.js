@@ -164,7 +164,8 @@ function renderJumpBar(panelId) {
   bar.innerHTML = '';
   cards.forEach((c, i) => {
     const t = c.querySelector(':scope > .card-title');
-    const label = t.childNodes[0] && t.childNodes[0].nodeType === 3 ? t.childNodes[0].textContent : t.textContent;
+    const tc = t.cloneNode(true); tc.querySelectorAll('.card-status').forEach(x => x.remove());
+    const label = tc.childNodes[0] && tc.childNodes[0].nodeType === 3 ? tc.childNodes[0].textContent : tc.textContent;
     const b = document.createElement('button'); b.type = 'button'; b.className = 'jump-chip';
     b.textContent = label.replace(/[⌄▾▸?]/g, '').replace(/—.*$/, '').trim().replace(/\s+Table$/i, '').replace(/^(Random|Oracle)\s+/i, '').trim().slice(0, 22);
     b.onclick = () => openCard(c);
@@ -1195,6 +1196,7 @@ function rollDice(skillLabel) {
   history.unshift({
     label, total: isAutoSuccess ? '★' : (isAutoFail ? '✗' : total),
     outcome, tn, icons,
+    feat: chosenFeat.special || featValue, dice: successRolls.map(s => s.value),
     time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})
   });
   saveHistory();
@@ -1300,9 +1302,14 @@ function renderHistory() {
     const color = h.outcome.startsWith('SUCCESS') ? '#2e7d32' : 'var(--error-text)';
     // Real index into the full history array (rows is filtered/sliced; object identity maps back).
     const realIdx = history.indexOf(h);
+    // Round 8: a ledger row — the Feat die in miniature, the Success dice as pips, a seal for the outcome
+    const ok = /^SUCCESS/.test(h.outcome || ''), rolled = h.tn !== '' && h.tn != null;
+    const lvl = /extraordinary/i.test(h.outcome) || (h.icons || 0) >= 2 ? 'extraordinary' : (/great/i.test(h.outcome) || (h.icons || 0) === 1) ? 'great' : '';
+    item.classList.add('ledger', rolled ? (ok ? 'ok' : 'bad') : 'note');
     item.innerHTML = `
-      <span><strong>${h.label}</strong> · ${h.total} vs ${h.tn}</span>
-      <span style="color:${color}">${h.outcome}${h.icons ? ' · '+h.icons+'⬢' : ''} · ${h.time}
+      ${rolled ? `<span class="hl-feat${h.feat === 'eye' ? ' eye' : h.feat === 'rune' ? ' rune' : ''}" aria-hidden="true">${h.feat === 'eye' ? '<svg viewBox="0 0 24 24"><use href="#i-eye"/></svg>' : h.feat === 'rune' ? 'ᚱ' : (h.feat != null ? h.feat : (h.total === '★' ? 'ᚱ' : ''))}</span>` : '<span class="hl-feat blank" aria-hidden="true"></span>'}
+      <span class="hl-main"><strong>${h.label}</strong><small>${rolled ? `${h.total} vs ${h.tn}` : ''}${Array.isArray(h.dice) && h.dice.length ? ` <span class="hl-pips" aria-hidden="true">${h.dice.map(v => `<i class="${v === 6 ? 'six' : ''}"></i>`).join('')}</span>` : ''}</small></span>
+      <span class="hl-end" style="color:${color}">${rolled && typeof rollStamp === 'function' ? `<span class="hl-seal">${rollStamp(ok, lvl)}</span>` : ''}<span class="hl-out">${h.outcome}${h.icons ? ' · '+h.icons+'⬢' : ''}</span><span class="hl-time">${h.time}</span>
         <button onclick="deleteRollAt(${realIdx})" aria-label="Delete this roll" title="Delete this roll" style="background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:var(--fs-md);padding:0 0 0 6px;vertical-align:middle">×</button></span>
     `;
     div.appendChild(item);
@@ -2018,11 +2025,23 @@ function _attachHint(el, term) {
   // so keyboard and screen-reader users get the same control; the chevron area still collapses.
   if (el.matches('.card > h3.card-title, .card > h2')) {
     const term$ = document.createElement('span'); term$.className = 'title-term';
-    [...el.childNodes].forEach(n => term$.appendChild(n));
-    el.appendChild(term$);
+    [...el.childNodes].forEach(n => { if (!(n.classList && n.classList.contains('card-status'))) term$.appendChild(n); });
+    el.insertBefore(term$, el.querySelector(':scope > .card-status'));
     b.classList.add('hq-title');
     term$.appendChild(b);
     return;
+  }
+  // a button cannot hold a button: set the (?) beside it, on the same line
+  if (el.tagName === 'BUTTON') {
+    const w = document.createElement('span'); w.className = 'hint-wrap';
+    el.parentNode.insertBefore(w, el); w.appendChild(el); w.appendChild(b);
+    return;
+  }
+  // keep the (?) on the same line as the last word, so a narrow label never strands it alone
+  const last = [...el.childNodes].reverse().find(n => n.nodeType === 3 && n.nodeValue.trim());
+  if (last && last === [...el.childNodes].filter(n => !(n.nodeType === 3 && !n.nodeValue.trim())).pop()) {
+    const m = last.nodeValue.match(/^([\s\S]*?)(\S+)(\s*)$/);
+    if (m) { last.nodeValue = m[1]; const tail = document.createElement('span'); tail.className = 'hint-tail'; tail.textContent = m[2]; tail.appendChild(b); el.insertBefore(tail, last.nextSibling); return; }
   }
   el.appendChild(b);
 }
@@ -2304,7 +2323,7 @@ function iconifyText(root) {
   _labelGlyphButtons(start);
 }
 function initIconify() {
-  const pass = () => { enhancePickers(document); enhanceSteppers(document); syncPickers(); };
+  const pass = () => { enhancePickers(document); enhanceSteppers(document); syncPickers(); if (typeof addCardRubrics === 'function') addCardRubrics(document); };
   iconifyText(document.body); pass();
   let queued = false; const pending = new Set();
   new MutationObserver(muts => {
@@ -2371,9 +2390,22 @@ const PICK_DESC = {
 // Round 6: a drawn mark beside the choices that have one — a culture's crest, a calling's emblem
 const CALLING_ICON = { Captain: 'i-crown', Champion: 'i-swords', Messenger: 'i-horn', Scholar: 'i-book', 'Treasure Hunter': 'i-gem', Warden: 'i-shield',
   Reclaimers: 'i-pick', Pathfinders: 'i-compass', 'Standard-Bearers': 'i-flag', Guardians: 'i-st-defensive', Vanguards: 'i-st-forward' };
+const _pIc = id => id ? `<svg class="ic pick-ic" aria-hidden="true"><use href="#${id}"/></svg>` : '';
+/* Round 8: odds as a five-step bar; lands as a coloured swatch */
+const _ODDS = { certain: 5, likely: 4, middling: 3, doubtful: 2, unthinkable: 1 };
+const _oddsBar = v => _ODDS[v] ? `<span class="odds-bar" aria-hidden="true">${[1, 2, 3, 4, 5].map(i => `<i class="${i <= _ODDS[v] ? 'on' : ''}"></i>`).join('')}</span>` : '';
+const _LAND_SW = { free: '#6f9a4e', border: '#a8b86a', wild: '#c9a76a', shadow: '#6e6259', dark: '#2a211b' };
+const _landSw = v => _LAND_SW[String(v).toLowerCase()] ? `<span class="land-sw" style="background:${_LAND_SW[String(v).toLowerCase()]}" aria-hidden="true"></span>` : '';
 const PICK_ART = {
   'culture-pick': v => (typeof cultureCrest === 'function' && typeof CULTURES !== 'undefined' && CULTURES[v]) ? cultureCrest(v, 34) : '',
-  'calling-pick': v => CALLING_ICON[v] ? `<svg class="ic pick-ic" aria-hidden="true"><use href="#${CALLING_ICON[v]}"/></svg>` : ''
+  'calling-pick': v => CALLING_ICON[v] ? `<svg class="ic pick-ic" aria-hidden="true"><use href="#${CALLING_ICON[v]}"/></svg>` : '',
+  'oracle-telling-chance': _oddsBar, 'ch-oracle-chance': _oddsBar,
+  'eye-region-pick': _landSw, 'j-region': _landSw,
+  'j-season': v => _pIc(SEASON_GLYPH[String(v).toLowerCase()]), 'tj-season': v => _pIc(SEASON_GLYPH[String(v).toLowerCase()]),
+  'ch-month': v => typeof monthSeason === 'function' ? _pIc(SEASON_GLYPH[String(monthSeason(v) || '').toLowerCase()]) : '',
+  'ch-phase': v => _pIc(/fellow/i.test(v) ? 'i-hearth' : 'i-road'),
+  'enc-weapon-pick': v => { const w = typeof _equippedWeapons === 'function' ? _equippedWeapons()[parseInt(v)] : null; return w ? _pIc(weaponGlyph(w, w.prof)) : ''; },
+  'tbl-call-skill': v => _pIc(v === 'Valour' ? ATTR_GLYPH.hrt : v === 'Wisdom' ? ATTR_GLYPH.wit : ATTR_GLYPH[attrOfSkill(v)])
 };
 function _pickArt(sel, o) { const f = PICK_ART[sel.id]; try { return f && o.value ? f(o.value) : ''; } catch (e) { return ''; } }
 function _pickDesc(sel, o) { const f = PICK_DESC[sel.id]; try { return f && o.value ? f(o.value) : ''; } catch (e) { return ''; } }
@@ -2390,6 +2422,7 @@ function openPicker(sel) {
     const desc = o.dataset.desc || _pickDesc(sel, o);
     const art = _pickArt(sel, o);
     if (desc) { b.innerHTML = (art ? `<span class="pick-art">${art}</span>` : '') + `<span class="pick-txt"><strong>${escapeHtml(o.textContent.trim() || '—')}</strong><small>${escapeHtml(desc)}</small></span>`; b.classList.add('has-desc'); if (art) b.classList.add('has-art'); }
+    else if (art) { b.innerHTML = `<span class="pick-art">${art}</span><span class="pick-txt"><strong>${escapeHtml(o.textContent.trim() || '—')}</strong></span>`; b.classList.add('has-art', 'art-only'); }
     else b.textContent = o.textContent.trim() || '—';
     b.onclick = () => choosePick(o.value);
     list.appendChild(b);

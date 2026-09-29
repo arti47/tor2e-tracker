@@ -228,7 +228,7 @@ function _tblConsoleShell() {
       <p class="tbl-lastnote" id="tbl-lastnote"></p>
     </div>
     <div class="card tbl-fight" id="tbl-fight"><h3 class="card-title">The fight</h3>
-      <div class="tbl-row2"><button type="button" class="btn btn-secondary" onclick="openBestiary()">Add a foe</button><button type="button" class="btn btn-secondary" onclick="tableNextRound()">Next round</button></div>
+      <div class="tbl-row2"><button data-empty-dup type="button" class="btn btn-secondary" onclick="openBestiary()">Add a foe</button><button type="button" class="btn btn-secondary" onclick="tableNextRound()">Next round</button></div>
       <div id="tbl-flive"></div>
     </div>
     <div class="card tbl-fp" id="tbl-fp"><h3 class="card-title">The Fellowship Phase</h3>

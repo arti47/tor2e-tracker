@@ -510,7 +510,7 @@ module.exports = {
         total: all.length,
         dead,
         // every data-hint element must actually carry a rendered (?) button
-        allRendered: all.every(e => !!e.querySelector('.hint-q')),
+        allRendered: all.every(e => !!e.querySelector('.hint-q') || !!(e.parentElement && e.parentElement.classList.contains('hint-wrap') && e.parentElement.querySelector(':scope > .hint-q'))),
         combat: rendered('combat'), gear: rendered('gear'), gm: rendered('gm'),
         thinTabs: ['character','gear','combat','journey','council','dice','oracle','band','battle','chronicle','build','gm']
           .filter(t => rendered(t) === 0),

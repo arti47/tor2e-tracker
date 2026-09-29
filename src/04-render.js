@@ -674,11 +674,11 @@ function fpRenderStep4() {
     row.style.cssText = `padding:8px;border:1px solid ${selected ? 'var(--gold)' : 'var(--border)'};border-radius:var(--r-sm);background:${selected ? 'var(--gold-soft)' : (disabled ? 'var(--bg-deep)' : 'var(--pure-white)')};${disabled ? 'opacity:0.4;' : 'cursor:pointer;'}`;
     if (!disabled) row.onclick = () => fpToggleUndertaking(u.id);
     row.innerHTML = `
-      <div style="display:flex;align-items:center;gap:8px">
+      <div style="display:flex;align-items:center;gap:6px 8px;flex-wrap:wrap">
         <input type="checkbox" ${selected ? 'checked' : ''} ${disabled ? 'disabled' : ''} style="margin:0">
         ${FP_UNDERTAKING_ICON[u.id] ? `<svg class="ic und-ic" aria-hidden="true"><use href="#${FP_UNDERTAKING_ICON[u.id]}"/></svg>` : ''}
         <strong style="font-size:var(--fs-sm)">${u.name}</strong>
-        ${isFree ? '<span style="background:var(--gold);color:white;padding:1px 6px;border-radius:var(--r-sm);font-size:var(--fs-xs)">FREE — ' + calling + '</span>' : ''}
+        ${isFree ? '<span class="free-badge" style="background:var(--gold);color:white;padding:1px 6px;border-radius:var(--r-sm);font-size:var(--fs-xs)">FREE — ' + calling + '</span>' : ''}
         ${u.yuleOnly ? '<span style="background:var(--brown-soft);color:white;padding:1px 6px;border-radius:var(--r-sm);font-size:var(--fs-xs)">YULE</span>' : ''}
       </div>
       <p class="hint" style="text-align:left;margin:4px 0 0 0">${soloWord(u.desc, u.descSolo || u.desc)}</p>
@@ -2805,10 +2805,40 @@ function renderMission() {
   renderMissionPreview();
 }
 
+/* Round 8: each Band step says, while folded, where it stands — and ticks when it is done. */
+function renderBandStatus() {
+  const b = char.band || {}, m = char.mission || {};
+  const allies = (b.allies || []), hurt = allies.filter(a => a.injury || a.outOfAction).length;
+  const dispSum = Object.values(b.dispositions || {}).reduce((t, v) => t + (parseInt(v) || 0), 0);
+  const cap = x => String(x || '').replace(/^./, c => c.toUpperCase());
+  const rows = [
+    ['Allies', 'i-users', allies.length ? `${allies.length} ${allies.length === 1 ? 'ally' : 'allies'}${hurt ? ` · ${hurt} hurt` : ''}` : 'none yet', allies.length > 0],
+    ['Mission Planning', 'i-map', m.active ? (m.objective ? String(m.objective).slice(0, 40) : 'set') : 'not set', !!m.active],
+    ['Band of Allies', 'i-flag', `Readiness ${parseInt(b.readiness) || 0} · TN ${bandTN()}`, false],
+    ['Dispositions', 'i-scales', b.dispositionFocus ? `Focus: ${cap(b.dispositionFocus)}` : (dispSum ? `${dispSum} points` : 'not set'), dispSum > 0],
+    ['Tests', 'i-dice', allies.length ? 'ready' : 'needs allies', false],
+    ['Solo Tools', 'i-tools', '', false],
+    ['Fellowship Phase (Moria)', 'i-hearth', 'after a mission', false]
+  ];
+  document.querySelectorAll('#panel-band .card > h3.card-title').forEach(h => {
+    const txt = h.textContent.replace(/\s+/g, ' ');
+    const bare = txt.replace(/^\s*\d+\s*·\s*/, '');
+    const r = rows.find(([n]) => bare.startsWith(n)); if (!r) return;
+    const all = [...h.querySelectorAll('.card-status')];
+    let st = all.shift(); all.forEach(x => x.remove());
+    if (!st) st = document.createElement('span');
+    st.className = 'card-status' + (st.classList.contains('done') ? ' done' : '');
+    if (st.parentNode !== h || h.lastElementChild !== st) h.appendChild(st);
+    const numbered = !!h.querySelector('.step-med') || /^\s*\d/.test(txt);
+    st.innerHTML = `${numbered ? '' : `<svg class="ic cs-ic" aria-hidden="true"><use href="#${r[1]}"/></svg>`}${r[2] ? `<span class="cs-t">${escapeHtml(r[2])}</span>` : ''}${r[3] ? '<svg class="ic cs-done" aria-label="done"><use href="#i-check"/></svg>' : ''}`;
+    st.classList.toggle('done', !!r[3]);
+  });
+}
 function renderBand() {
   const panel = document.getElementById('panel-band');
   if (!panel) return;
   renderMission();
+  try { renderBandStatus(); } catch (e) {}
   setText('band-readiness-v', char.band.readiness);
   setText('band-tn-v', bandTN());
   // Burden seg
@@ -4758,10 +4788,19 @@ function _chips(txt, cls) {
 function _pips(n, max) { let h = ''; for (let i = 0; i < (max || 6); i++) h += `<i class="${i < n ? 'on' : ''}"></i>`; return `<span class="pipset">${h}</span>`; }
 /* A Spend button with nothing to spend says how points are earned instead of opening an empty
    list (round 4). Never `disabled` — GOTCHA 21: the control must be able to explain itself. */
-function _spendBtn(kind, pts) {
+/* Round 8: points as drawn tokens. A point-bearing token spends; a zero one says how points are earned. */
+function _xpToken(kind, label, v, icon) {
+  const inner = `<span class="xt-disc"><svg class="ic" aria-hidden="true"><use href="#${icon}"/></svg></span><strong>${v}</strong><small>${label}</small>`;
+  if (!kind) return `<div class="xp-token">${inner}</div>`;
   const what = kind === 'skill' ? 'Skill points' : 'Adventure points';
-  if (pts > 0) return `<button class="btn btn-secondary" onclick="openSpendXP('${kind}')">Spend ${what} · ${pts}</button>`;
-  return `<button class="btn btn-quiet spend-empty" onclick="explainNoPoints('${kind}')">No ${what} yet</button>`;
+  return v > 0 ? `<button type="button" class="xp-token live" onclick="openSpendXP('${kind}')" aria-label="Spend ${what} · ${v}">${inner}</button>`
+    : `<button type="button" class="xp-token none" onclick="explainNoPoints('${kind}')">${inner}<span class="sr-only">No ${what} yet</span></button>`;
+}
+function _spendOne(sp, ap) {
+  if (sp <= 0 && ap <= 0) return '';
+  const kind = sp > 0 ? 'skill' : 'adv';
+  const label = sp > 0 && ap > 0 ? 'Spend points' : sp > 0 ? `Spend Skill points · ${sp}` : `Spend Adventure points · ${ap}`;
+  return `<div class="s-actions"><button class="btn btn-secondary xp-spend" onclick="openSpendXP('${kind}')">${label}</button></div>`;
 }
 function explainNoPoints(kind) {
   const what = kind === 'skill' ? 'Skill points' : 'Adventure points';
@@ -4825,8 +4864,8 @@ function renderHeroSheet() {
   ${traits ? `<div class="card"><h3 class="card-title">Traits</h3>${traits}</div>` : ''}
   <div class="card">
     <h3 class="card-title">Experience &amp; wealth</h3>
-    <div class="s-stats">${stat('Skill points', n(char.skillPts))}${stat('Adventure pts', n(char.advPts))}${stat('Treasure', n(char.treasure))}${stat('Fellowship pts', n(char.fellowship))}</div>
-    <div class="s-actions">${_spendBtn('skill', n(char.skillPts))}${_spendBtn('adv', n(char.advPts))}</div>
+    <div class="xp-tokens">${_xpToken('skill', 'Skill points', n(char.skillPts), 'i-quill')}${_xpToken('adv', 'Adventure pts', n(char.advPts), 'i-swords')}${_xpToken('', 'Treasure', n(char.treasure), 'i-coins')}${_xpToken('', 'Fellowship pts', n(char.fellowship), 'i-link')}</div>
+    ${_spendOne(n(char.skillPts), n(char.advPts))}
   </div>
   ${String(char.history || '').trim() ? `<div class="card"><h3 class="card-title">History</h3><p class="s-history">${escapeHtml(char.history)}</p></div>` : ''}`;
 }
@@ -5100,6 +5139,10 @@ function renderPlay() {
      ${_playQuickRolls()}
      ${isSolo() ? '<p class="play-foot">Everything that happens here is written into your Chronicle for you.</p>' : ''}
      ${typeof playFooterArt === 'function' ? playFooterArt() : ''}`;
+  // Round 8: when the story moves (home → road → place), the scene cross-fades and its heading writes in
+  const key = (s.step || '') + '|' + terrain + '|' + (jr.active ? 1 : 0);
+  if (window._playSceneKey && window._playSceneKey !== key) { const sc = host.querySelector('.play-scene'); if (sc) sc.classList.add('scene-change'); }
+  window._playSceneKey = key;
 }
 /** Tablet (round 5): under the scene, the story so far from the Chronicle, and the last road
     walked on the map when you are not on one now. Hidden on phones, where the page is already long. */

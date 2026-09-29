@@ -848,7 +848,7 @@ function renderCampaign() {
         <div class="camp-row"><button type="button" class="btn btn-secondary" onclick="copyJoin('code')">Copy code</button><button type="button" class="btn btn-secondary" onclick="copyJoin('link')">Copy invite link</button></div>
         <button type="button" class="btn btn-block" onclick="_goToTable()">Go to the table</button>
       </div>
-      <div class="card"><h3 class="card-title">Who is here</h3><div id="campaign-members"><div class="hint">Loading…</div></div></div>
+      <div class="card"><h3 class="card-title">Who is here</h3><div id="campaign-members"><div class="skel-list" aria-label="Loading"><span class="skel w80"></span><span class="skel w60"></span><span class="skel w40"></span></div></div></div>
       <div class="card"><h3 class="card-title">From the Loremaster</h3><div id="campaign-bcast"><div class="hint">Nothing yet.</div></div></div>
       <details class="camp-danger"><summary>Leave${Sync.isCampaignOwner() ? ' or end' : ''} the table</summary>
         <button type="button" class="btn btn-secondary btn-block" onclick="campaignLeave()">Leave the table</button>
@@ -966,11 +966,13 @@ function _bsHero(name, v, opts) {
   const dying = v.dying || (parseInt(v.endCur) || 0) <= 0;
   const chips = [dying && 'Dying', v.weary && 'Weary', v.miserable && 'Miserable', v.wounded && 'Wounded'].filter(Boolean)
     .map(t => `<span class="tv-chip">${t}</span>`).join('');
-  return `<div class="tv-hero${o.now ? ' now' : ''}${o.off ? ' off' : ''}">
+  // Round 8: a portrait oval with the culture's figure beside the name and meters
+  const sil = v.culture && typeof cultureSilhouette === 'function' ? cultureSilhouette(v.culture).replace('class="silhouette"', 'class="silhouette tv-sil"') : '';
+  return `<div class="tv-hero${o.now ? ' now' : ''}${o.off ? ' off' : ''}${sil ? ' has-portrait' : ''}">${sil ? `<div class="tv-portrait" aria-hidden="true">${sil}</div>` : ''}<div class="tv-body">
     <div class="tv-name">${v.culture && typeof cultureCrest === 'function' ? `<span class="tv-crest" aria-hidden="true">${cultureCrest(v.culture, 30, name)}</span>` : ''}${escapeHtml(name)}${o.tag ? `<small>${escapeHtml(o.tag)}</small>` : ''}</div>
     <div class="tv-lab">Endurance</div>${_bsMeter('end', v.endCur, v.endMax)}
     <div class="tv-lab">Hope${sh ? ` · Shadow ${sh}` : ''}</div>${_bsMeter('hope', v.hopeCur, v.hopeMax, sh ? `<div class="tv-shadow" style="width:${Math.min(100, 100 * sh / hm)}%"></div>` : '')}
-    ${chips ? `<div class="tv-chips">${chips}</div>` : ''}${o.now ? '<div class="tv-now">Acting now</div>' : ''}</div>`;
+    ${chips ? `<div class="tv-chips">${chips}</div>` : ''}${o.now ? '<div class="tv-now">Acting now</div>' : ''}</div></div>`;
 }
 function renderTableMode() {
   const body = document.getElementById('table-mode-body'); if (!body) return;
@@ -1009,7 +1011,7 @@ function renderTableMode() {
   }
   const living = foes.filter(f => !f.slain);
   if (living.length) html += `<div class="tv-section"><div class="tv-eyebrow">The fight · round ${en.round || 1}</div><div class="tv-grid foes">${living.map(f =>
-    `<div class="tv-hero foe"><div class="tv-name">${escapeHtml(f.name)}</div><div class="tv-lab">Endurance</div>${_bsMeter('foe', f.endCur, f.endMax)}${f.wounded ? '<div class="tv-chips"><span class="tv-chip">Wounded</span></div>' : ''}</div>`).join('')}</div></div>`;
+    `<div class="tv-hero foe has-portrait"><div class="tv-portrait foe-p" aria-hidden="true">${typeof foeSilhouette === 'function' ? foeSilhouette(f, 'tv-foe-sil') : ''}</div><div class="tv-body"><div class="tv-name">${escapeHtml(f.name)}</div><div class="tv-lab">Endurance</div>${_bsMeter('foe', f.endCur, f.endMax)}${(parseInt(f.hateMax) || 0) > 0 ? `<div class="tv-lab">${/resolve/i.test(f.hateLabel || '') ? 'Resolve' : 'Hate'}</div>${_bsMeter('hate', f.hateCur, f.hateMax)}` : ''}${f.wounded ? '<div class="tv-chips"><span class="tv-chip">Wounded</span></div>' : ''}</div></div>`).join('')}</div></div>`;
   if (atTable) html += `<div class="tv-join"><span>Join this table</span><strong>${escapeHtml(campaignInfo().code || '')}</strong><div id="tv-qr"></div></div>`;
   body.innerHTML = html;
   if (atTable) renderJoinQr(document.getElementById('tv-qr'), campaignInfo().code, 120);

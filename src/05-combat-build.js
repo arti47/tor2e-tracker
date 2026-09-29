@@ -769,8 +769,7 @@ function renderProtectionParry() {
   const ovInfo = document.getElementById('opening-volley-info');
   if (ovBtn) {
     const on = !!char.openingVolley;
-    ovBtn.textContent = on ? '🏹 Opening Volley (aware) — ON' : '🏹 Opening Volley (aware) — off';
-    ovBtn.style.background = on ? 'var(--gold)' : 'var(--btn-secondary-bg)';
+    if (ovBtn.type === 'checkbox') ovBtn.checked = on; else ovBtn.textContent = on ? '🏹 Opening Volley (aware) — ON' : '🏹 Opening Volley (aware) — off';
     if (ovInfo) {
       ovInfo.style.display = on ? 'block' : 'none';
       setText('parry-ranged-v', baseParry + shieldBonus * 2);
@@ -1118,6 +1117,15 @@ function renderBestiaryList() {
   });
   list.innerHTML = html || '<div style="color:var(--text-faint);text-align:center;padding:10px">No match.</div>';
 }
+/* Round 8: the empty fight offers the common foes as one-tap picks, each with its silhouette. */
+const QUICK_FOES = ['Orc Soldier', 'Goblin Archer', 'Warg', 'Hill-troll', 'Great Spider', 'Barrow-wight'];
+function _quickFoesHtml() {
+  const all = allBestiary();
+  const picks = QUICK_FOES.map(n => ({ n, i: all.findIndex(b => b.name === n) })).filter(x => x.i >= 0);
+  if (!picks.length) return '';
+  return `<div class="quick-foes-h">Or start with a common foe</div><div class="quick-foes">${picks.map(x =>
+    `<button type="button" class="quick-foe" onclick="addFoeFromBestiary(${x.i})">${typeof foeSilhouette === 'function' ? foeSilhouette(all[x.i], 'qf-sil') : ''}<span>${escapeHtml(x.n)}</span></button>`).join('')}</div>`;
+}
 function addFoeFromBestiary(idx) {
   const b = allBestiary()[idx]; if (!b) return;
   ensureEncounterActive();
@@ -1420,7 +1428,9 @@ function renderEncounter() {
   if (!e.active && (!e.foes || e.foes.length === 0)) {
     card.innerHTML = sharedBanner + (canGm
       ? `<p class="hint" style="text-align:left;margin:0 0 8px">Key in adversaries, roll your attacks and theirs, and apply damage — all here. Works in solo or group play.</p>
-      <button class="add-row-btn primary" onclick="openBestiary()" style="width:100%">+ Add Adversary</button>`
+      ${typeof battlefieldArt === 'function' ? battlefieldArt() : ''}
+      <button class="add-row-btn primary" onclick="openBestiary()" style="width:100%">+ Add Adversary</button>
+      ${_quickFoesHtml()}`
       : `<p class="hint" style="text-align:center;padding:8px">No active encounter — waiting for the Loremaster to add adversaries.</p>`);
     return;
   }
@@ -1433,7 +1443,7 @@ function renderEncounter() {
     </div>
     <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:var(--fs-xs);margin-bottom:6px">
       <span>Attack with:</span>
-      <select onchange="setEncWeapon(this.value)" style="flex:1;min-width:130px;padding:4px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--bg-deep);color:var(--ink)">
+      <select id="enc-weapon-pick" onchange="setEncWeapon(this.value)" style="flex:1;min-width:130px;padding:4px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--bg-deep);color:var(--ink)">
         ${wpns.length ? wpns.map((w, i) => `<option value="${i}" ${i === wIdx ? 'selected' : ''}>${escapeHtml(w.name)} (${w.dmg}/${w.inj}, ${w.prof || 'Brawling'})</option>`).join('') : '<option>— no weapon equipped —</option>'}
       </select>
       <button onclick="toggleEncAdv()" class="add-row-btn" style="font-size:var(--fs-xs);padding:3px 8px;background:${a.open ? 'var(--gold)' : 'var(--btn-secondary-bg)'};color:${a.open ? 'var(--ink)' : 'white'}">⚙ Advanced</button>

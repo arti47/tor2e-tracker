@@ -708,3 +708,64 @@ const EMPTY_ART = {
   skull: '<path d="M8 40l24-28"/><path d="M29 11l5-3-1 6"/><path d="M11 33l5 5"/><path d="M40 40L20 17"/><path d="M18 18l-4-2 1 5"/><path d="M34 34l-4 5"/><path d="M4 42h40" opacity=".5"/>',
   users: '<path d="M6 16 24 7l18 9"/><path d="M9 16v24M39 16v24M18 16v24M30 16v24" opacity=".7"/><path d="M6 40h36"/><path d="M13 34h8M27 34h8"/><path d="M14 34v4M20 34v4M28 34v4M34 34v4" opacity=".6"/>'
 };
+
+/* ============================================================
+   Round 8 — the empty battlefield, choice-card vignettes, tokens
+   ============================================================ */
+/** An empty field of battle: a ridge, broken spears, a banner, crossed blades — waiting for foes. */
+function battlefieldArt() {
+  return `<div class="battlefield-art" aria-hidden="true"><svg viewBox="0 0 320 84" preserveAspectRatio="xMidYMid meet">
+    <path class="bf-far" d="M0 58 Q40 42 80 50 T160 44 T240 50 T320 42 V84 H0Z"/>
+    <path class="bf-near" d="M0 70 Q60 60 120 66 T240 62 T320 68 V84 H0Z"/>
+    <g class="bf-ink"><path d="M40 70 L52 40M47 44l9-7-2 11"/><path d="M270 66 L262 34M259 38l4-10 4 10"/><path d="M226 64 l10-16"/>
+      <path d="M92 66 V26"/><path class="bf-flag" d="M92 27 q14 3 24 -1 v14 q-10 4 -24 1z"/></g>
+    <g class="bf-blades"><path d="M146 66 L178 30M178 30l4 -2 -2 4M150 56l6 6"/><path d="M178 66 L146 30M146 30l-4 -2 2 4M174 56l-6 6"/></g>
+    <circle class="bf-sun" cx="160" cy="26" r="10"/></svg></div>`;
+}
+
+/** Small ink scenes across the top of choice cards (Council chooser, Journey distance and travel). */
+const CHOICE_VIGNETTES = {
+  council: '<path d="M8 38h104"/><path d="M20 38V14M36 38V14M84 38V14M100 38V14"/><path d="M14 14h28M78 14h28M16 10h24M80 10h24"/><path d="M52 38V22q8-8 16 0v16"/><path d="M56 26h8"/><path class="vf" d="M55 30h10v8H55z"/><path d="M44 38l2-6M76 38l-2-6"/>',
+  endeavour: '<path d="M10 30h84M16 30v8M88 30v8"/><path class="vf" d="M22 22h22l3 8H19z"/><path d="M30 22V16h10v6"/><path d="M64 30V18M60 18h8l-2-6h-4z"/><path class="vg" d="M64 10l1.5-3 1.5 3"/><path d="M76 30l10-12 4 4-10 12M86 18l4-4"/><path d="M100 38h12"/>',
+  d4: '<path d="M4 38h112"/><path d="M60 38 C58 32 62 28 70 24"/><path d="M70 24 q8-10 18-2 q6-6 12 2"/><path d="M10 34q6-5 12 0"/>',
+  d9: '<path d="M4 38h112"/><path d="M60 38 C56 30 64 26 58 20 C54 16 62 14 66 12"/><path d="M40 24 q10-12 22-2 q8-8 16 0 q6-4 12 2"/><path d="M14 34q6-5 12 0M94 34q6-5 12 0"/>',
+  d18: '<path d="M4 38h112"/><path d="M60 38 C54 30 66 26 56 20 C50 16 64 12 60 8"/><path d="M30 22 l12-14 8 8 10-12 12 12 8-6 12 12"/><path class="vs" d="M42 8l-3 4h6zM60 4l-3 4h6z"/><path d="M10 34q6-5 12 0M96 34q6-5 12 0"/>',
+  exact: '<path d="M4 38h112"/><path class="vs" d="M20 10h80v24H20z"/><path d="M28 10v24M44 10v24M60 10v24M76 10v24M92 10v24M20 18h80M20 26h80"/><path d="M60 22l3-8 3 8-3 8z"/>',
+  map: '<path d="M24 10l24 4 24-4 24 4v24l-24-4-24 4-24-4z"/><path d="M48 14v24M72 10v24"/><path class="vr" d="M30 30 C38 24 44 26 52 22 S66 18 74 20 S84 26 90 18"/><path class="vr" d="M88 14l4 4M92 14l-4 4"/>',
+  foot: '<path d="M4 38h112"/><path d="M40 38 C46 30 60 28 64 20 C66 16 72 14 80 12"/><path d="M12 36l2-6 2 6M22 36l2-8 2 8M96 36l2-6 2 6M104 36l2-8 2 8"/>',
+  mounted: '<path d="M4 38h112"/><path d="M40 34h28l4-8 8-2-2 6-4 2v10M44 34v4M50 34v4M62 34v4M68 34v4M40 34l-4-6"/><path d="M54 26l2-10h6l-2 10"/><circle cx="59" cy="12" r="3"/>',
+  forced: '<path d="M4 38h112"/><path d="M52 38l6-10 4 10M58 28l2-10 6 6M60 18l-6 4"/><circle cx="62" cy="13" r="3"/><path class="vs" d="M24 26h18M18 30h20M28 22h12"/>'
+};
+function choiceVignette(key) {
+  const d = CHOICE_VIGNETTES[key]; if (!d) return '';
+  return `<span class="opt-vig" aria-hidden="true"><svg viewBox="0 0 120 42" preserveAspectRatio="xMidYMid meet">${d}</svg></span>`;
+}
+function decorateChoiceCards(root) {
+  const map = [['#pick-council', 'council'], ['#pick-endeavour', 'endeavour'], ['#j-dist [data-hex="4"]', 'd4'], ['#j-dist [data-hex="9"]', 'd9'],
+    ['#j-dist [data-hex="18"]', 'd18'], ['#j-dist [data-hex="exact"]', 'exact'], ['#j-dist [data-hex="map"]', 'map'],
+    ['#j-travel [data-mode="foot"]', 'foot'], ['#j-travel [data-mode="mounted"]', 'mounted'], ['#j-travel [data-mode="forced"]', 'forced']];
+  map.forEach(([sel, key]) => { const el = (root || document).querySelector(sel); if (!el || el.querySelector('.opt-vig')) return;
+    el.insertAdjacentHTML('afterbegin', choiceVignette(key)); el.classList.add('has-vig'); });
+}
+document.addEventListener('DOMContentLoaded', () => setTimeout(() => decorateChoiceCards(document), 0));
+/** Card-title rubrics: a small muted-gold mark before each tool card's title, matching its subject. */
+const RUBRIC_ICON = [
+  [/^war gear/i, 'i-swords'], [/^armour/i, 'i-mail'], [/^shield/i, 'i-shield'], [/^traits/i, 'i-feather'], [/^skills/i, 'i-dice'],
+  [/^experience/i, 'i-trophy'], [/^history/i, 'i-scroll'], [/^travelling gear/i, 'i-pack'], [/^magical treasure/i, 'i-gem'], [/^treasure/i, 'i-coins'],
+  [/^notes/i, 'i-quill'], [/^stance/i, 'i-st-forward'], [/^encounter/i, 'i-skull'], [/^protection/i, 'i-shield'], [/^set out/i, 'i-road'],
+  [/^journey/i, 'i-road'], [/^what are you facing/i, 'i-scales'], [/^council/i, 'i-hall'], [/^skill endeavour|^endeavour/i, 'i-tools'],
+  [/^dice roller/i, 'i-dice'], [/^telling table/i, 'i-orb'], [/^lore table/i, 'i-book'], [/^patron quest/i, 'i-crown'], [/^random chamber/i, 'i-castle'],
+  [/^random orc/i, 'i-skull'], [/^fortune table/i, 'i-sparkles'], [/^ill-fortune/i, 'i-eye'], [/^oracle history/i, 'i-scroll'], [/^oracle/i, 'i-orb'],
+  [/^chronicle/i, 'i-book'], [/^tale of years/i, 'i-calendar'], [/^quick reference/i, 'i-book'], [/^battle setup/i, 'i-flag'], [/^battle log/i, 'i-scroll'],
+  [/^your progress/i, 'i-check'], [/^quick build/i, 'i-sparkles'], [/^useful items/i, 'i-lantern'], [/^conditions/i, 'i-warn'], [/^endurance/i, 'i-heart'],
+  [/^hope/i, 'i-sun'], [/^advancement/i, 'i-trophy'], [/^eye of mordor/i, 'i-eye'], [/^council log|^endeavour log|^past councils/i, 'i-scroll']
+];
+function addCardRubrics(root) {
+  (root || document).querySelectorAll('.panel .card:not(.ornate):not(.tab-intro) > h3.card-title').forEach(h => {
+    if (h.querySelector('.rubric, .step-med, svg') || h.closest('#panel-band')) return;
+    const t = h.textContent.replace(/\s+/g, ' ').trim(); if (/^\d/.test(t)) return;
+    const hit = RUBRIC_ICON.find(([re]) => re.test(t)); if (!hit) return;
+    h.insertAdjacentHTML('afterbegin', `<svg class="ic rubric" aria-hidden="true"><use href="#${hit[1]}"/></svg>`);
+  });
+}
+document.addEventListener('DOMContentLoaded', () => setTimeout(() => addCardRubrics(document), 60));

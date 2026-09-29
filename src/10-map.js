@@ -132,7 +132,13 @@ function openMapPicker(mode) {
   const ov = document.getElementById('map-overlay'); if (!ov) return;
   const svg = document.getElementById('map-svg');
   const img = svg.querySelector('image');
-  if (img && !img.getAttribute('href')) { img.setAttribute('href', MAP_DATA.img); img.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', MAP_DATA.img); }
+  if (img && !img.getAttribute('href')) {
+    // Round 8: a parchment shimmer while the picture arrives
+    const view = svg.closest('.map-view'); if (view) view.classList.add('loading');
+    const done = () => { if (view) view.classList.remove('loading'); };
+    img.addEventListener('load', done, { once: true }); img.addEventListener('error', done, { once: true }); setTimeout(done, 8000);
+    img.setAttribute('href', MAP_DATA.img); img.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', MAP_DATA.img);
+  }
   initMapGestures();
   _mapDrawPlaces();
   ov.classList.toggle('view-only', MapPick.mode === 'view');
@@ -483,6 +489,9 @@ document.addEventListener('DOMContentLoaded', () => { initMapGestures(); });
 
 /** Round 7: the country around the Safe Haven (or the last place reached), cropped from the real
     map — shown on tablet Play when there is no road under way. Nothing if the place is not on the map. */
+const CULTURE_HOME = { 'Bardings': 'Dale', "Dwarves of Durin's Folk": 'Erebor', 'Elves of Lindon': 'Grey Havens', 'Hobbits of the Shire': 'Hobbiton',
+  'Men of Bree': 'Bree', 'Rangers of the North': 'Bree', 'Beornings': "Beorn's House", 'Elves of Mirkwood': "Elvenking's Halls",
+  'Woodmen of Wilderland': 'Woodmen-town', 'Dwarves of Nogrod and Belegost': 'Nogrod', 'High Elves of Rivendell': 'Rivendell' };
 function havenMapPanel() {
   if (typeof MAP_DATA === 'undefined' || !MAP_DATA.places) return '';
   const want = [char.safeHaven, (char.journey || {}).destination].filter(Boolean).map(v => String(v).toLowerCase());
@@ -492,10 +501,7 @@ function havenMapPanel() {
     if (p) break;
   }
   // no Safe Haven named on the map yet: the hero's homeland stands in for it
-  const HOME = { 'Bardings': 'Dale', "Dwarves of Durin's Folk": 'Erebor', 'Elves of Lindon': 'Grey Havens', 'Hobbits of the Shire': 'Hobbiton',
-    'Men of Bree': 'Bree', 'Rangers of the North': 'Bree', 'Beornings': "Beorn's House", 'Elves of Mirkwood': "Elvenking's Halls",
-    'Woodmen of Wilderland': 'Woodmen-town', 'Dwarves of Nogrod and Belegost': 'Nogrod', 'High Elves of Rivendell': 'Rivendell' };
-  if (!p && HOME[char.culture]) p = MAP_DATA.places.find(q => q.length > 3 && q[0].startsWith(HOME[char.culture]));
+  if (!p && CULTURE_HOME[char.culture]) p = MAP_DATA.places.find(q => q.length > 3 && q[0].startsWith(CULTURE_HOME[char.culture]));
   if (!p) return '';
   const [x, y] = [p[3], p[4]], w = 420, h = 230;
   return `<button type="button" class="haven-map" onclick="openMapPicker('view')" aria-label="${escapeHtml(p[0])} on the map; tap to open the map">
@@ -503,3 +509,41 @@ function havenMapPanel() {
       <g class="hm-pin" transform="translate(${x},${y})"><circle r="9"/><circle r="3.5" class="hm-dot"/></g></svg>
     <span class="hm-cap">${escapeHtml(p[0])}</span></button>`;
 }
+
+/* Round 8: Journey From / To suggest the map's places as you type; a Home chip fills From. */
+function placeNames() {
+  if (typeof MAP_DATA === 'undefined' || !MAP_DATA.places) return [];
+  return MAP_DATA.places.map(q => q[0]);
+}
+function homePlaceName() {
+  if (char.safeHaven && String(char.safeHaven).trim()) return String(char.safeHaven).trim();
+  return CULTURE_HOME[char.culture] || '';
+}
+function _placeSuggest(inp) {
+  let box = inp.parentNode.querySelector('.place-sugg');
+  if (!box) { box = document.createElement('div'); box.className = 'place-sugg'; box.setAttribute('role', 'listbox'); inp.parentNode.appendChild(box); }
+  const q = inp.value.trim().toLowerCase();
+  const hits = q ? placeNames().filter(n => n.toLowerCase().split(/[\s(),'-]+/).some(w => w.startsWith(q)) || n.toLowerCase().startsWith(q)).slice(0, 6) : [];
+  if (!hits.length || (hits.length === 1 && hits[0].toLowerCase() === q)) { box.hidden = true; box.innerHTML = ''; return; }
+  box.innerHTML = hits.map(n => `<button type="button" role="option" class="ps-opt"><svg class="ic" aria-hidden="true"><use href="#i-map"/></svg>${escapeHtml(n)}</button>`).join('');
+  box.hidden = false;
+  box.querySelectorAll('.ps-opt').forEach((b, i) => b.onmousedown = b.onclick = ev => { ev.preventDefault(); inp.value = hits[i].replace(/\s*\(.*\)\s*$/, ''); box.hidden = true; inp.dispatchEvent(new Event('change', { bubbles: true })); });
+}
+function initPlaceFields() {
+  ['j-origin', 'j-destination'].forEach(id => {
+    const inp = document.getElementById(id); if (!inp || inp.dataset.places) return;
+    inp.dataset.places = '1'; inp.setAttribute('autocomplete', 'off');
+    inp.addEventListener('input', () => _placeSuggest(inp));
+    inp.addEventListener('focus', () => _placeSuggest(inp));
+    inp.addEventListener('blur', () => setTimeout(() => { const b = inp.parentNode.querySelector('.place-sugg'); if (b) b.hidden = true; }, 150));
+  });
+  const from = document.getElementById('j-origin');
+  if (from && !document.getElementById('j-home-chip')) {
+    const c = document.createElement('button'); c.type = 'button'; c.id = 'j-home-chip'; c.className = 'home-chip';
+    c.innerHTML = '<svg class="ic" aria-hidden="true"><use href="#i-home"/></svg>Home';
+    c.onclick = () => { const h = homePlaceName(); if (!h) { if (typeof showToast === 'function') showToast('Name a Safe Haven on the Character sheet first.'); return; } from.value = h; from.dispatchEvent(new Event('change', { bubbles: true })); };
+    from.parentNode.querySelector('label').appendChild(c);
+  }
+}
+document.addEventListener('DOMContentLoaded', () => setTimeout(initPlaceFields, 0));
+

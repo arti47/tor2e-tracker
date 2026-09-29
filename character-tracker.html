@@ -981,7 +981,7 @@
         <div class="hint" style="margin:0">base Parry + shield bonus</div>
       </div>
     </div>
-    <button data-hint-btn="Opening Volley" id="opening-volley-btn" onclick="toggleOpeningVolley()" style="width:100%;margin-top:10px;background:var(--btn-secondary-bg);color:white;border:none;border-radius:var(--r-sm);padding:8px 10px;font-size:var(--fs-sm);font-weight:600;cursor:pointer">🏹 Opening Volley (aware) — off</button>
+    <label class="switch-row" id="opening-volley-row" data-hint-btn="Opening Volley"><span class="sr-txt"><span class="sr-h">🏹 Opening Volley (aware)</span><small>you see the arrows coming — shield Parry doubles against them</small></span><input type="checkbox" id="opening-volley-btn" onchange="toggleOpeningVolley()"></label>
     <div id="opening-volley-info" style="display:none;margin-top:8px;padding:8px;background:var(--gold-soft);border:1px solid var(--gold);border-radius:var(--r-sm);font-size:var(--fs-sm);text-align:center">
       Parry <strong>vs ranged</strong> this exchange: <strong id="parry-ranged-v" style="color:var(--red-dark)">0</strong>
       <div class="hint" style="margin:2px 0 0">shield Parry bonus doubled (aware of the volley)</div>
@@ -1420,7 +1420,7 @@
     <h3 class="card-title" data-hint="Blessing (magical item)">Magical Treasure</h3>
     <p class="hint" style="text-align:left;margin-bottom:10px;line-height:1.5">Marvellous Artefacts (1 Blessing → +2d on that skill + Magical Success), Wondrous Items (2 Blessings), Famous Weapons/Armour. Each magical item counts as <strong>+1 Load</strong>.</p>
     <div style="display:flex;gap:6px;margin-bottom:10px">
-      <button class="add-row-btn" onclick="openHoardRoller()" style="flex:1;background:var(--gold)">🎲 Roll Hoard</button>
+      <button data-empty-dup class="add-row-btn" onclick="openHoardRoller()" style="flex:1;background:var(--gold)">🎲 Roll Hoard</button>
       <button class="add-row-btn" onclick="openAddMagicalItem()" style="flex:1;background:var(--btn-secondary-bg)">+ Add Magical Item</button>
     </div>
     <div id="magical-items-list"></div>
@@ -1630,7 +1630,7 @@
         <option value="success">Successes</option>
         <option value="fail">Failures</option>
       </select>
-      <button onclick="clearRollHistory()" aria-label="Clear all roll history" title="Delete every stored roll" style="font-size:var(--fs-xs);padding:4px 8px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--bg-deep);color:var(--error-text);cursor:pointer">🗑 Clear</button>
+      <button data-empty-dup onclick="clearRollHistory()" aria-label="Clear all roll history" title="Delete every stored roll" style="font-size:var(--fs-xs);padding:4px 8px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--bg-deep);color:var(--error-text);cursor:pointer">🗑 Clear</button>
     </div>
     <div id="roll-stats"></div>
     <div class="roll-history" id="roll-history"></div>
@@ -1740,7 +1740,7 @@
     <h3 class="card-title">Oracle History</h3>
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
       <p class="hint" style="text-align:left;margin:0;flex:1">Recent rolls (last 30).</p>
-      <button onclick="clearOracleHistory()" aria-label="Clear all oracle history" title="Delete every stored oracle roll" style="font-size:var(--fs-xs);padding:4px 8px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--bg-deep);color:var(--error-text);cursor:pointer">🗑 Clear</button>
+      <button data-empty-dup onclick="clearOracleHistory()" aria-label="Clear all oracle history" title="Delete every stored oracle roll" style="font-size:var(--fs-xs);padding:4px 8px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--bg-deep);color:var(--error-text);cursor:pointer">🗑 Clear</button>
     </div>
     <div id="oracle-history" style="font-size:var(--fs-xs);line-height:1.5;max-height:280px;overflow-y:auto;-webkit-overflow-scrolling:touch"></div>
   </div>
@@ -1756,7 +1756,7 @@
     <h3 class="card-title" id="band-allies-card" data-hint="Ally Gift / Quirk">1 · Allies <span id="band-ally-count" style="color:var(--text-muted);font-weight:400;font-size:var(--fs-xs)"></span></h3>
     <div style="display:flex;gap:8px;margin-bottom:8px">
       <button class="add-row-btn primary" onclick="generateAlly()" style="flex:1">🎲 Generate Ally</button>
-      <button class="add-row-btn" onclick="addStartingBand()" style="flex:1;background:var(--btn-secondary-bg)">+ Roll 6 Starting Allies</button>
+      <button data-empty-dup class="add-row-btn" onclick="addStartingBand()" style="flex:1;background:var(--btn-secondary-bg)">+ Roll 6 Starting Allies</button>
     </div>
     <div id="band-allies"></div>
   </div>
@@ -1933,7 +1933,7 @@
       <button class="seg-btn" data-archfoe="greater">Greater <small>+1 Might, +3 Resistance</small></button>
     </div>
     <button class="add-row-btn" onclick="rollArchfoe()" style="width:100%;font-size:var(--fs-xs);background:var(--btn-secondary-bg);margin-bottom:8px">🎲 Roll Archfoe (Success die)</button>
-    <div class="field"><label style="flex:0 0 70px">Objective</label><input id="b-objective" placeholder="optional goal beyond defeating the foe"></div>
+    <div class="field stack"><label>Objective</label><input id="b-objective" placeholder="optional goal beyond defeating the foe" title="optional goal beyond defeating the foe"></div>
     <div class="seg-btns" id="b-objres-pick" style="margin:4px 0 6px">
       <button class="seg-btn active" data-objres="">No Objective</button>
       <button class="seg-btn" data-objres="simple">Simple 3</button>
