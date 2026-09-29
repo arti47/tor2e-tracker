@@ -64,7 +64,7 @@ module.exports = {
 
     // ---- The Play scene: the land you are crossing, not the place you are heading to ----
     const scene = async (region, ea) => { await safe(`
-      Object.assign(char.journey, { active: true, origin: 'Bree', destination: 'the ruined watchtower in Mirkwood', totalHexes: 9, currentHex: 2, region: '${region}', route: null, routeLands: null });
+      Object.assign(char.journey, { active: true, origin: 'Bree', destination: 'the ruined watchtower on Weathertop', totalHexes: 9, currentHex: 2, region: '${region}', route: null, routeLands: null });
       char.saga.step = 'journey'; char.eyeAwareness = ${ea}; saveCharacter(); render(); return 1;`); await go('play');
       return safe(`const a = document.querySelector('#panel-play .scene-art'); if (!a) return null;
         const f = a.querySelector('.f');
@@ -190,11 +190,11 @@ module.exports = {
     const fd = await safe(`
       char.endCur = char.endMax; saveCharacter(); render(); await new Promise(r => setTimeout(r, 50));
       adj('endCur', -3); await new Promise(r => setTimeout(r, 250));
-      const d = document.querySelector('#hud-end .fdelta'), v = document.querySelector('#hud-end .m-val');
-      if (!d || !v) return { missing: !d };
-      const a = d.getBoundingClientRect(), b = v.getBoundingClientRect();
-      return { overlap: !(a.right <= b.left || a.left >= b.right || a.bottom <= b.top || a.top >= b.bottom) };`);
-    checks.push({ ok: fd && !fd.err && fd.overlap === false, msg: `the "−3 End" that floats off the bar does not cover the Endurance number (${JSON.stringify(fd)})` });
+      const d = document.querySelector('#hud-end .fdelta'); if (!d) return { missing: true };
+      const a = d.getBoundingClientRect();
+      const hit = sel => { const e = document.querySelector('#hud-end ' + sel); if (!e) return false; const b = e.getBoundingClientRect(); return !(a.right <= b.left || a.left >= b.right || a.bottom <= b.top || a.top >= b.bottom); };
+      return { value: hit('.m-val'), bar: hit('.m-bar'), label: hit('.m-label'), onScreen: a.top >= 0 };`);
+    checks.push({ ok: fd && !fd.err && !fd.value && !fd.bar && !fd.label && fd.onScreen, msg: `the "−3 End" that floats off the bar covers neither the label, the number nor the bar (${JSON.stringify(fd)})` });
 
     // ---- Band: dispositions drawn; allies carry a dwarf's silhouette ----
     const band = await safe(`

@@ -4855,7 +4855,7 @@ function _hudAnimate(now) {
     if (!still && bar && (from !== to || fromMax !== toMax)) { const w = bar.style.width; bar.style.transition = 'none'; bar.style.width = pct(from, fromMax) + '%'; void bar.offsetWidth; bar.style.transition = ''; bar.style.width = w; }
     if (!still && sb && sfrom !== sto) { const w = sb.style.width; sb.style.transition = 'none'; sb.style.width = pct(sfrom, fromMax) + '%'; void sb.offsetWidth; sb.style.transition = ''; sb.style.width = w; }
     const d = to - from, ds = (sto || 0) - (sfrom || 0);
-    const float = (txt, cls) => { const f = document.createElement('span'); f.className = 'fdelta ' + cls; f.textContent = txt; f.setAttribute('aria-hidden', 'true'); host.appendChild(f); setTimeout(() => f.remove(), 1300); };
+    const float = (txt, cls) => { const f = document.createElement('span'); f.className = 'fdelta fd6 ' + cls; f.textContent = txt; f.setAttribute('aria-hidden', 'true'); host.appendChild(f); setTimeout(() => f.remove(), 1300); };
     if (d) float((d > 0 ? '+' : '−') + Math.abs(d) + ' ' + label, d > 0 ? 'up' : 'down');
     if (ds) float((ds > 0 ? '+' : '−') + Math.abs(ds) + ' Shadow', ds > 0 ? 'down shadowd' : 'up');
     const val = host.querySelector('.m-val'); if (!still && val && d) {
