@@ -146,7 +146,7 @@ module.exports = {
       const r = { feat: !!(row && row.querySelector('.hl-feat')), pips: row ? row.querySelectorAll('.hl-pips i').length : 0, dice: (h.dice || []).length,
         seal: st && [...st.classList].find(c => c.startsWith('st-')), ok, w: st && Math.round(st.getBoundingClientRect().width) };
       history.length = 0; history.push(...keep); saveHistory(); renderHistory(); return r;`);
-    checks.push({ ok: !lg.err && lg.feat && lg.pips === lg.dice && lg.dice > 0 && ((lg.seal === 'st-fail') === !lg.ok) && lg.w <= 26, msg: `a roll history row shows its Feat die, its dice and a small seal for the outcome (${JSON.stringify(lg)})` });
+    checks.push({ ok: !lg.err && lg.feat && lg.pips === lg.dice && lg.dice > 0 && !!lg.seal && ((lg.seal === 'st-fail') === !lg.ok) && lg.w > 0 && lg.w <= 26, msg: `a roll history row shows its Feat die, its dice and a small seal for the outcome (${JSON.stringify(lg)})` });
 
     // ---- Oracle history slips: a small wax seal on a yes/no ----
     await go('oracle');
@@ -155,7 +155,7 @@ module.exports = {
       const s = document.querySelector('#oracle-history .or-slip .or-seal'); const r = s && s.querySelector('svg').getBoundingClientRect();
       const res = oracleHistory[0].result;
       return { seal: !!s, w: r && Math.round(r.width), cls: s && [...s.classList].find(c => /^seal-/.test(c)), res };`);
-    checks.push({ ok: !os.err && os.seal && os.w <= 30 && ((/^YES/.test(os.res) && /seal-(yes|and)/.test(os.cls)) || (/^NO/.test(os.res) && /seal-(no|worse)/.test(os.cls))), msg: `an Oracle answer in the history wears a small seal of its colour (${JSON.stringify(os)})` });
+    checks.push({ ok: !os.err && os.seal && os.w > 0 && os.w <= 30 && ((/^YES/.test(os.res) && /seal-(yes|and)/.test(os.cls)) || (/^NO/.test(os.res) && /seal-(no|worse)/.test(os.cls))), msg: `an Oracle answer in the history wears a small seal of its colour (${JSON.stringify(os)})` });
 
     // ---- Pick sheets: the odds as a five-step bar ----
     const pk = await safe(`
