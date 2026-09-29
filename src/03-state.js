@@ -715,7 +715,7 @@ function showToast(msg, action) {
   if (!wrap) {
     wrap = document.createElement('div');
     wrap.id = 'toast-wrap';
-    wrap.style.cssText = 'position:fixed;bottom:calc(var(--nav-h) + var(--safe-bot) + 14px);left:50%;transform:translateX(-50%);z-index:9999;display:flex;flex-direction:column;gap:6px;align-items:center;pointer-events:none';
+    wrap.className = 'toast-strip';
     document.body.appendChild(wrap);
   }
   const t = document.createElement('div');
@@ -730,12 +730,19 @@ function showToast(msg, action) {
   if (action && typeof action.fn === 'function') {
     const b = document.createElement('button');
     b.type = 'button'; b.className = 'toast-action'; b.textContent = action.label || 'Undo';
-    b.onclick = () => { try { action.fn(); } finally { t.remove(); } };
+    b.onclick = () => { try { action.fn(); } finally { const w = t.parentNode; t.remove(); const next = w && w.querySelector('.toast.queued'); if (next && next._start) next._start(); } };
     t.appendChild(b); t.style.pointerEvents = 'auto';
   }
+  // Round 7: one note at a time — later ones wait their turn, and their clock starts when shown.
+  t._start = () => {
+    t.classList.remove('queued');
+    requestAnimationFrame(() => { t.classList.add('in'); });
+    setTimeout(() => { t.classList.remove('in'); setTimeout(() => { t.remove(); const next = wrap.querySelector('.toast.queued'); if (next && next._start) next._start(); }, 300); }, action ? 6500 : 4000);
+  };
+  const busy = !!wrap.querySelector('.toast:not(.queued)');
+  if (busy) t.classList.add('queued');
   wrap.appendChild(t);
-  requestAnimationFrame(() => { t.classList.add('in'); });
-  setTimeout(() => { t.classList.remove('in'); setTimeout(() => t.remove(), 300); }, action ? 6500 : 4000);
+  if (!busy) t._start();
 }
 
 /* ---------- FELLOWSHIP CAMPAIGN (P4) — create/join/leave + live party ---------- */
@@ -960,7 +967,7 @@ function _bsHero(name, v, opts) {
   const chips = [dying && 'Dying', v.weary && 'Weary', v.miserable && 'Miserable', v.wounded && 'Wounded'].filter(Boolean)
     .map(t => `<span class="tv-chip">${t}</span>`).join('');
   return `<div class="tv-hero${o.now ? ' now' : ''}${o.off ? ' off' : ''}">
-    <div class="tv-name">${escapeHtml(name)}${o.tag ? `<small>${escapeHtml(o.tag)}</small>` : ''}</div>
+    <div class="tv-name">${v.culture && typeof cultureCrest === 'function' ? `<span class="tv-crest" aria-hidden="true">${cultureCrest(v.culture, 30, name)}</span>` : ''}${escapeHtml(name)}${o.tag ? `<small>${escapeHtml(o.tag)}</small>` : ''}</div>
     <div class="tv-lab">Endurance</div>${_bsMeter('end', v.endCur, v.endMax)}
     <div class="tv-lab">Hope${sh ? ` · Shadow ${sh}` : ''}</div>${_bsMeter('hope', v.hopeCur, v.hopeMax, sh ? `<div class="tv-shadow" style="width:${Math.min(100, 100 * sh / hm)}%"></div>` : '')}
     ${chips ? `<div class="tv-chips">${chips}</div>` : ''}${o.now ? '<div class="tv-now">Acting now</div>' : ''}</div>`;
@@ -997,7 +1004,7 @@ function renderTableMode() {
     const r = loadRoster() || { activeId: activeCharId, list: [] };
     html += `<div class="tv-grid">${r.list.map(e => {
       const d = (e.id === activeCharId) ? char : readSlot(e.id); if (!d) return '';
-      return _bsHero(heroLabel(d), { endCur: d.endCur, endMax: d.endMax, hopeCur: d.hopeCur, hopeMax: d.hopeMax, shadow: (parseInt(d.shadow) || 0) + (parseInt(d.scars) || 0), weary: d.weary, miserable: d.miserable, wounded: d.wounded }, { tag: e.id === activeCharId ? 'playing now' : '' });
+      return _bsHero(heroLabel(d), { endCur: d.endCur, endMax: d.endMax, hopeCur: d.hopeCur, hopeMax: d.hopeMax, shadow: (parseInt(d.shadow) || 0) + (parseInt(d.scars) || 0), weary: d.weary, miserable: d.miserable, wounded: d.wounded, culture: d.culture }, { tag: e.id === activeCharId ? 'playing now' : '' });
     }).join('')}</div>`;
   }
   const living = foes.filter(f => !f.slain);
@@ -1641,12 +1648,14 @@ function renderChronicleTimeline() {
     if (shown.length === 0 && sceneCombats.length === 0) {
       html += `<div style="padding:6px 10px;font-size:var(--fs-xs);color:var(--text-faint)">${q ? '(no matching lines)' : 'Empty scene — write the first line below, or make a roll on the Oracle/Dice tabs.'}</div>`;
     }
+    // Round 7: the first line of prose in each scene opens with an illuminated letter
+    const firstProseId = (shown.find(x => x.kind === 'prose') || {}).id;
     // Render a single block (prose or dimmed auto line), incl. its inline edit/describe boxes.
     const renderOne = (b) => {
       if (_editingBlockId === b.id) return editTextarea(b);
       if (b.kind === 'prose') {
         return `<div style="display:flex;gap:4px;padding:2px 10px 6px;align-items:flex-start">
-          <div class="ch-p" style="flex:1;min-width:0;line-height:1.55;white-space:pre-wrap">${escapeHtml(b.text)}</div>
+          <div class="ch-p${b.id === firstProseId ? ' ch-first' : ''}" style="flex:1;min-width:0;line-height:1.55;white-space:pre-wrap">${escapeHtml(b.text)}</div>
           ${moveBtns(b.id)}
           <button onclick="editBlock('${b.id}')" title="Edit" style="flex:0 0 auto;background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:var(--fs-xs)">✎</button>
           <button onclick="deleteChronicleEntry('${b.id}')" title="Delete" style="flex:0 0 auto;background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:var(--fs-sm)">×</button>

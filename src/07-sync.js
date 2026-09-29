@@ -213,7 +213,8 @@ const Sync = {
       valour: parseInt(d.valour) || 0, wisdom: parseInt(d.wisdom) || 0,
       weary: !!d.weary, miserable: !!d.miserable, wounded: !!d.wounded,
       dying: (parseInt(d.endCur) || 0) <= 0,
-      stance: d.stance || ''   // table play: combat turn order is read from the heroes' stances
+      stance: d.stance || '',  // table play: combat turn order is read from the heroes' stances
+      culture: d.culture || ''  // round 7: the hero's crest on the console and the big screen
     };
   },
 

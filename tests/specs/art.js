@@ -193,8 +193,14 @@ module.exports = {
       const d = document.querySelector('#hud-end .fdelta'); if (!d) return { missing: true };
       const a = d.getBoundingClientRect();
       const hit = sel => { const e = document.querySelector('#hud-end ' + sel); if (!e) return false; const b = e.getBoundingClientRect(); return !(a.right <= b.left || a.left >= b.right || a.bottom <= b.top || a.top >= b.bottom); };
-      return { value: hit('.m-val'), bar: hit('.m-bar'), label: hit('.m-label'), onScreen: a.top >= 0 };`);
-    checks.push({ ok: fd && !fd.err && !fd.value && !fd.bar && !fd.label && fd.onScreen, msg: `the "−3 End" that floats off the bar covers neither the label, the number nor the bar (${JSON.stringify(fd)})` });
+      // the number itself is the text node beside the pill, not the whole .m-val box that now holds it
+      const val = document.querySelector('#hud-end .m-val'); const tn = val && [...val.childNodes].find(n => n.nodeType === 3 && n.textContent.trim());
+      let value = true; if (tn) { const rg = document.createRange(); rg.selectNodeContents(tn); const b = rg.getBoundingClientRect(); value = !(a.right <= b.left || a.left >= b.right || a.bottom <= b.top || a.top >= b.bottom); }
+      const h = document.getElementById('hud-end').getBoundingClientRect();
+      const inside = a.left >= h.left - 1 && a.right <= h.right + 1 && a.top >= h.top - 1 && a.bottom <= h.bottom + 1;
+      const lab = document.querySelector('#hud-end .m-label');
+      return { value, bar: hit('.m-bar'), label: hit('.m-label') && getComputedStyle(lab).visibility !== 'hidden', inside, onScreen: a.top >= 0 };`);
+    checks.push({ ok: fd && !fd.err && !fd.value && !fd.bar && !fd.label && fd.inside && fd.onScreen, msg: `the "−3 End" sits inside its meter and covers neither the label, the number nor the bar (${JSON.stringify(fd)})` });
 
     // ---- Band: dispositions drawn; allies carry a dwarf's silhouette ----
     const band = await safe(`

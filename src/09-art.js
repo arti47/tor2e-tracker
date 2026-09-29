@@ -130,9 +130,15 @@ const TERRAIN_ART = {
   ruins: () => `<path d="M0 86 H360"/><path d="M150 86 V30 L158 24 L164 33 L172 21 L180 34 V86 z" class="f"/>` +
     `<path d="M160 52 v-8 q5-6 10 0 v8 z"/><path d="M180 86 V60 h20 v-8 h12 v34"/><path d="M110 86 V70 h14 v-6 h8 v22"/>` +
     `<circle cx="222" cy="84" r="2.5"/><circle cx="230" cy="83" r="3.5"/><circle cx="98" cy="84" r="3"/><path d="M246 20 q5-5 10 0 q5-5 10 0"/>`,
+  // Round 7: carved columns with capitals, arches between them, a stair and a hanging lantern —
+  // the halls of Khazad-dûm, not bars across the scene.
   moria: () => `<rect x="0" y="0" width="360" height="90" class="dark"/>` +
-    [30, 110, 190, 270].map(x => `<path d="M${x} 90 V22 M${x + 10} 90 V22"/><path d="M${x + 10} 28 Q${x + 45} -2 ${x + 80} 28"/>`).join('') +
-    `<path d="M150 90 h60 M156 84 h48 M162 78 h36 M168 72 h24" class="w"/><circle cx="180" cy="46" r="3" class="f"/>`,
+    `<circle cx="180" cy="44" r="46" class="glow"/>` +
+    `<path d="M160 90 V52 Q180 30 200 52 V90" class="f2"/>` +
+    [36, 108, 252, 324].map(x => `<path d="M${x - 6} 90 V30 h12 V90" class="f2"/><path d="M${x - 11} 30 h22 l-4 -6 h-14 z" class="f"/><path d="M${x - 9} 90 v-4 h18 v4"/><path d="M${x - 3} 36 v48 M${x + 3} 36 v48"/>`).join('') +
+    `<path d="M47 24 Q72 6 97 24 M263 24 Q288 6 313 24 M119 24 Q180 -8 241 24"/>` +
+    `<path d="M150 90 h60 M155 85 h50 M160 80 h40 M165 75 h30" class="w"/>` +
+    `<path d="M180 0 v24"/><path d="M174 24 h12 l-2 12 h-8 z" class="f"/><circle cx="180" cy="30" r="2.2" class="flame"/>`,
   haven: () => `<path d="M0 86 H360"/><path d="M130 86 V56 H212 V86" class="f2"/><path d="M122 58 L171 30 L220 58"/>` +
     `<path d="M162 86 v-12 a9 9 0 0 1 18 0 v12"/><rect x="140" y="64" width="12" height="10"/><rect x="190" y="64" width="12" height="10"/>` +
     `<path d="M194 44 v-14 h8 v18"/><path d="M198 26 q-6-6 0-12 q6-6 0-12"/>` +
@@ -173,7 +179,8 @@ function terrainVignette(key, opts) {
   const road = opts.road && k !== 'road' && k !== 'moria' ? '<path d="M150 90 C170 80 190 76 214 72 S250 67 262 64" class="rd"/><path d="M222 90 C220 82 226 76 236 71 S256 66 262 64" class="rd"/>' : '';
   const mist = opts.mist ? '<div class="scene-mist"></div>' : '';
   const eye = opts.eye > 0 ? `<svg class="scene-eye" viewBox="0 0 60 30" style="opacity:${Math.min(.55, .12 + opts.eye * .43).toFixed(2)}"><path d="M2 15 Q30 -6 58 15 Q30 36 2 15z"/><ellipse cx="30" cy="15" rx="3.5" ry="10"/></svg>` : '';
-  return `<div class="scene-art t-${k}" aria-hidden="true"><svg viewBox="0 0 360 90" preserveAspectRatio="xMidYMax slice"><rect class="sky" x="0" y="0" width="360" height="90"/>${TERRAIN_ART[k]()}${road}</svg>${mist}${eye}</div>`;
+  const weather = opts.weather ? `<div class="scene-weather w-${opts.weather}"></div>` : '';
+  return `<div class="scene-art t-${k}" aria-hidden="true"><svg viewBox="0 0 360 90" preserveAspectRatio="xMidYMax slice"><rect class="sky" x="0" y="0" width="360" height="90"/>${TERRAIN_ART[k]()}${road}</svg>${weather}${mist}${eye}</div>`;
 }
 
 /* ---------- The inked route map ----------
@@ -597,3 +604,107 @@ function playFooterArt() {
     <circle cx="300" cy="30" r="10" class="f2"/><path d="M300 40 v14"/><path d="M52 44 l6-10 6 10z M60 46 l4-7 4 7z" class="f"/>
     <path d="M110 18 q4-4 8 0 q4-4 8 0 M136 26 q3-3 6 0 q3-3 6 0"/></svg></div>`;
 }
+
+/* ============================================================
+   Round 7 — tallies, candles, faces, badges, the dice stamp, the hero plate, weather
+   ============================================================ */
+Object.assign(ART_SYMBOLS, {
+  'i-face-sad':   '<circle cx="12" cy="12" r="9"/><path d="M8.5 10h.01M15.5 10h.01"/><path d="M8.5 16.5c2-1.8 5-1.8 7 0"/><path d="M7 7.5l2.5 1M17 7.5l-2.5 1"/>',
+  'i-face-flat':  '<circle cx="12" cy="12" r="9"/><path d="M8.5 10h.01M15.5 10h.01"/><path d="M8.5 15.5h7"/>',
+  'i-face-smile': '<circle cx="12" cy="12" r="9"/><path d="M8.5 10h.01M15.5 10h.01"/><path d="M8 14.5c2 2.4 6 2.4 8 0"/>',
+  'i-chalice':    '<path d="M7 3h10v4a5 5 0 0 1-10 0z"/><path d="M12 12v6M8 21h8M9.5 21l1-3h3l1 3"/>',
+  'i-quill':      '<path d="M20 3c-7 1-12 6-14 14l-2 4 4-2c8-2 13-7 14-14z" /><path d="M6 17 14 9"/>'
+});
+/** Successes as tally marks — four strokes and a slash per five — against the Resistance to beat. */
+function tallyMarks(n, of) {
+  const got = Math.max(0, parseInt(n) || 0), need = Math.max(0, parseInt(of) || 0);
+  const slots = Math.max(got, need); if (!slots) return '';
+  const groups = Math.ceil(slots / 5), W = groups * 30 + 8, H = 26;
+  let s = '';
+  for (let i = 0; i < slots; i++) {
+    const g = Math.floor(i / 5), k = i % 5, x0 = 6 + g * 30;
+    const cls = i < got ? (i < need ? 'tm on' : 'tm over') : 'tm off';
+    s += k < 4 ? `<path class="${cls}" d="M${x0 + k * 5.5} 4 l${(k % 2 ? .6 : -.5)} 18"/>` : `<path class="${cls}" d="M${x0 - 3} 19 L${x0 + 20} 6"/>`;
+  }
+  const fx = need ? 6 + Math.floor((need - 1) / 5) * 30 + ((need - 1) % 5 < 4 ? ((need - 1) % 5) * 5.5 + 5 : 22) : 0;
+  const finish = need ? `<path class="tm-line" d="M${fx.toFixed(1)} 1 v24"/>` : '';
+  return `<svg class="tally" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="${got} of ${need} successes">${s}${finish}</svg>`;
+}
+/** The Time Limit as candles: one goes out for each attempt made. */
+function candleRow(used, total) {
+  const t = Math.max(0, parseInt(total) || 0), u = Math.max(0, Math.min(t, parseInt(used) || 0));
+  if (!t) return '';
+  let s = '';
+  for (let i = 0; i < t; i++) {
+    const lit = i < t - u;
+    s += `<svg class="candle ${lit ? 'lit' : 'out'}" viewBox="0 0 16 36" width="16" height="36" aria-hidden="true">` +
+      (lit ? `<path class="c-flame" d="M8 2c2.6 3 3 5.4 0 8.6C5 7.4 5.4 5 8 2z"/>` : `<path class="c-smoke" d="M8 10c-2-2 2-3 0-5s2-3 0-4"/>`) +
+      `<path class="c-wick" d="M8 10.5v2.5"/><rect class="c-body" x="4" y="13" width="8" height="20" rx="1.5"/><path class="c-drip" d="M5 16v4M11 15v3"/><path class="c-base" d="M2 34h12"/></svg>`;
+  }
+  return `<span class="candles" role="img" aria-label="${t - u} of ${t} attempts left">${s}</span>`;
+}
+/** Protection and Parry drawn as the thing that gives them: a mail shirt, a shield. */
+function statBadge(kind, value) {
+  const shape = kind === 'shield'
+    ? '<path class="sb-shape" d="M24 3l17 6v12c0 12-7.5 20-17 24C14.5 41 7 33 7 21V9z"/>'
+    : '<path class="sb-shape" d="M15 4h18l9 9-6 5v26H12V18l-6-5z"/><path class="sb-mail" d="M13 24h22M13 30h22M13 36h22"/>';
+  return `<span class="stat-badge sb-${kind}"><svg viewBox="0 0 48 48" aria-hidden="true">${shape}</svg><b>${escapeHtml(String(value))}</b></span>`;
+}
+/** An ink stamp beside the result banner: a tick, one star, two stars, or a cross. */
+function rollStamp(ok, level) {
+  const great = /great/i.test(level || ''), extra = /extraordinary/i.test(level || '');
+  const mark = !ok ? '<path d="M17 17l14 14M31 17L17 31"/>'
+    : extra ? '<path d="M17 18l1.6 3.4 3.6.4-2.7 2.4.8 3.6-3.3-1.9-3.2 1.9.8-3.6-2.7-2.4 3.6-.4zM31 18l1.6 3.4 3.6.4-2.7 2.4.8 3.6-3.3-1.9-3.2 1.9.8-3.6-2.7-2.4 3.6-.4z"/>'
+    : great ? '<path d="M24 14l2.6 5.6 6 .6-4.5 4 1.3 6-5.4-3.1-5.4 3.1 1.3-6-4.5-4 6-.6z"/>'
+    : '<path d="M16 24l6 6 11-12"/>';
+  return `<span class="roll-stamp ${ok ? (extra ? 'st-extra' : great ? 'st-great' : 'st-ok') : 'st-fail'}" aria-hidden="true"><svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="20"/><circle cx="24" cy="24" r="16.5" class="st-inner"/>${mark}</svg></span>`;
+}
+/** Tablet Play (round 7): the hero in a framed plate — silhouette in a gilt oval, crest, name and
+    the two pools — and, when not on the road, the country around the Safe Haven on the real map. */
+function heroPlate(withMap) {
+  if (typeof char === 'undefined' || !char.culture) return '';
+  const n = v => parseInt(v) || 0;
+  const pct = (a, b) => b > 0 ? Math.max(0, Math.min(100, a / b * 100)) : 0;
+  const sil = cultureSilhouette(char.culture).replace('class="silhouette"', 'class="silhouette hp-sil"');
+  const sh = n(char.shadow) + n(char.scars);
+  const map = withMap && typeof havenMapPanel === 'function' ? havenMapPanel() : '';
+  return `<div class="card hero-plate${map ? ' has-map' : ''}"><div class="hp-row">
+      <div class="hp-oval" aria-hidden="true">${sil}</div>
+      <div class="hp-txt"><div class="eyebrow">Your hero</div><strong class="hp-name">${escapeHtml(char.name || heroLabel(char))}</strong>
+        <span class="hp-sub">${cultureCrest(char.culture, 22, char.name)}${escapeHtml(char.culture)}${char.calling ? ' · ' + escapeHtml(char.calling) : ''}</span>
+        <div class="hp-meter"><span>Endurance</span><b>${n(char.endCur)}<small>/${n(char.endMax)}</small></b><i class="hp-bar end"><em style="width:${pct(n(char.endCur), n(char.endMax))}%"></em></i></div>
+        <div class="hp-meter"><span>Hope</span><b>${n(char.hopeCur)}<small>/${n(char.hopeMax)}</small></b><i class="hp-bar hope"><em style="width:${pct(n(char.hopeCur), n(char.hopeMax))}%"></em>${sh ? `<em class="soot" style="width:${pct(sh, n(char.hopeMax))}%"></em>` : ''}</i></div>
+      </div></div>${map}</div>`;
+}
+/** Numbered steps ("1 · Allies") get their number in a small gilt medallion. The words stay the
+    same in the text, so anything reading "1 · Allies" still finds it; only the look changes. */
+function medalliseSteps(root) {
+  (root || document).querySelectorAll('.card-title, .panel p.hint, .panel h4').forEach(el => {
+    if (el.querySelector('.step-med')) return;
+    // a title with a help hint has its words wrapped in .title-term, so look one level in
+    const host = el.firstElementChild && el.firstElementChild.classList.contains('title-term') && el.firstChild === el.firstElementChild ? el.firstElementChild : el;
+    const t = host.firstChild; if (!t || t.nodeType !== 3) return;
+    const m = t.nodeValue.match(/^(\s*)(\d{1,2}) · /); if (!m) return;
+    const span = document.createElement('span'); span.className = 'step-med';
+    span.innerHTML = `<b>${m[2]}</b><span class="sm-dot"> · </span>`;
+    t.nodeValue = t.nodeValue.slice(m[0].length);
+    host.insertBefore(span, t);
+    el.classList.add('has-step-med');
+  });
+}
+document.addEventListener('DOMContentLoaded', () => setTimeout(() => medalliseSteps(document), 0));
+/* The quill nibs while you write in the Chronicle. */
+document.addEventListener('input', e => {
+  if (!e.target || e.target.id !== 'ch-compose') return;
+  const q = document.getElementById('ch-quill'); if (!q) return;
+  q.classList.add('writing'); clearTimeout(q._t); q._t = setTimeout(() => q.classList.remove('writing'), 700);
+});
+/* Round 7: each empty list gets its own small drawing instead of a generic icon */
+const EMPTY_ART = {
+  dice: '<path d="M10 14h18l-3 24H13z"/><path d="M10 14c3-3 15-3 18 0"/><path d="M13 20h12" opacity=".5"/><rect x="31" y="30" width="10" height="10" rx="2" transform="rotate(-14 36 35)"/><circle cx="34.5" cy="33.5" r=".9" class="ea-f"/><circle cx="37.5" cy="36.5" r=".9" class="ea-f"/><path d="M6 40h36"/>',
+  gem: '<path d="M8 24h32v14H8z"/><path d="M8 24l4-10h24l4 10"/><path d="M12 14l-2-6h28l-2 6" opacity=".6"/><path d="M22 28h4v4h-4z"/><path d="M8 31h32" opacity=".4"/>',
+  feather: '<path d="M10 10h22a4 4 0 0 1 0 8H14"/><path d="M14 18v20a4 4 0 0 1-8 0V14a4 4 0 0 1 4-4"/><path d="M14 38h20a4 4 0 0 0 4-4V18"/><path d="M40 6c-6 1-10 5-12 12l-2 5 4-2c6-2 9-7 10-15z" class="ea-f2"/>',
+  pack: '<path d="M12 18h24v20a2 2 0 0 1-2 2H14a2 2 0 0 1-2-2z"/><path d="M12 18c0-6 5-9 12-9s12 3 12 9"/><path d="M12 22h24l-3 7H15z"/><path d="M24 29v4"/>',
+  skull: '<path d="M8 40l24-28"/><path d="M29 11l5-3-1 6"/><path d="M11 33l5 5"/><path d="M40 40L20 17"/><path d="M18 18l-4-2 1 5"/><path d="M34 34l-4 5"/><path d="M4 42h40" opacity=".5"/>',
+  users: '<path d="M6 16 24 7l18 9"/><path d="M9 16v24M39 16v24M18 16v24M30 16v24" opacity=".7"/><path d="M6 40h36"/><path d="M13 34h8M27 34h8"/><path d="M14 34v4M20 34v4M28 34v4M34 34v4" opacity=".6"/>'
+};

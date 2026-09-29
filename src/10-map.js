@@ -480,3 +480,26 @@ function _mapShowJourney() {
 }
 
 document.addEventListener('DOMContentLoaded', () => { initMapGestures(); });
+
+/** Round 7: the country around the Safe Haven (or the last place reached), cropped from the real
+    map — shown on tablet Play when there is no road under way. Nothing if the place is not on the map. */
+function havenMapPanel() {
+  if (typeof MAP_DATA === 'undefined' || !MAP_DATA.places) return '';
+  const want = [char.safeHaven, (char.journey || {}).destination].filter(Boolean).map(v => String(v).toLowerCase());
+  let p = null;
+  for (const w of want) {
+    p = MAP_DATA.places.find(q => q.length > 3 && w && (q[0].toLowerCase().includes(w) || w.includes(q[0].toLowerCase().replace(/\s*\(.*\)/, ''))));
+    if (p) break;
+  }
+  // no Safe Haven named on the map yet: the hero's homeland stands in for it
+  const HOME = { 'Bardings': 'Dale', "Dwarves of Durin's Folk": 'Erebor', 'Elves of Lindon': 'Grey Havens', 'Hobbits of the Shire': 'Hobbiton',
+    'Men of Bree': 'Bree', 'Rangers of the North': 'Bree', 'Beornings': "Beorn's House", 'Elves of Mirkwood': "Elvenking's Halls",
+    'Woodmen of Wilderland': 'Woodmen-town', 'Dwarves of Nogrod and Belegost': 'Nogrod', 'High Elves of Rivendell': 'Rivendell' };
+  if (!p && HOME[char.culture]) p = MAP_DATA.places.find(q => q.length > 3 && q[0].startsWith(HOME[char.culture]));
+  if (!p) return '';
+  const [x, y] = [p[3], p[4]], w = 420, h = 230;
+  return `<button type="button" class="haven-map" onclick="openMapPicker('view')" aria-label="${escapeHtml(p[0])} on the map; tap to open the map">
+    <svg viewBox="${(x - w / 2).toFixed(1)} ${(y - h / 2).toFixed(1)} ${w} ${h}" preserveAspectRatio="xMidYMid slice"><image href="${MAP_DATA.img}" width="${MAP_DATA.W}" height="${MAP_DATA.H}"/>
+      <g class="hm-pin" transform="translate(${x},${y})"><circle r="9"/><circle r="3.5" class="hm-dot"/></g></svg>
+    <span class="hm-cap">${escapeHtml(p[0])}</span></button>`;
+}

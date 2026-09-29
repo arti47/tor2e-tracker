@@ -758,8 +758,10 @@ function renderProtectionParry() {
   const helm = parseInt(char.helmProt) || 0;
   const baseParry = parseInt(char.parry) || 0;
   const shieldBonus = parseInt(char.shieldTotal) || 0;
-  setText('prot-v', armour + helm);
-  setText('parry-v', baseParry + shieldBonus);
+  // Round 7: drawn as the mail shirt and the shield they come from
+  const pv = document.getElementById('prot-v'), yv = document.getElementById('parry-v');
+  if (pv) pv.innerHTML = typeof statBadge === 'function' ? statBadge('mail', armour + helm) : String(armour + helm);
+  if (yv) yv.innerHTML = typeof statBadge === 'function' ? statBadge('shield', baseParry + shieldBonus) : String(baseParry + shieldBonus);
 
   // Opening Volleys (Core Rules p.93): when the hero is the aware target of a ranged volley,
   // the shield's Parry bonus is doubled vs ranged for that exchange.
@@ -3159,7 +3161,10 @@ function bindBuilder() {
       '<option value="r">🎲 Roll random</option>';
     attrRow.style.display = 'flex';
 
-    info.innerHTML = `
+    // Round 7: the culture shown before you apply it — its crest and its people, drawn large
+    const prev = (typeof cultureCrest === 'function' && typeof cultureSilhouette === 'function')
+      ? `<div class="cult-preview" aria-hidden="true">${cultureCrest(name, 64, '')}${cultureSilhouette(name).replace('class="silhouette"', 'class="silhouette cp-sil"')}</div>` : '';
+    info.innerHTML = prev + `
       <strong>${name}</strong><br>
       <em>${c.blessing}</em><br>
       Standard: ${c.standard} · Age: ${c.age}<br>

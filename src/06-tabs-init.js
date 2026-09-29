@@ -906,7 +906,8 @@ function renderRollBanner(r) {
     : (r.total >= r.tn ? `${r.total} vs TN ${r.tn} — made it${r.total > r.tn ? ' by ' + (r.total - r.tn) : ', exactly'}` : `${r.total} vs TN ${r.tn} — short by ${r.tn - r.total}`);
   const seals = (r.ok && r.icons ? `<span class="seal" title="Success icons">✦ ${r.icons}</span>` : '') + (r.piercing ? '<span class="seal pierce">Piercing blow</span>' : '');
   el.className = 'roll-banner ' + (!r.ok ? 'b-fail' : r.level === 'Extraordinary' ? 'b-extra' : r.level === 'Great' ? 'b-great' : 'b-ok') + (r.ok && (r.level === 'Extraordinary' || r.level === 'Great') ? ' shine' : '');
-  el.innerHTML = `${r.what ? `<div class="rb-what">${escapeHtml(r.what)}</div>` : ''}<div class="rb-ribbon"><span>${word}</span></div><div class="rb-why">${why}</div>${seals ? `<div class="rb-seals">${seals}</div>` : ''}`;
+  const stamp = typeof rollStamp === 'function' ? rollStamp(r.ok, r.level) : '';
+  el.innerHTML = `${r.what ? `<div class="rb-what">${escapeHtml(r.what)}</div>` : ''}<div class="rb-row"><div class="rb-ribbon"><span>${word}</span></div>${stamp}</div><div class="rb-why">${why}</div>${seals ? `<div class="rb-seals">${seals}</div>` : ''}`;
   el.hidden = false;
 }
 function rollDice(skillLabel) {

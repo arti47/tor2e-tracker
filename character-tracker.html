@@ -133,7 +133,7 @@
       <button class="add-row-btn" onclick="newScene()" style="background:var(--gold);font-size:var(--fs-xs)">+ New Scene</button>
     </div>
     <div id="ch-active-scene" style="font-size:var(--fs-xs);color:var(--red-dark);font-weight:600;margin-bottom:6px"></div>
-    <textarea id="ch-compose" placeholder="Write what happens…" rows="3" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--bg-deep);color:var(--ink);resize:vertical;font-size:var(--fs-md);line-height:1.5"></textarea>
+    <span class="ch-quill" id="ch-quill" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#i-quill"/></svg></span><textarea id="ch-compose" placeholder="Write what happens…" rows="3" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--bg-deep);color:var(--ink);resize:vertical;font-size:var(--fs-md);line-height:1.5"></textarea>
     <div style="display:flex;gap:6px;margin-top:6px">
       <button class="add-row-btn primary" onclick="addProseToScene()" style="flex:1;background:var(--gold)">Add to scene</button>
       <button class="add-row-btn" onclick="rollWritingPrompt()" title="Scene seed — Where · Who/What · Happening · Mood, tuned to your situation. A journaling aid, not a Strider Mode rule" style="background:var(--btn-secondary-bg);font-size:var(--fs-xs)">🎬 Scene</button>
@@ -1139,9 +1139,9 @@
     <div style="margin-top:10px">
       <label style="font-size:var(--fs-xs);color:var(--red-dark);text-transform:uppercase;letter-spacing:0.5px;font-weight:600">Audience Attitude</label>
       <div class="seg-btns" id="c-attitude-pick" style="margin-top:4px">
-        <button class="seg-btn" data-val="reluctant">Reluctant −1d</button>
-        <button class="seg-btn active" data-val="open">Open</button>
-        <button class="seg-btn" data-val="friendly">Friendly +1d</button>
+        <button class="seg-btn" data-val="reluctant"><svg class="ic face-ic" aria-hidden="true"><use href="#i-face-sad"/></svg>Reluctant −1d</button>
+        <button class="seg-btn active" data-val="open"><svg class="ic face-ic" aria-hidden="true"><use href="#i-face-flat"/></svg>Open</button>
+        <button class="seg-btn" data-val="friendly"><svg class="ic face-ic" aria-hidden="true"><use href="#i-face-smile"/></svg>Friendly +1d</button>
       </div>
       <p class="hint" id="c-attitude-hint" style="text-align:left;margin-top:6px"></p>
     </div>
@@ -1157,17 +1157,13 @@
       <div style="display:flex;justify-content:space-between;font-size:var(--fs-xs);color:var(--text-muted);margin-bottom:3px">
         <span>Successes</span><span id="c-successes-label">0 / 3</span>
       </div>
-      <div style="background:var(--bg-deep);border-radius:var(--r-sm);height:14px;overflow:hidden">
-        <div id="c-success-bar" style="background:linear-gradient(90deg,var(--success-text),#4caf50);height:100%;width:0%;transition:width 0.3s"></div>
-      </div>
+      <div id="c-success-bar" hidden></div><div class="tally-row" id="c-tally" aria-hidden="true"></div>
     </div>
     <div style="margin-bottom:14px">
       <div style="display:flex;justify-content:space-between;font-size:var(--fs-xs);color:var(--text-muted);margin-bottom:3px">
         <span>Attempts</span><span id="c-attempts-label">0 / —</span>
       </div>
-      <div style="background:var(--bg-deep);border-radius:var(--r-sm);height:14px;overflow:hidden">
-        <div id="c-attempts-bar" style="background:linear-gradient(90deg,var(--gold),var(--red));height:100%;width:0%;transition:width 0.3s"></div>
-      </div>
+      <div id="c-attempts-bar" hidden></div><div class="candle-row" id="c-candles" aria-hidden="true"></div>
     </div>
 
     <!-- Introduction phase -->
@@ -1280,17 +1276,13 @@
       <div style="display:flex;justify-content:space-between;font-size:var(--fs-xs);color:var(--text-muted);margin-bottom:3px">
         <span>Successes</span><span id="se-successes-label">0 / 3</span>
       </div>
-      <div style="background:var(--bg-deep);border-radius:var(--r-sm);height:14px;overflow:hidden">
-        <div id="se-success-bar" style="background:linear-gradient(90deg,var(--success-text),#4caf50);height:100%;width:0%;transition:width 0.3s"></div>
-      </div>
+      <div id="se-success-bar" hidden></div><div class="tally-row" id="se-tally" aria-hidden="true"></div>
     </div>
     <div style="margin-bottom:14px">
       <div style="display:flex;justify-content:space-between;font-size:var(--fs-xs);color:var(--text-muted);margin-bottom:3px">
         <span>Attempts</span><span id="se-attempts-label">0 / 4</span>
       </div>
-      <div style="background:var(--bg-deep);border-radius:var(--r-sm);height:14px;overflow:hidden">
-        <div id="se-attempts-bar" style="background:linear-gradient(90deg,var(--gold),var(--red));height:100%;width:0%;transition:width 0.3s"></div>
-      </div>
+      <div id="se-attempts-bar" hidden></div><div class="candle-row" id="se-candles" aria-hidden="true"></div>
     </div>
 
     <div id="se-attempt-section" style="margin-bottom:14px">

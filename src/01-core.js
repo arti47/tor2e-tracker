@@ -130,7 +130,8 @@ const DIE_GLYPH = {
 /* Round 5: every empty list is a small drawn vignette, its one line, and the one button that fills it. */
 function emptyState(msg, icon, action) {
   const btn = action ? `<button type="button" class="btn btn-secondary es-act" onclick="${action.fn}">${action.label}</button>` : '';
-  return `<div class="empty-state"><span class="empty-art" aria-hidden="true"><svg class="ic"><use href="#i-${icon || 'scroll'}"/></svg></span><span>${msg}</span>${btn}</div>`;
+  const art = (typeof EMPTY_ART !== 'undefined' && EMPTY_ART[icon]) ? `<svg class="ea-draw" viewBox="0 0 48 48">${EMPTY_ART[icon]}</svg>` : `<svg class="ic"><use href="#i-${icon || 'scroll'}"/></svg>`;
+  return `<div class="empty-state"><span class="empty-art" aria-hidden="true">${art}</span><span>${msg}</span>${btn}</div>`;
 }
 function _labelFeatDie(el, special) {
   if (!el) return;
@@ -1392,7 +1393,10 @@ function updateEyePill(ea, threshold) {
   const hit = ea >= threshold;
   const open = Math.min(1, ea / Math.max(1, threshold));
   const ry = (1.5 + open * 6.5).toFixed(1);   // the lid opens as the Enemy's gaze sharpens
-  pill.innerHTML = `<svg class="eye-gauge" viewBox="0 0 32 20" width="22" height="14" aria-hidden="true"><path d="M1 10 Q16 ${10 - ry * 1.5} 31 10 Q16 ${10 + +ry * 1.5} 1 10 Z" fill="currentColor" fill-opacity=".12" stroke="currentColor" stroke-width="1.6"/><ellipse cx="16" cy="10" rx="${(1 + open * 2.2).toFixed(1)}" ry="${ry}" fill="currentColor"/></svg>` +
+  // Round 7: a drawn iris that warms from amber to fire as the Eye's gaze sharpens, with a slit pupil
+  const mix = (a, b) => Math.round(a + (b - a) * open);
+  const iris = `rgb(${mix(200, 214)},${mix(150, 52)},${mix(64, 24)})`;
+  pill.innerHTML = `<svg class="eye-gauge" viewBox="0 0 32 20" width="22" height="14" aria-hidden="true"><path d="M1 10 Q16 ${10 - ry * 1.5} 31 10 Q16 ${10 + +ry * 1.5} 1 10 Z" fill="currentColor" fill-opacity=".12" stroke="currentColor" stroke-width="1.6"/><ellipse class="eye-iris" cx="16" cy="10" rx="${(1.6 + open * 3).toFixed(1)}" ry="${ry}" fill="${iris}"/><ellipse class="eye-pupil" cx="16" cy="10" rx=".8" ry="${Math.max(1, ry - 1).toFixed(1)}" fill="#140806"/></svg>` +
     '<span class="sr-only">Eye </span>' + ea + '/' + threshold + (hit ? ' <span class="sr-only">— </span>Revelation!' : '');
   pill.title = hit
     ? 'Eye Awareness ' + ea + ' has reached the Hunt threshold ' + threshold + ' — roll a Revelation Episode. Tap to open.'

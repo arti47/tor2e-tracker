@@ -346,6 +346,9 @@ function renderCombatTasks() {
 }
 
 /* ---------- FELLOWSHIP PHASE WIZARD ---------- */
+// Round 7: each undertaking drawn as what it is
+const FP_UNDERTAKING_ICON = { 'gather-rumours': 'i-ear', 'meet-patron': 'i-crown', 'ponder-maps': 'i-map', 'strengthen-fellowship': 'i-users',
+  'study-magical-items': 'i-gem', 'write-a-song': 'i-harp', 'visiting-treasury': 'i-coins', 'heal-scars': 'i-bandage', 'raise-heir': 'i-home', 'recount-story': 'i-book' };
 const FP_UNDERTAKINGS = [
   { id: 'gather-rumours', name: 'Gather Rumours',
     desc: 'Receive a rumour from the Loremaster — story about a person, place, coming event, or specific inquiry related to current adventuring circumstances.',
@@ -673,6 +676,7 @@ function fpRenderStep4() {
     row.innerHTML = `
       <div style="display:flex;align-items:center;gap:8px">
         <input type="checkbox" ${selected ? 'checked' : ''} ${disabled ? 'disabled' : ''} style="margin:0">
+        ${FP_UNDERTAKING_ICON[u.id] ? `<svg class="ic und-ic" aria-hidden="true"><use href="#${FP_UNDERTAKING_ICON[u.id]}"/></svg>` : ''}
         <strong style="font-size:var(--fs-sm)">${u.name}</strong>
         ${isFree ? '<span style="background:var(--gold);color:white;padding:1px 6px;border-radius:var(--r-sm);font-size:var(--fs-xs)">FREE — ' + calling + '</span>' : ''}
         ${u.yuleOnly ? '<span style="background:var(--brown-soft);color:white;padding:1px 6px;border-radius:var(--r-sm);font-size:var(--fs-xs)">YULE</span>' : ''}
@@ -981,6 +985,7 @@ function renderSkillEndeavour() {
     const attPct = e.timeLimit > 0 ? Math.min(100, (e.attemptsUsed / e.timeLimit) * 100) : 0;
     document.getElementById('se-attempts-bar').style.width = attPct + '%';
     document.getElementById('se-attempts-label').textContent = `${e.attemptsUsed} / ${e.timeLimit}`;
+    if (typeof tallyMarks === 'function') { document.getElementById('se-tally').innerHTML = tallyMarks(e.successesScored, e.resistance); document.getElementById('se-candles').innerHTML = candleRow(e.attemptsUsed, e.timeLimit); }
 
     // Render skill grid (all 18 skills + Valour + Wisdom)
     const grid = document.getElementById('se-skill-grid');
@@ -1247,6 +1252,7 @@ function renderCouncil() {
     const attPct = c.timeLimit > 0 ? Math.min(100, (c.attemptsUsed / c.timeLimit) * 100) : 0;
     document.getElementById('c-attempts-bar').style.width = attPct + '%';
     document.getElementById('c-attempts-label').textContent = c.timeLimit > 0 ? `${c.attemptsUsed} / ${c.timeLimit}` : `${c.attemptsUsed} / —`;
+    if (typeof tallyMarks === 'function') { document.getElementById('c-tally').innerHTML = tallyMarks(c.successesScored, c.resistance); document.getElementById('c-candles').innerHTML = candleRow(c.attemptsUsed, c.timeLimit); }
 
     // Phase visibility
     document.getElementById('c-intro-section').style.display = c.introRolled ? 'none' : 'block';
@@ -4803,7 +4809,7 @@ function renderHeroSheet() {
   </div>
   <div class="card">
     <div class="s-attrs">${attr('str', 'Strength', 'body')}${attr('hrt', 'Heart', 'spirit')}${attr('wit', 'Wits', 'mind')}</div>
-    <div class="s-stats">${stat('Parry', n(char.parry) + n(char.shieldTotal))}${stat('Armour', protection + 'd')}${stat('Valour', n(char.valour), 1)}${stat('Wisdom', n(char.wisdom), 1)}${stat('Fellowship', n(char.fellowshipRating))}</div>
+    <div class="s-stats">${stat('Parry', typeof statBadge === 'function' ? statBadge('shield', n(char.parry) + n(char.shieldTotal)) : n(char.parry) + n(char.shieldTotal))}${stat('Armour', typeof statBadge === 'function' ? statBadge('mail', protection + 'd') : protection + 'd')}${stat('Valour', n(char.valour), 1)}${stat('Wisdom', n(char.wisdom), 1)}${stat('Fellowship', n(char.fellowshipRating))}</div>
   </div>
   <div class="card">
     <h3 class="card-title">Skills</h3>
@@ -4855,12 +4861,20 @@ function _hudAnimate(now) {
     if (!still && bar && (from !== to || fromMax !== toMax)) { const w = bar.style.width; bar.style.transition = 'none'; bar.style.width = pct(from, fromMax) + '%'; void bar.offsetWidth; bar.style.transition = ''; bar.style.width = w; }
     if (!still && sb && sfrom !== sto) { const w = sb.style.width; sb.style.transition = 'none'; sb.style.width = pct(sfrom, fromMax) + '%'; void sb.offsetWidth; sb.style.transition = ''; sb.style.width = w; }
     const d = to - from, ds = (sto || 0) - (sfrom || 0);
-    const float = (txt, cls) => { const f = document.createElement('span'); f.className = 'fdelta fd6 ' + cls; f.textContent = txt; f.setAttribute('aria-hidden', 'true'); host.appendChild(f); setTimeout(() => f.remove(), 1300); };
+    // Round 7: the change is a small pill that takes the label's place in the meter for a moment
+    // ("−3 End" says what it is), so it lands on neither the number, the bar, the header name nor the chips.
+    const val = host.querySelector('.m-val');
+    let pills = null;
+    const float = (txt, cls) => {
+      if (!pills) { pills = document.createElement('span'); pills.className = 'fd7-wrap'; pills.setAttribute('aria-hidden', 'true'); host.appendChild(pills); host.classList.add('delta-on');
+        const mine = pills; clearTimeout(host._fdT); host.querySelectorAll('.fd7-wrap').forEach(w => { if (w !== mine) w.remove(); });
+        host._fdT = setTimeout(() => { mine.remove(); host.classList.remove('delta-on'); }, 1500); }
+      const f = document.createElement('span'); f.className = 'fdelta fd7 ' + cls; f.textContent = txt; pills.appendChild(f); };
     if (d) float((d > 0 ? '+' : '−') + Math.abs(d) + ' ' + label, d > 0 ? 'up' : 'down');
     if (ds) float((ds > 0 ? '+' : '−') + Math.abs(ds) + ' Shadow', ds > 0 ? 'down shadowd' : 'up');
-    const val = host.querySelector('.m-val'); if (!still && val && d) {
-      const first = val.firstChild; const t0 = performance.now();
-      const step = t => { const k = Math.min(1, (t - t0) / 420); if (first) first.nodeValue = String(Math.round(from + d * k)); if (k < 1) requestAnimationFrame(step); };
+    if (!still && val && d) {
+      const t0 = performance.now();
+      const step = t => { const k = Math.min(1, (t - t0) / 420); const first = val && [...val.childNodes].find(n => n.nodeType === 3); if (first) first.nodeValue = String(Math.round(from + d * k)); if (k < 1) requestAnimationFrame(step); };
       requestAnimationFrame(step);
     }
   };
@@ -5074,7 +5088,7 @@ function renderPlay() {
        <div class="play-sit">${sit.text}</div>
        ${road}
        ${feed ? `<div class="play-feed" aria-live="polite">${feed}</div>` : ''}
-     </div>${_playStoryCard(!!road)}</div>
+     </div>${_playStoryCard(!!road)}${typeof heroPlate === 'function' ? heroPlate(!road) : ''}</div>
      <div class="play-choices" role="group" aria-label="What do you do?">
        <div class="eyebrow">What do you do?</div>
        ${choices.map((c, i) => { const [ico, txt] = split(c.label); const icId = (typeof EMOJI_ICON !== 'undefined') && EMOJI_ICON[String(ico).replace('\uFE0F', '')]; return `<button class="choice${i === 0 ? ' primary' : ''}" onclick="${c.fn}">
@@ -5102,7 +5116,11 @@ function _sceneArtOpts(s) {
     const ea = parseInt(char.eyeAwareness) || 0;
     if (hunt > 0 && ea >= hunt - 4) eye = Math.min(1, (ea - (hunt - 4)) / 4 + .25);
   }
-  return { road: onRoad, mist, eye };
+  // Round 7: weather from the story's season and hour — snow in winter, leaves in autumn, stars at night
+  const mood = _sceneMood(s);
+  const season = (mood.match(/data-season="([a-z]+)"/) || [])[1], time = (mood.match(/data-time="([a-z]+)"/) || [])[1];
+  const weather = (typeof isMoria === 'function' && isMoria()) ? '' : time === 'night' ? 'stars' : season === 'winter' ? 'snow' : season === 'autumn' ? 'leaves' : '';
+  return { road: onRoad, mist, eye, weather };
 }
 function _sceneMood(s) {
   const jr = char.journey || {};

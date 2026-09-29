@@ -179,24 +179,25 @@ function _tblSheetHtml() {
 /** Every roll a Loremaster may ask for, as big buttons grouped by attribute. A skill at 0 is
     still rollable (the Feat die alone), so all eighteen are here. */
 function _tblRollsHtml() {
-  const b = (name, sub, fav) => `<button type="button" class="tbl-roll${fav ? ' fav' : ''}" onclick="rollFromSheet('${name}')"><strong>${escapeHtml(name)}${fav ? ' ★' : ''}</strong><small>${escapeHtml(sub)}</small></button>`;
+  // Round 7: the same tile as the Dice tab — attribute glyph, the dice drawn as pips
+  const b = (name, sub, fav, attr, n) => `<button type="button" class="tbl-roll${fav ? ' fav' : ''}" onclick="rollFromSheet('${name}')">${attr && typeof ATTR_GLYPH !== 'undefined' ? `<svg class="ic tr-ic" aria-hidden="true"><use href="#${ATTR_GLYPH[attr]}"/></svg>` : ''}<strong>${escapeHtml(name)}${fav ? ' ★' : ''}</strong><small>${n ? `<span class="qs-pips" aria-hidden="true">${'<i></i>'.repeat(Math.min(6, n))}</span>` : ''}${escapeHtml(sub)}</small></button>`;
   const dice = r => r + (r === 1 ? ' die' : ' dice');
   const TN = { str: char.strTN, hrt: char.hrtTN, wit: char.witTN };
   const grp = (title, items) => `<div class="tbl-group"><div class="eyebrow">${title}</div><div class="tbl-rolls">${items}</div></div>`;
   let h = grp('Valour & Wisdom',
-    b('Valour', dice(parseInt(char.valour) || 1) + ' · TN ' + (parseInt(TN.hrt) || '—'), char.culture === 'Bardings') +
-    b('Wisdom', dice(parseInt(char.wisdom) || 1) + ' · TN ' + (parseInt(TN.wit) || '—'), char.culture === 'Hobbits of the Shire'));
+    b('Valour', dice(parseInt(char.valour) || 1) + ' · TN ' + (parseInt(TN.hrt) || '—'), char.culture === 'Bardings', 'hrt', parseInt(char.valour) || 1) +
+    b('Wisdom', dice(parseInt(char.wisdom) || 1) + ' · TN ' + (parseInt(TN.wit) || '—'), char.culture === 'Hobbits of the Shire', 'wit', parseInt(char.wisdom) || 1));
   // Skills the hero has ranks in (or favours) first; the rest fold away — still one tap to open,
   // and a roll call for one of them brings its own button anyway.
   const zero = [];
   [['str', 'Strength'], ['hrt', 'Heart'], ['wit', 'Wits']].forEach(([a, label]) => {
     const have = SKILLS[a].filter(s => { const v = (char.skills || {})[s] || {}; if ((parseInt(v.rating) || 0) > 0 || v.favoured) return true; zero.push([s, a]); return false; });
-    if (have.length) h += grp(`${label} · TN ${parseInt(TN[a]) || '—'}`, have.map(s => { const v = char.skills[s] || {}; return b(s, dice(parseInt(v.rating) || 0), v.favoured); }).join(''));
+    if (have.length) h += grp(`${label} · TN ${parseInt(TN[a]) || '—'}`, have.map(s => { const v = char.skills[s] || {}; return b(s, dice(parseInt(v.rating) || 0), v.favoured, a, parseInt(v.rating) || 0); }).join(''));
   });
   const profs = COMBAT_PROFS.filter(p => (parseInt((char.profs || {})[p]) || 0) > 0);
-  if (profs.length) h += grp('Combat', profs.map(p => b(p, dice(parseInt(char.profs[p]) || 0), false)).join(''));
+  if (profs.length) h += grp('Combat', profs.map(p => b(p, dice(parseInt(char.profs[p]) || 0), false, 'str', parseInt(char.profs[p]) || 0)).join(''));
   if (zero.length) h += `<details class="tbl-more"><summary>${zero.length} skills with no ranks <small>— the Feat die alone</small></summary><div class="tbl-rolls">${
-    zero.map(([s, a]) => b(s, 'Feat die · TN ' + (parseInt(TN[a]) || '—'), false)).join('')}</div></details>`;
+    zero.map(([s, a]) => b(s, 'Feat die · TN ' + (parseInt(TN[a]) || '—'), false, a, 0)).join('')}</div></details>`;
   return `<div class="card tbl-rollcard"><h3 class="card-title">Roll when you are asked</h3>${h}</div>`;
 }
 
@@ -251,7 +252,7 @@ function _tblConsoleShell() {
    </div>
    <div class="tbl-gm-side">
     <div class="card tbl-callcard"><h3 class="card-title">Ask for a roll</h3>
-      <div class="tbl-chips-row" id="tbl-quick" role="group" aria-label="Common rolls">${TABLE_QUICK_ROLLS.map(r => `<button type="button" class="qchip" data-skill="${r}" onclick="tablePickRoll('${r}')">${r}</button>`).join('')}</div>
+      <div class="tbl-chips-row" id="tbl-quick" role="group" aria-label="Common rolls">${TABLE_QUICK_ROLLS.map(r => { const a = r === 'Valour' ? 'hrt' : r === 'Wisdom' ? 'wit' : (typeof attrOfSkill === 'function' ? attrOfSkill(r) : ''); return `<button type="button" class="qchip" data-skill="${r}" onclick="tablePickRoll('${r}')">${a && typeof ATTR_GLYPH !== 'undefined' ? `<svg class="ic qc-ic" aria-hidden="true"><use href="#${ATTR_GLYPH[a]}"/></svg>` : ''}${r}</button>`; }).join('')}</div>
       <div class="field"><label for="tbl-call-skill">Roll</label><select id="tbl-call-skill" onchange="tablePickRoll(this.value, true)">${TABLE_ROLLS().map(r => opt(r, r)).join('')}</select></div>
       <div class="field"><label for="tbl-call-who">Who</label><select id="tbl-call-who">${opt('all', 'Everyone')}</select></div>
       <div class="field"><label for="tbl-call-note">Why</label><input type="text" id="tbl-call-note" placeholder="e.g. the guard is watching the gate"></div>
@@ -320,7 +321,7 @@ function _tblConsoleUpdate() {
   if (party) party.innerHTML = _tblPlayers().map(m => {
     const v = m.vitals || {};
     const chips = [v.dying && 'Dying', v.weary && 'Weary', v.miserable && 'Miserable', v.wounded && 'Wounded'].filter(Boolean).map(t => `<span class="tbl-chip bad">${t}</span>`).join('');
-    return `<div class="tbl-prow${m.online === false ? ' off' : ''}"><div class="tbl-prow-head"><span class="dot" aria-hidden="true"></span><strong>${escapeHtml(v.name || m.displayName || 'Hero')}</strong>${m.online === false ? '<em>away</em>' : ''}
+    return `<div class="tbl-prow${m.online === false ? ' off' : ''}"><div class="tbl-prow-head"><span class="dot" aria-hidden="true"></span>${v.culture && typeof cultureCrest === 'function' ? `<span class="tbl-crest" aria-hidden="true">${cultureCrest(v.culture, 22, v.name)}</span>` : ''}<strong>${escapeHtml(v.name || m.displayName || 'Hero')}</strong>${m.online === false ? '<em>away</em>' : ''}
         ${m.characterId && typeof gmPeek === 'function' ? `<button type="button" class="btn btn-quiet" onclick="gmPeek('${m.characterId}')">Sheet</button>` : ''}</div>
       <span>Endurance ${v.endCur ?? '?'}/${v.endMax ?? '?'} · Hope ${v.hopeCur ?? '?'}/${v.hopeMax ?? '?'} · Shadow ${v.shadow ?? 0}</span>${chips ? `<div class="tbl-chips">${chips}</div>` : ''}</div>`;
   }).join('') + `<div class="tbl-codeline">Code <strong>${escapeHtml(code)}</strong> · <button type="button" class="linkish" onclick="tableToggleInvite()">${_tblInviteOpen || !_tblPlayers().length ? 'hide invite' : 'invite more'}</button></div>`;
