@@ -63,7 +63,8 @@ module.exports = {
       const allBtn = [...document.querySelectorAll('#quick-skills button')].find(b => /Roll any skill/.test(b.textContent));
       if (allBtn) allBtn.click();
       const sheet = document.getElementById('allroll-overlay');
-      const inSheet = sheet ? [...sheet.querySelectorAll('.quick-skill')].map(b => b.textContent) : [];
+      const shown = !!(sheet && sheet.classList.contains('show') && sheet.querySelector('.menu').getBoundingClientRect().height > 0);
+      const inSheet = shown ? [...sheet.querySelectorAll('.quick-skill')].map(b => b.textContent) : [];
       if (typeof closeAllRolls === 'function') closeAllRolls();
       return { before, heads, firstAfter: firstAfter.slice(0, 12), open: !!(sheet && inSheet.length), all: inSheet.length, hasLore: inSheet.some(t => t.startsWith('Lore')) };`);
     checks.push({ ok: !dice.err && dice.before <= 8 && dice.heads.includes('Your best') && /^Scan/.test(dice.firstAfter), msg: `the Dice tab shows your recent and best rolls, not every skill; the last roll leads (${JSON.stringify(dice)})` });
@@ -72,8 +73,8 @@ module.exports = {
     // ---- Journey: Mount's Vigour only when mounted; season and lands each on one row ----
     await go('journey');
     const jr = await safe(`
-      const row = document.getElementById('j-vigour-row'); jPickTravel('foot');
-      const foot = row.checkVisibility(); jPickTravel('mounted'); const mounted = row.checkVisibility(); jPickTravel('foot');
+      const row = document.getElementById('j-vigour-row'); const shows = () => getComputedStyle(row).display !== 'none' && row.getBoundingClientRect().height > 0;
+      jPickTravel('foot'); const foot = shows(); jPickTravel('mounted'); const mounted = shows(); jPickTravel('foot');
       const tops = id => [...document.querySelectorAll('#' + id + ' .chip')].map(c => Math.round(c.getBoundingClientRect().top));
       const s = tops('j-season-chips'), l = tops('j-region-chips');
       return { foot, mounted, seasonRows: new Set(s).size, landRows: new Set(l).size };`);
