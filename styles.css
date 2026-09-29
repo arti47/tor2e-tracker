@@ -2260,3 +2260,13 @@ p, .hint, .play-sit, .ps-lines p, .choice small { text-wrap: pretty; }
 #tbl-note:focus { outline: none; border-color: var(--gold) !important; box-shadow: 0 0 0 3px color-mix(in srgb, var(--gold) 22%, transparent); }
 .tbl-chips-row { display: flex; flex-wrap: wrap; gap: 6px; }
 .tbl-chips-row .qchip { flex: 1 1 auto; text-align: center; }
+/* A picker or text box in an inline row shares the row instead of taking all of it (round 5, 320px) */
+div[style*="display:flex"] > .pick-btn { width: auto; flex: 0 1 auto; min-width: 84px; }
+div[style*="display:flex"] > input[type="text"], div[style*="display:flex"] > input:not([type]) { min-width: 0; }
+/* Short phones: the scene art steps aside altogether so the first choice is on the first screen */
+@media (max-height: 600px) and (max-width: 600px) {
+  .play-scene .scene-art { display: none; }
+  .play-scene .card-title { font-size: var(--fs-md); }
+  .play-choices .eyebrow { margin-top: 0; }
+  .play-choices { margin-top: var(--sp-2) !important; }
+}

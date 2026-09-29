@@ -388,6 +388,9 @@ module.exports = {
     const noInviteWithPlayers = await gm.page.evaluate(() => !document.querySelector('#tbl-invite .tbl-invite'));
     checks.push({ ok: invite && noInviteWithPlayers, msg: `starting a table goes straight to the console with the code and a QR to show; it steps aside once players are in (${invite}/${noInviteWithPlayers})` });
     checks.push({ ok: cols.two && cols.main > 320 && cols.side > 320, msg: `on a tablet the console reads in two columns (${JSON.stringify(cols)})` });
+    // round 5: the five phases read as one segmented row — no "Fellowship Phase" left alone on a second line
+    const phRow = await gm3.page.evaluate(() => new Set([...document.querySelectorAll('#tbl-phases [data-phase]')].map(b => Math.round(b.getBoundingClientRect().top))).size);
+    checks.push({ ok: phRow === 1, msg: `on a tablet the console's phases sit on one row (${phRow} row(s))` });
 
     // ---- Empty heroes (2026-09-28): the owner's roster held five "Unnamed hero" rows nobody made ----
     // (a) Five blank heroes on a device (what a synced account had piled up): start-up clears
