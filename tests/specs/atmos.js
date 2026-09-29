@@ -154,12 +154,15 @@ module.exports = {
     checks.push({ ok: !tl.err && tl.bad.length === 0, msg: `on a tablet no quick-roll name is broken across lines (${JSON.stringify(tl)})` });
     await page.setViewportSize({ width: 390, height: 844 });
 
-    // ---- Journey seasons: four chips alike ----
+    // ---- Journey seasons: every chip draws its icon over its word, all four alike ----
     await go('journey');
     const se = await safe(`
-      const c = [...document.querySelectorAll('#j-season-chips .chip')].filter(e => e.checkVisibility()).map(e => { const r = e.getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height)]; });
-      return { c, same: c.length === 4 && new Set(c.map(x => x.join('x'))).size === 1 };`);
-    checks.push({ ok: !se.err && se.same, msg: `the four season chips are the same size (${JSON.stringify(se)})` });
+      const c = [...document.querySelectorAll('#j-season-chips .chip')].filter(e => e.checkVisibility()).map(e => {
+        const ic = e.querySelector('.chip-ic').getBoundingClientRect(); const tn = [...e.childNodes].find(n => n.nodeType === 3 && n.textContent.trim());
+        const rg = document.createRange(); rg.selectNodeContents(tn); const w = rg.getBoundingClientRect();
+        return { over: ic.bottom <= w.top + 2, centred: Math.abs((ic.left + ic.right) / 2 - (w.left + w.right) / 2) < 4, h: Math.round(e.getBoundingClientRect().height) }; });
+      return { c, ok: c.length === 4 && c.every(x => x.over && x.centred) && new Set(c.map(x => x.h)).size === 1 };`);
+    checks.push({ ok: !se.err && se.ok, msg: `each season chip draws its icon above its word, all four the same (${JSON.stringify(se)})` });
 
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length}${errors.length ? ': ' + errors[0] : ''})` });
     await context.close();
