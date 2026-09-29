@@ -154,7 +154,7 @@
   <div class="card">
     <h3 class="card-title">Oracle <span style="font-size:var(--fs-xs);font-weight:400;color:var(--text-muted)">— quick ask, logs to this scene</span></h3>
     <div style="display:flex;gap:6px">
-      <input id="ch-oracle-q" placeholder="Yes/no question…" style="flex:1;padding:7px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--bg-deep);color:var(--ink)" onkeydown="if(event.key==='Enter')chronicleAsk()">
+      <input id="ch-oracle-q" placeholder="Yes/no question…" style="flex:1;padding:7px;border:1px solid var(--border);border-radius:var(--r-sm);color:var(--ink)" onkeydown="if(event.key==='Enter')chronicleAsk()">
       <select id="ch-oracle-chance" style="font-size:var(--fs-xs);padding:4px 6px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--bg-deep);color:var(--ink)">
         <option value="certain">Certain</option>
         <option value="likely">Likely</option>
@@ -176,7 +176,7 @@
   <div class="card">
     <h3 class="card-title" data-hint="Scene">Chronicle <span id="ch-count" style="font-size:var(--fs-xs);color:var(--text-muted);font-weight:400"></span></h3>
     <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
-      <input id="ch-search" placeholder="Filter entries…" oninput="renderChronicleTimeline()" style="flex:1;min-width:120px;font-size:var(--fs-xs);padding:4px 8px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--bg-deep);color:var(--ink)">
+      <input id="ch-search" placeholder="Filter entries…" oninput="renderChronicleTimeline()" style="flex:1;min-width:120px;font-size:var(--fs-xs);padding:4px 8px;border:1px solid var(--border);border-radius:var(--r-sm);color:var(--ink)">
       <button class="add-row-btn" onclick="exportChronicleMarkdown('split')" style="background:var(--btn-secondary-bg);font-size:var(--fs-xs)" title="Prose, then a Rules Bits appendix per scene (polished document)">⬇ Story</button>
       <button class="add-row-btn" onclick="exportChronicleMarkdown('log')" style="background:var(--btn-secondary-bg);font-size:var(--fs-xs)" title="Results and descriptions interleaved, as on screen (play-log)">⬇ Play-log</button>
     </div>
@@ -1027,11 +1027,11 @@
       </div>
       <div class="field" id="j-vigour-row" style="margin:8px 0 0" hidden><label>Mount’s Vigour</label><input type="number" id="j-mountVigour" min="0" max="6"></div>
       <div class="jq-sub">Season</div>
-      <div class="chip-row" id="j-season-chips" role="group" aria-label="Season">
+      <div class="chip-row seg" id="j-season-chips" role="group" aria-label="Season">
         <button type="button" class="chip" data-v="Spring" onclick="jPickChip('j-season','Spring')">Spring</button><button type="button" class="chip" data-v="Summer" onclick="jPickChip('j-season','Summer')">Summer</button><button type="button" class="chip" data-v="Autumn" onclick="jPickChip('j-season','Autumn')">Autumn</button><button type="button" class="chip" data-v="Winter" onclick="jPickChip('j-season','Winter')">Winter</button>
       </div>
       <div class="jq-sub" data-hint="Hunt Threshold">Lands you cross</div>
-      <div class="chip-row" id="j-region-chips" role="group" aria-label="Region">
+      <div class="chip-row seg" id="j-region-chips" role="group" aria-label="Region">
         <button type="button" class="chip" data-v="Free" onclick="jPickChip('j-region','Free')" title="Safe lands — events go your way">Free</button><button type="button" class="chip" data-v="Border" onclick="jPickChip('j-region','Border')" title="Border lands — events favour you">Border</button><button type="button" class="chip" data-v="Wild" onclick="jPickChip('j-region','Wild')" title="The wild — neither kind nor cruel">Wild</button><button type="button" class="chip" data-v="Shadow" onclick="jPickChip('j-region','Shadow')" title="Shadow lands — events turn against you">Shadow</button><button type="button" class="chip" data-v="Dark" onclick="jPickChip('j-region','Dark')" title="Dark lands — the Enemy's own">Dark</button>
       </div>
       <p class="hint" id="j-region-say" style="text-align:left;margin:4px 0 0"></p>
@@ -1050,7 +1050,7 @@
         <label><input type="checkbox" id="j-role-scout"> <strong>Scout</strong> · EXPLORE</label>
       </div>
     </div>
-    <div id="j-roles-strider-hint" style="display:none;margin-top:10px;padding:8px;background:var(--gold-soft);border:1px solid var(--gold);border-radius:var(--r-sm);font-size:var(--fs-xs);color:var(--ink);line-height:1.4">
+    <div id="j-roles-strider-hint" class="note-box" style="display:none">
       <strong>Travelling alone:</strong> there are no roles to share out — you do all of it. The app rolls Travel for each march, and when something happens on the road it asks you for the skill that fits (Hunting, Explore or Awareness).
     </div>
     <details class="j-more"><summary>Heading somewhere perilous?</summary>
@@ -1631,7 +1631,7 @@
   <div class="card">
     <h4 style="color:var(--red);font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:1px;margin:0 0 6px">History</h4>
     <div style="display:flex;gap:6px;margin-bottom:8px">
-      <input id="history-search" placeholder="Filter by skill / label…" oninput="renderHistory()" style="flex:1;font-size:var(--fs-xs);padding:4px 8px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--bg-deep);color:var(--ink)">
+      <input id="history-search" placeholder="Filter by skill / label…" oninput="renderHistory()" style="flex:1;font-size:var(--fs-xs);padding:4px 8px;border:1px solid var(--border);border-radius:var(--r-sm);color:var(--ink)">
       <select id="history-outcome" onchange="renderHistory()" style="font-size:var(--fs-xs);padding:4px 6px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--bg-deep);color:var(--ink)">
         <option value="all">All</option>
         <option value="success">Successes</option>
@@ -2436,10 +2436,10 @@
   <div class="menu" style="max-width:520px;width:95%;max-height:90vh;overflow-y:auto">
     <h3>Fellowship Phase</h3>
     <div id="fp-step-indicator" style="display:flex;justify-content:space-between;gap:4px;margin-bottom:14px;font-size:var(--fs-xs)">
-      <span class="fp-step-pill" data-step="1">1 · Type</span>
-      <span class="fp-step-pill" data-step="2">2 · Rest</span>
-      <span class="fp-step-pill" data-step="3">3 · Improve</span>
-      <span class="fp-step-pill" data-step="4">4 · Undertake</span>
+      <span class="fp-step-pill" data-step="1"><b>1</b><span class="fpl"> · Type</span></span>
+      <span class="fp-step-pill" data-step="2"><b>2</b><span class="fpl"> · Rest</span></span>
+      <span class="fp-step-pill" data-step="3"><b>3</b><span class="fpl"> · Improve</span></span>
+      <span class="fp-step-pill" data-step="4"><b>4</b><span class="fpl"> · Undertake</span></span>
     </div>
 
     <!-- Step 1: Phase Type -->
@@ -2496,7 +2496,7 @@
       <button class="add-row-btn" onclick="fpComplete()" style="width:100%;margin-top:14px;background:var(--gold)">✅ Complete Fellowship Phase</button>
     </div>
 
-    <div style="display:flex;gap:8px;margin-top:14px">
+    <div class="fp-nav" style="display:flex;gap:8px;margin-top:14px">
       <button class="close" onclick="fpPrevStep()" id="fp-prev-btn" style="flex:1;display:none">← Back</button>
       <button class="close" onclick="fpNextStep()" id="fp-next-btn" style="flex:1;background:var(--red);color:white;border-color:var(--red-dark)">Next →</button>
       <button class="close" onclick="fpClose()" style="flex:1">Close</button>

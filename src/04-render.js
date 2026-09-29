@@ -481,7 +481,7 @@ function fpRenderStep() {
   document.getElementById('fp-prev-btn').style.display = fpState.step > 1 ? 'inline-block' : 'none';
   document.getElementById('fp-next-btn').style.display = fpState.step < 4 ? 'inline-block' : 'none';
   const _applied = fpState.recoveryApplied || (char.fpWizardState && char.fpWizardState.recoveryApplied);
-  document.getElementById('fp-next-btn').textContent = fpState.step === 2 && !_applied ? 'Rest and continue →' : 'Next →';
+  document.getElementById('fp-next-btn').textContent = fpState.step === 2 && !_applied ? 'Rest and continue\u00a0→' : 'Next\u00a0→';
   const _ab = document.getElementById('fp-recovery-apply'); if (_ab) _ab.style.display = 'none';
 
   if (fpState.step === 2) fpRenderStep2();

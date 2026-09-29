@@ -34,6 +34,7 @@ const ART_SYMBOLS = {
   'i-wave':    '<path d="M2 9c2-2 4-2 6 0s4 2 6 0 4-2 6 0"/><path d="M2 15c2-2 4-2 6 0s4 2 6 0 4-2 6 0"/>',
   'i-lock':    '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
   'i-unlock':  '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.5-2"/>',
+  'i-mail':    '<path d="M8 3h8l4 4-3 2.5V21H7V9.5L4 7z"/><path d="M8 3c1.5 2.5 6.5 2.5 8 0M7 13h10M7 17h10"/>',
   'i-helm':    '<path d="M4 15a8 8 0 0 1 16 0v3H4z"/><path d="M12 7v11M4 15h16"/>',
   'i-leaf':    '<path d="M5 19c0-9 5-14 15-15-1 10-6 15-15 15z"/><path d="M5 19 14 10"/>',
   'i-tree':    '<path d="M12 2 6 10h3l-4 6h14l-4-6h3z"/><path d="M12 16v6"/>',

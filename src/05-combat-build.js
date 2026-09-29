@@ -603,10 +603,10 @@ function renderGearItems() {
   const pencil = (key, what) => `<button class="icon-btn" onclick="toggleGearEdit('${key}')" aria-label="Edit ${what} by hand" title="Edit"><svg class="ic"><use href="#i-pencil"/></svg></button>`;
   let h = '';
   if (n(char.armourProt) || char.armourNotes) {
-    h += _itemCard({ icon: 'i-shield', title: escapeHtml(char.armourNotes || 'Body armour'), nums: `Protection ${n(char.armourProt)} dice · Load ${n(char.armourLoad)}`,
+    h += _itemCard({ icon: 'i-mail', title: escapeHtml(char.armourNotes || 'Body armour'), nums: `Protection ${n(char.armourProt)} dice · Load ${n(char.armourLoad)}`,
       badges: _gearBadges(char.armourRewards), key: 'armour',
       ctl: `<button class="chip-btn" onclick="openArmourPicker()">Change</button>${pencil('armour', 'armour')}<button class="icon-btn" onclick="clearArmour()" aria-label="Remove armour" title="Remove"><svg class="ic"><use href="#i-x"/></svg></button>` });
-  } else h += `<div class="item-card empty"><svg class="ic item-ic" aria-hidden="true"><use href="#i-shield"/></svg><div class="item-body"><strong>No body armour</strong><small>Armour adds dice to your Protection roll when a blow pierces.</small></div><div class="item-ctl"><button class="chip-btn" onclick="openArmourPicker()">Choose armour</button></div></div>`;
+  } else h += `<div class="item-card empty"><svg class="ic item-ic" aria-hidden="true"><use href="#i-mail"/></svg><div class="item-body"><strong>No body armour</strong><small>Armour adds dice to your Protection roll when a blow pierces.</small></div><div class="item-ctl"><button class="chip-btn" onclick="openArmourPicker()">Choose armour</button></div></div>`;
   if (n(char.helmProt)) {
     h += _itemCard({ icon: 'i-helm', title: 'Helm', nums: `Protection +${n(char.helmProt)} die · Load ${n(char.helmLoad)}`, badges: _gearBadges(char.helmRewards), key: 'helm',
       ctl: `<button class="icon-btn" onclick="toggleHelm()" aria-label="Take off the helm" title="Remove"><svg class="ic"><use href="#i-x"/></svg></button>` });
@@ -1462,7 +1462,7 @@ function renderEncounter() {
 }
 function _renderFoeCard(f, canGm = true, lead = true) {
   const slain = f.slain;
-  const step = (field, d, lbl) => canGm ? `<button onclick="adjFoe('${f.id}','${field}',${d})" style="width:24px;height:24px;border:1px solid var(--border);background:var(--card-bg);color:var(--ink);border-radius:var(--r-sm);cursor:pointer">${lbl}</button>` : '';
+  const step = (field, d, lbl) => canGm ? `<button class="foe-step" onclick="adjFoe('${f.id}','${field}',${d})" aria-label="${d < 0 ? 'Lower' : 'Raise'} ${field === 'endCur' ? 'Endurance' : 'Hate'} of ${escapeHtml(f.name)}">${lbl}</button>` : '';
   const pct = (c, m) => Math.max(0, Math.min(100, (parseInt(c) || 0) / Math.max(1, parseInt(m) || 1) * 100));
   let h = `<div class="foe-card${slain ? ' slain' : ''}">${typeof foeSilhouette === 'function' ? foeSilhouette(f) : ''}
     <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">

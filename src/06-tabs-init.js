@@ -2204,7 +2204,7 @@ function _iconifyTextNode(t) {
     const lead = !before.trim() && !frag.childNodes.length && !t.previousSibling;
     if (lead && txt[end] === ' ') end++;
     if (before) frag.appendChild(document.createTextNode(before));
-    frag.appendChild(_iconSvg(id, lead ? 'b-ic' : 'b-ic ic-t'));
+    frag.appendChild(_iconSvg(id, lead ? (txt.slice(end).trim() ? 'b-ic lead-t' : 'b-ic') : 'b-ic ic-t'));
     last = end; changed = true;
   }
   if (!changed) return;
@@ -2348,7 +2348,7 @@ function enhanceSteppers(root) {
       if (!inp.getAttribute('aria-label')) inp.setAttribute('aria-label', ph);
       if (!inp.title) inp.title = ph;
       const num = ph.match(/\d+/);
-      inp.setAttribute('placeholder', num ? num[0] : '–');
+      inp.setAttribute('placeholder', num ? num[0] : /auto/i.test(ph) ? 'auto' : (inp.min !== '' ? inp.min : '0'));
     }
     const wrap = document.createElement('span'); wrap.className = 'stepper';
     inp.parentNode.insertBefore(wrap, inp);

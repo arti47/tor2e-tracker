@@ -2022,3 +2022,61 @@ body.bigscreen-on { overflow: hidden; }
 .tv-back::before { content: '←'; font-size: 1.1em; }
 .tv-back-bottom::before { content: none; }
 .tbl-foerow select { padding: 6px 8px; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--bg); color: var(--ink); font-size: var(--fs-sm); }
+
+/* ===================== ROUND 5 (2026-09-29): one kit, drawn feel ===================== */
+/* The hidden attribute always wins — a .field's display:flex was showing Mount's Vigour on foot. */
+[hidden] { display: none !important; }
+/* A picker inside a labelled row shares the row; width:100% there pushed Tale of Years' Phase off the card. */
+.field > .pick-btn { width: auto; flex: 1 1 0; min-width: 0; }
+.row-2 > .field { min-width: 0; }
+/* A leading icon keeps its gap even when only text follows it (the :last-child rule ignores text). */
+.b-ic.lead-t { margin-right: .5em !important; }
+/* Every text box looks the same: card paper, one hairline, gold focus ring. */
+#ch-oracle-q, #ch-search, #history-search, .oracle-ask textarea, .menu-search input {
+  background: var(--card-bg) !important; border: 1px solid var(--border) !important; border-radius: var(--r-sm) !important; color: var(--ink); }
+#ch-oracle-q:focus, #ch-search:focus, #history-search:focus, .oracle-ask textarea:focus {
+  outline: none; border-color: var(--gold) !important; box-shadow: 0 0 0 3px color-mix(in srgb, var(--gold) 22%, transparent); }
+/* Button sizes: three, one face. A lesser roll button is a normal-size secondary, not a banner. */
+.roll-btn.secondary { font-size: var(--fs-md) !important; padding: 10px 14px !important; min-height: 44px; }
+/* A plain note in a card (not a warning): the standard info callout. */
+.note-box { margin-top: 10px; padding: 10px 12px; background: var(--gold-paler); border-radius: var(--r-sm); font-size: var(--fs-sm); color: var(--ink); line-height: 1.45; }
+/* Chips in one scale: they share the row evenly, so no lone chip wraps to a second line. */
+.chip-row.seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 2px; background: var(--bg-deep); padding: 3px; border-radius: var(--r-sm); }
+.chip-row.seg .chip { border: 0 !important; border-radius: 6px !important; padding: 8px 2px !important; min-height: 38px; font-size: var(--fs-sm); background: transparent; color: var(--text-muted); }
+.chip-row.seg .chip.on { background: var(--card-bg) !important; color: var(--ink) !important; font-weight: 700; box-shadow: var(--elev-1); }
+/* Item cards: every action the same height and weight — Change is a word, the rest are icons. */
+.item-card .icon-btn, .item-card .chip-btn { height: 36px; min-height: 36px; border: 1px solid var(--border) !important; background: var(--card-bg) !important; color: var(--ink) !important; }
+.item-card .icon-btn { width: 36px; }
+.item-card .chip-btn { border-radius: var(--r-sm) !important; padding: 0 12px; }
+/* Foe cards: the −/+ are real touch targets and the silhouette stays out of their way. */
+.foe-card .step-btn, .foe-card .foe-step, .foe-card button.mini { min-width: 40px; min-height: 40px; }
+.foe-card > .foe-sil { right: auto; left: auto; top: auto; bottom: 8px; right: 8px; width: 72px; height: 72px; opacity: .06; z-index: 0; }
+.foe-card > *:not(.foe-sil) { position: relative; z-index: 1; }
+/* Fellowship Phase: on a phone the other steps are numbers; the current one is named. */
+#fp-step-indicator { display: grid !important; grid-template-columns: repeat(4, auto); justify-content: stretch; }
+.fp-step-pill b { font-weight: 700; }
+@media (max-width: 520px) {
+  #fp-step-indicator { grid-template-columns: auto auto auto auto; }
+  .fp-step-pill:not(.active) .fpl { display: none; }
+  .fp-step-pill { padding: 6px 10px; }
+  .fp-step-pill.active { flex: 2; }
+}
+.fp-nav { display: grid !important; grid-template-columns: 1fr 1.6fr 1fr; }
+.fp-nav button { white-space: nowrap; padding-left: 6px; padding-right: 6px; }
+.fp-nav button[style*="display: none"] + button { grid-column: span 2; }
+/* Build: the wizard's header reads on one line where it can. */
+.bs-row .btn-quiet { white-space: nowrap; flex: 0 0 auto; }
+.bs-row .bs-label { text-wrap: balance; }
+/* Help lives in a small ⓘ after a title, not an underline that reads like a link. */
+.title-term { text-decoration: none !important; cursor: pointer; }
+.title-term::after { content: 'i'; display: inline-flex; align-items: center; justify-content: center; width: 15px; height: 15px; margin-left: 6px;
+  border: 1px solid var(--gold); border-radius: 50%; color: var(--gold); font: italic 600 10px/1 Georgia, var(--font-display); vertical-align: 2px; opacity: .85; }
+/* Ornaments belong to the ornate cards only. */
+.ref-group summary h3 { background: none !important; padding-bottom: 0 !important; }
+/* Warm, layered paper: a lifted sheet with a lit top edge. */
+:root { --elev-1: 0 1px 1px rgba(70, 45, 20, .06), 0 3px 8px rgba(70, 45, 20, .07), 0 10px 24px -12px rgba(70, 45, 20, .18), inset 0 1px 0 rgba(255, 255, 255, .55); }
+.card.ornate { box-shadow: 0 1px 1px rgba(70, 45, 20, .08), 0 6px 18px rgba(70, 45, 20, .13), 0 18px 40px -20px rgba(70, 45, 20, .3), inset 0 1px 0 rgba(255, 255, 255, .6), inset 0 0 28px rgba(120, 80, 30, .06); }
+body.dark .card.ornate, body.theme-hc .card.ornate { box-shadow: var(--elev-1); }
+/* One stroke for every drawn icon. */
+svg symbol { stroke-width: 1.75px; }
+.foe-step { width: 40px; height: 40px; border: 1px solid var(--border); background: var(--card-bg); color: var(--ink); border-radius: 50%; cursor: pointer; font-size: 18px; line-height: 1; flex: 0 0 40px; }
