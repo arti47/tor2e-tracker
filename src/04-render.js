@@ -5140,10 +5140,10 @@ function _playQuickRolls() {
   const last = window._lastQuick;
   const gl = a => (typeof ATTR_GLYPH !== 'undefined' && ATTR_GLYPH[a]) ? `<svg class="ic qc-ic" aria-hidden="true"><use href="#${ATTR_GLYPH[a]}"/></svg>` : '';
   const pips = n => `<span class="qs-pips">${Array.from({ length: Math.min(n, 6) }, () => '<i></i>').join('')}</span>`;
-  const chip = (lab, sub, fn, a, n, fav) => `<button type="button" class="qchip${fav ? ' fav' : ''}" onclick="${fn}">${gl(a)}<strong>${escapeHtml(lab)}</strong><small>${n ? pips(n) : ''}${escapeHtml(sub)}</small></button>`;
+  const chip = (lab, sub, fn, a, n, fav) => `<button type="button" class="qchip${fav ? ' fav' : ''}" onclick="${fn}">${gl(a)}<strong>${escapeHtml(lab)}</strong><small>${n ? pips(n) : ''}${escapeHtml(sub)}${fav ? '<span class="sr-only"> · Favoured</span>' : ''}</small></button>`;
   const aOf = n => (typeof attrOfSkill === 'function' ? attrOfSkill(n) : '');
   const chips = (last ? chip('Again: ' + last.item.name, 'repeat last roll', 'rollAgain()', last.item.attr, 0) : '') +
-    best.map(x => { const a = aOf(x.n), tn = parseInt(char[a + 'TN']); return chip(x.n, (tn ? 'TN ' + tn : x.r + 'd') + (x.f ? ' · ★' : ''), `rollFromSheet('${x.n}')`, a, x.r, x.f); }).join('');
+    best.map(x => { const a = aOf(x.n), tn = parseInt(char[a + 'TN']); return chip(x.n, tn ? 'TN ' + tn : x.r + 'd', `rollFromSheet('${x.n}')`, a, x.r, x.f); }).join('');
   if (!chips) return '';
   return `<div class="play-quick"><div class="eyebrow">Quick rolls</div><div class="qchips">${chips}</div></div>`;
 }

@@ -481,7 +481,7 @@ const PHASE_ART = {
 };
 function phaseArt(phase) {
   const k = PHASE_ART[phase] ? phase : 'story';
-  return `<div class="phase-art ph-${k}" aria-hidden="true"><svg viewBox="0 0 360 90" preserveAspectRatio="xMidYMax slice">${PHASE_ART[k]}</svg></div>`;
+  return `<div class="phase-art ph-${k}" aria-hidden="true"><svg viewBox="0 0 360 90" preserveAspectRatio="xMidYMid meet">${PHASE_ART[k]}</svg></div>`;
 }
 
 /* ---------- The seeing-stone beside the Oracle's question ---------- */

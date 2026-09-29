@@ -2483,3 +2483,25 @@ body.dark .notch-bar.nb-hate i.on { background: linear-gradient(#b9a07a, #8a7250
 .play-footart .f { fill: currentColor; fill-opacity: .35; } .play-footart .f2 { fill: currentColor; fill-opacity: .12; } .play-footart .rd { stroke-dasharray: 5 3; }
 @media (min-width: 900px), (min-width: 640px) and (max-height: 540px) and (orientation: landscape) { .play-footart { display: none; } }
 .group-strip { column-span: all; grid-column: 1 / -1; }
+.campaign-box > summary .camp-seals, .campaign-box > summary .camp-seals span { font-size: inherit; font-weight: inherit; color: inherit; font-family: inherit; }
+.campaign-box > summary .camp-seals::after, .campaign-box > summary .camp-seals span::after { content: none !important; }
+.campaign-box > summary .camp-seals .seal-ses { color: #8a2519; } .campaign-box > summary .camp-seals .seal-adv { color: #a67a22; }
+.campaign-box:not([open]) > summary { flex-wrap: wrap; }
+.campaign-box > summary .camp-seals { margin-left: auto; align-self: center; }
+.campaign-box > summary .camp-seals:empty { display: none; }
+.oracle-ask > .card-title { padding-right: 96px; }
+.ask-stone { right: 44px; }
+.fdelta { top: -2px; right: 52px; left: auto; }
+.fdelta + .fdelta { top: -16px; left: auto; }
+.qchip small { flex-wrap: nowrap; white-space: nowrap; }
+.scene-art svg.scene-eye { position: absolute; right: 16px; top: 6px; left: auto; width: 64px; height: 32px; transform: none; }
+.scene-art .f { fill-opacity: .55; } .scene-art .f2 { fill-opacity: .38; }
+.t-moria .sky { fill-opacity: .2; }
+.t-moria { background: radial-gradient(ellipse 30% 70% at 50% 100%, rgba(240, 170, 80, .28), transparent 70%); }
+.tbl-foerow .foe-medal { flex: 0 0 32px; }
+.tbl-foes li { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; padding: 4px 0; }
+.tbl-foes li .notch-bar { flex: 1 1 100%; }
+.tbl-foes li .foe-medal { width: 26px; height: 26px; flex: 0 0 26px; }
+.tbl-foes li .foe-medal-sil { width: 19px; height: 19px; }
+.play-scene[data-gloom] .scene-art { filter: saturate(.8) brightness(.95); background: linear-gradient(180deg, rgba(70, 45, 25, .2), transparent 90%); }
+@media (min-width: 900px), (min-width: 640px) and (max-height: 540px) and (orientation: landscape) { .fdelta { top: 20px; } .fdelta + .fdelta { top: 34px; } }

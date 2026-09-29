@@ -81,6 +81,17 @@ module.exports = {
     await gmClick('#panel-play button', 'Show it on every phone');
     const phaseSeen = await until(pl.page, () => { const c = document.querySelector('#panel-play .tbl-phase'); return c && /Combat/.test(c.textContent) && /Orcs at the ford/.test(c.textContent); });
     checks.push({ ok: phaseSeen, msg: "the Loremaster's phase and note appear on the player's phone" });
+    // Round 6: the phase card carries its own drawing; the console's phase tiles are icons + whole words
+    const phArt = await until(pl.page, () => { const a = document.querySelector('#panel-play .tbl-phase .phase-art.ph-combat'); return !!a && a.checkVisibility() && a.getBoundingClientRect().height > 30; });
+    checks.push({ ok: phArt, msg: "the player's phase card shows the fight's drawing when the Loremaster calls combat" });
+    const tiles = await gm.page.evaluate(() => {
+      const bs = [...document.querySelectorAll('#tbl-phases [data-phase]')];
+      const split = bs.filter(b => { const t = b.querySelector('span') || b; const w = document.createTreeWalker(t, NodeFilter.SHOW_TEXT); let n, bad = false;
+        while ((n = w.nextNode())) { const re = /\S+/g; let m; while ((m = re.exec(n.textContent))) { const r = document.createRange(); r.setStart(n, m.index); r.setEnd(n, m.index + m[0].length); if (r.getClientRects().length > 1) bad = true; } }
+        return bad; }).map(b => b.dataset.phase);
+      return { icons: bs.filter(b => b.querySelector('.ph-ic')).length, split, rows: new Set(bs.map(b => Math.round(b.getBoundingClientRect().top))).size, w: innerWidth };
+    });
+    checks.push({ ok: tiles.icons === 5 && !tiles.split.length && (tiles.w > 560 || tiles.rows === 2), msg: `the console's phase tiles each carry an icon, no word breaks across a line, and a phone lays them 3 + 2 (${JSON.stringify(tiles)})` });
 
     // A roll call for everyone pops a big button; pressing it answers the call in the shared feed.
     await gm.page.evaluate(() => { document.getElementById('tbl-call-skill').value = 'Awareness'; document.getElementById('tbl-call-who').value = 'all'; document.getElementById('tbl-call-note').value = 'Something moves in the reeds'; });
@@ -218,6 +229,9 @@ module.exports = {
     await gm.page.evaluate(() => { addCustomFoe(); document.querySelectorAll('.menu-overlay.show').forEach(o => o.classList.remove('show')); });
     await openPlay(pl2.page);
     const fightOn = await until(pl.page, () => /New foe/.test((document.querySelector('#panel-play .tbl-fight') || {}).textContent || ''));
+    const frow = await until(gm.page, () => { const r = document.querySelector('#tbl-flive .tbl-foerow'); if (!r) return false; const sel = r.querySelector('select'), m = r.querySelector('.foe-medal');
+      return !!sel && sel.getBoundingClientRect().width >= 140 && !!m && m.getBoundingClientRect().width <= 34 && !!r.querySelector('.notch-bar'); });
+    checks.push({ ok: frow, msg: "the console's foe row has a medallion, a notched End bar and a target picker wide enough to read" });
     const stance = (page, name) => page.evaluate(n => { const b = [...document.querySelectorAll('#panel-play .tbl-fight .tbl-role')].find(x => x.textContent.startsWith(n)); if (b) b.click(); return !!b; }, name);
     // Names alone would put the second player first (alphabetical); stance must win.
     await stance(pl.page, 'Forward'); await until(pl2.page, () => !!document.querySelector('#panel-play .tbl-fight')); await stance(pl2.page, 'Rearward');
