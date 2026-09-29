@@ -4855,7 +4855,14 @@ function renderHud() {
     if (mono.dataset.key !== key) { mono.dataset.key = key; mono.innerHTML = cultureCrest(char.culture, 36, char.name); }
   }
   const nameEl = document.getElementById('char-name-text');
-  if (nameEl) { const n = String(char.name || '').trim(); nameEl.textContent = n || (built ? heroLabel(char) : 'Unnamed hero'); nameEl.classList.toggle('unnamed', !n); }
+  if (nameEl) {
+    const n = String(char.name || '').trim(); const full = n || (built ? heroLabel(char) : 'Unnamed hero');
+    // On a phone the header carries the given name only; the whole name lives on the sheet.
+    const short = n ? shortHeroName(n) : full;
+    if (short !== full) { nameEl.innerHTML = `<span class="hn-short" aria-hidden="true">${escapeHtml(short)}</span><span class="hn-full">${escapeHtml(full)}</span>`; nameEl.title = full; }
+    else { nameEl.textContent = full; nameEl.removeAttribute('title'); }
+    nameEl.classList.toggle('unnamed', !n);
+  }
   if (!built) return;
   const end = parseInt(char.endCur) || 0, endMax = parseInt(char.endMax) || 0;
   const hope = parseInt(char.hopeCur) || 0, hopeMax = parseInt(char.hopeMax) || 0;
@@ -5029,14 +5036,14 @@ function renderPlay() {
         : _roadStrip(parseInt(jr.currentHex) || 0, parseInt(jr.totalHexes), jr.nextEventHex)) : '';
   host.innerHTML =
     _playConditionBanner() +
-    `<div class="card ornate play-scene${['journey', 'home'].includes(s.step) && (char.journey || {}).active ? ' on-road' : ''}">
+    `<div class="play-left"><div class="card ornate play-scene${['journey', 'home'].includes(s.step) && (char.journey || {}).active ? ' on-road' : ''}">
        ${typeof terrainVignette === 'function' ? terrainVignette(terrain) : ''}
        <div class="eyebrow">Where you are</div>
        <h3 class="card-title">${escapeHtml(sit.title)}</h3>
        <div class="play-sit">${sit.text}</div>
        ${road}
        ${feed ? `<div class="play-feed" aria-live="polite">${feed}</div>` : ''}
-     </div>
+     </div>${_playStoryCard(!!road)}</div>
      <div class="play-choices" role="group" aria-label="What do you do?">
        <div class="eyebrow">What do you do?</div>
        ${choices.map((c, i) => { const [ico, txt] = split(c.label); const icId = (typeof EMOJI_ICON !== 'undefined') && EMOJI_ICON[String(ico).replace('\uFE0F', '')]; return `<button class="choice${i === 0 ? ' primary' : ''}" onclick="${c.fn}">
@@ -5047,6 +5054,24 @@ function renderPlay() {
      </div>
      ${_playQuickRolls()}
      ${isSolo() ? '<p class="play-foot">Everything that happens here is written into your Chronicle for you.</p>' : ''}`;
+}
+/** Tablet (round 5): under the scene, the story so far from the Chronicle, and the last road
+    walked on the map when you are not on one now. Hidden on phones, where the page is already long. */
+function shortHeroName(n) {
+  const m = String(n).split(/,|\s+(?:son|daughter|child) of\s+|\s+['‘“"(]/i)[0].trim();
+  return m || String(n);
+}
+function _playStoryCard(onRoad) {
+  const ents = (typeof journal !== 'undefined' && journal && Array.isArray(journal.entries)) ? journal.entries : [];
+  const lines = ents.slice(-6).map(e => {
+    const t = (typeof _playPlainText === 'function' ? _playPlainText(e.text) : String(e.text || '')).trim();
+    return t ? `<p class="${e.kind === 'auto' ? 'ps-auto' : ''}">${escapeHtml(t.length > 220 ? t.slice(0, 217) + '…' : t)}</p>` : '';
+  }).filter(Boolean).join('');
+  const jr = char.journey || {};
+  const lastRoad = !onRoad && Array.isArray(jr.route) && jr.route.length && typeof liveRouteMap === 'function'
+    ? `<div class="eyebrow">The road behind you</div>${liveRouteMap(jr)}` : '';
+  if (!lines && !lastRoad) return '<div class="card play-story empty"><div class="eyebrow">The story so far</div><p class="ps-empty">Nothing written yet — what you do here is set down in your Chronicle as you go.</p></div>';
+  return `<div class="card play-story">${lines ? `<div class="eyebrow">The story so far</div><div class="ps-lines">${lines}</div>` : ''}${lastRoad}</div>`;
 }
 /** Pinned quick rolls on Play (round 3): the hero's three strongest skills, plus "Again" for
     the last roll made anywhere — so the common rolls never need a trip to the Roll tab. */

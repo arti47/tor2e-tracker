@@ -1058,7 +1058,7 @@
       <p class="hint" style="text-align:left;margin:4px 0 0">Each point adds one more event to face when you get there.</p>
     </details>
     <div style="display:flex;gap:8px;margin-top:10px">
-      <button class="add-row-btn primary" onclick="startJourney()" id="j-start-btn" style="flex:1">Set out</button>
+      <button class="add-row-btn primary" onclick="startJourney()" id="j-start-btn" style="flex:1" data-sticky="Set out">Set out</button>
       
     </div>
   </div>
@@ -1542,7 +1542,7 @@
     <p class="hint" id="hope-cost-hint" style="display:none;color:var(--gold);font-weight:600">Hope will be deducted on roll</p>
 
 
-    <button class="roll-btn" onclick="rollDice()" style="margin-top:10px">🎲 Roll Dice</button>
+    <button class="roll-btn" onclick="rollDice()" style="margin-top:10px" data-sticky="Roll Dice">🎲 Roll Dice</button>
 
     <div class="roll-result" id="roll-result" role="status" aria-live="polite" style="margin-top:12px; display:none">
       <div class="roll-banner" id="roll-banner" hidden></div>

@@ -88,6 +88,18 @@ function refreshNav() {
     const lbl = b.querySelector('[data-alt]');   // "Journal" reads "Rules" when there is no Chronicle
     if (lbl) { lbl.dataset.main = lbl.dataset.main || lbl.textContent; lbl.textContent = shown.length === 1 && shown[0] === 'reference' ? lbl.dataset.alt : lbl.dataset.main; }
   });
+  moveTabIndicator(prevGroup === cur.id);
+}
+/** Round 5: the chosen sub-tab is a pill that slides from one tab to the next. */
+function moveTabIndicator(animate) {
+  const nav = document.querySelector('.tabs'); if (!nav) return;
+  let ind = nav.querySelector('.tab-ind');
+  if (!ind) { ind = document.createElement('span'); ind.className = 'tab-ind'; ind.setAttribute('aria-hidden', 'true'); nav.insertBefore(ind, nav.firstChild); }
+  const a = nav.querySelector('.tab.active:not(.nav-out)');
+  if (!a || !a.offsetWidth) { ind.style.opacity = '0'; return; }
+  ind.classList.toggle('no-anim', !animate);
+  ind.style.opacity = '1'; ind.style.width = a.offsetWidth + 'px'; ind.style.height = a.offsetHeight + 'px';
+  ind.style.transform = `translate(${a.offsetLeft}px, ${a.offsetTop}px)`;
 }
 // U4: reopen the last-used tab on load. Only if it's still present AND visible (solo-only
 // tabs are display:none when their mode is off — never restore into a hidden tab).
@@ -652,6 +664,7 @@ function bindDice() {
 
 function quickRoll(item, s) {
   window._lastQuick = { item, s };   // Play's "Again" chip repeats this
+  if (typeof _noteRecentRoll === 'function') _noteRecentRoll(item && item.name);
   // Set dice state and switch to dice tab
   let rating = s.rating;
   let stanceNote = '';
@@ -1803,7 +1816,7 @@ function setSlimHeader(on) {
 }
 function initSlimHeader() {
   let lastY = window.scrollY, queued = false;
-  const phone = () => window.matchMedia('(max-width: 899px)').matches;
+  const phone = () => window.matchMedia('(max-width: 899px)').matches && !window.matchMedia('(min-width: 640px) and (max-height: 540px) and (orientation: landscape)').matches;
   window.addEventListener('scroll', () => {
     if (queued) return; queued = true;
     requestAnimationFrame(() => {
@@ -1824,6 +1837,7 @@ function initSlimHeader() {
 }
 
 function initSwipeTabs() {
+  window.addEventListener('resize', () => moveTabIndicator(false));
   let sx = 0, sy = 0, st = 0, valid = false;
   document.addEventListener('touchstart', e => {
     valid = false;
@@ -1844,12 +1858,49 @@ function initSwipeTabs() {
     const t = e.changedTouches[0]; if (!t) return;
     const dx = t.clientX - sx, dy = t.clientY - sy;
     if (Date.now() - st > 600 || Math.abs(dx) < 70 || Math.abs(dy) > Math.abs(dx) * 0.6) return;
-    const tabs = Array.from(document.querySelectorAll('.tab')).filter(x => x.style.display !== 'none');
+    // round 5: a swipe moves between the sub-tabs of the group you are in, never into another group
+    const tabs = Array.from(document.querySelectorAll('.tab')).filter(x => x.style.display !== 'none' && !x.classList.contains('nav-out'));
     const cur = tabs.findIndex(x => x.classList.contains('active'));
     if (cur < 0) return;
     const next = dx < 0 ? cur + 1 : cur - 1;   // swipe left = next tab, right = previous
     if (next >= 0 && next < tabs.length) tabs[next].click();
   }, { passive: true });
+}
+
+/* ---------- Round 5: sticky action ----------
+   A long tab's one main button (marked data-sticky) floats above the bottom bar whenever the
+   real one is off screen. The floating copy only presses the real one, so every guard holds. */
+function _stickyTarget() {
+  const panel = document.querySelector('.panel.active'); if (!panel) return null;
+  return [...panel.querySelectorAll('[data-sticky]')].find(b => b.checkVisibility && b.checkVisibility() && !b.disabled) || null;
+}
+function updateStickyAction() {
+  let bar = document.getElementById('sticky-act');
+  if (!bar) {
+    bar = document.createElement('div'); bar.id = 'sticky-act'; bar.className = 'sticky-act';
+    bar.innerHTML = '<button type="button" class="btn"></button>';
+    bar.firstChild.onclick = () => { const t = _stickyTarget(); if (t) t.click(); };
+    document.body.appendChild(bar);
+  }
+  const t = _stickyTarget();
+  const busy = document.body.classList.contains('drawer-open') || document.querySelector('.menu-overlay.show');
+  let show = false;
+  if (t && !busy) {
+    const r = t.getBoundingClientRect();
+    const nav = document.getElementById('bottom-nav');
+    const floor = nav && getComputedStyle(nav).position === 'fixed' && nav.getBoundingClientRect().top > innerHeight / 2 ? nav.getBoundingClientRect().top : innerHeight;
+    show = r.top > floor - 8 || r.bottom < 90;
+  }
+  if (show) { const b = bar.firstChild; const lab = t.getAttribute('data-sticky') || t.textContent.trim(); if (b.textContent !== lab) b.textContent = lab; }
+  bar.classList.toggle('show', !!show);
+}
+function initStickyAction() {
+  let q = false;
+  const tick = () => { if (q) return; q = true; requestAnimationFrame(() => { q = false; updateStickyAction(); }); };
+  window.addEventListener('scroll', tick, { passive: true });
+  window.addEventListener('resize', tick);
+  document.addEventListener('click', () => setTimeout(tick, 60), true);
+  tick();
 }
 
 /* ---------- U3: collapsible cards with remembered state ---------- */
@@ -2071,6 +2122,7 @@ document.addEventListener('DOMContentLoaded', () => {
   renderChronicle();
   restoreLastTab();   // U4: reopen the tab the player was last on (if still visible)
   initSwipeTabs();          // U4: swipe between tabs on touch
+  initStickyAction();       // round 5: a long tab's main action stays in reach
   initSlimHeader();         // round 4: the header folds to one line while you scroll down
   initCollapsibleCards();   // U3: tap a card title to collapse (remembered per device)
   initHintButtons();        // U7/B: (?) hints app-wide (text-matched labels + data-hint)

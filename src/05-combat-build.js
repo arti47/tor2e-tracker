@@ -1531,10 +1531,8 @@ function rollFromSheet(name) {
   quickRoll(item, s);
 }
 
-function renderQuickSkills() {
-  const container = document.getElementById('quick-skills');
-  if (!container) return;
-  container.innerHTML = '';
+/** Every rollable thing, with its current dice. Shared by the Dice tab and the "Roll any skill" sheet. */
+function _rollables() {
   const all = [
     {name:'Valour', attr:'hrt', isMeta:true, ratingSrc:'valour'},
     {name:'Wisdom', attr:'wit', isMeta:true, ratingSrc:'wisdom'},
@@ -1545,42 +1543,82 @@ function renderQuickSkills() {
     // Brawling: derived prof (max(others) − 1) — RAW p.45. Shown when at least one other prof is rated.
     {name:'Brawling', attr:'str', isProf: true, isDerived: true}
   ];
-  // Grouped under their attribute (and Valour & Wisdom / Combat), so a player scans three
-  // short lists instead of one 20-button grid. A heading appears only above a group that shows.
-  const groupOf = it => it.isMeta ? 'Valour & Wisdom' : it.isProf ? 'Combat' : ({ str: 'Strength', hrt: 'Heart', wit: 'Wits' })[it.attr];
-  let lastGroup = null;
-  all.forEach(item => {
+  return all.map(item => {
     let s;
     if (item.isMeta) s = { rating: parseInt(char[item.ratingSrc]) || 1, favoured: false };
     else if (item.isDerived && item.name === 'Brawling') s = { rating: getBrawlingRating(), favoured: false };
     else if (item.isProf) s = { rating: char.profs[item.name] || 0, favoured: false };
     else s = char.skills[item.name] || { rating: 0, favoured: false };
-
-    if (!item.isMeta && s.rating === 0 && !s.favoured) return;  // hide empty skills/profs (always show Valour/Wisdom)
-
-    // Auto-favoured indicator from Cultural Blessing
     let blessingFav = false;
     if (item.isMeta) {
       if (item.name === 'Valour' && char.culture === 'Bardings') blessingFav = true;
       if (item.name === 'Wisdom' && char.culture === 'Hobbits of the Shire') blessingFav = true;
     }
-
-    const btn = document.createElement('div');
-    btn.className = 'quick-skill' + (s.favoured || blessingFav ? ' fav' : '');
-    if (item.isMeta) btn.style.background = 'var(--gold-soft)';
-    if (item.isDerived) btn.title = 'Brawling: derived from your highest combat prof, minus 1. Use for Unarmed/Dagger/Cudgel/Club.';
-    const star = blessingFav ? ' ★' : '';
-    const derivedTag = item.isDerived ? ' <small style="color:var(--text-faint);font-size:var(--fs-xs)">bare hands</small>' : '';
-    btn.innerHTML = `${item.name}${star}${derivedTag}<br><span class="rating">${s.rating} ${s.rating === 1 ? 'die' : 'dice'} · ${({ str: 'Strength', hrt: 'Heart', wit: 'Wits' })[item.attr] || String(item.attr).toUpperCase()}</span>`;
-    btn.onclick = () => quickRoll(item, s);
-    const g = groupOf(item);
-    if (g !== lastGroup) { const h = document.createElement('div'); h.className = 'qs-h'; h.textContent = g; container.appendChild(h); lastGroup = g; }
-    container.appendChild(btn);
+    return { item, s, blessingFav, show: item.isMeta || s.rating > 0 || s.favoured };
   });
-  if (container.children.length === 0) {
-    container.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--text-faint);font-size:var(--fs-xs);padding:10px">Set skill ratings to see quick-roll buttons</div>';
-  }
 }
+function _quickSkillBtn({ item, s, blessingFav }, after) {
+  const btn = document.createElement('div');
+  btn.className = 'quick-skill' + (s.favoured || blessingFav ? ' fav' : '');
+  btn.setAttribute('role', 'button'); btn.tabIndex = 0;
+  if (item.isMeta) btn.classList.add('meta');
+  if (item.isDerived) btn.title = 'Brawling: derived from your highest combat prof, minus 1. Use for Unarmed/Dagger/Cudgel/Club.';
+  const star = blessingFav ? ' ★' : '';
+  const derivedTag = item.isDerived ? ' <small style="color:var(--text-faint);font-size:var(--fs-xs)">bare hands</small>' : '';
+  btn.innerHTML = `${item.name}${star}${derivedTag}<br><span class="rating">${s.rating} ${s.rating === 1 ? 'die' : 'dice'} · ${({ str: 'Strength', hrt: 'Heart', wit: 'Wits' })[item.attr] || String(item.attr).toUpperCase()}</span>`;
+  btn.onclick = () => { if (after) after(); quickRoll(item, s); };
+  btn.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); btn.onclick(); } };
+  if (typeof bindRollPreview === 'function') bindRollPreview(btn, item, s);
+  return btn;
+}
+/** Dice tab (round 5): the rolls you just made and your best ones — not every skill again, which
+    the hero sheet already offers. "Roll any skill" opens the whole list in a sheet. */
+function renderQuickSkills() {
+  const container = document.getElementById('quick-skills');
+  if (!container) return;
+  container.innerHTML = '';
+  const rows = _rollables().filter(r => r.show);
+  const byName = n => rows.find(r => r.item.name === n);
+  const head = t => { const h = document.createElement('div'); h.className = 'qs-h'; h.textContent = t; container.appendChild(h); };
+  const recent = (char.recentRolls || []).map(byName).filter(Boolean).slice(0, 3);
+  const used = new Set(recent.map(r => r.item.name));
+  const best = rows.filter(r => r.item.isMeta)
+    .concat(rows.filter(r => !r.item.isMeta && !used.has(r.item.name))
+      .sort((a, b) => ((b.s.rating || 0) + (b.s.favoured ? .5 : 0)) - ((a.s.rating || 0) + (a.s.favoured ? .5 : 0))).slice(0, 4))
+    .filter(r => !used.has(r.item.name));
+  if (recent.length) { head('Recent'); recent.forEach(r => container.appendChild(_quickSkillBtn(r))); }
+  if (best.length) { head('Your best'); best.forEach(r => container.appendChild(_quickSkillBtn(r))); }
+  if (!rows.some(r => !r.item.isMeta)) {
+    const d = document.createElement('div'); d.style.cssText = 'grid-column:1/-1;text-align:center;color:var(--text-faint);font-size:var(--fs-xs);padding:10px';
+    d.textContent = 'Set skill ratings to see quick-roll buttons'; container.appendChild(d);
+  }
+  const all = document.createElement('button'); all.type = 'button'; all.className = 'btn btn-secondary qs-all';
+  all.innerHTML = '<svg class="b-ic lead-t" aria-hidden="true"><use href="#i-dice"/></svg>Roll any skill…'; all.onclick = openAllRolls;
+  container.appendChild(all);
+}
+function _noteRecentRoll(name) {
+  if (!name) return;
+  const r = (char.recentRolls || []).filter(n => n !== name); r.unshift(name); char.recentRolls = r.slice(0, 4);
+}
+/** The full list of rolls, grouped by attribute, in a bottom sheet. */
+function openAllRolls() {
+  let ov = document.getElementById('allroll-overlay');
+  if (!ov) {
+    ov = document.createElement('div'); ov.id = 'allroll-overlay'; ov.className = 'menu-overlay sheet';
+    ov.innerHTML = '<div class="menu"><h3>Roll any skill</h3><div class="quick-skills" id="allroll-grid"></div><button class="close btn btn-secondary" onclick="closeAllRolls()" style="width:100%;margin-top:12px">Close</button></div>';
+    document.body.appendChild(ov);
+  }
+  const grid = ov.querySelector('#allroll-grid'); grid.innerHTML = '';
+  const groupOf = it => it.isMeta ? 'Valour & Wisdom' : it.isProf ? 'Combat' : ({ str: 'Strength', hrt: 'Heart', wit: 'Wits' })[it.attr];
+  let last = null;
+  _rollables().filter(r => r.show).forEach(r => {
+    const g = groupOf(r.item);
+    if (g !== last) { const h = document.createElement('div'); h.className = 'qs-h'; h.textContent = g; grid.appendChild(h); last = g; }
+    grid.appendChild(_quickSkillBtn(r, closeAllRolls));
+  });
+  ov.classList.add('show');
+}
+function closeAllRolls() { const ov = document.getElementById('allroll-overlay'); if (ov) ov.classList.remove('show'); }
 
 /* ---------- LOAD AUTO-COMPUTE ---------- */
 function recomputeLoad() {
