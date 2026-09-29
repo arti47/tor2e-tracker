@@ -127,8 +127,10 @@ const DIE_GLYPH = {
   rune: '<svg viewBox="0 0 20 28" width="17" height="24" aria-hidden="true"><path d="M6 2 V26 M6 5 L15 11 M6 13 L15 19" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>'
 };
 /* Empty states: a quiet drawn icon above one line, instead of grey text floating in a card. */
-function emptyState(msg, icon) {
-  return `<div class="empty-state"><svg class="ic" aria-hidden="true"><use href="#i-${icon || 'scroll'}"/></svg><span>${msg}</span></div>`;
+/* Round 5: every empty list is a small drawn vignette, its one line, and the one button that fills it. */
+function emptyState(msg, icon, action) {
+  const btn = action ? `<button type="button" class="btn btn-secondary es-act" onclick="${action.fn}">${action.label}</button>` : '';
+  return `<div class="empty-state"><span class="empty-art" aria-hidden="true"><svg class="ic"><use href="#i-${icon || 'scroll'}"/></svg></span><span>${msg}</span>${btn}</div>`;
 }
 function _labelFeatDie(el, special) {
   if (!el) return;
@@ -1094,7 +1096,7 @@ function renderOracleHistory() {
   const el = document.getElementById('oracle-history');
   if (!el) return;
   if (oracleHistory.length === 0) {
-    el.innerHTML = emptyState('No rolls yet.', 'dice');
+    el.innerHTML = emptyState('No rolls yet.', 'dice', { label: 'Ask the Oracle', fn: "(document.getElementById('ask-q')||{}).focus&&document.getElementById('ask-q').focus();document.getElementById('ask-q')&&document.getElementById('ask-q').scrollIntoView({block:'center'})" });
     return;
   }
   el.innerHTML = oracleHistory.map((h, i) => `<div style="padding:5px 8px;border-bottom:1px solid var(--border)"><strong>${h.label}</strong> · ${h.result} <span style="float:right;color:var(--text-muted);font-size:var(--fs-xs)">${h.time} <button onclick="deleteOracleRollAt(${i})" aria-label="Delete this oracle roll" title="Delete this roll" style="background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:var(--fs-md);padding:0 0 0 4px;vertical-align:middle">×</button></span></div>`).join('');

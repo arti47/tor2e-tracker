@@ -2844,7 +2844,7 @@ function renderBand() {
   if (cnt) cnt.textContent = `(${char.band.allies.length})`;
   if (ac) {
     if (!char.band.allies.length) {
-      ac.innerHTML = emptyState('No allies yet. Tap “Roll 6 Starting Allies” to begin your Band.', 'users');
+      ac.innerHTML = emptyState('No allies yet. Tap “Roll 6 Starting Allies” to begin your Band.', 'users', { label: 'Roll 6 Starting Allies', fn: 'addStartingBand()' });
     } else {
       const injOpts = ['', ...INJURY_ORDER, 'lingering'];
       const fatOpts = ['', ...FATIGUE_ORDER];
@@ -3594,7 +3594,7 @@ function renderMagicalItems() {
   if (!list) return;
   const items = char.magicalItems || [];
   if (items.length === 0) {
-    list.innerHTML = emptyState('No magical treasure yet.', 'gem');
+    list.innerHTML = emptyState('No magical treasure yet.', 'gem', { label: 'Roll a hoard', fn: 'openHoardRoller()' });
     return;
   }
   list.innerHTML = items.map((item, i) => {
@@ -4837,6 +4837,31 @@ function _hudConditions() {
   if (char.miserable || autoMiser) t.push({ k: 'miserable', label: 'Miserable', set: !!char.miserable });
   return t;
 }
+/** Round 5: a change slides the bar from where it was and floats the difference up off it. */
+let _hudPrev = null;
+function _hudAnimate(now) {
+  const prev = _hudPrev; _hudPrev = now;
+  if (!prev || prev.id !== now.id) return;
+  const still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const one = (hostId, from, to, fromMax, toMax, label, sfrom, sto) => {
+    const host = document.getElementById(hostId); if (!host) return;
+    const bar = host.querySelector('.m-bar > i:not(.shadow)'), sb = host.querySelector('.m-bar > i.shadow');
+    const pct = (v, m) => m > 0 ? Math.max(0, Math.min(100, v / m * 100)) : 0;
+    if (!still && bar && (from !== to || fromMax !== toMax)) { const w = bar.style.width; bar.style.transition = 'none'; bar.style.width = pct(from, fromMax) + '%'; void bar.offsetWidth; bar.style.transition = ''; bar.style.width = w; }
+    if (!still && sb && sfrom !== sto) { const w = sb.style.width; sb.style.transition = 'none'; sb.style.width = pct(sfrom, fromMax) + '%'; void sb.offsetWidth; sb.style.transition = ''; sb.style.width = w; }
+    const d = to - from, ds = (sto || 0) - (sfrom || 0);
+    const float = (txt, cls) => { const f = document.createElement('span'); f.className = 'fdelta ' + cls; f.textContent = txt; f.setAttribute('aria-hidden', 'true'); host.appendChild(f); setTimeout(() => f.remove(), 1300); };
+    if (d) float((d > 0 ? '+' : '−') + Math.abs(d) + ' ' + label, d > 0 ? 'up' : 'down');
+    if (ds) float((ds > 0 ? '+' : '−') + Math.abs(ds) + ' Shadow', ds > 0 ? 'down shadowd' : 'up');
+    const val = host.querySelector('.m-val'); if (!still && val && d) {
+      const first = val.firstChild; const t0 = performance.now();
+      const step = t => { const k = Math.min(1, (t - t0) / 420); if (first) first.nodeValue = String(Math.round(from + d * k)); if (k < 1) requestAnimationFrame(step); };
+      requestAnimationFrame(step);
+    }
+  };
+  one('hud-end', prev.end, now.end, prev.endMax, now.endMax, 'End');
+  one('hud-hope', prev.hope, now.hope, prev.hopeMax, now.hopeMax, 'Hope', prev.sh, now.sh);
+}
 function _meter(label, cur, max, cls, extraPct, icon) {
   const pct = max > 0 ? Math.max(0, Math.min(100, cur / max * 100)) : 0;
   const shadow = extraPct ? `<i class="shadow" style="width:${Math.min(100, extraPct)}%"></i>` : '';
@@ -4870,6 +4895,7 @@ function renderHud() {
   const weary = end <= (parseInt(char.load) || 0) + (parseInt(char.fatigue) || 0);
   document.getElementById('hud-end').innerHTML = _meter('Endurance', end, endMax, weary ? 'end low' : 'end', 0, 'i-heart');
   document.getElementById('hud-hope').innerHTML = _meter('Hope', hope, hopeMax, 'hope', hopeMax ? sh / hopeMax * 100 : 0, 'i-star');
+  _hudAnimate({ id: activeCharId, end, endMax, hope, hopeMax, sh });
   const CIC = { shadow: 'i-moon', weary: 'i-weary', miserable: 'i-rain', wounded: 'i-drop', dying: 'i-skull' };
   const cic = k => `<svg class="chip-ic" aria-hidden="true"><use href="#${CIC[k]}"/></svg>`;
   document.getElementById('hud-chips').innerHTML = (sh ? `<span class="chip shadow" title="Shadow (incl. Scars). When it reaches your Hope you are Miserable.">${cic('shadow')}Shadow ${sh}</span>` : '') + _hudConditions()
@@ -5036,7 +5062,7 @@ function renderPlay() {
         : _roadStrip(parseInt(jr.currentHex) || 0, parseInt(jr.totalHexes), jr.nextEventHex)) : '';
   host.innerHTML =
     _playConditionBanner() +
-    `<div class="play-left"><div class="card ornate play-scene${['journey', 'home'].includes(s.step) && (char.journey || {}).active ? ' on-road' : ''}">
+    `<div class="play-left"><div class="card ornate play-scene${['journey', 'home'].includes(s.step) && (char.journey || {}).active ? ' on-road' : ''}" ${_sceneMood(s)}>
        ${typeof terrainVignette === 'function' ? terrainVignette(terrain) : ''}
        <div class="eyebrow">Where you are</div>
        <h3 class="card-title">${escapeHtml(sit.title)}</h3>
@@ -5057,6 +5083,17 @@ function renderPlay() {
 }
 /** Tablet (round 5): under the scene, the story so far from the Chronicle, and the last road
     walked on the map when you are not on one now. Hidden on phones, where the page is already long. */
+/** Round 5: the scene takes the colour of the story's season and hour, and dims in dark lands. */
+function _sceneMood(s) {
+  const jr = char.journey || {};
+  let season = jr.active && jr.season ? String(jr.season).toLowerCase() : '';
+  try { if (!season && typeof journal !== 'undefined' && journal.clock && typeof monthSeason === 'function') season = String(monthSeason(journal.clock.month) || '').toLowerCase(); } catch (e) {}
+  const step = s && s.step;
+  const time = step === 'fellowship' ? 'night' : (step === 'haven' || step === 'home') && !jr.active ? 'dusk' : 'day';
+  const region = String(jr.active ? (typeof journeyRegionNow === 'function' ? (journeyRegionNow(jr, parseInt(jr.currentHex) || 0) || jr.region) : jr.region) : '').toLowerCase();
+  const gloom = (typeof isMoria === 'function' && isMoria()) || /dark|shadow/.test(region);
+  return `data-season="${escapeHtml(season || 'spring')}" data-time="${time}"${gloom ? ' data-gloom="1"' : ''}`;
+}
 function shortHeroName(n) {
   const m = String(n).split(/,|\s+(?:son|daughter|child) of\s+|\s+['‘“"(]/i)[0].trim();
   return m || String(n);

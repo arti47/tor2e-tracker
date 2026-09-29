@@ -3590,3 +3590,60 @@ function renderBuildChecklist() {
     (done === steps.length ? '<p class="hint" style="text-align:left;margin:8px 0 0 0;color:var(--success-text,green)"><strong>Your hero is ready.</strong> Go and play — the Play tab runs the game for you.</p>' : '');
   renderBuildWizard();
 }
+
+/* ---------- Round 5: long-press a skill to see the roll before you make it ----------
+   Works on the Dice tab's buttons, the Roll-any-skill sheet, Play's quick rolls and every
+   tap-to-roll row on the hero sheet. A long press shows dice, Target Number and Favoured;
+   the click that follows the press is swallowed so the preview never rolls by accident. */
+function bindRollPreview(el, item, s) { if (el) el._roll = { item, s }; }
+function _rollOf(el) {
+  if (el._roll) return el._roll;
+  const m = (el.getAttribute('onclick') || '').match(/rollFromSheet\('([^']+)'\)/);
+  if (!m) return null;
+  const name = m[1];
+  const r = (typeof _rollables === 'function') ? _rollables().find(x => x.item.name === name) : null;
+  return r ? { item: r.item, s: r.s, blessingFav: r.blessingFav } : null;
+}
+function showRollPreview(el) {
+  const r = _rollOf(el); if (!r) return;
+  const { item, s } = r;
+  const attrName = { str: 'Strength', hrt: 'Heart', wit: 'Wits' }[item.attr] || '';
+  const tn = parseInt(char[item.attr + 'TN']) || '';
+  const fav = s.favoured || r.blessingFav || (item.name === 'Valour' && char.culture === 'Bardings') || (item.name === 'Wisdom' && char.culture === 'Hobbits of the Shire');
+  const conds = [char.weary ? 'Weary: 1–3 on the Success dice count as 0' : '', char.miserable ? 'Miserable: an Eye fails the roll' : ''].filter(Boolean);
+  let pop = document.getElementById('roll-preview');
+  if (!pop) { pop = document.createElement('div'); pop.id = 'roll-preview'; pop.className = 'roll-preview'; pop.setAttribute('role', 'status'); document.body.appendChild(pop); }
+  pop.innerHTML = `<strong>${escapeHtml(item.name)}</strong>
+    <div class="rp-row"><span>Dice</span><b>Feat + ${s.rating} Success</b></div>
+    <div class="rp-row"><span>Target</span><b>TN ${tn}${attrName ? ' · ' + attrName : ''}</b></div>
+    <div class="rp-row"><span>Feat die</span><b>${fav ? '★ Favoured — best of two' : 'Normal'}</b></div>
+    ${conds.map(c => `<div class="rp-note">${escapeHtml(c)}</div>`).join('')}
+    <div class="rp-foot">Let go, then tap to roll.</div>`;
+  const b = el.getBoundingClientRect();
+  pop.classList.add('show');
+  const w = pop.offsetWidth, h = pop.offsetHeight;
+  const left = Math.max(8, Math.min(innerWidth - w - 8, b.left + b.width / 2 - w / 2));
+  const top = b.top - h - 8 > 60 ? b.top - h - 8 : b.bottom + 8;
+  pop.style.left = left + 'px'; pop.style.top = top + 'px';
+  try { if (navigator.vibrate) navigator.vibrate(6); } catch (e) {}
+}
+function hideRollPreview() { const p = document.getElementById('roll-preview'); if (p) p.classList.remove('show'); }
+(() => {   // long-press preview wiring
+  const SEL = '.quick-skill, .qchip, [onclick^="rollFromSheet"]';
+  let t = null, fired = false, sx = 0, sy = 0;
+  document.addEventListener('pointerdown', e => {
+    const el = e.target.closest && e.target.closest(SEL); if (!el) return;
+    fired = false; sx = e.clientX; sy = e.clientY; clearTimeout(t);
+    t = setTimeout(() => { fired = true; showRollPreview(el); }, 480);
+  }, true);
+  const cancel = () => { clearTimeout(t); };
+  document.addEventListener('pointermove', e => { if (Math.abs(e.clientX - sx) + Math.abs(e.clientY - sy) > 12) cancel(); }, true);
+  document.addEventListener('pointerup', () => { cancel(); if (fired) setTimeout(hideRollPreview, 1600); }, true);
+  document.addEventListener('pointercancel', () => { cancel(); hideRollPreview(); }, true);
+  document.addEventListener('click', e => {
+    if (!fired) return;
+    const el = e.target.closest && e.target.closest(SEL); fired = false;
+    if (el) { e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation(); }
+  }, true);
+  document.addEventListener('contextmenu', e => { if (e.target.closest && e.target.closest(SEL)) e.preventDefault(); }, true);
+})();

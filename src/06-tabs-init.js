@@ -886,6 +886,18 @@ function pickFeat(rolls) {
 /* ---------- The illuminated result banner (round 4) ----------
    The verdict comes first, as a ribbon in the display face coloured by outcome, with one line
    of why ("12 vs TN 15 — short by 3"). Success icons and a Piercing Blow sit on it as seals. */
+/** Round 5: a number counts up to its value once the dice have landed. */
+function countUpNumber(el, to, delay) {
+  if (!el || typeof to !== 'number' || !isFinite(to)) return;
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) { el.textContent = to; return; }
+  const token = (el._cu = (el._cu || 0) + 1);
+  el.textContent = '0';
+  setTimeout(() => {
+    const t0 = performance.now(), dur = 380;
+    const step = t => { if (el._cu !== token) return; const k = Math.min(1, (t - t0) / dur); el.textContent = Math.round(to * (1 - Math.pow(1 - k, 3))); if (k < 1) requestAnimationFrame(step); else el.textContent = to; };
+    requestAnimationFrame(step);
+  }, delay || 0);
+}
 function renderRollBanner(r) {
   const el = document.getElementById('roll-banner'); if (!el) return;
   const word = !r.ok ? 'Failure' : r.level === 'Extraordinary' ? 'Extraordinary success' : r.level === 'Great' ? 'Great success' : 'Success';
@@ -893,7 +905,7 @@ function renderRollBanner(r) {
     : r.isAutoFail ? 'Miserable, and the Eye came up — it fails'
     : (r.total >= r.tn ? `${r.total} vs TN ${r.tn} — made it${r.total > r.tn ? ' by ' + (r.total - r.tn) : ', exactly'}` : `${r.total} vs TN ${r.tn} — short by ${r.tn - r.total}`);
   const seals = (r.ok && r.icons ? `<span class="seal" title="Success icons">✦ ${r.icons}</span>` : '') + (r.piercing ? '<span class="seal pierce">Piercing blow</span>' : '');
-  el.className = 'roll-banner ' + (!r.ok ? 'b-fail' : r.level === 'Extraordinary' ? 'b-extra' : r.level === 'Great' ? 'b-great' : 'b-ok');
+  el.className = 'roll-banner ' + (!r.ok ? 'b-fail' : r.level === 'Extraordinary' ? 'b-extra' : r.level === 'Great' ? 'b-great' : 'b-ok') + (r.ok && (r.level === 'Extraordinary' || r.level === 'Great') ? ' shine' : '');
   el.innerHTML = `${r.what ? `<div class="rb-what">${escapeHtml(r.what)}</div>` : ''}<div class="rb-ribbon"><span>${word}</span></div><div class="rb-why">${why}</div>${seals ? `<div class="rb-seals">${seals}</div>` : ''}`;
   el.hidden = false;
 }
@@ -1007,7 +1019,13 @@ function rollDice(skillLabel) {
     diceDiv.appendChild(d);
   });
 
-  document.getElementById('result-total').textContent = isAutoSuccess ? '★' : (isAutoFail ? '✗' : total);
+  const totEl = document.getElementById('result-total');
+  totEl.setAttribute('aria-hidden', 'true');   // the banner says the total; the counting digits need not
+  totEl.textContent = isAutoSuccess ? '★' : (isAutoFail ? '✗' : total);
+  if (!isAutoSuccess && !isAutoFail) countUpNumber(totEl, total, 180 + 120 * successRolls.length);
+  // round 5: the Eye leaves an ink blot; a great or extraordinary result catches the light
+  resultEl.classList.remove('ink-eye', 'gilt'); void resultEl.offsetWidth;
+  if (chosenFeat && chosenFeat.special === 'eye') resultEl.classList.add('ink-eye');
   // Feel: the dice tumble in, the card takes the outcome's colour, and phones that can buzz do.
   diceDiv.classList.remove('dice-tumble'); void diceDiv.offsetWidth; diceDiv.classList.add('dice-tumble');
   resultEl.classList.toggle('res-success', outcome.startsWith('SUCCESS'));
@@ -1261,7 +1279,7 @@ function renderHistory() {
   if (!div) return;
   div.innerHTML = '';
   if (history.length === 0) {
-    div.innerHTML = emptyState('No rolls yet — tap a skill above to make your first.', 'dice');
+    div.innerHTML = emptyState('No rolls yet — tap a skill above to make your first.', 'dice', { label: 'Roll any skill…', fn: 'openAllRolls()' });
     return;
   }
   // Filters
@@ -2478,3 +2496,24 @@ function menuSearch(q) {
     box.appendChild(b);
   });
 }
+
+/* ---------- Round 5: ink-press ----------
+   A primary button sinks with a darker inner shade (CSS :active); a secondary one gets a faint
+   ink ripple from where the finger landed. The ripple lives in its own clipped box, so the
+   button's own overflow and children are untouched. Honours reduce-motion. */
+(() => {   // ink ripple wiring
+  const SEL = '.btn-secondary, .add-row-btn:not(.primary), .choice:not(.primary), .quick-skill, .opt-card, .chip-btn, .qchip, .v-act, .menu-item, .tab, .bn-item';
+  document.addEventListener('pointerdown', e => {
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const b = e.target.closest && e.target.closest(SEL); if (!b || b.disabled || b.closest('.hint-q')) return;
+    const r = b.getBoundingClientRect(); if (!r.width) return;
+    if (getComputedStyle(b).position === 'static') b.style.position = 'relative';
+    const box = document.createElement('span'); box.className = 'ripple-box'; box.setAttribute('aria-hidden', 'true');
+    const dot = document.createElement('span'); dot.className = 'ripple';
+    const size = Math.max(r.width, r.height) * 2.2;
+    dot.style.width = dot.style.height = size + 'px';
+    dot.style.left = (e.clientX - r.left - size / 2) + 'px'; dot.style.top = (e.clientY - r.top - size / 2) + 'px';
+    box.appendChild(dot); b.appendChild(box);
+    setTimeout(() => box.remove(), 650);
+  }, { passive: true, capture: true });
+})();

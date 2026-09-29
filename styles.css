@@ -2136,3 +2136,118 @@ svg symbol { stroke-width: 1.75px; }
   .scene-art { height: 52px; }
   .sticky-act { bottom: 12px; }
 }
+
+/* Vitals: bars slide to the new value; the difference floats up off the meter (round 5) */
+#hud-end, #hud-hope { position: relative; }
+.m-bar > i { transition: width .45s var(--ease); }
+.fdelta { position: absolute; right: 4px; top: -2px; font: 700 var(--fs-sm)/1 var(--font-body); pointer-events: none; white-space: nowrap;
+  animation: fdelta 1.25s var(--ease) forwards; text-shadow: 0 1px 0 var(--card-bg), 0 0 6px var(--card-bg); z-index: 3; }
+.fdelta.up { color: var(--success-text, #2e7d32); } .fdelta.down { color: var(--red); } .fdelta.shadowd { color: var(--ink); }
+.fdelta + .fdelta { top: 14px; }
+@keyframes fdelta { 0% { opacity: 0; transform: translateY(6px); } 15% { opacity: 1; transform: translateY(0); } 70% { opacity: 1; } 100% { opacity: 0; transform: translateY(-16px); } }
+@media (prefers-reduced-motion: reduce) { .fdelta { animation: none; opacity: 1; } .m-bar > i { transition: none; } }
+/* Conditions as wax seals (round 5): a pressed seal with its drawn mark, the word beside it */
+.hud-chips { gap: 6px; }
+.hud-chips .chip { --seal: #8e1f1a; display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px 2px 2px; border-radius: 999px;
+  background: color-mix(in srgb, var(--seal) 11%, var(--card-bg)); color: color-mix(in srgb, var(--seal) 55%, var(--ink));
+  border: 1px solid color-mix(in srgb, var(--seal) 30%, transparent); box-shadow: none; opacity: 1; font-weight: 700; }
+.hud-chips .chip .chip-ic { width: 22px; height: 22px; padding: 5px; margin: 0; flex: 0 0 22px; border-radius: 50%; box-sizing: border-box; color: #fbf1dc;
+  background: radial-gradient(circle at 34% 30%, color-mix(in srgb, var(--seal) 55%, #fff) 0 18%, var(--seal) 55%, color-mix(in srgb, var(--seal) 70%, #000) 100%);
+  box-shadow: 0 1px 1.5px rgba(40, 10, 5, .35), 0 0 0 1.5px color-mix(in srgb, var(--seal) 55%, transparent), inset 0 -1px 2px rgba(0, 0, 0, .25); }
+.hud-chips .chip.shadow { --seal: #2b2320; }
+.hud-chips .chip.weary { --seal: #a8731c; }
+.hud-chips .chip.miserable { --seal: #4d5a68; }
+.hud-chips .chip.wounded, .hud-chips .chip.dying { --seal: #8e1f1a; }
+.hud-chips .chip.auto { background: transparent; border-style: dashed; }
+.hud-chips .chip.auto .chip-ic { background: transparent; color: var(--seal); box-shadow: inset 0 0 0 1.5px var(--seal); }
+body.dark .hud-chips .chip { color: color-mix(in srgb, var(--seal) 35%, var(--ink)); background: color-mix(in srgb, var(--seal) 22%, var(--card-bg)); }
+body.dark .hud-chips .chip.shadow { --seal: #6b5a4a; }
+body.dark .hud-chips .chip.miserable { --seal: #7d8ea0; }
+body.dark .hud-chips .chip.weary { --seal: #c89a3c; }
+body.dark .hud-chips .chip.wounded, body.dark .hud-chips .chip.dying { --seal: #c0453a; }
+/* A paper for each part of the book (round 5) — faint, so text never loses contrast.
+   Play and Adventure keep the map contours; Hero is plain vellum; Roll sits on a darker
+   leather-toned field; Journal is ruled book paper. */
+:root { --noise: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .35 0 0 0 0 .25 0 0 0 0 .12 0 0 0 .05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+body:not(.dark):not(.theme-hc):not(.theme-sepia)[data-group="hero"] { background-image: var(--noise), radial-gradient(ellipse 90% 60% at 50% 0%, rgba(255, 250, 235, .7), transparent 70%); }
+body:not(.dark):not(.theme-hc):not(.theme-sepia)[data-group="roll"] { background-image: var(--noise), radial-gradient(ellipse 120% 80% at 50% 45%, rgba(120, 70, 30, .02), rgba(95, 55, 22, .14) 100%); }
+body:not(.dark):not(.theme-hc):not(.theme-sepia)[data-group="journal"] { background-image: var(--noise), repeating-linear-gradient(180deg, transparent 0 31px, rgba(90, 110, 140, .07) 31px 32px); }
+body.dark[data-group="roll"] { background-image: radial-gradient(ellipse 120% 80% at 50% 40%, rgba(255, 170, 80, .06), rgba(0, 0, 0, .25) 100%); }
+body.dark[data-group="journal"] { background-image: repeating-linear-gradient(180deg, transparent 0 31px, rgba(200, 170, 110, .05) 31px 32px), radial-gradient(ellipse 80% 45% at 50% -8%, rgba(255, 170, 80, .1), transparent 70%); }
+body.dark[data-group="hero"] { background-image: radial-gradient(ellipse 80% 45% at 50% -8%, rgba(255, 170, 80, .15), transparent 70%); }
+/* The scene takes the colour of the season and the hour (round 5) */
+.play-scene .scene-art { transition: background .6s var(--ease), color .6s var(--ease); }
+.play-scene[data-season="spring"] .scene-art { background: linear-gradient(180deg, rgba(130, 170, 95, .20), transparent 85%); }
+.play-scene[data-season="summer"] .scene-art { background: linear-gradient(180deg, rgba(225, 180, 80, .22), transparent 85%); }
+.play-scene[data-season="autumn"] .scene-art { background: linear-gradient(180deg, rgba(190, 105, 45, .22), transparent 85%); color: #5b3418; }
+.play-scene[data-season="winter"] .scene-art { background: linear-gradient(180deg, rgba(120, 140, 165, .26), transparent 85%); color: #33404e; }
+.play-scene[data-season="winter"] .scene-art::after { content: ''; position: absolute; inset: 0; pointer-events: none;
+  background-image: radial-gradient(circle, rgba(255, 255, 255, .9) 0 1.1px, transparent 1.6px), radial-gradient(circle, rgba(255, 255, 255, .7) 0 .8px, transparent 1.3px);
+  background-size: 34px 30px, 21px 23px; background-position: 0 0, 11px 7px; }
+.play-scene .scene-art { position: relative; }
+.play-scene[data-time="dusk"] .scene-art { background: linear-gradient(180deg, rgba(214, 128, 60, .28), rgba(240, 190, 120, .12) 60%, transparent 90%); }
+.play-scene[data-time="night"] .scene-art { background: linear-gradient(180deg, rgba(40, 55, 90, .34), rgba(60, 70, 110, .12) 65%, transparent 92%); color: #2a3150; }
+.play-scene[data-gloom] .scene-art { filter: saturate(.55) brightness(.85); background: linear-gradient(180deg, rgba(40, 30, 30, .30), transparent 90%); }
+body.dark .play-scene .scene-art { color: var(--ink); }
+@media (prefers-reduced-motion: reduce) { .play-scene .scene-art { transition: none; } }
+/* Dice feel (round 5): the Feat die lands first, then each Success die in turn */
+.dice-tumble .success-die:nth-child(2) { animation-delay: .16s; } .dice-tumble .success-die:nth-child(3) { animation-delay: .28s; }
+.dice-tumble .success-die:nth-child(4) { animation-delay: .40s; } .dice-tumble .success-die:nth-child(5) { animation-delay: .52s; }
+.dice-tumble .success-die:nth-child(6) { animation-delay: .64s; } .dice-tumble .success-die:nth-child(7) { animation-delay: .76s; }
+.dice-tumble .success-die:nth-child(n+8) { animation-delay: .88s; }
+.dice-tumble .feat-die + .feat-die { animation-delay: .06s; }
+/* A great or extraordinary result: light runs along the gilt ribbon */
+.roll-banner.shine .rb-ribbon { position: relative; overflow: hidden; }
+.roll-banner.shine .rb-ribbon::after { content: ''; position: absolute; inset: -20% auto -20% -40%; width: 35%; transform: skewX(-20deg);
+  background: linear-gradient(90deg, transparent, rgba(255, 244, 200, .75), transparent); animation: gilt 1.6s .5s var(--ease) 2; pointer-events: none; }
+@keyframes gilt { from { left: -40%; } to { left: 120%; } }
+/* The Eye: an ink blot spreads under the dice */
+.roll-result.ink-eye { position: relative; }
+.roll-result.ink-eye::before { content: ''; position: absolute; left: 50%; top: 42%; width: 180px; height: 120px; transform: translate(-50%, -50%) scale(.2); z-index: 0; pointer-events: none;
+  background: radial-gradient(ellipse at 50% 50%, rgba(25, 10, 8, .22), rgba(25, 10, 8, .10) 45%, transparent 70%),
+              radial-gradient(circle at 20% 30%, rgba(25, 10, 8, .16) 0 8px, transparent 9px), radial-gradient(circle at 82% 64%, rgba(25, 10, 8, .14) 0 6px, transparent 7px);
+  border-radius: 45% 55% 50% 50%; animation: inkspread .7s var(--ease) forwards; }
+.roll-result.ink-eye > * { position: relative; z-index: 1; }
+@keyframes inkspread { to { transform: translate(-50%, -50%) scale(1); } }
+@media (prefers-reduced-motion: reduce) { .roll-banner.shine .rb-ribbon::after, .roll-result.ink-eye::before { animation: none; } .roll-result.ink-eye::before { transform: translate(-50%, -50%); } }
+/* Long-press preview of a roll (round 5) */
+.roll-preview { position: fixed; z-index: 400; min-width: 210px; max-width: 280px; padding: 10px 12px; border-radius: var(--r-md); background: var(--card-bg);
+  border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(40, 20, 8, .28); font-size: var(--fs-sm); color: var(--ink);
+  opacity: 0; transform: translateY(4px); pointer-events: none; transition: opacity .14s, transform .14s; }
+.roll-preview.show { opacity: 1; transform: none; }
+.roll-preview strong { display: block; font-family: var(--font-display); font-size: var(--fs-lg); margin-bottom: 4px; }
+.roll-preview .rp-row { display: flex; justify-content: space-between; gap: 10px; padding: 3px 0; border-top: 1px solid var(--line); }
+.roll-preview .rp-row span { color: var(--text-muted); }
+.roll-preview .rp-note { margin-top: 4px; font-size: var(--fs-xs); color: var(--red); }
+.roll-preview .rp-foot { margin-top: 6px; font-size: var(--fs-xs); color: var(--text-faint); }
+.quick-skill, .qchip, [onclick^="rollFromSheet"] { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+/* Ink-press (round 5) */
+.btn:not(.btn-secondary):not(.btn-quiet):active, .roll-btn:not(.secondary):active, .add-row-btn.primary:active, .choice.primary:active {
+  transform: translateY(1px); box-shadow: inset 0 2px 5px rgba(40, 8, 4, .35) !important; filter: brightness(.94); }
+.btn, .roll-btn, .add-row-btn, .choice { transition: transform .08s var(--ease), box-shadow .12s var(--ease), filter .12s; }
+.ripple-box { position: absolute; inset: 0; overflow: hidden; border-radius: inherit; pointer-events: none; z-index: 0; }
+.ripple { position: absolute; border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--ink) 16%, transparent) 0 40%, transparent 70%);
+  transform: scale(.05); opacity: 1; animation: ripple .6s var(--ease) forwards; }
+@keyframes ripple { to { transform: scale(1); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .btn:active, .roll-btn:active, .add-row-btn:active, .choice:active { transform: none; } }
+/* Typography (round 5): labels in true small caps, one colour; old-style figures in prose,
+   lining tabular figures in numbers that line up; balanced headings; tighter phone scale. */
+:root { --label: #775718; }
+body.dark { --label: #d2b06a; } body.theme-hc { --label: #000; } body.theme-sepia { --label: #5e3f12; }
+.eyebrow, .qs-h, .pa-h, .s-h, .v-h, .xp-head, .pick-group, .jq-sub, .roll-banner .rb-what, .meta small {
+  font-family: var(--font-display) !important; font-variant-caps: all-small-caps; text-transform: none !important;
+  letter-spacing: .09em !important; font-weight: 600 !important; font-size: 14px !important; color: var(--label) !important; }
+.play-sit, .ps-lines p, .play-feed p, .ch-p, .card-title, h2, h3, .rb-why { font-variant-numeric: oldstyle-nums proportional-nums; }
+.m-val, .v-num, .result-total, .attr-box, .stat-n, .hs-num, .xp-row, .foe-bar strong, .tv-num, .item-nums { font-variant-numeric: lining-nums tabular-nums; }
+.card-title, .card h2, h2, h3, .bs-label, .play-scene .card-title, .choice strong { text-wrap: balance; }
+p, .hint, .play-sit, .ps-lines p, .choice small { text-wrap: pretty; }
+@media (max-width: 599px) { .card-title, .card h2 { font-size: 17.5px; } .card.ornate > .card-title { font-size: var(--fs-xl); } }
+/* Empty states (round 5): a drawn medallion, the line, one action */
+.empty-state { gap: 8px; padding: var(--sp-5) var(--sp-3); }
+.empty-state .empty-art { position: relative; width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center;
+  background: radial-gradient(circle at 50% 40%, color-mix(in srgb, var(--gold) 12%, var(--card-bg)), var(--card-bg) 70%);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gold) 45%, transparent), 0 0 0 4px var(--card-bg), 0 0 0 5px color-mix(in srgb, var(--gold) 25%, transparent); }
+.empty-state .empty-art::before, .empty-state .empty-art::after { content: ''; position: absolute; top: 50%; width: 22px; height: 1px; background: color-mix(in srgb, var(--gold) 45%, transparent); }
+.empty-state .empty-art::before { right: calc(100% + 8px); } .empty-state .empty-art::after { left: calc(100% + 8px); }
+.empty-state .empty-art .ic { width: 28px; height: 28px; color: var(--gold); }
+.empty-state .es-act { margin-top: 4px; width: auto; min-width: 180px; }

@@ -774,7 +774,7 @@ async function _tcRunFoeAttacks() {
 }
 function _tcFoesHtml() {
   const foes = enc().foes || [];
-  if (!foes.length) return '<p class="hint">No foes yet.</p>';
+  if (!foes.length) return emptyState('No foes yet.', 'skull', { label: 'Add a foe', fn: 'openBestiary()' });
   return '<ul class="tbl-foes">' + foes.map(f => `<li class="${f.slain ? 'slain' : ''}"><strong>${escapeHtml(f.name)}</strong> <span>End ${parseInt(f.endCur) || 0}/${parseInt(f.endMax) || 0}${f.wounded ? ' · Wounded' : ''}${f.slain ? ' · Slain' : ''}</span></li>`).join('') + '</ul>';
 }
 function _tcOrderHtml(gm) {

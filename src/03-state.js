@@ -1587,8 +1587,7 @@ function renderChronicleTimeline() {
   const countEl = document.getElementById('ch-count');
   if (countEl) countEl.textContent = journal.scenes.length ? `(${journal.scenes.length} scene${journal.scenes.length === 1 ? '' : 's'})` : '';
   if (journal.scenes.length === 0) {
-    wrap.innerHTML = `<div style="text-align:center;color:var(--text-faint);padding:14px;font-size:var(--fs-xs)">No scenes yet — tap “+ New Scene”, or just start writing below.<br><br>
-      <button class="add-row-btn" onclick="loadSampleChronicle()" style="background:var(--btn-secondary-bg);font-size:var(--fs-xs)">Load an example scene</button></div>`;
+    wrap.innerHTML = emptyState('No scenes yet — tap “+ New Scene”, or just start writing below.', 'feather', { label: 'Load an example scene', fn: 'loadSampleChronicle()' });
     return;
   }
   // Jump-to-scene selector (only worth showing past a couple of scenes).
