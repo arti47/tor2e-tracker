@@ -590,7 +590,7 @@ function renderWeapons() {
       `<button class="icon-btn" onclick="removeWeapon(${i})" aria-label="Remove ${nm}" title="Remove"><svg class="ic"><use href="#i-x"/></svg></button>`;
     const nums = [w.dmg !== '' && w.dmg != null ? `Damage ${escapeHtml(String(w.dmg))}` : '', w.inj ? `Injury ${escapeHtml(String(w.inj))}` : '', w.load !== '' && w.load != null ? `Load ${escapeHtml(String(w.load))}` : ''].filter(Boolean).join(' · ');
     const note = String(w.notes || '').replace(/\s*\(currently \dh\)/g, '').trim();
-    return _itemCard({ icon: _PROF_ICON[prof] || 'i-swords', title: w.name ? nm : '<em>Unnamed weapon</em>', nums: nums || 'Tap the pencil to fill in its numbers',
+    return _itemCard({ icon: typeof weaponGlyph === 'function' ? weaponGlyph(w, prof) : (_PROF_ICON[prof] || 'i-swords'), title: w.name ? nm : '<em>Unnamed weapon</em>', nums: nums || 'Tap the pencil to fill in its numbers',
       badges: _gearBadges(w.rewards), note: escapeHtml(note), ctl, edit, key: 'w' + i });
   }).join('') || '<p class="s-empty">No weapons yet. You may take one weapon for each rank of its Combat Proficiency.</p>';
   // Any edit box just opened takes the focus of a player who tapped the pencil
@@ -603,7 +603,7 @@ function renderGearItems() {
   const pencil = (key, what) => `<button class="icon-btn" onclick="toggleGearEdit('${key}')" aria-label="Edit ${what} by hand" title="Edit"><svg class="ic"><use href="#i-pencil"/></svg></button>`;
   let h = '';
   if (n(char.armourProt) || char.armourNotes) {
-    h += _itemCard({ icon: 'i-mail', title: escapeHtml(char.armourNotes || 'Body armour'), nums: `Protection ${n(char.armourProt)} dice · Load ${n(char.armourLoad)}`,
+    h += _itemCard({ icon: /leather/i.test(char.armourNotes || '') ? 'i-leather' : 'i-mail', title: escapeHtml(char.armourNotes || 'Body armour'), nums: `Protection ${n(char.armourProt)} dice · Load ${n(char.armourLoad)}`,
       badges: _gearBadges(char.armourRewards), key: 'armour',
       ctl: `<button class="chip-btn" onclick="openArmourPicker()">Change</button>${pencil('armour', 'armour')}<button class="icon-btn" onclick="clearArmour()" aria-label="Remove armour" title="Remove"><svg class="ic"><use href="#i-x"/></svg></button>` });
   } else h += `<div class="item-card empty"><svg class="ic item-ic" aria-hidden="true"><use href="#i-mail"/></svg><div class="item-body"><strong>No body armour</strong><small>Armour adds dice to your Protection roll when a blow pierces.</small></div><div class="item-ctl"><button class="chip-btn" onclick="openArmourPicker()">Choose armour</button></div></div>`;
@@ -1426,7 +1426,7 @@ function renderEncounter() {
   const wIdx = Math.min(e.weaponIdx || 0, Math.max(0, wpns.length - 1));
   const a = e.adv;
   let html = sharedBanner + `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:8px">
-      <strong style="font-size:var(--fs-md)">Round ${e.round}</strong>
+      <span class="round-banner"><svg viewBox="0 0 120 30" aria-hidden="true"><path d="M8 4h104l-8 11 8 11H8l8-11z"/></svg><strong>Round ${e.round}</strong></span>
       ${canGm ? `<button onclick="nextRound()" class="add-row-btn" style="font-size:var(--fs-xs);padding:3px 8px;background:var(--btn-secondary-bg);color:white">Next round ▸</button>` : ''}
     </div>
     <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:var(--fs-xs);margin-bottom:6px">
@@ -1466,6 +1466,7 @@ function _renderFoeCard(f, canGm = true, lead = true) {
   const pct = (c, m) => Math.max(0, Math.min(100, (parseInt(c) || 0) / Math.max(1, parseInt(m) || 1) * 100));
   let h = `<div class="foe-card${slain ? ' slain' : ''}">${typeof foeSilhouette === 'function' ? foeSilhouette(f) : ''}
     <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+      ${typeof foeSilhouette === 'function' ? `<span class="foe-medal" aria-hidden="true">${foeSilhouette(f, 'foe-medal-sil')}</span>` : ''}
       <strong style="font-size:var(--fs-md)">${escapeHtml(f.name)}</strong>
       ${slain ? '<span class="result-tag tag-fail">SLAIN</span>' : (f.wounded ? '<span class="result-tag" style="background:var(--btn-warn-bg);color:white">WOUNDED</span>' : '')}
       <span style="font-size:var(--fs-xs);color:var(--text-faint)">${escapeHtml(f.source || '')}</span>
@@ -1474,8 +1475,8 @@ function _renderFoeCard(f, canGm = true, lead = true) {
       <button onclick="removeFoe('${f.id}')" title="Remove" style="background:none;border:none;cursor:pointer;color:var(--text-faint)">×</button>` : ''}
     </div>
     <div class="foe-bars">
-      <div class="foe-bar"><span>Endurance <strong>${f.endCur}/${f.endMax}</strong></span>${step('endCur', -1, '−')}${step('endCur', 1, '+')}<i><b style="width:${pct(f.endCur, f.endMax)}%"></b></i></div>
-      <div class="foe-bar hate"><span>Hate <strong>${f.hateCur}/${f.hateMax}</strong></span>${step('hateCur', -1, '−')}${step('hateCur', 1, '+')}<i><b style="width:${pct(f.hateCur, f.hateMax)}%"></b></i></div>
+      <div class="foe-bar"><span>Endurance <strong>${f.endCur}/${f.endMax}</strong></span>${step('endCur', -1, '−')}${step('endCur', 1, '+')}${typeof notchBar === 'function' ? notchBar(f.endCur, f.endMax, 'nb-end', 'Endurance') : `<i><b style="width:${pct(f.endCur, f.endMax)}%"></b></i>`}</div>
+      <div class="foe-bar hate"><span>Hate <strong>${f.hateCur}/${f.hateMax}</strong></span>${step('hateCur', -1, '−')}${step('hateCur', 1, '+')}${typeof notchBar === 'function' && (parseInt(f.hateMax) || 0) > 0 ? notchBar(f.hateCur, f.hateMax, 'nb-hate', 'Hate') : `<i><b style="width:${pct(f.hateCur, f.hateMax)}%"></b></i>`}</div>
     </div>
     <div class="foe-stats">Parry ${f.parry} · Armour ${f.armour}${f.might ? ` · Might ${f.might}` : ''}</div>
     ${f.fell ? `<div style="font-size:var(--fs-xs);color:var(--text-muted);margin-top:3px">⚜ ${escapeHtml(f.fell)}</div>` : ''}`;
@@ -1565,7 +1566,15 @@ function _quickSkillBtn({ item, s, blessingFav }, after) {
   if (item.isDerived) btn.title = 'Brawling: derived from your highest combat prof, minus 1. Use for Unarmed/Dagger/Cudgel/Club.';
   const star = blessingFav ? ' ★' : '';
   const derivedTag = item.isDerived ? ' <small style="color:var(--text-faint);font-size:var(--fs-xs)">bare hands</small>' : '';
-  btn.innerHTML = `${item.name}${star}${derivedTag}<br><span class="rating">${s.rating} ${s.rating === 1 ? 'die' : 'dice'} · ${({ str: 'Strength', hrt: 'Heart', wit: 'Wits' })[item.attr] || String(item.attr).toUpperCase()}</span>`;
+  // Round 6: attribute glyph, name, the dice drawn as pips, and the TN it rolls against
+  const attrName = ({ str: 'Strength', hrt: 'Heart', wit: 'Wits' })[item.attr] || String(item.attr).toUpperCase();
+  const n = parseInt(s.rating) || 0;
+  const pips = n > 0 ? Array.from({ length: Math.min(n, 6) }, () => '<i></i>').join('') : '<em>no dice</em>';
+  const tn = parseInt(char[item.attr + 'TN']);
+  const glyph = (typeof ATTR_GLYPH !== 'undefined' && ATTR_GLYPH[item.attr]) ? `<svg class="ic qs-ic" aria-hidden="true"><use href="#${ATTR_GLYPH[item.attr]}"/></svg>` : '';
+  btn.innerHTML = `${glyph}<span class="qs-name">${item.name}${star}${derivedTag}</span>` +
+    `<span class="qs-meta"><span class="qs-pips" aria-label="${n} ${n === 1 ? 'die' : 'dice'}">${pips}</span>${tn ? `<span class="qs-tn">TN ${tn}</span>` : ''}</span>` +
+    `<span class="rating">${n} ${n === 1 ? 'die' : 'dice'} · ${attrName}</span>`;
   btn.onclick = () => { if (after) after(); quickRoll(item, s); };
   btn.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); btn.onclick(); } };
   if (typeof bindRollPreview === 'function') bindRollPreview(btn, item, s);
@@ -1915,7 +1924,7 @@ function renderUsefulItemsDisplay() {
   if (!div) return;
   const owned = Array.isArray(char.usefulItems) ? char.usefulItems : [];
   if (owned.length === 0) {
-    div.innerHTML = '<p style="color:var(--text-faint);font-size:var(--fs-xs);text-align:center;padding:10px">No Useful Items picked yet. Pick some on the Build tab.</p>';
+    div.innerHTML = typeof emptyState === 'function' ? emptyState('No Useful Items picked yet. Pick some on the Build tab.', 'pack', { label: 'Open Build', fn: "_goTab('build')" }) : '<p>No Useful Items picked yet. Pick some on the Build tab.</p>';
     return;
   }
   div.innerHTML = owned.map(entry => {
@@ -1923,10 +1932,9 @@ function renderUsefulItemsDisplay() {
     const item = isObj ? entry : USEFUL_ITEMS.find(x => x.name === entry);
     if (!item) return '';
     const skillTag = item.skillAlt ? `${item.skill} or ${item.skillAlt}` : (item.skill || '');
-    return `<div style="padding:10px;border:1px solid var(--border);border-radius:var(--r-sm);margin-bottom:6px;background:var(--gold-soft)">
-      <strong>${escapeHtml(item.name)}</strong> ${skillTag ? `<span style="color:var(--red);font-size:var(--fs-xs);font-weight:600">+1d ${skillTag}</span>` : ''}<br>
-      <small style="color:var(--text-muted);font-size:var(--fs-xs)">${escapeHtml(item.desc || '')}</small>
-    </div>`;
+    const ic = typeof itemGlyph === 'function' ? itemGlyph(item.name, item.skill) : 'i-pack';
+    return `<div class="item-card useful-item"><svg class="ic item-ic" aria-hidden="true"><use href="#${ic}"/></svg>
+      <div class="item-body"><strong>${escapeHtml(item.name)}</strong>${skillTag ? `<span class="item-nums">+1d ${escapeHtml(skillTag)}</span>` : ''}${item.desc ? `<small>${escapeHtml(item.desc)}</small>` : ''}</div></div>`;
   }).join('');
 }
 
@@ -3467,7 +3475,8 @@ function renderReference() {
     const matched = rows.filter(([t, d]) => !q || title.toLowerCase().includes(q) || (((t || '') + ' ' + (d || '')).toLowerCase().includes(q)));
     if (!matched.length) return;
     // Collapsed by default (the tab was 13 screens long); a search opens every matching group.
-    html += `<details class="ref-group"${q ? ' open' : ''}><summary><h3>${title}</h3><span class="ref-count">${matched.length}</span></summary><dl>`;
+    const rIc = ({ 'Stances (Combat)': 'i-st-forward', Conditions: 'i-weary', 'Combat Tasks': 'i-swords', 'Dice & Target Numbers': 'i-dice', 'Key Terms': 'i-book', 'Playing Solo (no Game Master)': 'i-compass', 'Skills (18)': 'i-star' })[title];
+    html += `<details class="ref-group"${q ? ' open' : ''}><summary><h3>${rIc ? `<svg class="ic ref-ic" aria-hidden="true"><use href="#${rIc}"/></svg>` : ''}${title}</h3><span class="ref-count">${matched.length}</span></summary><dl>`;
     matched.forEach(([t, d]) => {
       html += t ? `<dt>${escapeHtml(t)}</dt><dd>${d}</dd>` : `<dd class="solo">${d}</dd>`;
     });
@@ -3515,6 +3524,8 @@ const BUILD_WIZ_STEPS = [
   { cards: ['rewards-card'], title: 'Starting Reward' },
   { cards: ['virtues-card'], title: 'Starting Virtue' },
 ];
+// Round 6: each step is a drawn mark, not a bare bar
+const BUILD_STEP_ICON = ['i-fleur', 'i-swords', 'i-book', 'i-star', 'i-feather', 'i-pack', 'i-mail', 'i-trophy', 'i-sparkles'];
 let buildStep = 0;
 function _buildShowAll() { try { return localStorage.getItem('tor2e-buildall') === '1'; } catch (e) { return false; } }
 function buildGoStep(n) {
@@ -3556,7 +3567,7 @@ function renderBuildWizard() {
     : `<div class="bs-row"><span class="bs-label">Step ${buildStep + 1} of ${n} · <strong>${st.title}</strong></span>` +
       `<button class="btn btn-quiet" onclick="toggleBuildShowAll()">Show every step</button></div>` +
       `<div class="bs-dots" role="tablist" aria-label="Creation steps">${BUILD_WIZ_STEPS.map((s, i) =>
-        `<button role="tab" aria-selected="${i === buildStep}" aria-label="Step ${i + 1}: ${s.title}" class="bs-dot${i === buildStep ? ' on' : ''}${i < buildStep ? ' past' : ''}" onclick="buildGoStep(${i})"><span class="bs-name">${i + 1} · ${s.title}</span></button>`).join('')}</div>`;
+        `<button role="tab" aria-selected="${i === buildStep}" aria-label="Step ${i + 1}: ${s.title}" class="bs-dot${i === buildStep ? ' on' : ''}${i < buildStep ? ' past' : ''}" onclick="buildGoStep(${i})"><svg class="ic bs-ic" aria-hidden="true"><use href="#${BUILD_STEP_ICON[i] || 'i-dot'}"/></svg><span class="bs-name">${i + 1} · ${s.title}</span></button>`).join('')}</div>`;
   foot.style.display = all ? 'none' : '';
   foot.innerHTML = all ? '' :
     (empty ? `<p class="bs-empty">Nothing to choose here for this hero — it is already settled. Carry on.</p>` : '') +

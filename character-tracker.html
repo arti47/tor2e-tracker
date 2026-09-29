@@ -186,6 +186,7 @@
 
   <div class="card">
     <h3 class="card-title" data-hint="Tale of Years">Tale of Years</h3>
+    <div id="ch-wheel" class="ch-wheel" aria-hidden="false"></div>
     <div class="row-2" style="gap:8px">
       <div class="field" style="margin:0"><label style="flex:0 0 46px">Day</label><input type="number" id="ch-day" min="1" max="30" onchange="setChronicleClock()"></div>
       <div class="field" style="margin:0"><label style="flex:0 0 46px">Year</label><input type="number" id="ch-year" min="0" onchange="setChronicleClock()"></div>
@@ -472,7 +473,7 @@
     <aside id="play-aside" class="play-aside" aria-label="Your hero at a glance"></aside>
   </div>
   <details class="campaign-box" id="campaign-box">
-    <summary><span>Your campaign</span><small>sessions · adventures · ending the saga</small></summary>
+    <summary><span>Your campaign</span><small>sessions · adventures · ending the saga</small><span class="camp-seals" id="camp-seals"></span></summary>
   <div class="card" id="saga-card"></div>
   <div class="card" id="adventure-loop" style="display:none"></div>
   </details>
@@ -928,11 +929,11 @@
   <div class="card">
     <h3 class="card-title" data-hint="Stance">Stance</h3>
     <div class="conditions stance-grid">
-      <button class="cond-btn stance-btn" data-stance="forward"><strong>Forward</strong><small>hit harder, get hit more</small></button>
-      <button class="cond-btn stance-btn" data-stance="open"><strong>Open</strong><small>balanced</small></button>
-      <button class="cond-btn stance-btn" data-stance="defensive"><strong>Defensive</strong><small>harder to hit you</small></button>
-      <button class="cond-btn stance-btn" data-stance="rearward"><strong>Rearward</strong><small>bows only, out of reach</small></button>
-      <button class="cond-btn stance-btn" data-stance="skirmish" style="display:none"><strong>Skirmish</strong><small>shoot and slip away</small></button>
+      <button class="cond-btn stance-btn" data-stance="forward"><svg class="ic st-ic" aria-hidden="true"><use href="#i-st-forward"/></svg><strong>Forward</strong><small>hit harder, get hit more</small></button>
+      <button class="cond-btn stance-btn" data-stance="open"><svg class="ic st-ic" aria-hidden="true"><use href="#i-st-open"/></svg><strong>Open</strong><small>balanced</small></button>
+      <button class="cond-btn stance-btn" data-stance="defensive"><svg class="ic st-ic" aria-hidden="true"><use href="#i-st-defensive"/></svg><strong>Defensive</strong><small>harder to hit you</small></button>
+      <button class="cond-btn stance-btn" data-stance="rearward"><svg class="ic st-ic" aria-hidden="true"><use href="#i-bow"/></svg><strong>Rearward</strong><small>bows only, out of reach</small></button>
+      <button class="cond-btn stance-btn" data-stance="skirmish" style="display:none"><svg class="ic st-ic" aria-hidden="true"><use href="#i-person"/></svg><strong>Skirmish</strong><small>shoot and slip away</small></button>
     </div>
     <div id="stance-desc" style="font-size:var(--fs-xs);margin-top:10px;padding:10px;background:var(--bg);border-radius:var(--r-sm);min-height:50px;line-height:1.5;color:var(--text-muted);">
       Select a stance to see its effects.
@@ -1005,11 +1006,11 @@
     <div class="jq"><div class="jq-n">2</div><div class="jq-b">
       <div class="jq-q" data-hint="Hexes">How far?</div>
       <div class="opt-row" id="j-dist" role="group" aria-label="How far">
-        <button type="button" class="opt-card" data-hex="4" onclick="jPickDist(4)"><strong>Short</strong><small>A few days · 4 hexes</small></button>
-        <button type="button" class="opt-card" data-hex="9" onclick="jPickDist(9)"><strong>Long</strong><small>A week or more · 9 hexes</small></button>
-        <button type="button" class="opt-card" data-hex="18" onclick="jPickDist(18)"><strong>Very long</strong><small>Weeks on the road · 18 hexes</small></button>
-        <button type="button" class="opt-card" data-hex="exact" onclick="jPickDist('exact')"><strong>I know the number</strong><small>Count the hexes on your map</small></button>
-        <button type="button" class="opt-card opt-map" data-hex="map" onclick="jPickDist('map')"><strong>Pick on the map</strong><small>Tap where you start and where you're going — the app counts it</small></button>
+        <button type="button" class="opt-card" data-hex="4" onclick="jPickDist(4)"><span class="opt-stones" aria-hidden="true"><svg class="ic st" aria-hidden="true"><use href="#i-stone"/></svg></span><strong>Short</strong><small>A few days · 4 hexes</small></button>
+        <button type="button" class="opt-card" data-hex="9" onclick="jPickDist(9)"><span class="opt-stones" aria-hidden="true"><svg class="ic st" aria-hidden="true"><use href="#i-stone"/></svg><svg class="ic st" aria-hidden="true"><use href="#i-stone"/></svg></span><strong>Long</strong><small>A week or more · 9 hexes</small></button>
+        <button type="button" class="opt-card" data-hex="18" onclick="jPickDist(18)"><span class="opt-stones" aria-hidden="true"><svg class="ic st" aria-hidden="true"><use href="#i-stone"/></svg><svg class="ic st" aria-hidden="true"><use href="#i-stone"/></svg><svg class="ic st" aria-hidden="true"><use href="#i-stone"/></svg></span><strong>Very long</strong><small>Weeks on the road · 18 hexes</small></button>
+        <button type="button" class="opt-card" data-hex="exact" onclick="jPickDist('exact')"><svg class="ic opt-ic" aria-hidden="true"><use href="#i-compass"/></svg><strong>I know the number</strong><small>Count the hexes on your map</small></button>
+        <button type="button" class="opt-card opt-map" data-hex="map" onclick="jPickDist('map')"><svg class="ic opt-ic" aria-hidden="true"><use href="#i-map"/></svg><strong>Pick on the map</strong><small>Tap where you start and where you're going — the app counts it</small></button>
       </div>
       <p class="hint j-map-note" id="j-map-note" hidden></p>
       <div class="j-exact" id="j-exact" hidden>
@@ -1021,14 +1022,14 @@
     <div class="jq"><div class="jq-n">3</div><div class="jq-b">
       <div class="jq-q">How do you travel?</div>
       <div class="opt-row" id="j-travel" role="group" aria-label="How do you travel">
-        <button type="button" class="opt-card" data-mode="foot" onclick="jPickTravel('foot')"><strong>On foot</strong><small>The usual way</small></button>
-        <button type="button" class="opt-card" data-mode="mounted" onclick="jPickTravel('mounted')"><strong>Mounted</strong><small>Ponies or horses carry the load</small></button>
-        <button type="button" class="opt-card" data-mode="forced" onclick="jToggleForced()"><strong>Forced march</strong><small>Faster, but +1 Fatigue a day</small></button>
+        <button type="button" class="opt-card" data-mode="foot" onclick="jPickTravel('foot')"><svg class="ic opt-ic" aria-hidden="true"><use href="#i-boot"/></svg><strong>On foot</strong><small>The usual way</small></button>
+        <button type="button" class="opt-card" data-mode="mounted" onclick="jPickTravel('mounted')"><svg class="ic opt-ic" aria-hidden="true"><use href="#i-horse"/></svg><strong>Mounted</strong><small>Ponies or horses carry the load</small></button>
+        <button type="button" class="opt-card" data-mode="forced" onclick="jToggleForced()"><svg class="ic opt-ic" aria-hidden="true"><use href="#i-steps"/></svg><strong>Forced march</strong><small>Faster, but +1 Fatigue a day</small></button>
       </div>
       <div class="field" id="j-vigour-row" style="margin:8px 0 0" hidden><label>Mount’s Vigour</label><input type="number" id="j-mountVigour" min="0" max="6"></div>
       <div class="jq-sub">Season</div>
       <div class="chip-row seg" id="j-season-chips" role="group" aria-label="Season">
-        <button type="button" class="chip" data-v="Spring" onclick="jPickChip('j-season','Spring')">Spring</button><button type="button" class="chip" data-v="Summer" onclick="jPickChip('j-season','Summer')">Summer</button><button type="button" class="chip" data-v="Autumn" onclick="jPickChip('j-season','Autumn')">Autumn</button><button type="button" class="chip" data-v="Winter" onclick="jPickChip('j-season','Winter')">Winter</button>
+        <button type="button" class="chip" data-v="Spring" onclick="jPickChip('j-season','Spring')"><svg class="ic chip-ic" aria-hidden="true"><use href="#i-sprout"/></svg>Spring</button><button type="button" class="chip" data-v="Summer" onclick="jPickChip('j-season','Summer')"><svg class="ic chip-ic" aria-hidden="true"><use href="#i-sun"/></svg>Summer</button><button type="button" class="chip" data-v="Autumn" onclick="jPickChip('j-season','Autumn')"><svg class="ic chip-ic" aria-hidden="true"><use href="#i-leaf"/></svg>Autumn</button><button type="button" class="chip" data-v="Winter" onclick="jPickChip('j-season','Winter')"><svg class="ic chip-ic" aria-hidden="true"><use href="#i-snow"/></svg>Winter</button>
       </div>
       <div class="jq-sub" data-hint="Hunt Threshold">Lands you cross</div>
       <div class="chip-row seg" id="j-region-chips" role="group" aria-label="Region">
@@ -1653,6 +1654,7 @@
 
   <div class="card ornate oracle-ask" id="oracle-ask">
     <h3 class="card-title">Ask the Oracle</h3>
+    <span class="ask-stone" id="ask-stone" aria-hidden="true"></span>
     <textarea id="ask-q" rows="2" placeholder="Is there a light in the passage?" aria-label="Your question"></textarea>
     <div class="ask-lab">How likely is “yes”?</div>
     <div class="seg-btns" id="ask-odds" role="group" aria-label="How likely is yes?">
@@ -1955,8 +1957,9 @@
   <!-- IN PROGRESS -->
   <div class="card" id="battle-active-card" style="display:none">
     <h3 class="card-title" data-hint="Clash">Clash <span id="b-round" style="color:var(--text-muted);font-weight:400;font-size:var(--fs-xs)"></span></h3>
+    <div id="b-banners"></div>
     <div class="row-2">
-      <div class="counter"><div class="counter-label" data-hint="Foe Resistance">Foe Resistance</div><div class="counter-value" id="b-foeres-v">6</div><div class="hint" style="margin:0">Might <span id="b-foemight-v">1</span></div></div>
+      <div class="counter"><svg class="ic ctr-ic" aria-hidden="true"><use href="#i-shield"/></svg><div class="counter-label" data-hint="Foe Resistance">Foe Resistance</div><div class="counter-value" id="b-foeres-v">6</div><div class="hint" style="margin:0">Might <span id="b-foemight-v">1</span></div></div>
       <div class="counter" id="b-obj-counter" style="display:none"><div class="counter-label">Objective</div><div class="counter-value" id="b-objres-v">0</div><div class="hint" style="margin:0" id="b-obj-name"></div></div>
     </div>
     <div id="b-chips" style="margin:8px 0"></div>
@@ -1972,10 +1975,10 @@
 
     <label data-hint="Band Stance" style="font-size:var(--fs-xs);color:var(--red-dark);text-transform:uppercase;letter-spacing:0.5px;font-weight:600">2 · Band Stance</label>
     <div class="seg-btns" id="b-stance-pick" style="margin:4px 0">
-      <button class="seg-btn" data-stance="aggressive">Aggressive <small>harder</small></button>
-      <button class="seg-btn" data-stance="balanced">Balanced</button>
-      <button class="seg-btn" data-stance="guarded">Guarded <small>safer</small></button>
-      <button class="seg-btn" data-stance="fleeing">Flee <small>rolls Manoeuvre</small></button>
+      <button class="seg-btn" data-stance="aggressive"><svg class="ic st-ic" aria-hidden="true"><use href="#i-st-forward"/></svg>Aggressive <small>harder</small></button>
+      <button class="seg-btn" data-stance="balanced"><svg class="ic st-ic" aria-hidden="true"><use href="#i-st-open"/></svg>Balanced</button>
+      <button class="seg-btn" data-stance="guarded"><svg class="ic st-ic" aria-hidden="true"><use href="#i-st-defensive"/></svg>Guarded <small>safer</small></button>
+      <button class="seg-btn" data-stance="fleeing"><svg class="ic st-ic" aria-hidden="true"><use href="#i-boot"/></svg>Flee <small>rolls Manoeuvre</small></button>
     </div>
 
     <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:6px 0">
@@ -2148,13 +2151,13 @@
     <button onclick="openReferenceTab()"><span>Rules reference</span></button>
 
     <details class="menu-sec" open>
-      <summary class="menu-group">Play on your own</summary>
+      <summary class="menu-group"><svg class="ic mg-ic" aria-hidden="true"><use href="#i-compass"/></svg>Play on your own</summary>
       <button onclick="toggleStriderMode()" id="strider-mode-btn">Solo Play: Strider Mode</button>
       <button onclick="toggleMoriaMode()" id="moria-mode-btn">Solo Play: Moria campaign</button>
     </details>
 
     <details class="menu-sec">
-      <summary class="menu-group">Heroes</summary>
+      <summary class="menu-group"><svg class="ic mg-ic" aria-hidden="true"><use href="#i-users"/></svg>Heroes</summary>
       <button onclick="openPregens()">Ready-made heroes</button>
       <button onclick="newCharacter();toggleMenu()">New blank hero</button>
       <button onclick="openShare()">Share this hero (link / QR)</button>
@@ -2162,7 +2165,7 @@
     </details>
 
     <details class="menu-sec">
-      <summary class="menu-group">Play with others</summary>
+      <summary class="menu-group"><svg class="ic mg-ic" aria-hidden="true"><use href="#i-hall"/></svg>Play with others</summary>
       <button onclick="openCampaign()">Play at a table (join or start)</button>
       <button onclick="openPartyView()">Party view</button>
       <button onclick="openTableMode()">Show on a big screen (TV or tablet)</button>
@@ -2170,7 +2173,7 @@
     </details>
 
     <details class="menu-sec">
-      <summary class="menu-group">Appearance</summary>
+      <summary class="menu-group"><svg class="ic mg-ic" aria-hidden="true"><use href="#i-feather"/></svg>Appearance</summary>
       <button onclick="cycleTheme()" id="dark-mode-btn">Theme</button>
       <button onclick="cycleTextSize()" id="textsize-btn">Text size</button>
       <button onclick="toggleCompactMode()" id="compact-mode-btn">Compact spacing</button>
@@ -2180,7 +2183,7 @@
     </details>
 
     <details class="menu-sec">
-      <summary class="menu-group">Backup &amp; restore</summary>
+      <summary class="menu-group"><svg class="ic mg-ic" aria-hidden="true"><use href="#i-save"/></svg>Backup &amp; restore</summary>
       <button onclick="exportData()">Export this hero (file)</button>
       <button onclick="document.getElementById('import-file').click()">Import a hero (file)</button>
       <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)">
@@ -2192,7 +2195,7 @@
     </details>
 
     <details class="menu-sec">
-      <summary class="menu-group">Danger zone</summary>
+      <summary class="menu-group"><svg class="ic mg-ic" aria-hidden="true"><use href="#i-warn"/></svg>Danger zone</summary>
       <button class="danger" onclick="resetCharacter()">Reset this hero to blank</button>
     </details>
     <button class="close" onclick="toggleMenu()">Close</button>
@@ -2447,8 +2450,8 @@
       <p class="hint" style="text-align:left;line-height:1.6">A Fellowship Phase concludes the Adventuring Phase. <strong>Ordinary phases</strong> last a week to a season. <strong>Yule</strong> is the winter end-of-year — ages everyone by 1, restores all Hope, grants WITS bonus Skill Points, and unlocks Yule-only undertakings (Heal Scars, Raise an Heir, Recount a Story).</p>
       <p class="hint" style="text-align:left;color:var(--text-muted)">Yule comes once every ~3 phases. Tap Yule if it's been about a year since your last Yule, or your group is treating this as the winter festival.</p>
       <div style="display:flex;gap:8px;margin-top:14px">
-        <button class="opt-card" onclick="fpSetPhaseType('ordinary')" id="fp-type-ord" aria-pressed="false"><strong>Ordinary</strong><small>a week to a season</small></button>
-        <button class="opt-card" onclick="fpSetPhaseType('yule')" id="fp-type-yule" aria-pressed="false"><strong>Yule</strong><small>year's end · age +1 · full Hope</small></button>
+        <button class="opt-card" onclick="fpSetPhaseType('ordinary')" id="fp-type-ord" aria-pressed="false"><svg class="opt-art" viewBox="0 0 120 48" aria-hidden="true"><path d="M20 46V20l40-16 40 16v26"/><path d="M42 46V32a18 18 0 0 1 36 0v14"/><path d="M60 44c-6 0-9-4-7-9 2 2 4 2 5 0 1-4 3-6 6-8 0 5 5 7 4 11-1 4-4 6-8 6z" class="fl"/><path d="M8 46h104"/></svg><strong>Ordinary</strong><small>a week to a season</small></button>
+        <button class="opt-card" onclick="fpSetPhaseType('yule')" id="fp-type-yule" aria-pressed="false"><svg class="opt-art" viewBox="0 0 120 48" aria-hidden="true"><path d="M26 40h68l6-6H32z" class="log"/><path d="M40 34V22M60 34V18M80 34V22"/><path d="M40 20c-2-2-2-4 0-6 2 2 2 4 0 6zM60 16c-2-2-2-4 0-6 2 2 2 4 0 6zM80 20c-2-2-2-4 0-6 2 2 2 4 0 6z" class="fl"/><path d="M104 8v12M98 11l12 6M98 17l12-6M14 12v10M9 14.5l10 5M9 19.5l10-5"/><path d="M8 46h104"/></svg><strong>Yule</strong><small>year's end · age +1 · full Hope</small></button>
       </div>
       <p class="hint" id="fp-type-status" style="margin-top:10px;text-align:center;font-weight:600;color:var(--red-dark)"></p>
     </div>

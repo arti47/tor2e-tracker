@@ -76,6 +76,7 @@ function render() {
   renderPECard();
   renderUsefulItemsPicker();
   renderUsefulItemsDisplay();
+  if (typeof renderCampSeals === 'function') renderCampSeals();
   renderRewardsPicker();
   renderVirtuesPicker();
   refreshKeenButton();
@@ -2174,6 +2175,8 @@ function renderBattle() {
     setText('b-foeres-v', b.foeResistance);
     setText('b-foemight-v', b.foeMight);
     setText('b-round', 'Round ' + b.round);
+    const bb = document.getElementById('b-banners');
+    if (bb && typeof battleBanners === 'function') bb.innerHTML = battleBanners(char.band && char.band.sharedCalling ? 'The ' + char.band.sharedCalling : 'Your Band', b.scale || 'The War Party', b.foeResistance, b.foeResMax || b.foeResistance);
     const oc = document.getElementById('b-obj-counter');
     if (b.objectiveResMax > 0) { oc.style.display = ''; setText('b-objres-v', b.objectiveRes); document.getElementById('b-obj-name').textContent = b.objective || 'objective'; }
     else oc.style.display = 'none';
@@ -2827,7 +2830,8 @@ function renderBand() {
     dc.innerHTML = DISPOSITIONS.map(d => {
       const rating = parseInt(char.band.dispositions[d.key]) || 0;
       const isFocus = char.band.dispositionFocus === d.key;
-      return `<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)">
+      return `<div class="disp-row" style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)">
+        ${typeof DISP_GLYPH !== 'undefined' && DISP_GLYPH[d.key] ? `<svg class="ic disp-ic" aria-hidden="true"><use href="#${DISP_GLYPH[d.key]}"/></svg>` : ''}
         <div style="flex:1">
           <strong>${d.name}</strong>${isFocus ? ' <span style="color:var(--gold)">★</span>' : ''} <span style="color:var(--text-muted);font-size:var(--fs-xs)">${d.sub}</span>
         </div>
@@ -2860,7 +2864,8 @@ function renderBand() {
           ? `<div style="font-size:var(--fs-xs);margin-top:2px;background:var(--gold-soft);border-radius:var(--r-sm);padding:3px 6px"><strong style="color:var(--gold)">👑 Kingly Gift:</strong> ${escapeHtml(kg.name)} <span style="color:var(--text-muted)">— 2nd Gift (+1d) &amp; ward: re-roll one 👁 when it aids a roll</span> <span onclick="removeKinglyGift('${a.id}')" style="cursor:pointer;color:var(--red);font-weight:700;float:right">×</span></div>`
           : '';
         const kgBtn = (a.hardened && !kg) ? `<button onclick="giveKinglyGift('${a.id}')" style="font-size:var(--fs-xs);background:var(--gold-soft);border:1px solid var(--gold);color:var(--ink);border-radius:var(--r-sm);padding:3px 8px;cursor:pointer">👑 Kingly Gift</button>` : '';
-        return `<div style="border:1.5px solid ${border};border-radius:var(--r-sm);padding:8px;margin-bottom:8px;${a.outOfAction ? 'opacity:0.6' : ''}${!onMission ? ';opacity:0.5' : ''}">
+        const sil = typeof cultureSilhouette === 'function' ? cultureSilhouette(a.hardened ? 'Dwarves of Nogrod & Belegost' : "Dwarves of Durin's Folk").replace('class="silhouette"', 'class="silhouette ally-sil"') : '';
+        return `<div class="ally-card" style="border:1.5px solid ${border};border-radius:var(--r-sm);padding:8px;margin-bottom:8px;${a.outOfAction ? 'opacity:0.6' : ''}${!onMission ? ';opacity:0.5' : ''}">${sil}
           <div style="display:flex;align-items:center;gap:6px">
             <input value="${escapeHtml(a.name)}" onchange="setAllyField('${a.id}','name',this.value)" style="flex:1;font-weight:700;border:none;background:transparent;color:var(--ink);font-size:var(--fs-md)">
             ${a.hardened ? '<span style="background:var(--gold);color:white;font-size:var(--fs-xs);font-weight:700;padding:1px 6px;border-radius:var(--r-sm)">HARDENED</span>' : ''}
@@ -4767,11 +4772,11 @@ function renderHeroSheet() {
     char.patron && ['Patron', char.patron], char.safeHaven && ['Safe Haven', char.safeHaven],
     char.standard && ['Living', char.standard], char.age && ['Age', char.age]
   ].filter(Boolean).map(([k, v]) => `<span class="meta"><small>${k}</small>${escapeHtml(String(v))}</span>`).join('');
-  const attr = (k, label, gloss) => `<div class="s-attr"><span class="s-lab">${label}</span><strong>${n(char[k + 'Rating'])}</strong><span class="s-tn">TN ${n(char[k + 'TN'])}</span><span class="s-gl">${gloss}</span></div>`;
+  const attr = (k, label, gloss) => `<div class="s-attr">${typeof ATTR_GLYPH !== 'undefined' ? `<svg class="ic a-ic" aria-hidden="true"><use href="#${ATTR_GLYPH[k]}"/></svg>` : ''}<span class="s-lab">${label}</span><strong>${n(char[k + 'Rating'])}</strong><span class="s-tn">TN ${n(char[k + 'TN'])}</span><span class="s-gl">${gloss}</span></div>`;
   const stat = (label, v, roll) => roll
     ? `<button type="button" class="s-stat s-roll" onclick="rollFromSheet('${label}')" aria-label="Roll ${label}"><strong>${v}</strong><span>${label}</span></button>`
     : `<div class="s-stat"><strong>${v}</strong><span>${label}</span></div>`;
-  const skillCol = (k, title) => `<div class="s-skillcol"><div class="s-h">${title}</div>` + SKILLS[k].map(sk => {
+  const skillCol = (k, title) => `<div class="s-skillcol"><div class="s-h">${typeof ATTR_GLYPH !== 'undefined' ? `<svg class="ic a-ic" aria-hidden="true"><use href="#${ATTR_GLYPH[k]}"/></svg>` : ''}${title}</div>` + SKILLS[k].map(sk => {
     const d = (char.skills || {})[sk] || {}; const r = n(d.rating);
     return `<button type="button" class="s-skill${r ? '' : ' zero'}" onclick="rollFromSheet('${sk}')" aria-label="Roll ${escapeHtml(sk)}"><span>${d.favoured ? '<b class="fav" title="Favoured">★</b>' : ''}${escapeHtml(sk)}</span>${_pips(r)}</button>`;
   }).join('') + '</div>';
@@ -4978,7 +4983,7 @@ function _playConditionBanner() {
 function renderPlayAside() {
   const el = document.getElementById('play-aside'); if (!el) return;
   if (!char.culture) { el.innerHTML = ''; return; }
-  const attr = (k, n) => `<div class="pa-attr"><span>${n}</span><strong>${parseInt(char[k + 'Rating']) || 0}</strong><small>TN ${parseInt(char[k + 'TN']) || 0}</small></div>`;
+  const attr = (k, n) => `<div class="pa-attr">${typeof ATTR_GLYPH !== 'undefined' ? `<svg class="ic a-ic" aria-hidden="true"><use href="#${ATTR_GLYPH[k]}"/></svg>` : ''}<span>${n}</span><strong>${parseInt(char[k + 'Rating']) || 0}</strong><small>TN ${parseInt(char[k + 'TN']) || 0}</small></div>`;
   const skills = Object.entries(char.skills || {})
     .map(([n, v]) => ({ n, r: parseInt(v && v.rating) || 0, f: !!(v && v.favoured) }))
     .filter(s => s.r > 0 || s.f).sort((a, b) => b.r - a.r || a.n.localeCompare(b.n)).slice(0, 10);
@@ -5063,7 +5068,7 @@ function renderPlay() {
   host.innerHTML =
     _playConditionBanner() +
     `<div class="play-left"><div class="card ornate play-scene${['journey', 'home'].includes(s.step) && (char.journey || {}).active ? ' on-road' : ''}" ${_sceneMood(s)}>
-       ${typeof terrainVignette === 'function' ? terrainVignette(terrain) : ''}
+       ${typeof terrainVignette === 'function' ? terrainVignette(terrain, _sceneArtOpts(s)) : ''}
        <div class="eyebrow">Where you are</div>
        <h3 class="card-title">${escapeHtml(sit.title)}</h3>
        <div class="play-sit">${sit.text}</div>
@@ -5079,11 +5084,26 @@ function renderPlay() {
           </button>`; }).join('')}
      </div>
      ${_playQuickRolls()}
-     ${isSolo() ? '<p class="play-foot">Everything that happens here is written into your Chronicle for you.</p>' : ''}`;
+     ${isSolo() ? '<p class="play-foot">Everything that happens here is written into your Chronicle for you.</p>' : ''}
+     ${typeof playFooterArt === 'function' ? playFooterArt() : ''}`;
 }
 /** Tablet (round 5): under the scene, the story so far from the Chronicle, and the last road
     walked on the map when you are not on one now. Hidden on phones, where the page is already long. */
 /** Round 5: the scene takes the colour of the story's season and hour, and dims in dark lands. */
+/** Round 6: what the scene art adds on top of the land — the road, mist, the Eye. */
+function _sceneArtOpts(s) {
+  const jr = char.journey || {};
+  const onRoad = ['journey', 'home'].includes(s && s.step) && !!jr.active;
+  const region = String(jr.active ? ((typeof journeyRegionNow === 'function' ? journeyRegionNow(jr, parseInt(jr.currentHex) || 0) : '') || jr.region || '') : '').toLowerCase();
+  const mist = (typeof isMoria === 'function' && isMoria()) || /dark|shadow/.test(region);
+  let eye = 0;
+  if (typeof isSolo === 'function' && isSolo() && typeof huntThreshold === 'function') {
+    const hunt = huntThreshold(char);
+    const ea = parseInt(char.eyeAwareness) || 0;
+    if (hunt > 0 && ea >= hunt - 4) eye = Math.min(1, (ea - (hunt - 4)) / 4 + .25);
+  }
+  return { road: onRoad, mist, eye };
+}
 function _sceneMood(s) {
   const jr = char.journey || {};
   let season = jr.active && jr.season ? String(jr.season).toLowerCase() : '';
@@ -5118,9 +5138,12 @@ function _playQuickRolls() {
     .map(([n, v]) => ({ n, r: parseInt(v && v.rating) || 0, f: v && v.favoured ? 1 : 0 }))
     .filter(x => x.r > 0).sort((a, b) => (b.r + b.f * .5) - (a.r + a.f * .5)).slice(0, 3);
   const last = window._lastQuick;
-  const chip = (lab, sub, fn) => `<button type="button" class="qchip" onclick="${fn}"><strong>${escapeHtml(lab)}</strong><small>${escapeHtml(sub)}</small></button>`;
-  const chips = (last ? chip('Again: ' + last.item.name, 'repeat last roll', 'rollAgain()') : '') +
-    best.map(x => chip(x.n, x.r + 'd' + (x.f ? ' · ★' : ''), `rollFromSheet('${x.n}')`)).join('');
+  const gl = a => (typeof ATTR_GLYPH !== 'undefined' && ATTR_GLYPH[a]) ? `<svg class="ic qc-ic" aria-hidden="true"><use href="#${ATTR_GLYPH[a]}"/></svg>` : '';
+  const pips = n => `<span class="qs-pips">${Array.from({ length: Math.min(n, 6) }, () => '<i></i>').join('')}</span>`;
+  const chip = (lab, sub, fn, a, n, fav) => `<button type="button" class="qchip${fav ? ' fav' : ''}" onclick="${fn}">${gl(a)}<strong>${escapeHtml(lab)}</strong><small>${n ? pips(n) : ''}${escapeHtml(sub)}</small></button>`;
+  const aOf = n => (typeof attrOfSkill === 'function' ? attrOfSkill(n) : '');
+  const chips = (last ? chip('Again: ' + last.item.name, 'repeat last roll', 'rollAgain()', last.item.attr, 0) : '') +
+    best.map(x => { const a = aOf(x.n), tn = parseInt(char[a + 'TN']); return chip(x.n, (tn ? 'TN ' + tn : x.r + 'd') + (x.f ? ' · ★' : ''), `rollFromSheet('${x.n}')`, a, x.r, x.f); }).join('');
   if (!chips) return '';
   return `<div class="play-quick"><div class="eyebrow">Quick rolls</div><div class="qchips">${chips}</div></div>`;
 }

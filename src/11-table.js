@@ -143,7 +143,7 @@ function _tblConnHtml() {
 function _tblPhaseCard() {
   const ph = TABLE_PHASES[_tblPhase()];
   const note = Table.state.note ? `<p class="tbl-note">“${escapeHtml(Table.state.note)}”</p>` : '';
-  return `<div class="card ornate tbl-phase" data-phase="${_tblPhase()}"><div class="eyebrow">At the table now</div>
+  return `<div class="card ornate tbl-phase" data-phase="${_tblPhase()}">${typeof phaseArt === 'function' ? phaseArt(_tblPhase()) : ''}<div class="eyebrow">At the table now</div>
     <h3 class="card-title">${escapeHtml(ph.label)}</h3><p>${escapeHtml(ph.text)}</p>${note}</div>`;
 }
 
@@ -220,7 +220,7 @@ function _tblConsoleShell() {
    <div class="tbl-gm-main">
     <div id="tbl-invite"></div>
     <div class="card tbl-scene"><h3 class="card-title">What is the table doing?</h3>
-      <div class="tbl-phases" id="tbl-phases" role="group" aria-label="Phase">${Object.keys(TABLE_PHASES).map(k => `<button type="button" class="btn btn-secondary" data-phase="${k}" onclick="tableSetPhase('${k}')">${escapeHtml(TABLE_PHASES[k].label)}</button>`).join('')}</div>
+      <div class="tbl-phases" id="tbl-phases" role="group" aria-label="Phase">${Object.keys(TABLE_PHASES).map(k => `<button type="button" class="btn btn-secondary" data-phase="${k}" onclick="tableSetPhase('${k}')">${typeof PHASE_GLYPH !== 'undefined' ? `<svg class="ic ph-ic" aria-hidden="true"><use href="#${PHASE_GLYPH[k]}"/></svg>` : ''}<span>${escapeHtml(TABLE_PHASES[k].label)}</span></button>`).join('')}</div>
       <p class="tbl-gm-hint" id="tbl-gm-hint"></p>
       <div class="tbl-say"><label for="tbl-note" class="sr-only">Tell the table</label><input type="text" id="tbl-note" placeholder="Say something to every phone — e.g. Night falls on the road">
         <button type="button" class="btn btn-secondary" onclick="tableSetNote()">Show it on every phone</button></div>
@@ -791,8 +791,8 @@ function _tblCombatGmHtml() {
   const r = _tcRound(), now = tableTurnNow();
   const players = tableTurnOrder();
   const foes = _tcFoes().map(f => {
-    const opts = players.map(m => `<option value="${m.uid}"${(_tcTarget[f.id] || (players[0] && players[0].uid)) === m.uid ? ' selected' : ''}>${escapeHtml((m.vitals || {}).name || 'Hero')}</option>`).join('');
-    return `<div class="tbl-foerow"><strong>${escapeHtml(f.name)}</strong> <span>End ${parseInt(f.endCur) || 0}/${parseInt(f.endMax) || 0}</span>
+    const opts = players.map(m => `<option value="${m.uid}"${(_tcTarget[f.id] || (players[0] && players[0].uid)) === m.uid ? ' selected' : ''}>${escapeHtml(typeof shortHeroName === 'function' ? shortHeroName((m.vitals || {}).name || 'Hero') : ((m.vitals || {}).name || 'Hero'))}</option>`).join('');
+    return `<div class="tbl-foerow"><div class="tf-head">${typeof foeSilhouette === 'function' ? `<span class="foe-medal" aria-hidden="true">${foeSilhouette(f, 'foe-medal-sil')}</span>` : ''}<strong>${escapeHtml(f.name)}</strong> <span>End ${parseInt(f.endCur) || 0}/${parseInt(f.endMax) || 0}</span>${typeof notchBar === 'function' ? notchBar(f.endCur, f.endMax, 'nb-end', 'Endurance') : ''}</div>
       <select data-native aria-label="Target for ${escapeHtml(f.name)}" onchange="_tcTarget['${f.id}']=this.value">${opts}</select>
       <button type="button" class="btn ${now ? 'btn-quiet' : 'btn-secondary'}" onclick="tableFoeAttack('${f.id}')">Attack</button></div>`;
   }).join('');
@@ -805,7 +805,7 @@ function _tblCombatPlayerHtml() {
   const me = (Table.party || {})[Sync.uid] || { uid: Sync.uid };
   const mine = now && now.uid === Sync.uid;
   const acted = _tcActed(Object.assign({ uid: Sync.uid }, me), r);
-  const stances = TC_STANCES.map(([k, l, d]) => `<button type="button" class="tbl-role${char.stance === k ? ' on' : ''}" aria-pressed="${char.stance === k}" onclick="tableSetStance('${k}')"><strong>${l}</strong><small>${d}</small></button>`).join('');
+  const stances = TC_STANCES.map(([k, l, d]) => `<button type="button" class="tbl-role${char.stance === k ? ' on' : ''}" aria-pressed="${char.stance === k}" onclick="tableSetStance('${k}')">${typeof STANCE_GLYPH !== 'undefined' && STANCE_GLYPH[k] ? `<svg class="ic st-ic" aria-hidden="true"><use href="#${STANCE_GLYPH[k]}"/></svg>` : ''}<strong>${l}</strong><small>${d}</small></button>`).join('');
   let turn;
   if (mine) turn = `<div class="tbl-turn now"><strong>Your turn</strong><p>One action this round. Attack a foe, or do something else and tell the table.</p>
       ${_tcFoes().filter(f => f.engaged !== false).map(f => `<button type="button" class="btn btn-block tbl-call-btn" onclick="tableAttack('${f.id}')">Attack ${escapeHtml(f.name)}</button>`).join('')}

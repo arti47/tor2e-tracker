@@ -1758,7 +1758,11 @@ function setAskOdds(v) {
   _askOdds = v;
   document.querySelectorAll('#ask-odds .seg-btn').forEach(b => b.classList.toggle('active', b.dataset.val === v));
 }
-function _askSlip(html) { const el = document.getElementById('ask-slip'); if (!el) return; el.innerHTML = html; el.hidden = false; el.classList.remove('fresh'); void el.offsetWidth; el.classList.add('fresh'); }
+function _askSlip(html) { const el = document.getElementById('ask-slip'); if (!el) return; _askGlow(); el.innerHTML = html; el.hidden = false; el.classList.remove('fresh'); void el.offsetWidth; el.classList.add('fresh'); }
+function _askGlow() {
+  const st = document.getElementById('ask-stone'); if (!st) return;
+  st.classList.remove('glow'); void st.offsetWidth; st.classList.add('glow');
+}
 function askYesNo() {
   const q = (document.getElementById('ask-q').value || '').trim();
   document.getElementById('oracle-telling-q').value = q;
@@ -1766,7 +1770,9 @@ function askYesNo() {
   const res = rollTellingTable();
   const yes = res.answer === 'YES';
   const twist = res.twist ? `<div class="slip-twist">${res.r.special === 'rune' ? 'A Gandalf rune — yes, and more than you hoped.' : 'The Eye — no, and worse besides.'}</div>` : '';
-  _askSlip(`<div class="slip-a ${yes ? 'yes' : 'no'}">${yes ? 'Yes' : 'No'}</div>${twist}` +
+  const sealCls = res.twist ? (res.r.special === 'rune' ? 'seal-and' : 'seal-worse') : (yes ? 'seal-yes' : 'seal-no');
+  const seal = typeof waxSeal === 'function' ? waxSeal(yes ? 'Y' : 'N', 'slip-seal ' + sealCls) : '';
+  _askSlip(`${seal}<div class="slip-a ${yes ? 'yes' : 'no'}">${yes ? 'Yes' : 'No'}</div>${twist}` +
     `<div class="slip-q">${q ? '“' + escapeHtml(q) + '”' : 'Your question'}</div>` +
     `<div class="slip-d">Feat die ${res.r.label} · ${res.chance} odds · yes on ${res.threshold}+</div>`);
 }
@@ -1774,7 +1780,7 @@ function askWords() {
   const res = rollLoreTable();
   const q = (document.getElementById('ask-q').value || '').trim();
   const w = [res.row.action, res.row.aspect, res.row.focus].concat(res.moria && res.row.feature ? [res.row.feature] : []);
-  _askSlip(`<div class="slip-words">${w.map(x => `<span>${escapeHtml(x)}</span>`).join('<i>·</i>')}</div>` +
+  _askSlip(`<div class="slip-words">${w.map(x => `<span class="rune-tile">${escapeHtml(x)}</span>`).join('<i>·</i>')}</div>` +
     (q ? `<div class="slip-q">“${escapeHtml(q)}”</div>` : '') +
     `<div class="slip-d">Read them as an action, a quality and a thing — literally or loosely. If they don’t fit, ask again.</div>`);
 }

@@ -721,7 +721,12 @@ function showToast(msg, action) {
   const t = document.createElement('div');
   t.setAttribute('role', 'status');
   t.className = 'toast';
-  const span = document.createElement('span'); span.textContent = String(msg); t.appendChild(span);
+  // Round 6: a parchment note with a drawn mark for what it is about
+  const m = String(msg), icId = /shadow|dread|despair/i.test(m) ? 'i-moon' : /hope/i.test(m) ? 'i-sparkles' : /endurance|rest|heal|wound/i.test(m) ? 'i-heart'
+    : /sav|backup|export|restor/i.test(m) ? 'i-save' : /roll|dice/i.test(m) ? 'i-dice' : /journey|road|travel/i.test(m) ? 'i-road' : /loremaster|table|player/i.test(m) ? 'i-users' : 'i-feather';
+  const ic = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); ic.setAttribute('class', 'ic toast-ic'); ic.setAttribute('aria-hidden', 'true');
+  const u = document.createElementNS('http://www.w3.org/2000/svg', 'use'); u.setAttribute('href', '#' + icId); ic.appendChild(u); t.appendChild(ic);
+  const span = document.createElement('span'); span.textContent = m; t.appendChild(span);
   if (action && typeof action.fn === 'function') {
     const b = document.createElement('button');
     b.type = 'button'; b.className = 'toast-action'; b.textContent = action.label || 'Undo';
@@ -971,7 +976,7 @@ function renderTableMode() {
     const info = campaignInfo();
     if (titleEl) titleEl.textContent = (Table.meta && Table.meta.name) || info.name || 'The table';
     const ph = TABLE_PHASES[_tblPhase()];
-    html += `<div class="tv-phase"><div class="tv-eyebrow">Now</div><div class="tv-phase-name">${escapeHtml(ph.label)}</div>
+    html += `<div class="tv-phase">${typeof phaseArt === 'function' ? phaseArt(_tblPhase()) : ''}<div class="tv-eyebrow">Now</div><div class="tv-phase-name">${escapeHtml(ph.label)}</div>
       ${Table.state.note ? `<div class="tv-note">“${escapeHtml(Table.state.note)}”</div>` : ''}</div>`;
     const calls = Object.keys(Table.calls).map(id => Object.assign({ id }, Table.calls[id])).filter(c => !c.closed && c.kind !== 'foe-attack');
     if (calls.length) html += `<div class="tv-calls">${calls.map(c => {
@@ -1567,6 +1572,11 @@ function renderChronicleClock() {
   document.getElementById('ch-phase').value = journal.clock.phase;
   const readout = document.getElementById('ch-date-readout');
   if (readout) readout.textContent = dateLabel(journal.clock);
+  const wheel = document.getElementById('ch-wheel');
+  if (wheel && typeof seasonWheel === 'function') {
+    const mo = journal.clock.month, mi = typeof mo === 'number' ? mo : (SHIRE_MONTHS.indexOf(mo) + 1);
+    wheel.innerHTML = seasonWheel(mi || 1, journal.clock.day) + `<div class="cw-lab"><strong>${escapeHtml(String(mo))}</strong><span>Day ${parseInt(journal.clock.day) || 1} · ${escapeHtml(String(journal.clock.year))}</span></div>`;
+  }
   // The clock card now sits at the bottom of the tab (play sequence: write first), so mirror the
   // date into a one-line stamp at the top — the date stays visible without leading with an editor.
   const top = document.getElementById('ch-date-top');
@@ -1616,6 +1626,7 @@ function renderChronicleTimeline() {
     const sceneCombats = (journal.combats || []).filter(c => c.sceneId === sc.id && !c.active);
     html += `<div id="ch-scene-${sc.id}" class="ch-scene-h" style="margin:10px 0 4px;padding:6px 8px;background:var(--gold-soft);border-radius:var(--r-sm);display:flex;align-items:center;gap:6px">
       <button onclick="toggleSceneCollapse('${sc.id}')" title="${collapsed ? 'Expand' : 'Collapse'}" style="flex:0 0 auto;background:none;border:none;cursor:pointer;color:var(--ink);font-size:var(--fs-xs)">${collapsed ? '▸' : '▾'}</button>
+      ${typeof dateSeal === 'function' ? dateSeal(sc.date) : ''}
       <div style="flex:1;min-width:0">
         <div class="ch-date">${dateLabel(sc.date)}</div>
         <div class="ch-title" style="font-weight:700;color:var(--ink);font-size:var(--fs-sm)">${escapeHtml(sc.title)}${active ? ' <span style="font-size:var(--fs-xs);background:var(--gold);color:#fff;padding:1px 5px;border-radius:var(--r-sm);vertical-align:middle">OPEN</span>' : ''}${collapsed ? ` <span style="font-size:var(--fs-xs);color:var(--text-faint);font-weight:400">(${blocks.length})</span>` : ''}</div>

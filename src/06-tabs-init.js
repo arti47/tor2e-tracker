@@ -2367,6 +2367,14 @@ const PICK_DESC = {
   'calling-pick': v => CALLINGS[v] && CALLINGS[v].favoured ? `Good at ${CALLINGS[v].favoured.join(', ')}` : '',
   'patron-pick': v => PATRONS[v] ? PATRONS[v].ability : ''
 };
+// Round 6: a drawn mark beside the choices that have one — a culture's crest, a calling's emblem
+const CALLING_ICON = { Captain: 'i-crown', Champion: 'i-swords', Messenger: 'i-horn', Scholar: 'i-book', 'Treasure Hunter': 'i-gem', Warden: 'i-shield',
+  Reclaimers: 'i-pick', Pathfinders: 'i-compass', 'Standard-Bearers': 'i-flag', Guardians: 'i-st-defensive', Vanguards: 'i-st-forward' };
+const PICK_ART = {
+  'culture-pick': v => (typeof cultureCrest === 'function' && typeof CULTURES !== 'undefined' && CULTURES[v]) ? cultureCrest(v, 34) : '',
+  'calling-pick': v => CALLING_ICON[v] ? `<svg class="ic pick-ic" aria-hidden="true"><use href="#${CALLING_ICON[v]}"/></svg>` : ''
+};
+function _pickArt(sel, o) { const f = PICK_ART[sel.id]; try { return f && o.value ? f(o.value) : ''; } catch (e) { return ''; } }
 function _pickDesc(sel, o) { const f = PICK_DESC[sel.id]; try { return f && o.value ? f(o.value) : ''; } catch (e) { return ''; } }
 function openPicker(sel) {
   _pickSel = sel;
@@ -2379,7 +2387,8 @@ function openPicker(sel) {
     b.setAttribute('role', 'option'); b.setAttribute('aria-selected', o.selected ? 'true' : 'false');
     b.disabled = o.disabled;
     const desc = o.dataset.desc || _pickDesc(sel, o);
-    if (desc) { b.innerHTML = `<strong>${escapeHtml(o.textContent.trim() || '—')}</strong><small>${escapeHtml(desc)}</small>`; b.classList.add('has-desc'); }
+    const art = _pickArt(sel, o);
+    if (desc) { b.innerHTML = (art ? `<span class="pick-art">${art}</span>` : '') + `<span class="pick-txt"><strong>${escapeHtml(o.textContent.trim() || '—')}</strong><small>${escapeHtml(desc)}</small></span>`; b.classList.add('has-desc'); if (art) b.classList.add('has-art'); }
     else b.textContent = o.textContent.trim() || '—';
     b.onclick = () => choosePick(o.value);
     list.appendChild(b);

@@ -154,15 +154,26 @@ function sceneTerrain() {
   if (s.step === 'haven' || s.step === 'fellowship') return (typeof isMoria === 'function' && isMoria()) ? 'moria' : 'haven';
   const words = String(s.step === 'home' ? (jr.origin || char.safeHaven || '') : (jr.destination || '')).toLowerCase();
   if (typeof isMoria === 'function' && isMoria()) return 'moria';
+  // Round 6: on the road, the land you are crossing now — not the place you are heading for
+  if ((s.step === 'journey' || s.step === 'home') && jr.active) {
+    const reg = String((typeof journeyRegionNow === 'function' ? journeyRegionNow(jr, parseInt(jr.currentHex) || 0) : '') || jr.region || '').toLowerCase();
+    return REGION_TERRAIN[reg] || 'road';
+  }
   const hit = TERRAIN_WORDS.find(([, re]) => re.test(words));
   if (s.step === 'location' && hit) return hit[0];
   if (hit && hit[0] !== 'haven') return hit[0];
   if (s.step === 'location') return 'ruins';
   return REGION_TERRAIN[jr.region] || 'road';
 }
-function terrainVignette(key) {
+function terrainVignette(key, opts) {
+  opts = opts || {};
   const k = TERRAIN_ART[key] ? key : 'road';
-  return `<div class="scene-art t-${k}" aria-hidden="true"><svg viewBox="0 0 360 90" preserveAspectRatio="xMidYMax slice">${TERRAIN_ART[k]()}</svg></div>`;
+  // Round 6: a sky wash behind the drawing; a road through it while travelling; mist in the
+  // Shadow and Dark lands; the Eye opening over the scene as the hunt closes in.
+  const road = opts.road && k !== 'road' && k !== 'moria' ? '<path d="M150 90 C170 80 190 76 214 72 S250 67 262 64" class="rd"/><path d="M222 90 C220 82 226 76 236 71 S256 66 262 64" class="rd"/>' : '';
+  const mist = opts.mist ? '<div class="scene-mist"></div>' : '';
+  const eye = opts.eye > 0 ? `<svg class="scene-eye" viewBox="0 0 60 30" style="opacity:${Math.min(.55, .12 + opts.eye * .43).toFixed(2)}"><path d="M2 15 Q30 -6 58 15 Q30 36 2 15z"/><ellipse cx="30" cy="15" rx="3.5" ry="10"/></svg>` : '';
+  return `<div class="scene-art t-${k}" aria-hidden="true"><svg viewBox="0 0 360 90" preserveAspectRatio="xMidYMax slice"><rect class="sky" x="0" y="0" width="360" height="90"/>${TERRAIN_ART[k]()}${road}</svg>${mist}${eye}</div>`;
 }
 
 /* ---------- The inked route map ----------
@@ -358,4 +369,231 @@ function _foeKindOf(t) {
 function foeSilhouette(f, cls) {
   const k = foeKind(f);
   return `<svg class="${cls || 'foe-sil'} k-${k}" viewBox="0 0 100 100" fill="currentColor" aria-hidden="true">${FOE_ART[k]}</svg>`;
+}
+
+/* ============================================================
+   Round 6 — one family of drawn glyphs for the game's own ideas, and the art built from it:
+   group header strips, table phase vignettes, the seeing-stone, wax seals, the season wheel,
+   notched End/Hate bars and the battle banners. Same 24-unit, 1.75px stroke as the sprite.
+   ============================================================ */
+Object.assign(ART_SYMBOLS, {
+  // the three Attributes
+  'i-att-str': '<path d="M6 11V8.5a1.5 1.5 0 0 1 3 0V11M9 10V7a1.5 1.5 0 0 1 3 0v3M12 10V7.5a1.5 1.5 0 0 1 3 0V10M15 10.5V9a1.5 1.5 0 0 1 3 0v5a7 7 0 0 1-7 7h-.5A4.5 4.5 0 0 1 6 16.5V11"/><path d="M6 13.5h4.5a2 2 0 0 1 0 4H8.5"/>',
+  'i-att-hrt': '<path d="M12 20.5s-7.5-4.4-7.5-10.3A4.2 4.2 0 0 1 12 7.6a4.2 4.2 0 0 1 7.5 2.6c0 5.9-7.5 10.3-7.5 10.3z"/><path d="M12 16.5c-1.6 0-2.5-1.2-2-2.6.5.6 1 .6 1.2-.1.3-1 .9-1.7 1.6-2.1.1 1.5 1.4 2.1 1.2 3.4-.2.9-1 1.4-2 1.4z"/>',
+  'i-att-wit': '<path d="M4 14.5c0 2.8 3.2 4.5 7 4.5s7-1.7 7-4.5z"/><path d="M18 14.5 21 12"/><path d="M20.8 10c-1.2-1-1-2.4 0-3.6.4 1.2 1.4 2 .6 3.6"/><path d="M9 19l-1 2h6l-1-2"/><path d="M7.5 14.5c0-1.6 1.6-3 3.5-3"/>',
+  // stances
+  'i-st-forward':  '<path d="M4 20 17 7"/><path d="M14 5l7-2-2 7-2-3z"/><path d="M3 14h4M4 10h3.5"/>',
+  'i-st-open':     '<path d="M12 2.5 13.4 5v11h-2.8V5z"/><path d="M8 16h8M12 16v4.5M10.3 21h3.4"/>',
+  'i-st-defensive':'<path d="M12 3l8 3v5c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z"/><circle cx="12" cy="11" r="2.2"/><path d="M12 5v3.8M12 13.2V19"/>',
+  // dispositions and the road
+  'i-axe':     '<path d="M5 21 15 7"/><path d="M12.5 4.2c3-1.3 6.3-.4 8.5 1.8-2 .1-3.2 1.2-3.7 3.1-.5 1.9-2.4 3-5.1 2.3 1.1-2.4 1.3-4.6.3-7.2z"/>',
+  'i-lantern': '<path d="M9 5h6M12 3v2"/><path d="M8 7h8l-1 11H9z"/><path d="M8 18h8"/><path d="M12 10.5c1.1 1 1.1 2.6 0 3.6-1.1-1-1.1-2.6 0-3.6z"/>',
+  'i-boot':    '<path d="M8 3h5v9l6 2.6a2 2 0 0 1 1.2 1.8V19H6.2L5 16V3z"/><path d="M5 19h15M8 7h5M9 10h4"/>',
+  'i-horse':   '<path d="M6 20.5 7.5 14C5.6 13 4.6 11 5.4 9l3.8-4.2.8 2 3-.8 1 1.8c2.2.8 5 2.1 6 5l-1.9 1.9-2.8-1.7-1.8 3 .8 4.5"/><path d="M9.5 20.5l.8-5"/><circle cx="9" cy="8.5" r=".4"/>',
+  'i-stone':   '<path d="M7 20V9a5 5 0 0 1 10 0v11"/><path d="M4 20h16M10 11h4M10 14h4"/>',
+  'i-sprout':  '<path d="M12 21v-9"/><path d="M12 12c0-4-3-6-7-6 0 4 3 6 7 6zM12 14.5c0-3 2.5-5 6-5 0 3-2.5 5-6 5z"/><path d="M8 21h8"/>',
+  'i-road':    '<path d="M9 3 5 21M15 3l4 18"/><path d="M12 5v2M12 10v3M12 16v3"/>',
+  'i-hall':    '<path d="M3 9 12 4l9 5z"/><path d="M5.5 9v9M9.8 9v9M14.2 9v9M18.5 9v9M3 20.5h18M4 18h16"/>',
+  'i-hearth':  '<path d="M4 21V9l8-5 8 5v12"/><path d="M8 21v-5.5a4 4 0 0 1 8 0V21"/><path d="M12 20c-1.5 0-2.4-1-2-2.4.5.6 1 .6 1.2 0 .3-1 .8-1.6 1.5-2 0 1.3 1.3 1.8 1.2 3-.2.9-1 1.4-1.9 1.4z"/>',
+  // gear and useful items
+  'i-w-sword': '<path d="M19.5 3.5 20.5 4.5 9 16l-1-1z"/><path d="M19.5 3.5 21 3l-.5 1.5"/><path d="M6 13l5 5M8.5 15.5 4 20M3 19l2 2"/>',
+  'i-w-spear': '<path d="M3 21 16 8"/><path d="M16 8l1.5-4.5L21 2l-1.5 3.5L16 8z"/><path d="M13 9.5l1.5 1.5"/>',
+  'i-w-dagger':'<path d="M16 4l4 0 0 4-8 8-4-4z"/><path d="M7 11l6 6M9.5 14.5 5 19M4 18l2 2"/>',
+  'i-w-club':  '<path d="M4 20l8.5-8.5"/><path d="M12 12c-1-3 1.5-7.5 5-8.5 2.3-.6 3.8.9 3.2 3.2-1 3.5-5.5 6-8.2 5.3z"/><path d="M16 6.5h.01M18 9h.01M15 9.5h.01"/>',
+  'i-leather': '<path d="M8 3h8l4 4-3 2.5V21H7V9.5L4 7z"/><path d="M8 3c1.5 2.5 6.5 2.5 8 0"/><path d="M12 7v14M9.5 10h5M9.5 14h5"/>',
+  'i-knife':   '<path d="M4 20 15 9"/><path d="M15 9l4.5-4.5c.4 4.8-1.7 8-5.8 8.2"/><path d="M6 16.5l1.5 1.5"/>',
+  'i-rope':    '<circle cx="10" cy="13" r="6"/><circle cx="10" cy="13" r="2.8"/><path d="M15.2 10c1.8-1 2.8-3 2.8-5.5M16 3l2 1.5 2-1.5"/>',
+  'i-jar':     '<path d="M8.5 7h7M9.5 4h5v3M7.5 7h9v12a2 2 0 0 1-2 2h-5a2 2 0 0 1-2-2z"/><path d="M12 11c-2 1-2 4 0 6 2-2 2-5 0-6z"/>',
+  'i-cloak':   '<path d="M9 3h6l1.3 3L12 8.2 7.7 6z"/><path d="M7.7 6 4 21h16L16.3 6"/><circle cx="12" cy="8.5" r="1"/>',
+  'i-flask':   '<path d="M10 3h4M10.5 3v5l-4.3 8A3 3 0 0 0 9 21h6a3 3 0 0 0 2.8-5l-4.3-8V3"/><path d="M7.4 14h9.2"/>',
+  'i-pipe':    '<path d="M3 11h9.5l1.5 5.5a3 3 0 0 0 5.8-.8V11h-5.8"/><path d="M15.5 7.5c0-1.2 1-2-.2-3.5M18.5 7.5c0-1.2 1-2-.2-3.5"/>',
+  'i-harp':    '<path d="M6 3v18h12"/><path d="M6 3c7 1 12 8 12 18"/><path d="M9 6v15M12 9v12M15 13v8"/>',
+  'i-seal':    '<path fill="currentColor" stroke="none" d="M12 1.5c1.9 0 2.4 1.4 3.9 1.8 1.5.3 2.9-.3 3.9 1 .9 1.3.2 2.6.5 4.1.4 1.5 1.8 2.1 1.8 3.9s-1.4 2.4-1.8 3.9c-.3 1.5.4 2.8-.5 4.1-1 1.3-2.4.7-3.9 1-1.5.4-2 1.8-3.9 1.8s-2.4-1.4-3.9-1.8c-1.5-.3-2.9.3-3.9-1-.9-1.3-.2-2.6-.5-4.1C1.9 14.7.5 14.1.5 12.3s1.4-2.4 1.8-3.9c.3-1.5-.4-2.8.5-4.1 1-1.3 2.4-.7 3.9-1C8.1 2.9 8.6 1.5 12 1.5z"/><circle cx="12" cy="12.2" r="7" stroke="#000" stroke-opacity=".28" stroke-width="1"/>',
+'i-orb':     '<circle cx="12" cy="10" r="6.5"/><path d="M8.5 7.5a4 4 0 0 1 3-1.8"/><path d="M6 20h12M8 20l1.2-3.5h5.6L16 20"/>'
+});
+const ATTR_GLYPH = { str: 'i-att-str', hrt: 'i-att-hrt', wit: 'i-att-wit' };
+const STANCE_GLYPH = { forward: 'i-st-forward', open: 'i-st-open', defensive: 'i-st-defensive', rearward: 'i-bow', skirmish: 'i-person' };
+const DISP_GLYPH = { expertise: 'i-hammer', manoeuvre: 'i-boot', rally: 'i-horn', vigilance: 'i-lantern', war: 'i-axe' };
+const SEASON_GLYPH = { spring: 'i-sprout', summer: 'i-sun', autumn: 'i-leaf', winter: 'i-snow' };
+const PHASE_GLYPH = { story: 'i-scroll', journey: 'i-road', combat: 'i-swords', council: 'i-hall', fellowship: 'i-hearth' };
+function attrOfSkill(name) {
+  if (typeof SKILLS === 'undefined') return '';
+  const k = Object.keys(SKILLS).find(a => (SKILLS[a] || []).some(s => (s.name || s) === name));
+  return k || '';
+}
+/** A drawn icon for a Useful Item or treasure, from the words in its name, then its skill. */
+function itemGlyph(name, skill) {
+  const t = String(name || '').toLowerCase();
+  const by = [[/knife|salt/, 'i-knife'], [/rope|grappl|cord/, 'i-rope'], [/lantern|lamp|torch|light/, 'i-lantern'],
+    [/instrument|harp|flute|lyre|drum|fiddle|viol|horn/, 'i-harp'], [/balm|salve|herb|poultice|ointment/, 'i-jar'],
+    [/cloak|clothes|coat|hood|garb|mantle/, 'i-cloak'], [/brooch|earring|pearl|ring|jewel|gem|necklace|circlet/, 'i-gem'],
+    [/liquor|flask|draught|ale|wine|brandy/, 'i-flask'], [/sunstone|crystal|stone/, 'i-orb'], [/pipe|tobacco|pipe-weed/, 'i-pipe'],
+    [/map|chart/, 'i-map'], [/tool|chisel|carving|hammer/, 'i-tools'], [/book|riddle|tome|scroll|notes/, 'i-book']];
+  const hit = by.find(([re]) => re.test(t)); if (hit) return hit[1];
+  const a = attrOfSkill(skill); return ATTR_GLYPH[a] || 'i-pack';
+}
+/** A drawn weapon by its name first (a dagger is not a sword), its proficiency second. */
+function weaponGlyph(w, prof) {
+  const t = String((w && w.name) || '').toLowerCase();
+  if (/dagger|knife/.test(t)) return 'i-w-dagger';
+  if (/cudgel|club|mace|staff|unarmed|fist/.test(t)) return /unarmed|fist/.test(t) ? 'i-arm' : 'i-w-club';
+  if (/mattock|pick/.test(t)) return 'i-pick';
+  if (/bow/.test(t)) return 'i-bow';
+  if (/spear|lance|javelin|pike/.test(t)) return 'i-w-spear';
+  if (/axe/.test(t)) return 'i-axe';
+  if (/sword|blade|sabre|scimitar/.test(t)) return 'i-w-sword';
+  return ({ Swords: 'i-w-sword', Bows: 'i-bow', Spears: 'i-w-spear', Axes: 'i-axe', Brawling: 'i-arm' })[prof] || 'i-w-sword';
+}
+
+/* ---------- Header strips: one thin engraved band per nav group ---------- */
+const GROUP_STRIPS = {
+  hero: `<path d="M0 30 H132"/><path d="M228 30 H360"/><path d="M140 30 q20-24 40-24 q20 0 40 24"/><path d="M160 30 v-10 l20-8 20 8 v10"/><path d="M180 12 v18M170 22 h20"/>` +
+    `<path d="M132 30 c-12-2-18-8-22-16M114 20 c-6 0-10-3-12-7M122 26 c-7 1-12-1-16-5"/><path d="M228 30 c12-2 18-8 22-16M246 20 c6 0 10-3 12-7M238 26 c7 1 12-1 16-5"/>`,
+  adventure: `<path d="M0 34 C40 30 60 36 100 32 S170 26 210 32 S300 36 360 30"/><path d="M40 30 l12-16 8 9 10-14 14 21" class="f2"/>` +
+    `<path d="M270 30 l6-6 6 6 M288 30 l5-5 5 5"/><circle cx="330" cy="18" r="9"/><path d="M330 7 v22 M319 18 h22 M330 9 l2 9 -2 9 -2-9z" class="f"/>` +
+    `<path d="M150 29 q4-6 8 0 M162 30 q3-4 6 0"/><path d="M198 14 q3-3 6 0 q3-3 6 0"/>`,
+  roll: `<path d="M0 30 H360" class="w"/><rect x="150" y="10" width="18" height="18" rx="3" transform="rotate(-12 159 19)"/><circle cx="156" cy="16" r="1" class="f"/><circle cx="162" cy="22" r="1" class="f"/>` +
+    `<path d="M186 8 l9 4 2 10 -7 7 -10-2 -3-10z"/><path d="M186 8 l1 9 -8 3 M187 17 l9 5 M187 17 l3 12"/><path d="M60 20 h40 M260 20 h40" class="w"/><path d="M110 20 l4-4 4 4-4 4z M242 20 l4-4 4 4-4 4z" class="f"/>`,
+  journal: `<path d="M0 32 H360" class="w"/><path d="M40 32 c40-4 80-4 110-10"/><path d="M150 22 c6-8 20-16 38-18 -6 10-18 18-30 20z" class="f2"/><path d="M150 22 l-8 10"/>` +
+    `<path d="M210 26 c10 0 14-6 22-6 s10 5 20 5 12-6 22-6" /><circle cx="300" cy="26" r="2.5" class="f"/><path d="M60 14 h60 M60 20 h44" class="w"/>`
+};
+function groupStrip(g) {
+  if (!GROUP_STRIPS[g]) return '';
+  return `<div class="group-strip gs-${g}" aria-hidden="true"><svg viewBox="0 0 360 40" preserveAspectRatio="xMidYMid meet">${GROUP_STRIPS[g]}</svg></div>`;
+}
+function injectGroupStrips() {
+  if (typeof navGroupOf !== 'function') return;
+  document.querySelectorAll('.panel[id^="panel-"]').forEach(p => {
+    if (p.querySelector(':scope > .group-strip')) return;
+    const tab = p.id.slice(6); const g = navGroupOf(tab); const id = g && g.id;
+    if (!id || id === 'play' || !GROUP_STRIPS[id]) return;
+    p.insertAdjacentHTML('afterbegin', groupStrip(id));
+  });
+}
+
+/* ---------- Table-play phase vignettes (players' "At the table now" card, the big screen) ---------- */
+const PHASE_ART = {
+  story: `<path d="M110 20 h140 v44 h-140z" class="f2"/><path d="M110 20 c-10 0-10 12 0 12 M250 64 c10 0 10-12 0-12"/><path d="M126 34 h100 M126 42 h108 M126 50 h84"/><path d="M280 60 c6-10 16-20 30-24 -4 8-12 16-22 20z" class="f"/><path d="M280 60 l-6 8"/>`,
+  journey: `<path d="M0 70 C80 62 120 72 180 64 S300 56 360 62"/><path d="M150 90 C170 76 190 70 210 64 M232 90 C224 78 220 70 214 64"/><path d="M30 64 l18-30 14 16 12-20 22 34" class="f2"/><path d="M290 62 l3-8 3 8 M300 64 l2-6 2 6"/><path d="M206 64 v-10 l10 3-10 3" class="f"/>`,
+  combat: `<path d="M140 76 L220 20 M220 76 L140 20"/><path d="M216 16 l8 0 0 8 M144 16 l-8 0 0 8"/><path d="M150 66 l-8 8 M210 66 l8 8"/><circle cx="180" cy="48" r="26" class="f2"/><path d="M60 80 h60 M240 80 h60" class="w"/>`,
+  council: `<path d="M110 32 L180 10 L250 32z" class="f2"/><path d="M122 32 v44 M150 32 v44 M180 32 v44 M210 32 v44 M238 32 v44"/><path d="M104 80 h152 M110 76 h140"/><circle cx="180" cy="22" r="3" class="f"/>`,
+  fellowship: `<path d="M120 84 V44 l60-30 60 30 v40" class="f2"/><path d="M150 84 v-20 a30 30 0 0 1 60 0 v20"/><path d="M180 82 c-10 0-16-7-13-16 3 4 7 4 8 0 2-7 6-11 11-14 0 9 9 12 8 20-1 6-7 10-14 10z" class="f"/><path d="M100 84 h160"/>`
+};
+function phaseArt(phase) {
+  const k = PHASE_ART[phase] ? phase : 'story';
+  return `<div class="phase-art ph-${k}" aria-hidden="true"><svg viewBox="0 0 360 90" preserveAspectRatio="xMidYMax slice">${PHASE_ART[k]}</svg></div>`;
+}
+
+/* ---------- The seeing-stone beside the Oracle's question ---------- */
+function seeingStone() {
+  return `<svg class="seeing-stone" viewBox="0 0 64 64" aria-hidden="true">
+    <defs><radialGradient id="ss-g" cx="40%" cy="35%" r="65%"><stop offset="0" stop-color="#e9e4f5"/><stop offset=".45" stop-color="#7d86a8"/><stop offset="1" stop-color="#1f2336"/></radialGradient></defs>
+    <circle class="ss-glow" cx="32" cy="27" r="22"/>
+    <circle cx="32" cy="27" r="17" fill="url(#ss-g)" stroke="currentColor" stroke-width="1.4"/>
+    <path d="M22 20a11 11 0 0 1 8-6" fill="none" stroke="#fff" stroke-opacity=".7" stroke-width="1.6" stroke-linecap="round"/>
+    <path d="M18 58h28M21 58l3-9h16l3 9M24 49c0-3 3-5 8-5s8 2 8 5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>`;
+}
+/** A wax seal: a scalloped disc with a letter or number pressed into it. */
+function waxSeal(mark, cls, title) {
+  return `<span class="wax-seal ${cls || ''}"${title ? ` title="${escapeHtml(title)}"` : ''}><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-seal"/></svg><b>${escapeHtml(String(mark))}</b></span>`;
+}
+
+/* ---------- The season wheel on the Tale of Years ---------- */
+function seasonWheel(month, day) {
+  const m = Math.max(1, Math.min(12, parseInt(month) || 1)), d = Math.max(1, Math.min(30, parseInt(day) || 1));
+  const cx = 60, cy = 60, R = 50, r = 34;
+  const pt = (a, rad) => [cx + rad * Math.sin(a), cy - rad * Math.cos(a)];
+  // Shire months 1 (Afteryule) .. 12 (Foreyule): winter at the top, around Yule
+  const seasonOf = i => (i === 12 || i <= 2) ? 'winter' : i <= 5 ? 'spring' : i <= 8 ? 'summer' : 'autumn';
+  let seg = '';
+  for (let i = 1; i <= 12; i++) {
+    const a0 = (i - 1) / 12 * Math.PI * 2 - Math.PI / 12, a1 = i / 12 * Math.PI * 2 - Math.PI / 12;
+    const [x0, y0] = pt(a0, R), [x1, y1] = pt(a1, R), [x2, y2] = pt(a1, r), [x3, y3] = pt(a0, r);
+    seg += `<path class="sw-${seasonOf(i)}${i === m ? ' on' : ''}" d="M${x0.toFixed(1)} ${y0.toFixed(1)} A${R} ${R} 0 0 1 ${x1.toFixed(1)} ${y1.toFixed(1)} L${x2.toFixed(1)} ${y2.toFixed(1)} A${r} ${r} 0 0 0 ${x3.toFixed(1)} ${y3.toFixed(1)}z"/>`;
+  }
+  const a = ((m - 1) + (d - 1) / 30) / 12 * Math.PI * 2 - Math.PI / 12;
+  const [hx, hy] = pt(a, R + 4);
+  const [yx, yy] = pt(-Math.PI / 12, R + 7);
+  const icon = (s, ang) => { const [x, y] = pt(ang, (R + r) / 2); return `<use href="#${SEASON_GLYPH[s]}" x="${(x - 6).toFixed(1)}" y="${(y - 6).toFixed(1)}" width="12" height="12" class="sw-ic"/>`; };
+  return `<svg class="season-wheel" viewBox="0 0 120 120" role="img" aria-label="Month ${m} of 12, day ${d}">${seg}
+    ${icon('winter', 0)}${icon('spring', Math.PI * 2 / 12 * 3)}${icon('summer', Math.PI * 2 / 12 * 6)}${icon('autumn', Math.PI * 2 / 12 * 9)}
+    <circle cx="${cx}" cy="${cy}" r="${r - 6}" class="sw-hub"/><path d="M${cx} ${cy} L${hx.toFixed(1)} ${hy.toFixed(1)}" class="sw-hand"/><circle cx="${cx}" cy="${cy}" r="3" class="sw-pin"/>
+    <path d="M${(yx - 3).toFixed(1)} ${(yy - 5).toFixed(1)} l3 4 3-4" class="sw-yule"/></svg>`;
+}
+
+/* ---------- Notched bars (End / Hate) ---------- */
+function notchBar(cur, max, cls, label) {
+  const m = Math.max(0, parseInt(max) || 0), c = Math.max(0, Math.min(m, parseInt(cur) || 0));
+  if (!m) return '';
+  const n = Math.min(m, 30), per = m / n;
+  let s = '';
+  for (let i = 0; i < n; i++) s += `<i class="${(i + 1) * per <= c + 1e-9 ? 'on' : ''}"></i>`;
+  return `<span class="notch-bar ${cls || ''}" role="img" aria-label="${escapeHtml(label || '')} ${c} of ${m}">${s}</span>`;
+}
+
+/* ---------- Battle: two banners and the clash between them ---------- */
+function battleBanners(bandName, foeName, foeRes, foeResMax) {
+  const max = Math.max(1, parseInt(foeResMax) || 1), res = Math.max(0, Math.min(max, parseInt(foeRes) || 0));
+  const pct = Math.round((1 - res / max) * 100);
+  const flag = (cls, mark) => `<svg class="bb-flag ${cls}" viewBox="0 0 40 56" aria-hidden="true"><path d="M4 2v54"/><path d="M4 4h32v34l-16-8-16 8" class="bb-cloth"/><use href="#${mark}" x="10" y="8" width="20" height="20" class="bb-mark"/></svg>`;
+  return `<div class="battle-banners" role="img" aria-label="${escapeHtml(bandName)} against ${escapeHtml(foeName)}: foe Resistance ${res} of ${max}">
+    ${flag('bb-band', 'i-hammer')}
+    <div class="bb-mid"><div class="bb-names"><b>${escapeHtml(bandName)}</b><b>${escapeHtml(foeName)}</b></div>
+      <div class="tug"><span class="tug-fill" style="width:${pct}%"></span><span class="tug-knot" style="left:${pct}%"></span></div>
+      <small>Foe Resistance ${res} / ${max}</small></div>
+    ${flag('bb-foe', 'i-skull')}</div>`;
+}
+
+/* ---------- Motion: the scene drifts as you scroll ---------- */
+function _sceneParallax() {
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const art = document.querySelector('#panel-play .scene-art svg'); if (!art) return;
+  const r = art.parentNode.getBoundingClientRect();
+  const off = Math.max(-14, Math.min(14, (r.top - 80) * -0.08));
+  art.style.transform = `translateY(${off.toFixed(1)}px) scale(1.08)`;
+}
+/* A row of chips wider than the screen fades at its right edge until you reach the end. */
+function jumpBarCue(el) {
+  if (!el) return;
+  const over = el.scrollWidth > el.clientWidth + 2;
+  el.classList.toggle('over', over);
+  el.classList.toggle('at-end', !over || el.scrollLeft + el.clientWidth >= el.scrollWidth - 2);
+}
+function refreshJumpCues() { document.querySelectorAll('.jump-bar').forEach(jumpBarCue); }
+document.addEventListener('scroll', e => { if (e.target && e.target.classList && e.target.classList.contains('jump-bar')) jumpBarCue(e.target); }, true);
+window.addEventListener('resize', () => requestAnimationFrame(refreshJumpCues));
+document.addEventListener('click', e => { if (e.target.closest && e.target.closest('.tab, .bn-item')) setTimeout(refreshJumpCues, 60); });
+document.addEventListener('DOMContentLoaded', () => {
+  injectGroupStrips();
+  setTimeout(refreshJumpCues, 300);
+  const st = document.getElementById('ask-stone'); if (st && !st.firstChild) st.innerHTML = seeingStone();
+  window.addEventListener('scroll', () => requestAnimationFrame(_sceneParallax), { passive: true });
+});
+/** The moon on a given day of a 30-day month: new at day 1, full at 15. */
+function moonGlyph(day) {
+  const d = ((parseInt(day) || 1) - 1) % 30, t = d / 30;             // 0 new → .5 full → 1 new
+  const lit = 1 - Math.abs(t * 2 - 1);                                 // 0..1
+  const off = ((t < .5 ? -1 : 1) * lit * 16).toFixed(1);             // the shadow slides off, then back
+  return `<svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><defs><clipPath id="mc${d}"><circle cx="12" cy="12" r="7"/></clipPath></defs>` +
+    `<circle cx="12" cy="12" r="7" class="moon-lit"/><circle cx="${(12 + +off).toFixed(1)}" cy="12" r="7" class="moon-dark" clip-path="url(#mc${d})"${lit > .98 ? ' opacity="0"' : ''}/><circle cx="12" cy="12" r="7" class="moon-rim"/></svg>`;
+}
+/** A scene's date as a small wax seal carrying the moon of that day. */
+function dateSeal(date) {
+  const day = date && date.day;
+  return `<span class="date-seal" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#i-seal"/></svg>${moonGlyph(day)}</span>`;
+}
+/** Sessions and adventures played, pressed as wax seals on the Play tab's campaign line. */
+function renderCampSeals() {
+  const el = document.getElementById('camp-seals'); if (!el || typeof char === 'undefined') return;
+  const sg = char.saga || {}; const ses = parseInt(sg.sessions) || 0, adv = parseInt(sg.adventures) || 0;
+  el.innerHTML = sg.started ? waxSeal(ses, 'seal-ses', ses + (ses === 1 ? ' session' : ' sessions')) + waxSeal(adv, 'seal-adv', adv + (adv === 1 ? ' adventure' : ' adventures')) : '';
+}
+/** A drawn horizon closing the Play tab: hills, a road running off, a lone tree — so the page
+    ends on a picture instead of empty paper. */
+function playFooterArt() {
+  return `<div class="play-footart" aria-hidden="true"><svg viewBox="0 0 360 70" preserveAspectRatio="xMidYMax slice">
+    <path d="M0 52 Q60 30 120 46 T240 40 T360 48" class="f2"/><path d="M0 64 Q90 50 180 60 T360 58"/>
+    <path d="M170 70 C182 62 196 56 214 52 S246 46 262 44 M212 70 C214 62 222 56 232 52 S252 46 262 44" class="rd"/>
+    <circle cx="300" cy="30" r="10" class="f2"/><path d="M300 40 v14"/><path d="M52 44 l6-10 6 10z M60 46 l4-7 4 7z" class="f"/>
+    <path d="M110 18 q4-4 8 0 q4-4 8 0 M136 26 q3-3 6 0 q3-3 6 0"/></svg></div>`;
 }
