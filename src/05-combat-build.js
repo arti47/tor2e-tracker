@@ -1093,6 +1093,10 @@ async function endEncounter() {
     const names = e.foes.map(f => f.name).filter(Boolean).join(', ');
     logTimeline('combat', `Fight ended after ${e.round || 1} round${(e.round || 1) === 1 ? '' : 's'} — ${names}${slain ? ` (${slain} slain)` : ''}.`);
   }
+  if (typeof playNote === 'function' && e.foes.length) {
+    const slainN = e.foes.filter(f => f.slain).length;
+    playNote(`<strong>The fight is over</strong> after ${e.round || 1} round${(e.round || 1) === 1 ? '' : 's'}${slainN ? ` — ${slainN} foe${slainN === 1 ? '' : 's'} slain` : ''}. Endurance ${parseInt(char.endCur) || 0}/${parseInt(char.endMax) || 0}.`);
+  }
   _encFinishGroup();  // finalise the Chronicle combat group (summary) BEFORE clearing the encounter
   if (encShared()) { const m = Sync.sharedEnc(); m.active = false; m.round = 1; m.foes = []; }
   else char.encounter = JSON.parse(JSON.stringify(DEFAULT_CHARACTER.encounter));
@@ -1138,6 +1142,12 @@ function addFoeFromBestiary(idx) {
   });
   encDeriveEngaged(); _encEnsureGroup(); saveCharacter(); renderEncounter();
   document.getElementById('bestiary-overlay').classList.remove('show');
+  // Picked from ▶ Play's "Something attacks!": take the hero to where the fight is run.
+  if (window._playFightPending) {
+    window._playFightPending = false;
+    if (typeof playNote === 'function') playNote(`A <strong>${escapeHtml(b.name)}</strong> attacks.`);
+    if (typeof _goTab === 'function') _goTab('combat');
+  }
   _encRoundFellPrompt(enc().round || 1);
 }
 function addCustomFoe() {
@@ -1146,6 +1156,7 @@ function addCustomFoe() {
   enc().foes.push(f);
   encDeriveEngaged(); saveCharacter(); renderEncounter();
   document.getElementById('bestiary-overlay').classList.remove('show');
+  if (window._playFightPending) { window._playFightPending = false; if (typeof _goTab === 'function') _goTab('combat'); }
   _encRoundFellPrompt(enc().round || 1);
 }
 function removeFoe(id) { const e = enc(); e.foes = e.foes.filter(f => f.id !== id); delete _encResults[id]; encDeriveEngaged(); saveCharacter(); renderEncounter(); }

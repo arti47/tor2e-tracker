@@ -1201,6 +1201,8 @@ function rollDice(skillLabel) {
   });
   saveHistory();
   renderHistory();
+  // A quick roll made from ▶ Play belongs in Play's story too, not only in the result drawer.
+  if (typeof playRollNote === 'function') playRollNote(label, isAutoSuccess ? '★' : (isAutoFail ? '✗' : total), tn, outcome, icons);
   if (typeof journalAuto === 'function') journalAuto('dice', 'roll', `${label} — ${isAutoSuccess ? '★' : (isAutoFail ? '✗' : total)} vs ${tn} → ${outcome}${icons ? ' (' + icons + '✦)' : ''}`);
   if (typeof tablePostRoll === 'function') tablePostRoll({ label, skill: skillLabel, total: isAutoSuccess ? '★' : (isAutoFail ? '✗' : total), tn, outcome, icons });   // the table feed (group play)
 

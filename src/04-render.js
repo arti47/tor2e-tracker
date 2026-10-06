@@ -1088,7 +1088,7 @@ function rollSkillEndeavourAttempt(skillName) {
   const roleplayBonus = parseInt(document.querySelector('#se-roleplay-pick .seg-btn.active')?.dataset.val) || 0;
   const successDice = Math.max(0, s.rating + roleplayBonus);
   let fav = s.favoured ? 'fav' : 'normal';
-  const r = _doInlineRoll(successDice, fav, actualTn);
+  const r = _doInlineRoll(successDice, fav, actualTn, `${skillName} · Skill Endeavour`);
   let success = r.outcome.startsWith('SUCCESS');
   if (char.miserable && r.featSpecial === 'eye') success = false;
 
@@ -1152,6 +1152,7 @@ function finalizeSkillEndeavour(outcome) {
   char.skillEndeavour.outcome = outcome;
   char.skillEndeavour.active = false;
   if (typeof logTimeline === 'function') logTimeline('endeavour', `Skill Endeavour — ${char.skillEndeavour.task || 'a prolonged task'}: ${outcome}.`);
+  if (typeof playNote === 'function') playNote(`<strong>The task is done</strong> — ${escapeHtml(char.skillEndeavour.task || 'a prolonged task')}: ${escapeHtml(String(outcome))}.`);
   saveCharacter();
   renderSkillEndeavour();       // shows the closed endeavour + its outcome (see `showing` there)
   document.getElementById('se-active-card').style.display = 'block';
@@ -1368,7 +1369,7 @@ function rollCouncilIntro(skillName) {
   const attMod = c.attitude === 'reluctant' ? -1 : (c.attitude === 'friendly' ? 1 : 0);
   const successDice = Math.max(0, s.rating + attMod);
   let fav = s.favoured ? 'fav' : 'normal';
-  const r = _doInlineRoll(successDice, fav, actualTn);
+  const r = _doInlineRoll(successDice, fav, actualTn, `${skillName} · Council introduction`);
   let success = r.outcome.startsWith('SUCCESS');
   if (char.miserable && r.featSpecial === 'eye') success = false;
 
@@ -1401,7 +1402,7 @@ function rollCouncilAttempt(skillName) {
   const supportBonus = c.supportNext ? 1 : 0;
   const successDice = Math.max(0, s.rating + attMod + roleplayBonus + supportBonus);
   let fav = s.favoured ? 'fav' : 'normal';
-  const r = _doInlineRoll(successDice, fav, actualTn);
+  const r = _doInlineRoll(successDice, fav, actualTn, `${skillName} · Council`);
   let success = r.outcome.startsWith('SUCCESS');
   if (char.miserable && r.featSpecial === 'eye') success = false;
 
@@ -1439,6 +1440,7 @@ function finalizeCouncil(outcome) {
   char.council.outcome = outcome;
   char.council.active = false;  // mark inactive but keep state visible until reset
   if (typeof logTimeline === 'function') logTimeline('council', `Council — ${char.council.topic || 'a matter of some weight'}: ${outcome}.`);
+  if (typeof playNote === 'function') playNote(`<strong>The council ends</strong> — ${escapeHtml(char.council.topic || 'a matter of some weight')}: ${escapeHtml(String(outcome))}.`);
   // Persist a summary to the council history.
   if (!Array.isArray(char.councilHistory)) char.councilHistory = [];
   char.councilHistory.push({
@@ -1470,7 +1472,7 @@ function closeCouncilAndReset() {
 }
 
 /* ---------- JOURNEY ---------- */
-function _doInlineRoll(successDice, fav, tn) {
+function _doInlineRoll(successDice, fav, tn, label) {
   // Inline dice roller used by Journey for Marching Tests / Event Feat dice / Arrival roll.
   // Returns: { featValue, featSpecial, featLabel, total, icons, outcome }
   // Despair (Core Rules p.137): at Shadow + Scars = Max Hope, every Feat die is Ill-Favoured.
@@ -1498,6 +1500,15 @@ function _doInlineRoll(successDice, fav, tn) {
   else outcome = 'FAIL';
   const res = { featValue: chosen.value, featSpecial: chosen.special, featLabel: chosen.label, total, icons, outcome };
   _soloEyeFromRoll(res);
+  // One record of every roll: rolls made on Play, the Journey, the Council and the Endeavour
+  // go into the Dice tab's history too (they used to leave no trace there).
+  if (label && tn !== null && typeof history !== 'undefined' && Array.isArray(history)) {
+    history.unshift({ label, total: chosen.special === 'rune' ? '★' : total, outcome, tn, icons,
+      feat: chosen.special || chosen.value, dice: successRolls.map(x => x.value),
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) });
+    if (history.length > 30) history.length = 30;
+    try { saveHistory(); if (typeof renderHistory === 'function') renderHistory(); } catch (e) {}
+  }
   return res;
 }
 
@@ -1587,6 +1598,13 @@ function startJourney() {
     perilEventsRemaining: Math.max(0, parseInt(document.getElementById('j-perilRating').value) || 0),
     ...(typeof takePendingRoute === 'function' ? takePendingRoute(total) : {})
   };
+  // ▶ Play follows a journey begun here: out from the haven it is the road there; from the
+  // place you went to, it is the road home. (It used to stay "at your home" during the march.)
+  if (char.saga && char.saga.started && !char.saga.ended) {
+    const st = char.saga.step || 'haven';
+    if (st === 'location' || st === 'home') char.saga.step = 'home';
+    else if (st !== 'fellowship') char.saga.step = 'journey';
+  }
   saveCharacter();
   renderJourney();
 }
@@ -1616,11 +1634,13 @@ function renderJourney() {
     if (j.roles && j.roles.hunter) roleLabels.push('Hunter');
     if (j.roles && j.roles.lookout) roleLabels.push('Look-out');
     if (j.roles && j.roles.scout) roleLabels.push('Scout');
-    const rolesStr = roleLabels.length ? roleLabels.join(', ') : '<em>none</em>';
+    // Travelling alone, the hero covers every role (Strider Mode) — "none" read as if no-one did.
+    const rolesStr = (typeof isSolo === 'function' && isSolo()) ? 'all of them — you travel alone'
+      : (roleLabels.length ? roleLabels.join(', ') : '<em>none</em>');
     const fmTag = j.forcedMarch ? ' · <strong>Forced March</strong>' : '';
     const mountTag = j.mounted ? ` · Mounted (Vigour ${j.mountVigour})` : '';
     document.getElementById('j-summary').innerHTML =
-      `<strong>${j.origin || '?'}</strong> → <strong>${j.destination || '?'}</strong><br>` +
+      `<strong>${escapeHtml(j.origin || '?')}</strong> → <strong>${escapeHtml(j.destination || '?')}</strong><br>` +
       `${j.season} · ${j.region} Land${fmTag}${mountTag}<br>` +
       `<small>My role(s): ${rolesStr}</small>`;
 
@@ -1653,6 +1673,12 @@ function renderJourney() {
     progress.style.display = 'none';
     log.style.display = 'none';
     if (cancelBtn) cancelBtn.style.display = 'none';
+    // The season is the calendar's (Tale of Years) until the player picks one by hand.
+    const se = document.getElementById('j-season');
+    if (se && !se.dataset.picked && !(typeof isMoria === 'function' && isMoria())) se.value = calendarSeason();
+    // From: the Safe Haven, else the culture's home town, until the player types one.
+    const fo = document.getElementById('j-origin');
+    if (fo && !fo.value && typeof homePlaceName === 'function') fo.placeholder = homePlaceName() ? 'e.g. ' + homePlaceName() : fo.placeholder;
   }
   if (typeof jSyncGuided === 'function') jSyncGuided();
 }
@@ -1682,7 +1708,7 @@ function renderJourneyEventRoll() {
 
 /* What a successful event roll actually does. Only the mechanical ones are automated; the
    rest are narrative and say so rather than pretending to apply something. */
-const _jDay  = (j, d) => { j.daysElapsed = Math.max(0, (parseInt(j.daysElapsed) || 0) + d); return (d < 0 ? '−' : '+') + Math.abs(d) + ' day (now day ' + j.daysElapsed + ')'; };
+const _jDay  = (j, d) => { const was = parseInt(j.daysElapsed) || 0; j.daysElapsed = Math.max(0, was + d); if (j === char.journey) advanceDays(j.daysElapsed - was); return (d < 0 ? '−' : '+') + Math.abs(d) + ' day (now day ' + j.daysElapsed + ')'; };
 const _jHope = () => { const before = parseInt(char.hopeCur) || 0, max = parseInt(char.hopeMax) || 0;
   char.hopeCur = Math.min(max, before + 1); return char.hopeCur > before ? `+1 Hope (${before} → ${char.hopeCur})` : 'Hope already full'; };
 const _jShadow = (n) => {
@@ -1744,7 +1770,7 @@ async function rollJourneyEvent() {
   if (!pend || !pend.skill) return;
   const sk = _heroSkill(pend.skill);
   const dice = Math.max(0, sk.rating - (pend.hard ? 1 : 0));
-  const r = _doInlineRoll(dice, sk.favoured ? 'fav' : 'normal', sk.tn);
+  const r = _doInlineRoll(dice, sk.favoured ? 'fav' : 'normal', sk.tn, `${pend.skill} · ${pend.eventName || 'Journey event'}`);
   let ok = String(r.outcome).startsWith('SUCCESS');
   if (char.miserable && r.featSpecial === 'eye') ok = false;
   const effect = JOURNEY_EVENT_ROLL_EFFECT[pend.eventKey];
@@ -1812,7 +1838,7 @@ async function rollMarchingTest() {
   if (char.miserable) {
     // Miserable doesn't ill-fav, but does cause Eye = auto-fail (handled in _doInlineRoll? no — let me handle it here)
   }
-  const r = _doInlineRoll(s.rating, fav, tn);
+  const r = _doInlineRoll(s.rating, fav, tn, 'Travel · Marching Test');
   // Miserable: an Eye result becomes auto-fail (matches main dice roller)
   let success = r.outcome.startsWith('SUCCESS');
   if (char.miserable && r.featSpecial === 'eye') success = false;
@@ -2330,7 +2356,7 @@ function jPickDist(v) {
 }
 function jPickTravel(mode) { const m = document.getElementById('j-mounted'); if (m) m.checked = mode === 'mounted'; jSyncGuided(); }
 function jToggleForced() { const f = document.getElementById('j-forcedMarch'); if (f) f.checked = !f.checked; jSyncGuided(); }
-function jPickChip(selId, v) { const sel = document.getElementById(selId); if (!sel) return; sel.value = v; sel.dispatchEvent(new Event('change', { bubbles: true })); jSyncGuided(); }
+function jPickChip(selId, v) { const sel = document.getElementById(selId); if (!sel) return; sel.value = v; sel.dataset.picked = '1'; sel.dispatchEvent(new Event('change', { bubbles: true })); jSyncGuided(); }
 function jSyncGuided() {
   const inp = document.getElementById('j-totalHexes'); if (!inp) return;
   const hex = String(inp.value || '');
@@ -3101,7 +3127,7 @@ async function arriveAtDestination() {
   const s = char.skills['Travel'] || { rating: 0, favoured: false };
   const tn = parseInt(char.hrtTN) || 14;
   const fav = s.favoured ? 'fav' : 'normal';
-  const r = _doInlineRoll(s.rating, fav, tn);
+  const r = _doInlineRoll(s.rating, fav, tn, 'Travel · Arrival');
   let success = r.outcome.startsWith('SUCCESS');
   if (char.miserable && r.featSpecial === 'eye') success = false;
   if (success) {
@@ -3124,11 +3150,13 @@ async function arriveAtDestination() {
     text: `🏁 <strong>Arrived at ${j.destination || 'destination'}!</strong><br>${lines.join('<br>')}`
   });
   j.active = false;
-  // Advance the Chronicle clock by the days the journey took, and log the arrival.
-  if (journal && journal.clock && (parseInt(j.daysElapsed) || 0) > 0) {
-    journal.clock.day = (parseInt(journal.clock.day) || 1) + (parseInt(j.daysElapsed) || 0);
-    saveJournal();
+  // ▶ Play follows an arrival made here: the road there ends at the place; the road home ends home.
+  if (char.saga && char.saga.started && !char.saga.ended) {
+    if (char.saga.step === 'journey') char.saga.step = 'location';
+    else if (char.saga.step === 'home') char.saga.step = 'fellowship';
   }
+  // The Chronicle clock already moved day by day on the road (advanceDays) — adding the whole
+  // journey again here counted every day twice.
   saveCharacter();
   renderJourney();
   renderConditionWarnings();
@@ -3186,7 +3214,8 @@ async function takeShortRest() {
   showToast(`Short rest: +${recovered} Endurance (${cur} → ${cur + recovered}).`, { label: 'Undo', fn: () => undoLast() });
 }
 
-async function takeProlongedRest() {
+async function takeProlongedRest(opts) {
+  opts = opts || {};
   const str = parseInt(char.strRating) || 1;
   const cur = parseInt(char.endCur) || 0;
   const max = parseInt(char.endMax) || 0;
@@ -3200,9 +3229,13 @@ async function takeProlongedRest() {
 
   // Ask Safe Haven question only if there's Fatigue to clear
   let inSafeHaven = false;
-  if (wouldClearFatigue) {
-    inSafeHaven = await confirmStyled(`🌙 Prolonged Rest (a night's sleep)\n\nEndurance recovery: +${endRecover}\n${hopeRecover ? 'Hope recovery: +1 (you were at 0)\n' : ''}\nYou have ${fat} Fatigue. Are you resting in a Safe Haven? Tap OK if yes (Fatigue will be reduced by 1), Cancel if no.`, undefined, {yes:'Sleep', no:'Not now'});
-  } else {
+  if (typeof opts.safeHaven === 'boolean') {
+    // The caller knows where the hero is (▶ Play: at home, or camped on the road). Lingering
+    // Fatigue only lifts in a Safe Haven — a night in the wild must not clear it.
+    inSafeHaven = opts.safeHaven;
+  } else if (wouldClearFatigue) {
+    inSafeHaven = await confirmStyled(`🌙 Prolonged Rest (a night's sleep)\n\nEndurance recovery: +${endRecover}\n${hopeRecover ? 'Hope recovery: +1 (you were at 0)\n' : ''}\nYou have ${fat} Fatigue. It lifts by 1 only in a Safe Haven. Where are you sleeping?`, undefined, {yes:'In a Safe Haven', no:'Out in the wild'});
+  } else if (!opts.noConfirm) {
     if (!await confirmStyled(`🌙 Prolonged Rest (a night's sleep)\n\nEndurance recovery: +${endRecover}${char.wounded ? ' (Wounded: STRENGTH only)' : ' (full)'}\n${hopeRecover ? 'Hope recovery: +1 (you were at 0)' : ''}\n\nMax one Prolonged Rest per day (LM may allow more in safe/comfortable places).`, undefined, {yes:'Sleep', no:'Not now'})) return;
   }
 
@@ -3217,8 +3250,10 @@ async function takeProlongedRest() {
   // clear the per-day Short-Rest flag, and tick a Wounded hero's injury days down by 1.
   char.dayCount = (parseInt(char.dayCount) || 1) + 1;
   char.shortRestUsedToday = false;
-  // Advance the Chronicle clock by a day (the night passes).
-  if (journal && journal.clock) { journal.clock.day = (parseInt(journal.clock.day) || 1) + 1; saveJournal(); }
+  // Advance the Chronicle clock by a day (the night passes) — through the calendar, so day 30
+  // rolls into the next month (it used to read "31 Astron", "32 Astron"…).
+  if (typeof advanceChronicleDay === 'function' && journal && journal.clock) advanceChronicleDay(1);
+  _syncJourneySeason();
   let injuryTicked = 0;
   let moderateHealed = false;
   // A Moderate Injury's own printed text is "Uncheck Wounded in a few hours" — a night's sleep
@@ -3598,7 +3633,7 @@ async function confirmAddMagicalItem() {
     const wisdomRating = parseInt(char.wisdom) || 1;
     const wisdomTN = parseInt(char.witTN) || 14;
     if (await confirmStyled(`⚠ TAINTED HOARD\n\nGreed Shadow gain for ${type}: +${greedAmt} Shadow.\n\nMake a WISDOM Shadow Test now to reduce? Success reduces by 1+icons.`, undefined, {yes:'Take the Greed test'})) {
-      const r = _doInlineRoll(wisdomRating, 'normal', wisdomTN);
+      const r = _doInlineRoll(wisdomRating, 'normal', wisdomTN, 'Wisdom · Greed (Shadow Test)');
       const success = r.outcome.startsWith('SUCCESS') && !(char.miserable && r.featSpecial === 'eye');
       const reduction = success ? Math.min(greedAmt, 1 + r.icons) : 0;
       const netGain = greedAmt - reduction;
@@ -4275,7 +4310,34 @@ function _playChoices() {
   } else if (char.wounded) {
     lead.push(C('🩹 Tend the wound', 'playFirstAid()', 'A HEALING roll — a Wound will not rest off.'));
   }
+  // Whatever is running on another tab leads here, so Play never forgets a fight, a council or a
+  // task you started (it used to carry on as if nothing were happening).
+  if (!char.retired) {
+    const standing = _playFoesStanding();
+    if (standing) lead.unshift(C('⚔️ Back to the fight', "playGoTab('combat')", `${standing} foe${standing === 1 ? '' : 's'} still standing.`));
+    if (char.council && char.council.active) lead.push(C('🗣 Back to the council', "playGoTab('council')", char.council.topic || 'The council is still in session.'));
+    if (char.skillEndeavour && char.skillEndeavour.active) lead.push(C('🛠 Back to the task', "playGoTab('council')", char.skillEndeavour.task || 'The task is not done yet.'));
+  }
   return lead.concat(_playStepChoices());
+}
+function _playFoesStanding() {
+  try { const e = typeof enc === 'function' ? enc() : char.encounter; return ((e && e.foes) || []).filter(f => !f.slain).length; } catch (e) { return 0; }
+}
+function playRollNote(label, total, tn, outcome, icons) {
+  const panel = document.getElementById('panel-play');
+  if (!panel || !panel.classList.contains('active') || !(char.saga && char.saga.started)) return;
+  if (typeof tableActive === 'function' && tableActive()) return;
+  const ok = /^SUCCESS/.test(String(outcome));
+  playNote(`<strong>${escapeHtml(String(label).replace(/\s+[✨🌲★].*$/, ''))}</strong> — ${total} vs ${tn}: ` +
+    (ok ? '<strong style="color:var(--success-text)">success</strong>' : '<strong style="color:var(--error-text)">failure</strong>') + (icons ? ` (${icons} ✦)` : '') + '.');
+  if (typeof renderPlay === 'function') renderPlay();
+}
+function playGoTab(t) { if (typeof _goTab === 'function') _goTab(t); }
+/** Something that finished on another tab is told in the Play story too. */
+function playNote(text) {
+  if (typeof _playFeed === 'undefined' || !(char.saga && char.saga.started)) return;
+  _playFeed.push({ text, kind: 'story' });
+  if (_playFeed.length > 40) _playFeed.splice(0, _playFeed.length - 40);
 }
 
 /** The choices offered while a journey is under way. ONE function for both legs: the outbound
@@ -4296,15 +4358,19 @@ function _playRoadChoices(C, homeward) {
     C(`🎲 Roll ${jc.pendingEventRoll.skill}`, 'playEventRoll()', 'The road is asking something of you.'),
     C('↷ Let it happen', 'playEventSkip()', 'Skip the roll and take what comes.')
   ];
+  // A Perilous Area set on the Journey tab (or by the map) adds its own events; Play offers them too.
+  const peril = parseInt(jc.perilEventsRemaining) || 0;
+  const perilC = peril > 0 ? [C(`⚠️ Face the perilous area (${peril} left)`, 'playPeril()', 'A Perilous Area brings extra Journey Events.')] : [];
+  const attack = C('⚔️ Something attacks!', 'playFight()', 'Fights can break out on the road too.');
   return homeward
     ? [
       C('🥾 Travel onward', 'playTravel()', 'Cover ground on the way back.'),
-      camp,
+      ...perilC, camp, attack,
       C('🏠 We are safe again', 'playArriveHome()', 'You are home.')
     ]
     : [
       C('🥾 Travel onward', 'playTravel()', 'Cover ground. The road may interrupt you.'),
-      camp,
+      ...perilC, camp, attack,
       C('🏁 We have arrived', 'playArrive()', 'End the journey here.')
     ];
 }
@@ -4354,7 +4420,9 @@ function _playStepChoices() {
       C('👀 Look around', 'playLookAround()', 'What is here? The Oracle answers.'),
       C('🎯 Try something', 'playAttempt()', 'Search, climb, persuade, sneak — anything that could fail.'),
       C('🔮 Ask a yes/no question', 'playAsk()', 'When you need the world to decide something.'),
-      C('⚔️ Something attacks!', 'playFight()', 'Start a fight and run it here.'),
+      C('🗣 Win someone over', "playCouncil('council')", 'A Council — when the stakes are social.'),
+      C('🛠 A long, hard task', "playCouncil('endeavour')", 'A Skill Endeavour — search, build, mend over several tries.'),
+      C('⚔️ Something attacks!', 'playFight()', 'Pick the foe; the fight runs on the Combat tab.'),
       C('✅ Our business here is done', "playGoStep('home')", '')
     ];
     case 'home': return (char.journey && char.journey.active)
@@ -4437,7 +4505,7 @@ async function playAttempt() {
   });
   if (!pick) return;
   const sk = _heroSkill(pick);
-  const r = _doInlineRoll(sk.rating, sk.favoured ? 'fav' : 'normal', sk.tn);
+  const r = _doInlineRoll(sk.rating, sk.favoured ? 'fav' : 'normal', sk.tn, `${pick} · ${(PLAY_ATTEMPTS.find(a => a.skill === pick) || {}).label || pick}`);
   const ok = String(r.outcome).startsWith('SUCCESS');
   const entry = PLAY_ATTEMPTS.find(a => a.skill === pick) || { label: pick };
   const score = (r.total === null) ? 'a Gandalf rune — automatic success' : `${r.total} vs ${sk.tn}`;
@@ -4458,7 +4526,7 @@ async function playTravel() {
   const j = char.journey;
   const before = j.currentHex || 0, beforeDay = j.daysElapsed || 0;
   const sk = _heroSkill('Travel');
-  const r = _doInlineRoll(sk.rating, sk.favoured ? 'fav' : 'normal', sk.tn);
+  const r = _doInlineRoll(sk.rating, sk.favoured ? 'fav' : 'normal', sk.tn, 'Travel · Marching Test');
   let ok = String(r.outcome).startsWith('SUCCESS');
   if (char.miserable && r.featSpecial === 'eye') ok = false;
   // Advance through the Journey tab's own Marching Test rule rather than a second,
@@ -4556,18 +4624,30 @@ async function playSetOut() {
     buttons: [
       { label: 'Close by — a stretch of road', value: 4 },
       { label: 'A fair way — several days', value: 9 },
-      { label: 'Far — a long road', value: 18 }
+      { label: 'Far — a long road', value: 18 },
+      { label: '🗺 Plan it in full — map, mount, lands, peril', value: 'plan' }
     ]
   });
   if (!far) return;
-  char.journey = { active: true, origin: char.safeHaven || 'home', destination: String(dest).trim() || 'somewhere',
-    totalHexes: far, hardTerrainHexes: 0, currentHex: 0, season: 'Spring', region: _regionLabel(char.huntRegion || 'wild'),
+  if (far === 'plan') {
+    // The Journey tab sets out the same road with everything the rules ask about; ▶ Play
+    // picks it up the moment it starts (startJourney moves the story onto the road).
+    playGoTab('journey');
+    const d = document.getElementById('j-destination'); if (d) { d.value = String(dest).trim(); d.dispatchEvent(new Event('change', { bubbles: true })); }
+    const o = document.getElementById('j-origin'); if (o && !o.value && typeof homePlaceName === 'function') o.value = homePlaceName();
+    return;
+  }
+  // The same journey record the Journey tab keeps: it travels in the calendar's season and sets out
+  // from the hero's home, so both tabs describe one road.
+  const fromHere = (typeof homePlaceName === 'function' && homePlaceName()) || char.safeHaven || 'home';
+  char.journey = { active: true, origin: fromHere, destination: String(dest).trim() || 'somewhere',
+    totalHexes: far, hardTerrainHexes: 0, currentHex: 0, season: calendarSeason(), region: _regionLabel(char.huntRegion || 'wild'),
     forcedMarch: false, mounted: false, roles: {}, travelFatigue: 0, daysElapsed: 0, events: [], nextEventHex: null };
   sagaState().step = 'journey';
   saveCharacter();
   playClearFeed();
   playScene(`The road to ${char.journey.destination}`);
-  playSay(`You leave ${escapeHtml(char.safeHaven || 'home')} for <strong>${escapeHtml(char.journey.destination)}</strong>.`);
+  playSay(`You leave ${escapeHtml(fromHere)} for <strong>${escapeHtml(char.journey.destination)}</strong>. It is ${calendarSeason().toLowerCase()}.`);
   renderPlay();
 }
 
@@ -4626,7 +4706,7 @@ async function playArriveHome() {
 
 /** The road back. Same journey machinery, pointed the other way. */
 async function playSetOutHome() {
-  const home = char.safeHaven || 'home';
+  const home = (typeof homePlaceName === 'function' && homePlaceName()) || 'home';
   const from = (char.journey && char.journey.destination) || 'where you were';
   const far = await showModal({
     title: 'How far is the road back?',
@@ -4646,7 +4726,7 @@ async function playSetOutHome() {
   const outboundRegion = (char.journey || {}).region;
   const region = (far === 'same' && outboundRegion) ? outboundRegion : _regionLabel(char.huntRegion || 'wild');
   char.journey = { active: true, origin: from, destination: home,
-    totalHexes: hexes, hardTerrainHexes: 0, currentHex: 0, season: (char.journey || {}).season || 'Spring',
+    totalHexes: hexes, hardTerrainHexes: 0, currentHex: 0, season: calendarSeason(),
     region: region, forcedMarch: false, mounted: false, roles: {},
     travelFatigue: 0, daysElapsed: 0, events: [], nextEventHex: null };
   saveCharacter();
@@ -4671,17 +4751,48 @@ async function playFirstAid() {
 }
 
 async function playRest() {
-  const before = parseInt(char.endCur) || 0;
-  const orig = window.confirmStyled; window.confirmStyled = async () => true;
-  try { await takeProlongedRest(); } finally { window.confirmStyled = orig; }
-  playSay(`You rest. Endurance ${before} → ${char.endCur}${(parseInt(char.hopeCur)||0) ? '' : ''}.`);
+  const before = parseInt(char.endCur) || 0, fatBefore = parseInt(char.fatigue) || 0;
+  // Where the hero sleeps decides whether lingering Fatigue lifts (only in a Safe Haven). Play
+  // used to answer "yes, a Safe Haven" for every rest — camped on the road included.
+  const st = sagaState().step, onRoad = !!(char.journey && char.journey.active);
+  let haven = !onRoad && (st === 'haven' || st === 'fellowship');
+  if (!onRoad && st === 'location' && fatBefore > 0) {
+    const where = await showModal({ title: '🌙 Where do you rest?', message: 'Lingering Fatigue lifts only in a Safe Haven — a place of real safety, like a friendly house or an Elf-haven.',
+      buttons: [{ label: 'A Safe Haven', value: 'haven' }, { label: 'Out in the wild', value: 'wild' }, { label: 'Not now', value: null, cancel: true }] });
+    if (!where) return;
+    haven = where === 'haven';
+  }
+  await takeProlongedRest({ safeHaven: haven, noConfirm: true });
+  const fatNow = parseInt(char.fatigue) || 0;
+  playSay(`You rest through the night. Endurance ${before} → ${char.endCur}.` +
+    (fatBefore > fatNow ? ` Fatigue ${fatBefore} → ${fatNow}.` : fatBefore > 0 ? ' <em>Your Fatigue stays — it lifts only in a Safe Haven.</em>' : ''));
   renderPlay();
 }
 
 async function playFight() {
   playSay('<strong>Something comes at you out of the dark.</strong>');
-  playSay('Pick your foe on the Combat tab, fight it there, then come back here and carry on.', 'aside');
+  playSay('Pick your foe — the fight runs on the Combat tab. When it is over, come back here and carry on.', 'aside');
+  window._playFightPending = true;      // the first foe picked takes you to the fight
   openBestiary();
+  renderPlay();
+}
+/** Council or Skill Endeavour, set up on the Council tab — Play opens it at the right card. */
+function playCouncil(kind) {
+  playSay(kind === 'council' ? 'You set out to win someone over. <em>Set up the Council and roll it on the Council tab.</em>'
+                             : 'You set your hand to a long, hard task. <em>Set it up and roll it on the Council tab.</em>', 'aside');
+  playGoTab('council');
+  if (typeof pickCouncilKind === 'function') pickCouncilKind(kind);
+}
+/** One event from the Perilous Area, narrated like any other. */
+async function playPeril() {
+  const j = char.journey; if (!j || !j.active || !(parseInt(j.perilEventsRemaining) > 0)) return renderPlay();
+  const before = (j.events || []).length;
+  const origAlert = window.alert; window.alert = () => {};
+  try { resolveJourneyEvent(true); } finally { window.alert = origAlert; }
+  const ev = (j.events || [])[before];
+  if (ev) playSay(escapeHtml(_playPlainText(ev.text)));
+  const pend = j.pendingEventRoll;
+  if (pend && pend.skill) playSay(`<em>It asks something of you: ${_anWord(pend.skill)} <strong>roll</strong>.</em>`, 'aside');
   renderPlay();
 }
 
@@ -4738,9 +4849,36 @@ function playGoStep(step) {
 /** Move the hero's calendar on by `n` days: a new day frees the Short Rest and ticks down a
     Wounded hero's injury days, exactly as a night's Prolonged Rest does. Days pass on the road
     too, which is why this is not private to the rest code. */
+/** The Tale of Years' "+1 Day" button: the hero's day, injuries and journey season move with it. */
+function passDayByHand() { advanceDays(1); saveCharacter(); render(); }
+/** The season of the story's calendar ("Spring"…"Winter"), the one the Journey rules read. */
+function calendarSeason() {
+  try { if (typeof journal !== 'undefined' && journal && journal.clock && typeof monthSeason === 'function') { const s = monthSeason(journal.clock.month); if (s) return String(s).charAt(0).toUpperCase() + String(s).slice(1).toLowerCase(); } } catch (e) {}
+  return 'Spring';
+}
+/** A journey travels in the season the calendar is in — crossing into Winter on the road makes
+    the Marching Tests harder from that day on, as it should. */
+function _syncJourneySeason() {
+  const j = char.journey;
+  if (j && j.active && !(typeof isMoria === 'function' && isMoria())) j.season = calendarSeason();
+}
 function advanceDays(n) {
-  const days = Math.max(0, parseInt(n) || 0);
+  const raw = parseInt(n) || 0;
+  // A Short Cut takes a day back off the road: the calendar and the day-count step back with it
+  // (injury days already healed stay healed — that time was really spent resting the wound).
+  if (raw < 0) {
+    char.dayCount = Math.max(1, (parseInt(char.dayCount) || 1) + raw);
+    if (typeof advanceChronicleDay === 'function' && typeof journal !== 'undefined' && journal && journal.clock) advanceChronicleDay(raw);
+    _syncJourneySeason();
+    return;
+  }
+  const days = Math.max(0, raw);
   if (!days) return;
+  // One calendar: the hero's day-count, the Tale of Years in the Chronicle, and the season the
+  // journey is travelling in all move together. They used to be three clocks — a nine-day march
+  // left the Tale of Years on the day you set out, and a night's rest pushed it to "31 Astron".
+  if (typeof advanceChronicleDay === 'function' && typeof journal !== 'undefined' && journal && journal.clock) advanceChronicleDay(days);
+  _syncJourneySeason();
   char.dayCount = (parseInt(char.dayCount) || 1) + days;
   char.shortRestUsedToday = false;
   if (char.wounded && (parseInt(char.injuryDays) || 0) > 0) {

@@ -242,6 +242,9 @@ module.exports = {
     // ---- Small phones: the first choice is on the first screen ----
     await page.setViewportSize({ width: 320, height: 568 }); await go('play');
     const sm = await safe(`
+      // the scene's size is what is measured: start from a fresh scene (rolls made on Play now
+      // write into its story, which earlier checks here did)
+      playClearFeed(); renderPlay(); await new Promise(r => setTimeout(r, 50));
       const c = document.querySelector('.play-choices .choice'); const nav = document.getElementById('bottom-nav').getBoundingClientRect();
       return { bottom: Math.round(c.getBoundingClientRect().bottom), floor: Math.round(nav.top) };`);
     checks.push({ ok: !sm.err && sm.bottom <= sm.floor, msg: `on a 320×568 phone the first choice shows without scrolling (${JSON.stringify(sm)})` });

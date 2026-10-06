@@ -1366,8 +1366,11 @@ module.exports = {
       renderPlay();
       // Assert the CONTROL, not the prose. An earlier version of this check matched the
       // situation text, which mentions the button — so it passed with the button removed.
+      // Since the linkage pass, arriving on the Journey tab moves ▶ Play to the place itself, so
+      // it offers what you do there (or, for an older save, the "We have arrived" button).
       out.playRecoversAfterJourneyTab =
-        !!document.querySelector('#play-body button[onclick="playArrive()"]');
+        (sagaState().step === 'location' && !!document.querySelector('#play-body button[onclick="playLookAround()"]'))
+        || !!document.querySelector('#play-body button[onclick="playArrive()"]');
 
       // 11 — "the road home" must have a working action, not one that always refuses.
       char.saga.step = 'home'; renderPlay();
