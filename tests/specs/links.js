@@ -436,6 +436,28 @@ module.exports = {
     checks.push({ ok: !hp.err && hp.t1 === 'foes' && hp.r2 === hp.r1 + 1 && hp.t2 === 'hero',
       msg: `"I do something else this turn" hands the turn to the foes, and with no foe engaged it passes the round instead of doing nothing (${JSON.stringify(hp)})` });
 
+    // After you act, the screen says the foes attack now; old results are marked; stale toasts drop.
+    const tv = await safe(`
+      char.encounter = JSON.parse(JSON.stringify(DEFAULT_CHARACTER.encounter));
+      const all = allBestiary(); ['Orc-chieftain', 'Orc Soldier'].forEach(n => addFoeFromBestiary(all.findIndex(x => x.name === n)));
+      document.querySelectorAll('.menu-overlay.show').forEach(o => o.classList.remove('show'));
+      const out = {};
+      const f0 = enc().foes[0]; _encStash(f0.id, 'line', null, '<b>It misses you</b>');
+      await encHeroPass();
+      const over = document.querySelector('.hero-fight-card .hero-turn-over');
+      out.over = !!over && /Now the foes attack/.test(over.textContent) && getComputedStyle(over).opacity === '1';
+      out.fresh = !document.querySelector('.foe-said.old');
+      await encFoesHold();
+      out.old = /Last round/.test((document.querySelector('.foe-said.old') || {}).textContent || '');
+      document.querySelectorAll('#toast-wrap .toast').forEach(t => t.remove());
+      showToast('Round 3 — your turn'); showToast('Round 4 — your turn'); showToast('Round 5 — your turn');
+      out.queued = [...document.querySelectorAll('#toast-wrap .toast.queued')].map(t => t.textContent);
+      document.querySelectorAll('.menu-overlay.show').forEach(o => o.classList.remove('show'));
+      char.encounter = JSON.parse(JSON.stringify(DEFAULT_CHARACTER.encounter)); saveCharacter(); render();
+      return out;`);
+    checks.push({ ok: !tv.err && tv.over && tv.fresh && tv.old && tv.queued.length === 1 && /Round 5/.test(tv.queued[0]),
+      msg: `after your turn the hero card says the foes attack now, last round's results are marked "Last round", and a stale "Round 3" toast never waits behind "Round 5" (${JSON.stringify(tv)})` });
+
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length}${errors.length ? ': ' + errors[0] : ''})` });
     await context.close();
     return { checks };

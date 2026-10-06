@@ -63,7 +63,7 @@ module.exports = {
       const all = [...document.querySelectorAll('#toast-wrap .toast')];
       const shown = all.filter(t => t.checkVisibility()).map(t => t.textContent.trim());
       all.forEach(t => t.remove()); return { n: all.length, shown };`);
-    checks.push({ ok: !ts.err && ts.n === 3 && ts.shown.length === 1 && /One/.test(ts.shown[0]), msg: `toasts queue: three are sent, one shows (${JSON.stringify(ts)})` });
+    checks.push({ ok: !ts.err && ts.n === 2 && ts.shown.length === 1 && /One/.test(ts.shown[0]), msg: `toasts come one at a time: three are sent, one shows and only the newest waits (${JSON.stringify(ts)})` });
 
     // ---- Weather follows the story's season and hour ----
     const wx = await safe(`

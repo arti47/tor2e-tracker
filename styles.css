@@ -2921,7 +2921,7 @@ button.xp-token:hover, button.xp-token:focus-visible { background: color-mix(in 
 .hfc-stance, .hfc-parry { font-size: var(--fs-xs); color: var(--text-muted); display: inline-flex; align-items: center; gap: 3px; }
 .hfc-stance { margin-left: auto; }
 .hero-fight-card .btn, .hero-fight-card .foe-you { margin-top: 6px; }
-.turn-off > :not(.foe-said):not(button[onclick^="encPierce"]):not(.foe-sil) { opacity: .5; filter: grayscale(.6); transition: opacity .25s; }
+.turn-off > :not(.foe-said):not(button[onclick^="encPierce"]):not(.foe-sil):not(.hero-turn-over) { opacity: .5; filter: grayscale(.6); transition: opacity .25s; }
 .foe-card.turn-on, .hero-fight-card.turn-on { box-shadow: 0 0 0 2px var(--red), 0 4px 14px rgba(120, 20, 20, .18); }
 .turn-chip { font-size: var(--fs-xs); font-weight: 700; padding: 2px 8px; border-radius: 999px; }
 .turn-chip.you { background: var(--success-text); color: white; }
@@ -2971,3 +2971,7 @@ button.xp-token:hover, button.xp-token:focus-visible { background: color-mix(in 
   .foe-card .foe-bars2 .foe-bar > button:nth-of-type(2) { grid-column: 3; }
   .foe-card .foe-bars2 .foe-bar > .notch-bar, .foe-card .foe-bars2 .foe-bar > i { grid-column: 1 / -1; grid-row: 2; }
 }
+/* After your turn: say plainly that it passed to the foes (the card dims, this line does not). */
+.hero-turn-over { margin-top: 8px; padding: 8px 10px; border-radius: var(--r-sm); background: var(--bg-deep); border-left: 3px solid var(--red); font-size: var(--fs-sm); line-height: 1.45; }
+.foe-said.old { opacity: .6; }
+.foe-said-when { display: block; font-size: var(--fs-xs); color: var(--text-faint); font-variant: small-caps; letter-spacing: .04em; margin-bottom: 2px; }

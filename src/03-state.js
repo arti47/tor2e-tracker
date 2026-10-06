@@ -734,13 +734,25 @@ function showToast(msg, action) {
     t.appendChild(b); t.style.pointerEvents = 'auto';
   }
   // Round 7: one note at a time — later ones wait their turn, and their clock starts when shown.
+  let timer = null, ended = false;
+  t._end = () => {
+    if (ended) return; ended = true; clearTimeout(timer);
+    t.classList.remove('in'); setTimeout(() => { t.remove(); const next = wrap.querySelector('.toast.queued'); if (next && next._start) next._start(); }, 300);
+  };
   t._start = () => {
     t.classList.remove('queued');
     requestAnimationFrame(() => { t.classList.add('in'); });
-    setTimeout(() => { t.classList.remove('in'); setTimeout(() => { t.remove(); const next = wrap.querySelector('.toast.queued'); if (next && next._start) next._start(); }, 300); }, action ? 6500 : 4000);
+    timer = setTimeout(t._end, action ? 6500 : 4000);
   };
-  const busy = !!wrap.querySelector('.toast:not(.queued)');
-  if (busy) t.classList.add('queued');
+  const shown = wrap.querySelector('.toast:not(.queued)');
+  const busy = !!shown;
+  if (busy) {
+    // A note is news only while it is current: "Round 3 — your turn" must not surface in round 5.
+    // Waiting notes without a button are dropped, and a plain note on screen gives way soon.
+    wrap.querySelectorAll('.toast.queued').forEach(q => { if (!q.querySelector('.toast-action')) q.remove(); });
+    if (!shown.querySelector('.toast-action') && shown._end) setTimeout(shown._end, 700);
+    t.classList.add('queued');
+  }
   wrap.appendChild(t);
   if (!busy) t._start();
 }

@@ -1066,6 +1066,7 @@ function rollWoundSeverity() {
 /* ---------- COMBAT-TAB ENCOUNTER TRACKER ---------- */
 let _encResults = {};  // transient inline roll results, keyed by foe id (not persisted)
 let _encShows = {};    // the same results as the foe card shows them (a pill and a sentence)
+let _encWhen = {};     // the round each shown result belongs to — an older one is labelled, not passed off as new
 // P5: in a cloud campaign the encounter is SHARED (Sync mirror of campaigns/{cid}/encounter);
 // otherwise it's this hero's local char.encounter, exactly as before.
 function encShared() { return typeof Sync !== 'undefined' && Sync.sharedEncActive && Sync.sharedEncActive(); }
@@ -1480,6 +1481,7 @@ function _encStash(foeId, lineHtml, note, show) {
   const noteStr = note && note.length ? ` <span style="color:var(--text-faint)">[${note.join(' · ')}]</span>` : '';
   _encResults[foeId] = lineHtml + noteStr;          // the log line (history, Chronicle, table feed)
   _encShows[foeId] = show || null;                  // what the foe card shows: a pill and a sentence
+  _encWhen[foeId] = parseInt(enc().round) || 1;
 }
 
 // ----- foe Protection roll (Feat + foe Armour dice vs weapon Injury) -----
@@ -1811,7 +1813,10 @@ function _renderFoeCard(f, canGm = true, lead = true, turn = null) {
       ${(f.attacks || []).length ? `<div class="foe-them"><span>When ${escapeHtml(f.name)} attacks you:</span>
         ${(f.attacks || []).map((atk, i) => `<button onclick="foeAttackHero('${f.id}',${i})" class="btn btn-secondary">${escapeHtml(atk.name)} · ${atk.dice}d</button>`).join('')}</div>` : ''}`;
   }
-  if (_encResults[f.id]) h += `<div class="foe-said">${_encShows[f.id] || _encResults[f.id]}</div>`;
+  if (_encResults[f.id]) {
+    const old = turn && (_encWhen[f.id] || 0) < (parseInt(enc().round) || 1);
+    h += `<div class="foe-said${old ? ' old' : ''}">${old ? '<small class="foe-said-when">Last round</small>' : ''}${_encShows[f.id] || _encResults[f.id]}</div>`;
+  }
   const ps = _encPierceState[f.id];
   if (ps && !f.slain) {
     const next = Math.min(10, ps.feat + ps.bonus);
@@ -1843,7 +1848,9 @@ function _renderHeroCard(e, myTurn, gearHtml) {
     h += gearHtml;
     standing.forEach((f, i) => { h += `<button onclick="heroAttackFoe('${f.id}')" class="btn btn-block foe-you${i ? ' btn-secondary' : ''}">⚔ Attack ${escapeHtml(f.name)}</button>`; });
     h += `<button onclick="encHeroPass()" class="btn btn-quiet btn-block">I do something else this turn</button>`;
-  } else h += `<div class="foe-wait">${standing.length ? 'The foes are attacking — answer each one below.' : 'No foe stands against you.'}</div>`;
+  } else h += standing.length
+    ? `<div class="hero-turn-over">Your turn is over. <strong>Now the foes attack</strong> — tap each foe's attack below.</div>`
+    : `<div class="foe-wait">No foe stands against you.</div>`;
   return h + `</div>`;
 }
 function _renderFoeEdit(f) {
