@@ -2845,6 +2845,47 @@ function renderMissionPreview() {
     + `Eye Awareness: <strong>${p.ea}</strong> · Hunt Threshold: <strong>${p.hunt}</strong> <small>(${HUNT_THRESHOLDS[char.huntRegion] || HUNT_THRESHOLDS.dark} ${p.huntMod >= 0 ? '+' : ''}${p.huntMod})</small>`;
 }
 
+/** The mission as it stands, in words — shown on the Band tab, the hero sheet and ▶ Play once planned. */
+const MISSION_LABEL = {
+  size: { small: 'Small party', medium: 'Medium party', large: 'Large party' },
+  warGear: { travellingLight: 'travelling light', prepared: 'prepared', gearedForWar: 'geared for war' },
+  spec: { sentinels: 'Sentinels', stalwarts: 'Stalwarts', experts: 'Experts' },
+  outcome: { astounding: 'Astounding success', qualified: 'Qualified success', minorFail: 'Minor failure', devastating: 'Devastating failure' }
+};
+function missionActive() { return typeof isMoria === 'function' && isMoria() && !!(char.mission && char.mission.active); }
+function missionParty() {
+  const m = char.mission || {};
+  return [MISSION_LABEL.size[m.size] || 'Medium party', MISSION_LABEL.warGear[m.warGear] || 'prepared', MISSION_LABEL.spec[m.specialisation]].filter(Boolean).join(', ');
+}
+function missionSummaryHtml() {
+  if (!missionActive()) return '';
+  const m = char.mission, b = char.band || {};
+  const on = missionAllies().filter(a => !a.outOfAction).length;
+  const hunt = typeof huntThreshold === 'function' ? huntThreshold(char) : (HUNT_THRESHOLDS.dark + (parseInt(char.huntMod) || 0));
+  return `<div class="mission-now" id="mission-now">
+    <div class="mn-head"><small>Mission under way</small><strong>${m.objective ? escapeHtml(m.objective) : 'No objective set yet'}</strong></div>
+    <div class="mn-row">${escapeHtml(missionParty())} · ${on} ${on === 1 ? 'dwarf' : 'dwarves'} on the mission</div>
+    <div class="mn-row">Readiness ${parseInt(b.readiness) || 0} (TN ${typeof bandTN === 'function' ? bandTN() : 20 - (parseInt(b.readiness) || 0)}) · Burden ${escapeHtml(b.burden || 'medium')} · Eye ${parseInt(char.eyeAwareness) || 0} of ${hunt}</div>
+  </div>`;
+}
+async function endMission() {
+  if (!missionActive()) return;
+  const keys = Object.keys(MISSION_LABEL.outcome);
+  const pick = await showModal({
+    title: 'End the mission',
+    message: `How did it go${char.mission.objective ? ` — <em>${escapeHtml(char.mission.objective)}</em>` : ''}? The outcome sets the Hunt Threshold for your next mission.`,
+    buttons: keys.map(k => ({ label: MISSION_LABEL.outcome[k] + ` (Hunt ${HUNT_MOD_PREV[k] >= 0 ? '+' : ''}${HUNT_MOD_PREV[k]})`, value: k }))
+      .concat([{ label: 'Not yet', value: null, cancel: true, style: 'background:var(--btn-secondary-bg);color:white;border:none;border-radius:var(--r-sm);padding:10px;font-size:var(--fs-md);cursor:pointer' }])
+  });
+  if (!pick || !MISSION_LABEL.outcome[pick]) return;
+  const m = char.mission;
+  m.lastObjective = m.objective || ''; m.lastOutcome = pick;
+  m.prevOutcome = pick; m.active = false; m.objective = '';
+  if (typeof logTimeline === 'function') logTimeline('mission', `Mission ended — ${MISSION_LABEL.outcome[pick]}${m.lastObjective ? ': ' + m.lastObjective : ''}`);
+  if (typeof journalAuto === 'function') journalAuto('advancement', 'mission', `Mission ended — ${MISSION_LABEL.outcome[pick]}`);
+  saveCharacter(); render();
+  showToast(`Mission ended — ${MISSION_LABEL.outcome[pick]}. The next plan starts from it.`);
+}
 function applyMissionSetup(quiet) {
   const p = _compPreview();
   char.band.dispositions = { ...p.base };
@@ -2876,6 +2917,10 @@ function renderMission() {
   bindSeg('#m-prev-pick', 'prevOutcome', 'prev');
   bindSeg('#m-fp-pick', 'fpDuration', 'fp');
   renderMissionPreview();
+  const cur = document.getElementById('m-current');
+  if (cur) cur.innerHTML = missionActive() ? missionSummaryHtml() + '<button type="button" class="btn btn-secondary" style="width:100%;margin:6px 0 10px" onclick="endMission()">End the mission…</button><p class="hint" style="text-align:left;margin:0 0 8px">To change the plan, adjust the choices below and apply them again.</p>' : '';
+  const ap = document.getElementById('m-apply-btn');
+  if (ap) ap.textContent = missionActive() ? '✅ Re-plan with these choices' : '✅ Apply Mission Setup';
 }
 
 /* Round 8: each Band step says, while folded, where it stands — and ticks when it is done. */
@@ -4846,8 +4891,9 @@ async function moriaReadyToTravel() {
     if (!m.size) m.size = 'medium';
     if (!m.warGear) m.warGear = 'prepared';
     if (m.specialisation == null) m.specialisation = '';
+    if (!m.objective) { const fk = _featKey(); m.objective = MISSION_OBJECTIVES[fk][(Math.floor(Math.random() * 6) + 1) <= 3 ? 0 : 1]; }
     const pv = applyMissionSetup(true);
-    showToast(`Mission planned — Readiness ${pv.readiness} (TN ${20 - pv.readiness}), Eye ${pv.ea}.`);
+    showToast(`Mission planned: ${m.objective}. Readiness ${pv.readiness} (TN ${20 - pv.readiness}), Eye ${pv.ea}.`);
   }
   return true;
 }
@@ -5338,6 +5384,7 @@ function _sheetBandHtml() {
   return `<div class="card band-sum" id="sheet-band">
     <h3 class="card-title">Your Band</h3>
     <div class="sb-top"><span><small>Readiness</small><strong>${n(b.readiness)}</strong></span><span><small>TN</small><strong>${typeof bandTN === 'function' ? bandTN() : 20 - n(b.readiness)}</strong></span><span><small>Burden</small><strong>${escapeHtml(burden)}</strong></span><span><small>Allies</small><strong>${allies.filter(a => !a.outOfAction).length}/${allies.length}</strong></span></div>
+    ${missionSummaryHtml()}
     <div class="sb-disps">${disp}</div>
     <div class="sb-allies">${rows}</div>
     <button type="button" class="btn btn-secondary" onclick="requireStepGo('band','band-allies-card')">Open the Band tab — rolls and tests</button>
@@ -5684,6 +5731,7 @@ function _renderPlayBody(host, s, pp) {
        <div class="eyebrow">Where you are</div>
        <h3 class="card-title">${escapeHtml(sit.title)}</h3>
        <div class="play-sit">${sit.text}</div>
+       ${missionActive() && char.mission.objective ? `<p class="play-mission"><small>Mission</small> ${escapeHtml(char.mission.objective)}</p>` : ''}
        ${road}
        ${feed ? `<div class="play-feed" aria-live="polite">${feed}</div>` : ''}
      </div>${_playStoryCard(!!road)}${typeof heroPlate === 'function' ? heroPlate(!road) : ''}</div>

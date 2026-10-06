@@ -2996,3 +2996,11 @@ button.xp-token:hover, button.xp-token:focus-visible { background: color-mix(in 
 .band-sum .sb-hurt { color: var(--error-text); background: var(--error-bg); }
 .band-sum .sb-out { color: var(--pure-white); background: var(--btn-alert-bg); }
 .band-sum .btn { width: 100%; }
+
+/* Moria: the mission under way (Band tab, hero sheet, Play) */
+.mission-now { background: var(--gold-soft); border: 1px solid var(--gold); border-radius: var(--r-sm); padding: 8px 10px; margin: 6px 0 8px; font-size: var(--fs-sm); line-height: 1.5; }
+.mission-now .mn-head small { display: block; color: var(--label, var(--text-muted)); font-variant: small-caps; font-size: var(--fs-xs); }
+.mission-now .mn-head strong { display: block; font-family: var(--font-display, serif); font-size: var(--fs-md); }
+.mission-now .mn-row { color: var(--text-muted); font-size: var(--fs-xs); }
+.play-mission { margin: 6px 0 0; font-size: var(--fs-sm); font-style: italic; }
+.play-mission small { font-style: normal; font-variant: small-caps; color: var(--label, var(--text-muted)); margin-right: 4px; }

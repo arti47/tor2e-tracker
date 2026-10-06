@@ -1765,6 +1765,7 @@
 
   <div class="card">
     <h3 class="card-title" id="band-mission-card" data-hint="Mission (Moria)">2 · Mission Planning</h3>
+    <div id="m-current"></div>
     <p class="hint" style="text-align:left;line-height:1.5">Set your mission, then choose the Band's <strong>composition</strong> — it seeds Dispositions, Burden, Readiness, Eye Awareness, and the Hunt Threshold.</p>
     <div class="field"><label style="flex:0 0 70px">Objective</label><input id="m-objective" placeholder="What does Balin send you to do?" onchange="char.mission.objective=this.value;saveCharacter()"></div>
     <button class="add-row-btn" onclick="rollMissionObjective()" style="width:100%;font-size:var(--fs-xs);background:var(--btn-secondary-bg);margin-bottom:10px">🎲 Roll Mission Objective</button>
@@ -1803,7 +1804,7 @@
       <button class="seg-btn" data-fp="extended">Extended <small>−2</small></button>
     </div>
     <div id="m-preview" style="background:var(--gold-soft);border:1px solid var(--gold);border-radius:var(--r-sm);padding:8px;font-size:var(--fs-xs);line-height:1.6;margin:6px 0"></div>
-    <button class="roll-btn" onclick="applyMissionSetup()" style="width:100%">✅ Apply Mission Setup</button>
+    <button class="roll-btn" id="m-apply-btn" onclick="applyMissionSetup()" style="width:100%">✅ Apply Mission Setup</button>
   </div>
 
   <div class="card">

@@ -598,6 +598,35 @@ module.exports = {
     checks.push({ ok: !bt.err && bt.blank && bt.builtHidden && bt.inMenu && bt.opens && bt.leaves,
       msg: `Build sits in the Hero group only until the hero is built; then Menu → Creation steps or Edit opens it, and it leaves the bar again afterwards (${JSON.stringify(bt)})` });
 
+    // Moria: a planned mission is shown once applied — Band tab, hero sheet and Play — and can be ended with an outcome.
+    const mi = await safe(`
+      const save = JSON.stringify({ moria: char.moriaMode, band: char.band, mission: char.mission, saga: char.saga, ea: char.eyeAwareness, hm: char.huntMod, hr: char.huntRegion });
+      const realModal = window.showModal;
+      const out = {};
+      char.moriaMode = true;
+      char.band.allies = [{ id: 'y1', name: 'Nár', gift: 'Stout' }, { id: 'y2', name: 'Frár', gift: 'Keen' }];
+      char.mission = { active: false, objective: 'Reclaim an important landmark', size: 'small', warGear: 'gearedForWar', specialisation: 'sentinels', prevOutcome: '', fpDuration: 'brief', roster: [] };
+      render(); renderBand();
+      out.before = !document.getElementById('mission-now');
+      applyMissionSetup(true); renderBand();
+      const cur = document.getElementById('m-current');
+      out.band = !!cur && /Reclaim an important landmark/.test(cur.textContent) && /Small party, geared for war, Sentinels/.test(cur.textContent) && /2 dwarves/.test(cur.textContent);
+      const sheet = document.getElementById('sheet-band');
+      out.sheet = !!sheet && /Reclaim an important landmark/.test(sheet.textContent);
+      char.saga = Object.assign({}, char.saga || {}, { started: true, ended: false }); renderPlay();
+      const pm = document.querySelector('#panel-play .play-mission');
+      out.play = !!pm && /Reclaim an important landmark/.test(pm.textContent);
+      window.showModal = async () => 'qualified';
+      await endMission();
+      window.showModal = realModal;
+      out.ended = char.mission.active === false && char.mission.prevOutcome === 'qualified' && !document.getElementById('mission-now');
+      const o = JSON.parse(save);
+      char.moriaMode = o.moria; char.band = o.band; char.mission = o.mission; char.saga = o.saga; char.eyeAwareness = o.ea; char.huntMod = o.hm; char.huntRegion = o.hr;
+      saveCharacter(); render();
+      return out;`);
+    checks.push({ ok: !mi.err && mi.before && mi.band && mi.sheet && mi.play && mi.ended,
+      msg: `a planned Moria mission shows once applied — objective, party and Band on the Band tab, the hero sheet and Play — and ending it records the outcome for the next plan (${JSON.stringify(mi)})` });
+
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length}${errors.length ? ': ' + errors[0] : ''})` });
     await context.close();
     return { checks };
