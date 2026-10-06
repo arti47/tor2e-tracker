@@ -1129,7 +1129,7 @@ async function encHeroPass() {
   const e = enc();
   if (e.turn === 'foes') {
     saveCharacter(); renderEncounter();
-    if (typeof showToast === 'function') showToast('You spend your turn on something else — now the foes act.');
+    if (typeof showToast === 'function') showToast('No attack from you this round. Now each foe attacks — tap the weapon on its card to roll it.');
     // Take the player to what happens next; the hero card above is now greyed out.
     const next = document.querySelector('#encounter-card .foe-card.turn-on') || document.querySelector('#encounter-card button[onclick^="allFoesAttack"]');
     if (next && next.scrollIntoView) next.scrollIntoView({ behavior: 'auto', block: 'center' });
@@ -1847,9 +1847,10 @@ function _renderHeroCard(e, myTurn, gearHtml) {
   if (myTurn) {
     h += gearHtml;
     standing.forEach((f, i) => { h += `<button onclick="heroAttackFoe('${f.id}')" class="btn btn-block foe-you${i ? ' btn-secondary' : ''}">⚔ Attack ${escapeHtml(f.name)}</button>`; });
-    h += `<button onclick="encHeroPass()" class="btn btn-quiet btn-block">I do something else this turn</button>`;
+    h += `<button onclick="encHeroPass()" class="btn btn-quiet btn-block">Skip my attack this turn</button>
+      <div class="hfc-skip-why">For a turn spent another way — a Combat Task like Rally or Protect, changing stance, tending a friend. The foes then attack.</div>`;
   } else h += standing.length
-    ? `<div class="hero-turn-over">Your turn is over. <strong>Now the foes attack</strong> — tap each foe's attack below.</div>`
+    ? `<div class="hero-turn-over">Your turn is over. <strong>Now the foes attack</strong> — on each foe card below, tap the weapon it attacks with (or <em>Every foe attacks you</em> to roll them all).</div>`
     : `<div class="foe-wait">No foe stands against you.</div>`;
   return h + `</div>`;
 }
