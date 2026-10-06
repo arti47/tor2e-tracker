@@ -1734,27 +1734,57 @@ function renderEncounter() {
   if (canGm) html += `<button onclick="endEncounter()" class="btn btn-quiet btn-block" style="margin-top:10px">End encounter</button>`;
   card.innerHTML = html;
 }
+/** A foe's `fell` line split into its parts: plain features ("Stealthy, Wary") and named
+    abilities ("Hideous Toughness: …" or the older "Hatred (Dwarves)."). */
+function foeTraits(fell) {
+  const txt = String(fell || '').trim();
+  if (!txt) return { words: [], abilities: [] };
+  let parts = txt.split(/\s+·\s+/);
+  if (parts.length === 1 && !/:/.test(txt)) parts = txt.split(/\.\s+/);
+  const words = [], abilities = [];
+  parts.map(p => p.trim().replace(/\.$/, '')).filter(Boolean).forEach(p => {
+    const c = p.indexOf(':');
+    if (c > 0 && c < 40) { abilities.push({ name: p.slice(0, c).trim(), desc: p.slice(c + 1).trim() }); return; }
+    const m = p.match(/^([^()]{2,40})\s*\((.+)\)$/);
+    if (m) { abilities.push({ name: m[1].trim(), desc: m[2].trim() }); return; }
+    if (/,/.test(p) && p.length <= 60 && !/\s\w+\s\w+\s\w+\s/.test(p.replace(/,/g, ''))) { p.split(/\s*,\s*/).forEach(w => w && words.push(w)); return; }
+    if (p.length <= 32) words.push(p);
+    else abilities.push({ name: p.split(/\s+/).slice(0, 3).join(' ') + '…', desc: p });
+  });
+  return { words, abilities };
+}
+const _fellOpen = {};
+function toggleFell(id, i) { _fellOpen[id] = _fellOpen[id] === i ? null : i; renderEncounter(); }
+function _foeTraitsHtml(f) {
+  const t = foeTraits(f.fell);
+  const stats = `Parry ${f.parry} · Armour ${f.armour}${f.might ? ` · Might ${f.might}` : ''}`;
+  let h = `<div class="foe-stats">${stats}${t.words.length ? `<span class="foe-words"> · ${t.words.map(escapeHtml).join(', ')}</span>` : ''}</div>`;
+  if (!t.abilities.length) return h;
+  const open = _fellOpen[f.id];
+  h += `<div class="fell-chips">${t.abilities.map((a, i) => `<button class="fell-chip${open === i ? ' on' : ''}" onclick="toggleFell('${f.id}',${i})" aria-expanded="${open === i}">${escapeHtml(a.name)}</button>`).join('')}</div>`;
+  const a = open != null && t.abilities[open];
+  if (a && a.desc) h += `<div class="fell-desc"><strong>${escapeHtml(a.name)}.</strong> ${escapeHtml(a.desc)}</div>`;
+  return h;
+}
 function _renderFoeCard(f, canGm = true, lead = true, turn = null) {
   const slain = f.slain;
   const step = (field, d, lbl) => canGm ? `<button class="foe-step" onclick="adjFoe('${f.id}','${field}',${d})" aria-label="${d < 0 ? 'Lower' : 'Raise'} ${field === 'endCur' ? 'Endurance' : 'Hate'} of ${escapeHtml(f.name)}">${lbl}</button>` : '';
   const pct = (c, m) => Math.max(0, Math.min(100, (parseInt(c) || 0) / Math.max(1, parseInt(m) || 1) * 100));
   const off = turn && !slain && (turn === 'hero' || f.acted);
   let h = `<div class="foe-card${slain ? ' slain' : ''}${off ? ' turn-off' : ''}${turn === 'foes' && !slain && !f.acted ? ' turn-on' : ''}">${typeof foeSilhouette === 'function' ? foeSilhouette(f) : ''}
-    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+    <div class="foe-head">
       ${typeof foeSilhouette === 'function' ? `<span class="foe-medal" aria-hidden="true">${foeSilhouette(f, 'foe-medal-sil')}</span>` : ''}
-      <strong style="font-size:var(--fs-md)">${escapeHtml(f.name)}</strong>
-      ${slain ? '<span class="result-tag tag-fail">SLAIN</span>' : (f.wounded ? '<span class="result-tag" style="background:var(--btn-warn-bg);color:white">WOUNDED</span>' : '')}
-      <span style="font-size:var(--fs-xs);color:var(--text-faint)">${escapeHtml(f.source || '')}</span>
-      <span style="flex:1"></span>
-      ${canGm ? `<button onclick="toggleFoeEdit('${f.id}')" title="Edit stats" style="background:none;border:none;cursor:pointer;color:var(--text-faint)">✎</button>
-      <button onclick="removeFoe('${f.id}')" title="Remove" style="background:none;border:none;cursor:pointer;color:var(--text-faint)">×</button>` : ''}
+      <div class="foe-title"><strong>${escapeHtml(f.name)}</strong>
+        ${slain ? '<span class="result-tag tag-fail">SLAIN</span>' : (f.wounded ? '<span class="result-tag" style="background:var(--btn-warn-bg);color:white">WOUNDED</span>' : '')}
+        <small>${escapeHtml(f.source || '')}</small></div>
+      ${canGm ? `<button class="foe-tool" onclick="toggleFoeEdit('${f.id}')" title="Edit stats" aria-label="Edit ${escapeHtml(f.name)}">✎</button>
+      <button class="foe-tool" onclick="removeFoe('${f.id}')" title="Remove" aria-label="Remove ${escapeHtml(f.name)}">×</button>` : ''}
     </div>
-    <div class="foe-bars">
+    <div class="foe-bars foe-bars2">
       <div class="foe-bar"><span>Endurance <strong>${f.endCur}/${f.endMax}</strong></span>${step('endCur', -1, '−')}${step('endCur', 1, '+')}${typeof notchBar === 'function' ? notchBar(f.endCur, f.endMax, 'nb-end', 'Endurance') : `<i><b style="width:${pct(f.endCur, f.endMax)}%"></b></i>`}</div>
       <div class="foe-bar hate"><span>Hate <strong>${f.hateCur}/${f.hateMax}</strong></span>${step('hateCur', -1, '−')}${step('hateCur', 1, '+')}${typeof notchBar === 'function' && (parseInt(f.hateMax) || 0) > 0 ? notchBar(f.hateCur, f.hateMax, 'nb-hate', 'Hate') : `<i><b style="width:${pct(f.hateCur, f.hateMax)}%"></b></i>`}</div>
     </div>
-    <div class="foe-stats">Parry ${f.parry} · Armour ${f.armour}${f.might ? ` · Might ${f.might}` : ''}</div>
-    ${f.fell ? `<div style="font-size:var(--fs-xs);color:var(--text-muted);margin-top:3px">⚜ ${escapeHtml(f.fell)}</div>` : ''}`;
+    ${_foeTraitsHtml(f)}`;
   if (!slain && turn) {
     // Turns on: your attacks live on your card; a foe's attacks show on its turn only.
     if (turn === 'foes' && !f.acted) h += `${(f.attacks || []).length ? `<div class="foe-them"><span>${escapeHtml(f.name)} attacks you with:</span>

@@ -403,6 +403,24 @@ module.exports = {
         && rw.words.join('|') === 'Success — the Rune|Failure — the Eye, while Miserable|Failure|Success',
       msg: `every Dice-tab roll says what it means for that skill ("You are noticed." / "You hit."), and no roll shows the raw SUCCESS / FAIL codes (${JSON.stringify(rw)})` });
 
+    // A foe card shows its abilities as names; the rule text opens one at a time on a tap.
+    const fc = await safe(`
+      endEncounter && (char.encounter = { active: false, round: 1, foes: [] });
+      const all = allBestiary(); const i = all.findIndex(x => x.name === 'Great Orc Bodyguard');
+      addFoeFromBestiary(i); document.querySelectorAll('.menu-overlay.show').forEach(o => o.classList.remove('show'));
+      renderEncounter();
+      const card = () => [...document.querySelectorAll('.foe-card')].find(c => /Great Orc Bodyguard/.test(c.textContent));
+      const out = { chips: [...card().querySelectorAll('.fell-chip')].map(b => b.textContent),
+        before: /Unaffected by unarmed attacks/.test(card().textContent), words: (card().querySelector('.foe-words') || {}).textContent || '' };
+      const chip = [...card().querySelectorAll('.fell-chip')].find(b => b.textContent === 'Hideous Toughness');
+      chip && chip.click();
+      out.after = /Unaffected by unarmed attacks/.test((card().querySelector('.fell-desc') || {}).textContent || '');
+      out.trait = foeTraits('Hatred (Dwarves). Sunlight-averse.');
+      return out;`);
+    checks.push({ ok: !fc.err && fc.chips.join('|') === 'Hate Sunlight|Denizen of the Dark|Hideous Toughness' && !fc.before && fc.after && /Fierce, Wary/.test(fc.words)
+        && fc.trait.abilities[0].name === 'Hatred' && fc.trait.words[0] === 'Sunlight-averse',
+      msg: `a foe card lists its abilities as names and opens one's rule text on a tap, instead of printing every ability in full (${JSON.stringify(fc)})` });
+
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length}${errors.length ? ': ' + errors[0] : ''})` });
     await context.close();
     return { checks };

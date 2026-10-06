@@ -2945,3 +2945,29 @@ button.xp-token:hover, button.xp-token:focus-visible { background: color-mix(in 
 .foe-sug-row .btn { flex: 1 1 0; min-width: 0; }
 .foe-sug-or { margin-top: 10px; font-size: var(--fs-xs); color: var(--text-muted); }
 .roll-banner .rb-said { margin-top: 6px; font-size: var(--fs-md); font-weight: 700; color: var(--ink); }
+
+/* Foe card, decluttered (2026-10-06): one header row, two compact meters, ability chips. */
+.foe-head { display: flex; align-items: center; gap: 8px; }
+.foe-title { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px; }
+.foe-title strong { font-size: var(--fs-md); }
+.foe-title small { flex-basis: 100%; font-size: var(--fs-xs); color: var(--text-faint); }
+.foe-tool { flex: 0 0 auto; width: 32px; height: 32px; background: none; border: none; cursor: pointer; color: var(--text-faint); font-size: 16px; }
+.foe-card .foe-bars2 { grid-template-columns: 1fr; gap: 4px; }
+.foe-card .foe-bars2 .foe-bar { grid-template-columns: auto 1fr auto auto; gap: 8px; font-size: var(--fs-xs); }
+.foe-card .foe-bars2 .foe-bar > span:first-child { white-space: nowrap; min-width: 6.6em; grid-column: 1; grid-row: 1; }
+.foe-card .foe-bars2 .foe-bar > .notch-bar, .foe-card .foe-bars2 .foe-bar > i { grid-column: 2; grid-row: 1; }
+.foe-card .foe-bars2 .foe-bar > button:nth-of-type(1) { grid-column: 3; grid-row: 1; }
+.foe-card .foe-bars2 .foe-bar > button:nth-of-type(2) { grid-column: 4; grid-row: 1; }
+.foe-words { font-style: italic; }
+.fell-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+.fell-chip { font: inherit; font-size: var(--fs-xs); padding: 3px 9px; border-radius: 999px; border: 1px solid var(--border); background: var(--card-bg); color: var(--ink); cursor: pointer; }
+.fell-chip.on { border-color: var(--gold); background: var(--bg-deep); }
+.fell-desc { font-size: var(--fs-xs); color: var(--text-muted); margin-top: 6px; padding: 6px 8px; border-left: 2px solid var(--gold); background: var(--bg-deep); border-radius: var(--r-sm); line-height: 1.5; }
+.foe-card .foe-bars2 .notch-bar { min-width: 0; overflow: hidden; gap: 1px; }
+.foe-card .foe-bars2 .notch-bar i { min-width: 0; }
+@media (max-width: 379px) {
+  .foe-card .foe-bars2 .foe-bar { grid-template-columns: 1fr auto auto; row-gap: 4px; }
+  .foe-card .foe-bars2 .foe-bar > button:nth-of-type(1) { grid-column: 2; }
+  .foe-card .foe-bars2 .foe-bar > button:nth-of-type(2) { grid-column: 3; }
+  .foe-card .foe-bars2 .foe-bar > .notch-bar, .foe-card .foe-bars2 .foe-bar > i { grid-column: 1 / -1; grid-row: 2; }
+}
