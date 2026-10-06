@@ -533,6 +533,12 @@ module.exports = {
     checks.push({ ok: !mch.err && mch.explore && mch.band && mch.fightBtn && mch.said && mch.foes >= 2 && mch.meet && mch.met,
       msg: `in Moria, ▶ Play explores a location chamber by chamber; a Combat chamber rolls an Orc-band that can be fought, a skill chamber is rolled in place (${JSON.stringify(mch)})` });
 
+    // A chamber reads as a sentence: no "test your Token of hope", no stray capitals mid-name.
+    const cl = await safe(`return { hope: chamberLine({ appr: 'Austere', type: 'Guard Post or Armoury', cond: 'Shattered by earthquake', chal: 'Token of hope' }),
+      skill: chamberLine({ appr: 'Ancient', type: 'Great Hall', cond: 'Mostly intact', chal: 'Lore' }) };`);
+    checks.push({ ok: !cl.err && /guard post or armoury/.test(cl.hope) && !/test your Token/i.test(cl.hope) && /token of hope/.test(cl.hope) && /great hall/.test(cl.skill) && /test your Lore/.test(cl.skill),
+      msg: `a chamber reads as a sentence — a token of hope is not a test, and the room type is lower case (${JSON.stringify(cl)})` });
+
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length}${errors.length ? ': ' + errors[0] : ''})` });
     await context.close();
     return { checks };

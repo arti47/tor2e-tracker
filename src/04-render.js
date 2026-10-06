@@ -3070,8 +3070,11 @@ function chamberLine(c) {
   const art = /^[aeiou]/i.test(appr) ? 'an' : 'a';
   const chal = String(c.chal || '');
   const test = /^None/i.test(chal) ? `Nothing here tests you${/\((.*)\)/.test(chal) ? ' — ' + lc(chal.match(/\((.*)\)/)[1]) : ''}.`
-    : /^Combat$/i.test(chal) ? 'It means a fight.' : `It will test your ${chal}.`;
-  return `You come to ${art} ${appr} ${lc(c.type)}, ${lc(c.cond)}. ${test}`;
+    : /^Combat$/i.test(chal) ? 'It means a fight.'
+    : /hope/i.test(chal) ? 'Something here lifts your heart — a token of hope.'
+    : `It will test your ${chal}.`;
+  // The whole room type in lower case: "guard Post or Armoury" read like a typo.
+  return `You come to ${art} ${appr} ${String(c.type || '').toLowerCase()}, ${lc(c.cond)}. ${test}`;
 }
 /** The same event as one plain line, for the Chronicle. */
 function journeyEventPlain(e) {
