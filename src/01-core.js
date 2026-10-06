@@ -1814,3 +1814,51 @@ function askWords() {
     (q ? `<div class="slip-q">“${escapeHtml(q)}”</div>` : '') +
     `<div class="slip-d">Read them as an action, a quality and a thing — literally or loosely. If they don’t fit, ask again.</div>`);
 }
+
+/* ---------- Roll wording (2026-10-06) ----------
+   A result says what happened, not just "SUCCESS" / "FAIL". `outcomeWords` turns the internal
+   outcome codes into words; `rollMeaning` says what success or failure means for the skill that
+   was rolled ("You are noticed.", "You miss."). One place, so every roll surface reads the same. */
+function outcomeWords(o) {
+  o = String(o || '');
+  const m = o.match(/^(SUCCESS|FAIL(?:URE)?)\s*(?:\((.*)\))?/i);
+  if (!m) return o;
+  const base = /^S/i.test(m[1]) ? 'Success' : 'Failure';
+  if (!m[2]) return base;
+  const why = m[2].replace(/!/g, '').trim();
+  if (/^rune$/i.test(why)) return base + ' — the Rune';
+  if (/eye/i.test(why) && /miserable/i.test(why)) return base + ' — the Eye, while Miserable';
+  if (/^eye$/i.test(why)) return base + ' — the Eye';
+  return base + ' — ' + why.toLowerCase();
+}
+const ROLL_MEANING = {
+  Awe:       ['You impress them — or cow them.', 'They are not moved.'],
+  Athletics: ['You manage it — the climb, the leap, the heave.', 'It is too much for you, or you slip.'],
+  Awareness: ['You notice what there is to notice.', 'You miss it.'],
+  Hunting:   ['You find game, or pick up the trail.', 'The trail goes cold; you find nothing to eat.'],
+  Song:      ['Your song moves them.', 'Your song falls flat.'],
+  Craft:     ['You make or mend it.', 'It will not come right.'],
+  Enhearten: ['You lift their spirits.', 'Your words do not lift them.'],
+  Travel:    ['You make good going.', 'The going is hard.'],
+  Insight:   ['You read their true mood or purpose.', 'You cannot read them.'],
+  Healing:   ['Your care helps.', 'Your care does not help this time.'],
+  Courtesy:  ['You give no offence and win some goodwill.', 'You give offence, or make no good impression.'],
+  Battle:    ['You read the fight and see the advantage.', 'You misjudge the fight.'],
+  Persuade:  ['They come round to your view.', 'They are not convinced.'],
+  Stealth:   ['You slip by unseen. No one notices you.', 'You are noticed — someone sees or hears you.'],
+  Scan:      ['You spot what you were looking for.', 'You do not spot it.'],
+  Explore:   ['You find the way.', 'You lose your way.'],
+  Riddle:    ['You work it out.', 'It baffles you.'],
+  Lore:      ['You know something useful about it.', 'Nothing useful comes to mind.'],
+  Valour:    ['You stand firm.', 'Your courage fails you.'],
+  Wisdom:    ['You keep your will and judgement.', 'Your will wavers.'],
+  _attack:   ['You hit.', 'You miss.'],
+  _protection: ['Your armour holds — no Wound.', 'The blow gets through — you are Wounded.']
+};
+/** What a success or failure means for this roll, or '' when the label names nothing we know. */
+function rollMeaning(label, ok, isAttack) {
+  if (isAttack) return ROLL_MEANING._attack[ok ? 0 : 1];
+  const s = String(label || '');
+  const key = Object.keys(ROLL_MEANING).find(k => k[0] !== '_' && (s === k || s.startsWith(k + ' ') || s.startsWith(k + '·') || new RegExp('\\(' + k + '\\)').test(s)));
+  return key ? ROLL_MEANING[key][ok ? 0 : 1] : '';
+}

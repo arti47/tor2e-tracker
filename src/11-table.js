@@ -417,7 +417,7 @@ function tablePostRoll(r) {
   const skill = String(r.skill || '').trim();
   let callId = Table._answering;
   if (!callId && skill) { const c = _tblMyOpenCalls().find(x => x.skill === skill); if (c) callId = c.id; }
-  const result = `${r.total} vs ${r.tn} → ${r.outcome}${r.icons ? ' (' + r.icons + '✦)' : ''}`;
+  const result = `${r.total} vs ${r.tn} → ${outcomeWords(r.outcome)}${r.icons ? ' (' + r.icons + '✦)' : ''}`;
   const entry = { uid: Sync.uid, name: _tblMyName(), text: `${r.label} — ${result}`, skill, result, outcome: String(r.outcome || ''), icons: parseInt(r.icons) || 0, ts: _TS() };
   if (callId) entry.callId = callId;
   const call = callId && Table.calls[callId];

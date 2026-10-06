@@ -131,8 +131,8 @@ function applyPierce() {
 
   let summary = `<strong>vs TN ${p.tn}</strong> — ` +
     (outcome.startsWith('SUCCESS')
-      ? `<span class="result-tag tag-success">${outcome}</span>`
-      : `<span class="result-tag tag-fail">${outcome}</span>`);
+      ? `<span class="result-tag tag-success">${outcomeWords(outcome)}</span>`
+      : `<span class="result-tag tag-fail">${outcomeWords(outcome)}</span>`);
   if (level === 'Great') summary += `<span class="result-tag tag-great">Great Success</span>`;
   if (level === 'Extraordinary') summary += `<span class="result-tag tag-extra">Extraordinary</span>`;
   if (newIcons > 0) summary += `<br><small>${newIcons} success icon${newIcons!==1?'s':''} remaining</small>`;
@@ -1040,8 +1040,8 @@ async function rollProtection() {
 
   let summary = `<strong>vs Injury ${tn}</strong> — `;
   summary += outcome.startsWith('SUCCESS')
-    ? `<span class="result-tag tag-success">${outcome}</span> — no Wound`
-    : `<span class="result-tag tag-fail">${outcome}</span> — <strong>Wounded!</strong>`;
+    ? `<span class="result-tag tag-success">${outcomeWords(outcome)}</span> <strong>${ROLL_MEANING._protection[0]}</strong>`
+    : `<span class="result-tag tag-fail">${outcomeWords(outcome)}</span> <strong>${ROLL_MEANING._protection[1]}</strong>`;
   if (closeFittingBonus > 0) summary += `<br><small style="color:var(--gold);font-weight:600">Close-fitting reward: +${closeFittingBonus} to result</small>`;
   if (furiousFav) summary += `<br><small style="color:var(--gold);font-weight:600">Furious (Beornings, Wounded): Favoured</small>`;
   if (stoneHardFav) summary += `<br><small style="color:var(--gold);font-weight:600">Stone-Hard (Dwarves): Favoured</small>`;
@@ -1522,7 +1522,7 @@ async function heroAttackFoe(foeId) {
   const piercing = hit && (roll.featSpecial === 'rune' || roll.featValue === 10 || (a.keen && roll.featValue >= 9));
   if (hopeSpent) char.hopeCur = Math.max(0, (parseInt(char.hopeCur) || 0) - 1);
   const score = roll.featSpecial === 'rune' ? '★' : (roll.featSpecial === 'eye' ? '✗' : roll.total);
-  let line = `<strong>You</strong> · ${escapeHtml(w.name)} at ${escapeHtml(f.name)} · ${score} vs TN ${tn} (${char.strTN} Str + Parry ${f.parry}) → ${roll.outcome}${roll.icons ? ` (${roll.icons}✦)` : ''}`;
+  let line = `<strong>You</strong> · ${escapeHtml(w.name)} at ${escapeHtml(f.name)} · ${score} vs TN ${tn} (${char.strTN} Str + Parry ${f.parry}) → ${outcomeWords(roll.outcome)}${roll.icons ? ` (${roll.icons}✦)` : ''}`;
   let said;
   if (hit) {
     const dmg = parseInt(w.dmg) || 0;

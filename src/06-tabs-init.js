@@ -908,7 +908,8 @@ function renderRollBanner(r) {
   const seals = (r.ok && r.icons ? `<span class="seal" title="Success icons">✦ ${r.icons}</span>` : '') + (r.piercing ? '<span class="seal pierce">Piercing blow</span>' : '');
   el.className = 'roll-banner ' + (!r.ok ? 'b-fail' : r.level === 'Extraordinary' ? 'b-extra' : r.level === 'Great' ? 'b-great' : 'b-ok') + (r.ok && (r.level === 'Extraordinary' || r.level === 'Great') ? ' shine' : '');
   const stamp = typeof rollStamp === 'function' ? rollStamp(r.ok, r.level) : '';
-  el.innerHTML = `${r.what ? `<div class="rb-what">${escapeHtml(r.what)}</div>` : ''}<div class="rb-row"><div class="rb-ribbon"><span>${word}</span></div>${stamp}</div><div class="rb-why">${why}</div>${seals ? `<div class="rb-seals">${seals}</div>` : ''}`;
+  const said = typeof rollMeaning === 'function' ? rollMeaning(r.what, r.ok, r.isAttack) : '';
+  el.innerHTML = `${r.what ? `<div class="rb-what">${escapeHtml(r.what)}</div>` : ''}<div class="rb-row"><div class="rb-ribbon"><span>${word}</span></div>${stamp}</div>${said ? `<div class="rb-said">${escapeHtml(said)}</div>` : ''}<div class="rb-why">${why}</div>${seals ? `<div class="rb-seals">${seals}</div>` : ''}`;
   el.hidden = false;
 }
 function rollDice(skillLabel) {
@@ -1034,15 +1035,15 @@ function rollDice(skillLabel) {
   resultEl.classList.toggle('res-fail', !outcome.startsWith('SUCCESS'));
   try { if (navigator.vibrate) navigator.vibrate(outcome.startsWith('SUCCESS') ? 12 : [8, 40, 8]); } catch (e) {}
   renderRollBanner({ ok: outcome.startsWith('SUCCESS') && !isAutoFail, level, total, tn, isAutoSuccess, isAutoFail, icons,
-    piercing: piercing && outcome.startsWith('SUCCESS') && diceState.isAttack, what: skillLabel || '' });
+    piercing: piercing && outcome.startsWith('SUCCESS') && diceState.isAttack, what: skillLabel || '', isAttack: !!diceState.isAttack });
 
   const tnLabel = foeParryBonus > 0 ? `${tn} (${baseTn} Str + ${foeParryBonus} Foe Parry)` : `${tn}`;
   // Lead with WHAT was rolled (quick rolls pass the skill/prof name; manual rolls have none).
   // The banner above says the verdict; this head line stays for screen readers and history.
   let summary = `<span class="rs-head"><strong>${skillLabel ? escapeHtml(skillLabel) + ' · ' : ''}vs TN ${tnLabel}</strong> — `;
   summary += outcome.startsWith('SUCCESS')
-    ? `<span class="result-tag tag-success">${outcome}</span>`
-    : `<span class="result-tag tag-fail">${outcome}</span>`;
+    ? `<span class="result-tag tag-success">${outcomeWords(outcome)}</span>`
+    : `<span class="result-tag tag-fail">${outcomeWords(outcome)}</span>`;
   if (level === 'Great') summary += `<span class="result-tag tag-great">Great Success</span>`;
   if (level === 'Extraordinary') summary += `<span class="result-tag tag-extra">Extraordinary</span>`;
   if (icons > 0) summary += `<br><small>${icons} success icon${icons>1?'s':''}</small>`;
@@ -1194,7 +1195,7 @@ function rollDice(skillLabel) {
   renderHistory();
   // A quick roll made from ▶ Play belongs in Play's story too, not only in the result drawer.
   if (typeof playRollNote === 'function') playRollNote(label, isAutoSuccess ? '★' : (isAutoFail ? '✗' : total), tn, outcome, icons);
-  if (typeof journalAuto === 'function') journalAuto('dice', 'roll', `${label} — ${isAutoSuccess ? '★' : (isAutoFail ? '✗' : total)} vs ${tn} → ${outcome}${icons ? ' (' + icons + '✦)' : ''}`);
+  if (typeof journalAuto === 'function') journalAuto('dice', 'roll', `${label} — ${isAutoSuccess ? '★' : (isAutoFail ? '✗' : total)} vs ${tn} → ${outcomeWords(outcome)}${icons ? ' (' + icons + '✦)' : ''}`);
   if (typeof tablePostRoll === 'function') tablePostRoll({ label, skill: skillLabel, total: isAutoSuccess ? '★' : (isAutoFail ? '✗' : total), tn, outcome, icons });   // the table feed (group play)
 
   // Mirror an attack roll into the active Chronicle Combat Log: auto-append an editable round
@@ -1209,7 +1210,7 @@ function rollDice(skillLabel) {
       const hit = outcome.startsWith('SUCCESS') && !isAutoFail;
       const stance = char.stance ? char.stance + ' · ' : '';
       const score = isAutoSuccess ? '★' : (isAutoFail ? '✗' : total);
-      let line = `${stance}${wpn ? wpn.name : prof} · ${score} vs ${tn} → ${outcome}${icons ? ` (${icons}✦)` : ''}`;
+      let line = `${stance}${wpn ? wpn.name : prof} · ${score} vs ${tn} → ${outcomeWords(outcome)}${icons ? ` (${icons}✦)` : ''}`;
       if (hit && wpn) {
         const dmg = parseInt(wpn.dmg) || 0;
         combat.endCur = Math.max(0, (parseInt(combat.endCur) || 0) - dmg);
@@ -1302,7 +1303,7 @@ function renderHistory() {
     item.innerHTML = `
       ${rolled ? `<span class="hl-feat${h.feat === 'eye' ? ' eye' : h.feat === 'rune' ? ' rune' : ''}" aria-hidden="true">${h.feat === 'eye' ? '<svg viewBox="0 0 24 24"><use href="#i-eye"/></svg>' : h.feat === 'rune' ? 'ᚱ' : (h.feat != null ? h.feat : (h.total === '★' ? 'ᚱ' : ''))}</span>` : '<span class="hl-feat blank" aria-hidden="true"></span>'}
       <span class="hl-main"><strong>${h.label}</strong><small>${rolled ? `${h.total} vs ${h.tn}` : ''}${Array.isArray(h.dice) && h.dice.length ? ` <span class="hl-pips" aria-hidden="true">${h.dice.map(v => `<i class="${v === 6 ? 'six' : ''}"></i>`).join('')}</span>` : ''}</small></span>
-      <span class="hl-end" style="color:${color}">${rolled && typeof rollStamp === 'function' ? `<span class="hl-seal">${rollStamp(ok, lvl)}</span>` : ''}<span class="hl-out">${h.outcome}${h.icons ? ' · '+h.icons+'⬢' : ''}</span><span class="hl-time">${h.time}</span>
+      <span class="hl-end" style="color:${color}">${rolled && typeof rollStamp === 'function' ? `<span class="hl-seal">${rollStamp(ok, lvl)}</span>` : ''}<span class="hl-out">${outcomeWords(h.outcome)}${h.icons ? ' · '+h.icons+'⬢' : ''}</span><span class="hl-time">${h.time}</span>
         <button onclick="deleteRollAt(${realIdx})" aria-label="Delete this roll" title="Delete this roll" style="background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:var(--fs-md);padding:0 0 0 6px;vertical-align:middle">×</button></span>
     `;
     div.appendChild(item);

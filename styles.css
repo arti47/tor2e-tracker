@@ -2944,3 +2944,4 @@ button.xp-token:hover, button.xp-token:focus-visible { background: color-mix(in 
 .foe-sug-row { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
 .foe-sug-row .btn { flex: 1 1 0; min-width: 0; }
 .foe-sug-or { margin-top: 10px; font-size: var(--fs-xs); color: var(--text-muted); }
+.roll-banner .rb-said { margin-top: 6px; font-size: var(--fs-md); font-weight: 700; color: var(--ink); }

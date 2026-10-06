@@ -387,6 +387,22 @@ module.exports = {
     checks.push({ ok: !words.err && /You are noticed/.test(words.fail) && /slip by unseen/.test(words.ok) && /great success/i.test(words.ok) && words.noVague,
       msg: `a Play attempt says what happened to THAT attempt ("You are noticed…" / "You slip by unseen…"), not "it works" / "it doesn't" (${JSON.stringify(words)})` });
 
+    const rw = await safe(`
+      const out = {};
+      rollFromSheet('Stealth'); await new Promise(r => setTimeout(r, 60));
+      const b = document.getElementById('roll-banner');
+      const okRoll = /Success/.test((b.querySelector('.rb-ribbon') || {}).textContent || '');
+      out.said = (b.querySelector('.rb-said') || {}).textContent || '';
+      out.saidRight = out.said === (okRoll ? ROLL_MEANING.Stealth[0] : ROLL_MEANING.Stealth[1]);
+      rollFromSheet('Swords'); await new Promise(r => setTimeout(r, 60));
+      out.attack = (document.querySelector('#roll-banner .rb-said') || {}).textContent || '';
+      out.history = [...document.querySelectorAll('.hl-out')].slice(0, 3).map(e => e.textContent).join(' | ');
+      out.words = [outcomeWords('SUCCESS (Rune!)'), outcomeWords('FAIL (Miserable + Eye)'), outcomeWords('FAIL'), outcomeWords('SUCCESS')];
+      return out;`);
+    checks.push({ ok: !rw.err && rw.saidRight && /^You (hit|miss)\.$/.test(rw.attack) && !/SUCCESS|FAIL/.test(rw.history) && /Success|Failure/.test(rw.history)
+        && rw.words.join('|') === 'Success — the Rune|Failure — the Eye, while Miserable|Failure|Success',
+      msg: `every Dice-tab roll says what it means for that skill ("You are noticed." / "You hit."), and no roll shows the raw SUCCESS / FAIL codes (${JSON.stringify(rw)})` });
+
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length}${errors.length ? ': ' + errors[0] : ''})` });
     await context.close();
     return { checks };

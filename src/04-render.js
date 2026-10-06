@@ -1888,7 +1888,7 @@ function applyMarchingTestResult(success, icons, detail, quiet) {
     day: j.daysElapsed,
     hex: j.currentHex,
     march: { ok: !!success, hexes: hexesToNext, days: daysSpent, forced: !!j.forcedMarch,
-             total: mt ? (mt[1] === '★' ? null : parseInt(mt[1])) : undefined, tn: mtn ? parseInt(mtn[1]) : null },
+             total: mt ? (mt[1] === '★' ? null : (isFinite(parseInt(mt[1])) ? parseInt(mt[1]) : undefined)) : undefined, tn: mtn ? parseInt(mtn[1]) : null },
     text: `🚶 Marching Test — <strong>${success ? 'Success' : 'Failure'}</strong> (${detail}). Advanced ${hexesToNext} hex${hexesToNext!==1?'es':''} in ${daysSpent} day${daysSpent!==1?'s':''}${j.forcedMarch?' (forced march: +'+daysSpent+' Travel Fatigue)':''}. Event resolves at hex ${j.currentHex}.`
   });
   saveCharacter();
@@ -2022,13 +2022,13 @@ async function resolveLeaderFocus() {
   if (focus === 'command') {
     const hs = _heroSkill('Battle');
     r = bandRoll(hs.rating, hs.favoured ? 'fav' : 'normal', hs.tn, { weary: !!char.weary });
-    if (r.outcome.startsWith('SUCCESS')) { b.focusBonus = 1 + r.icons; msg = `Command (BATTLE) ${r.outcome}: +${b.focusBonus}d on the Clash roll`; }
-    else { b.complications.push({ name: 'Chaos in the Ranks', persistent: false }); msg = `Command (BATTLE) ${r.outcome}: temporary Complication "Chaos in the Ranks"`; }
+    if (r.outcome.startsWith('SUCCESS')) { b.focusBonus = 1 + r.icons; msg = `Command (BATTLE) ${outcomeWords(r.outcome)}: +${b.focusBonus}d on the Clash roll`; }
+    else { b.complications.push({ name: 'Chaos in the Ranks', persistent: false }); msg = `Command (BATTLE) ${outcomeWords(r.outcome)}: temporary Complication "Chaos in the Ranks"`; }
   } else if (focus === 'inspire') {
     const hs = _heroSkill('Enhearten');
     r = bandRoll(hs.rating, hs.favoured ? 'fav' : 'normal', hs.tn, { weary: !!char.weary });
-    if (r.outcome.startsWith('SUCCESS')) { b.inspired = true; msg = `Inspire (ENHEARTEN) ${r.outcome}: the Band is Inspired until your next failed Clash` + (r.icons ? ' (and ignores Weary/Miserable)' : ''); }
-    else { adj('shadow', 1); msg = `Inspire (ENHEARTEN) ${r.outcome}: +1 Shadow`; }
+    if (r.outcome.startsWith('SUCCESS')) { b.inspired = true; msg = `Inspire (ENHEARTEN) ${outcomeWords(r.outcome)}: the Band is Inspired until your next failed Clash` + (r.icons ? ' (and ignores Weary/Miserable)' : ''); }
+    else { adj('shadow', 1); msg = `Inspire (ENHEARTEN) ${outcomeWords(r.outcome)}: +1 Shadow`; }
   } else if (focus === 'fight') {
     const p = _bestProf();
     const tn = (parseInt(char.strTN) || 14) + (b.foeMight || 0);
@@ -2036,11 +2036,11 @@ async function resolveLeaderFocus() {
     if (r.outcome.startsWith('SUCCESS')) {
       b.foeResistance = Math.max(0, b.foeResistance - 1);
       if (r.icons > 0) b.focusBonus = (b.focusBonus || 0) + 1;
-      msg = `Fight (${p.name} vs TN ${tn}) ${r.outcome}: −1 foe Resistance` + (r.icons ? ', +1d Clash (opening)' : '');
+      msg = `Fight (${p.name} vs TN ${tn}) ${outcomeWords(r.outcome)}: −1 foe Resistance` + (r.icons ? ', +1d Clash (opening)' : '');
     } else {
       const loss = r.dice.reduce((s, d) => s + d.value, 0) || (Math.floor(Math.random() * 6) + 1 + Math.floor(Math.random() * 6) + 1);
       char.endCur = Math.max(0, (parseInt(char.endCur) || 0) - loss);
-      msg = `Fight (${p.name}) ${r.outcome}: you lose ${loss} Endurance`;
+      msg = `Fight (${p.name}) ${outcomeWords(r.outcome)}: you lose ${loss} Endurance`;
     }
   }
   battleLog(`Leader Focus — ${msg}`);
@@ -2080,7 +2080,7 @@ function clashRoll() {
     const successes = 1 + (iconsIgnored ? 0 : r.icons);
     b._pendingSpend = successes;
     tail += `<br><strong>${successes} success${successes > 1 ? 'es' : ''}</strong> to spend below.`;
-    battleLog(`Clash (${fleeing ? 'Manoeuvre' : 'War'} ${dice}d) — <span class="result-tag tag-success">${r.outcome}</span>, ${successes} success(es)`);
+    battleLog(`Clash (${fleeing ? 'Manoeuvre' : 'War'} ${dice}d) — <span class="result-tag tag-success">${outcomeWords(r.outcome)}</span>, ${successes} success(es)`);
   } else {
     b.advantages = [];  // RAW: a failed Clash loses all Advantages (persistent included)
     b._pendingSpend = 0;
@@ -2092,7 +2092,7 @@ function clashRoll() {
     if (er.outcome.startsWith('SUCCESS')) etTail = '<br><small style="color:var(--success-text)">Endurance Test passed — no injury.</small>';
     else etTail = '<br><small>Endurance Test failed:</small>' + _applyInjuryFromFail(er);
     tail += `<br><span class="result-tag tag-fail">Clash failed</span> — all Advantages lost.${etTail}`;
-    battleLog(`Clash (${fleeing ? 'Manoeuvre' : 'War'} ${dice}d) — <span class="result-tag tag-fail">${r.outcome}</span>; Endurance Test ${er.outcome.startsWith('SUCCESS') ? 'passed' : 'failed'}`);
+    battleLog(`Clash (${fleeing ? 'Manoeuvre' : 'War'} ${dice}d) — <span class="result-tag tag-fail">${outcomeWords(r.outcome)}</span>; Endurance Test ${er.outcome.startsWith('SUCCESS') ? 'passed' : 'failed'}`);
     if (r.feat.special === 'eye') tail += rollClashSetback();
   }
   b.focusBonus = 0;
@@ -2520,12 +2520,20 @@ function _renderBandRoll(r, tn, label, diceId, totalId, sumId, resultId) {
   });
   document.getElementById(totalId).textContent = r.feat.special === 'rune' ? '★' : (r.feat.special === 'eye' ? '✗' : r.total);
   let s = `<strong>${label}</strong> vs Readiness TN ${tn} — `;
-  s += r.outcome.startsWith('SUCCESS') ? `<span class="result-tag tag-success">${r.outcome}</span>` : `<span class="result-tag tag-fail">${r.outcome}</span>`;
+  s += r.outcome.startsWith('SUCCESS') ? `<span class="result-tag tag-success">${outcomeWords(r.outcome)}</span>` : `<span class="result-tag tag-fail">${outcomeWords(r.outcome)}</span>`;
   if (r.icons > 0) s += ` <small>${r.icons} ✦</small>`;
   if (r.weary) s += `<br><small style="color:var(--warn-orange)">Band Weary: 1-3 counted as 0</small>`;
   document.getElementById(sumId).innerHTML = s;
 }
 
+/* What a Disposition roll means for the Band — the tag alone said only SUCCESS / FAIL. */
+const DISP_MEANING = {
+  expertise: ['Your allies\' skill sees it done.', 'Their skill is not enough this time.'],
+  manoeuvre: ['The Band moves where it must, in good order.', 'The Band is slowed, seen or scattered.'],
+  rally:     ['The Band holds together.', 'The Band falters.'],
+  vigilance: ['The Band sees what is coming.', 'The Band is caught unaware.'],
+  war:       ['The Band carries the fight.', 'The Band is beaten back.']
+};
 function rollDisposition(key) {
   const disp = DISPOSITIONS.find(d => d.key === key);
   const rating = parseInt(char.band.dispositions[key]) || 0;
@@ -2533,6 +2541,8 @@ function rollDisposition(key) {
   const r = bandRoll(rating + bonus, 'normal', bandTN(), { kinglyWard: _giftKinglyWard('band') });
   _renderBandRoll(r, bandTN(), disp.name + ' (Band' + (bonus ? ' +' + bonus + 'd' : '') + ')', 'band-roll-dice', 'band-roll-total', 'band-roll-summary', 'band-roll-result');
   document.getElementById('band-roll-summary').innerHTML += _resolveBandExtras(r, 'band', key);
+  const dm = DISP_MEANING[key];
+  if (dm) document.getElementById('band-roll-summary').innerHTML += `<br><strong>${dm[r.outcome.startsWith('SUCCESS') ? 0 : 1]}</strong>`;
   renderBand();
 }
 
@@ -3268,9 +3278,9 @@ async function arriveAtDestination() {
     const reduce = 1 + r.icons;
     const applied = Math.min(totalFat, reduce);
     totalFat -= applied;
-    lines.push(`Arrival TRAVEL roll: <strong>${r.outcome}</strong> (Feat ${r.featLabel}, ${r.icons} ✦, total ${r.total ?? '★'} vs Heart TN ${tn}) → −${applied} → ${totalFat}.`);
+    lines.push(`Arrival TRAVEL roll: <strong>${outcomeWords(r.outcome)}</strong> (Feat ${r.featLabel}, ${r.icons} ✦, total ${r.total ?? '★'} vs Heart TN ${tn}) → −${applied} → ${totalFat}.`);
   } else {
-    lines.push(`Arrival TRAVEL roll: <strong>${r.outcome}</strong> (Feat ${r.featLabel}, total ${r.total ?? '✗'} vs Heart TN ${tn}) → no reduction.`);
+    lines.push(`Arrival TRAVEL roll: <strong>${outcomeWords(r.outcome)}</strong> (Feat ${r.featLabel}, total ${r.total ?? '✗'} vs Heart TN ${tn}) → no reduction.`);
   }
 
   // Lingering Fatigue → add to regular Fatigue (clears 1/Prolonged Rest in Safe Haven)
@@ -3952,7 +3962,7 @@ async function _flyEscapeRoll(foe) {
   _suspendInlineEye(false);
   const score = roll.featSpecial === 'rune' ? '★' : (roll.featSpecial === 'eye' ? '✗' : roll.total);
   const escaped = roll.outcome.startsWith('SUCCESS');
-  let line = `<strong>You</strong> · escape attempt · ${escapeHtml(w.name)} · ${score} vs TN ${tn} (${char.strTN} Str + Parry ${foe.parry}) · Def −${engaged}d → ${roll.outcome}`;
+  let line = `<strong>You</strong> · escape attempt · ${escapeHtml(w.name)} · ${score} vs TN ${tn} (${char.strTN} Str + Parry ${foe.parry}) · Def −${engaged}d → ${outcomeWords(roll.outcome)}`;
   if (escaped) {
     foe.engaged = false;
     line += ' · 🏃 <strong>you break away</strong> — no damage dealt';

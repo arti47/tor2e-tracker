@@ -1496,7 +1496,7 @@ function loadSampleChronicle() {
   journal.entries.push(mk('prose', 'note', 'Dusk. The common room empties; a hooded watcher rises to leave.'));
   journal.entries.push(mk('auto', 'oracle', 'Q: Is the yard empty? · Telling Table (Middling) → No, but… a drowsing stablehand', 'auto:ojc'));
   journal.entries.push(mk('prose', 'note', 'I slip out after him, keeping to the shadows along the stable wall.'));
-  journal.entries.push(mk('auto', 'roll', 'Stealth 2d WIT — 17 vs 16 → SUCCESS (1✦)', 'auto:dice'));
+  journal.entries.push(mk('auto', 'roll', 'Stealth 2d WIT — 17 vs 16 → Success (1✦)', 'auto:dice'));
   journal.entries.push(mk('prose', 'note', 'He never marks me. Under his saddle: a folded note in a cipher I half-know.'));
   journal.combats.push({ id: genCharId(), sceneId: sc.id, foeName: 'Footpad', endMax: 8, endCur: 0, hateMax: 2, hateCur: 1,
     rounds: [{ hero: 'Forward · Long sword · 18 → 6 dmg', foe: 'Cudgel · Miss' }, { hero: 'Long sword · 14 → 4 dmg (slain)', foe: '—' }],
