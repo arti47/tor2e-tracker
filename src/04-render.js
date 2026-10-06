@@ -280,7 +280,7 @@ async function checkAutoTriggers() {
   if (typeof renderBoutDue === 'function') renderBoutDue();
   // Dying — Endurance reaches 0
   const dyingBadge = document.getElementById('dying-badge');
-  if (dyingBadge) dyingBadge.style.display = (char.endCur === 0) ? 'inline-block' : 'none';
+  if (dyingBadge) { dyingBadge.style.display = (char.endCur === 0) ? 'inline-block' : 'none'; const t = [...dyingBadge.childNodes].find(x => x.nodeType === 3 && x.nodeValue.trim()); if (t) t.nodeValue = char.dying ? 'DYING ' : 'UNCONSCIOUS '; }
 
   // WEARY pill next to Current — visible when char.weary is set OR auto-trigger condition met
   const wearyPill = document.getElementById('weary-pill');
@@ -786,6 +786,9 @@ async function fpComplete() {
   }
   const log = [];
   if (typeof logTimeline === 'function') logTimeline('fp', 'Fellowship Phase' + (fpState.phaseType === 'yule' ? ' (Yule)' : '') + ' completed.');
+  // A Fellowship Phase is a week or more somewhere safe: every night there lifts a point of
+  // Fatigue, so all of it is gone by the end.
+  if ((parseInt(char.fatigue) || 0) > 0) { log.push(`✅ Rested: all ${char.fatigue} Fatigue lifted`); char.fatigue = 0; }
 
   // for...of (not forEach) so awaits in case bodies actually pause the loop —
   // Visiting Treasury prompts the player and needs the answer before continuing.
@@ -1487,9 +1490,15 @@ function _doInlineRoll(successDice, fav, tn, label, opts) {
   if (!foe && shadowDespairActive()) fav = (fav === 'fav') ? 'normal' : 'ill';
   const weary = !foe && heroIsWeary();
   let featRolls;
-  if (fav === 'normal') featRolls = [rollFeatOnce()];
-  else featRolls = [rollFeatOnce(), rollFeatOnce()];
-  const score = r => r.special === 'rune' ? 100 : (r.special === 'eye' ? -100 : r.value);
+  // An adversary reads the Feat die the other way round: the Eye is its best result (an automatic
+  // success), the Gandalf Rune counts 0. A hero's "Favoured by the Grey Wizard" is no help to a foe.
+  const roll1 = () => { const r = rollFeatOnce(); if (!foe) return r;
+    if (r.special === 'rune') return { label: 'ᚱ', value: 0, special: 'rune' };
+    if (r.special === 'greyWizard') return { label: '1', value: 1 };
+    return r; };
+  if (fav === 'normal') featRolls = [roll1()];
+  else featRolls = [roll1(), roll1()];
+  const score = r => foe ? (r.special === 'eye' ? 100 : r.value) : (r.special === 'rune' ? 100 : (r.special === 'eye' ? -100 : r.value));
   featRolls.sort((a, b) => score(b) - score(a));
   const chosen = (fav === 'ill') ? featRolls[featRolls.length - 1] : featRolls[0];
   const successRolls = [];
@@ -1500,14 +1509,15 @@ function _doInlineRoll(successDice, fav, tn, label, opts) {
   }
   const icons = successRolls.filter(s => s.icon).length;
   const sumSuccess = successRolls.reduce((sum, s) => sum + (s.wearied ? 0 : s.value), 0);
-  const total = chosen.special === 'rune' ? null : chosen.value + sumSuccess;
+  const autoWin = foe ? chosen.special === 'eye' : chosen.special === 'rune';
+  const total = autoWin ? null : chosen.value + sumSuccess;
   let outcome;
   if (tn === null) outcome = 'N/A';
-  else if (chosen.special === 'rune') outcome = 'SUCCESS (Rune)';
+  else if (autoWin) outcome = foe ? 'SUCCESS (Eye)' : 'SUCCESS (Rune)';
   // An Eye counts as 0 on the Feat die; it is an automatic failure only for a Miserable hero —
   // exactly as on the Dice tab. Every other roll (Play, Journey, Council, Endeavour, attacks)
   // used to fail outright on any Eye, however many Success dice came up.
-  else if (chosen.special === 'eye' && (foe || char.miserable)) outcome = 'FAIL (Eye)';
+  else if (!foe && chosen.special === 'eye' && char.miserable) outcome = 'FAIL (Eye)';
   else if (total >= tn) outcome = 'SUCCESS';
   else outcome = 'FAIL';
   const res = { featValue: chosen.value, featSpecial: chosen.special, featLabel: chosen.label, total, icons, outcome, weary };
@@ -2335,6 +2345,10 @@ async function moriaFP(duration) {
   try {
     if (typeof resetEyeAwarenessToStarting === 'function') { resetEyeAwarenessToStarting(); lines.push('Eye Awareness reset'); }
   } catch (e) {}
+  // The phase is spent in safety at Balin's camp: all the hero's Fatigue lifts.
+  try {
+    if ((parseInt(char.fatigue) || 0) > 0) { lines.push(`All ${char.fatigue} Fatigue lifted`); char.fatigue = 0; }
+  } catch (e) {}
   if (typeof logTimeline === 'function') logTimeline('fp', `Moria Fellowship Phase (${duration}) completed.`);
   saveCharacter(); render();
   await alertStyled(`🌿 <strong>${duration.charAt(0).toUpperCase() + duration.slice(1)} Fellowship Phase</strong><br><br>${lines.join('<br>')}<br><br>Undertakings available: <strong>${undertakings}</strong>.<br><br>Now roll for a Fellowship Interruption, then perform undertakings.`, 'Fellowship Phase');
@@ -3157,7 +3171,7 @@ function journeyMarchLine(e) {
 /** Arriving, as one line: the arrival roll and the Fatigue that stays with you. */
 function journeyArriveLine(e) {
   const v = e.arr;
-  return `<div class="jev-res"><strong>Arrived at ${escapeHtml(v.place)}.</strong> ${rollPillHtml('Travel', v.roll.total, v.roll.tn, v.roll.ok)} <span>${v.left ? `${v.left} Fatigue stays with you (now ${v.after}) — a Prolonged Rest in a Safe Haven clears 1 at a time.` : 'You shake off the road’s weariness.'}</span></div>`;
+  return `<div class="jev-res"><strong>Arrived at ${escapeHtml(v.place)}.</strong> ${rollPillHtml('Travel', v.roll.total, v.roll.tn, v.roll.ok)} <span>${v.left ? `${v.left} Fatigue stays with you (now ${v.after}) — each night somewhere sheltered and safe clears 1.` : 'You shake off the road’s weariness.'}</span></div>`;
 }
 /** Any journey log entry, drawn by the renderer that fits it. */
 function journeyLogEntry(e) {
@@ -3346,7 +3360,7 @@ async function arriveAtDestination() {
   // Lingering Fatigue → add to regular Fatigue (clears 1/Prolonged Rest in Safe Haven)
   const before = parseInt(char.fatigue) || 0;
   char.fatigue = before + totalFat;
-  lines.push(`Lingering <strong>${totalFat}</strong> Fatigue added to character Fatigue (${before} → ${char.fatigue}). Clears at 1/Prolonged Rest in a Safe Haven.`);
+  lines.push(`Lingering <strong>${totalFat}</strong> Fatigue added to character Fatigue (${before} → ${char.fatigue}). Clears at 1 per night somewhere sheltered and safe, and all of it in a Fellowship Phase.`);
 
   j.events.push({
     day: j.daysElapsed,
@@ -3424,6 +3438,7 @@ async function takeShortRest() {
 
 async function takeProlongedRest(opts) {
   opts = opts || {};
+  if (typeof heroDying === 'function' && heroDying()) { alert('No rest saves a Dying hero. Only a HEALING roll within the hour can — tend the wound.'); return; }
   const str = parseInt(char.strRating) || 1;
   const cur = parseInt(char.endCur) || 0;
   const max = parseInt(char.endMax) || 0;
@@ -3442,7 +3457,7 @@ async function takeProlongedRest(opts) {
     // Fatigue only lifts in a Safe Haven — a night in the wild must not clear it.
     inSafeHaven = opts.safeHaven;
   } else if (wouldClearFatigue) {
-    inSafeHaven = await confirmStyled(`🌙 Prolonged Rest (a night's sleep)\n\nEndurance recovery: +${endRecover}\n${hopeRecover ? 'Hope recovery: +1 (you were at 0)\n' : ''}\nYou have ${fat} Fatigue. It lifts by 1 only in a Safe Haven. Where are you sleeping?`, undefined, {yes:'In a Safe Haven', no:'Out in the wild'});
+    inSafeHaven = await confirmStyled(`🌙 Prolonged Rest (a night's sleep)\n\nEndurance recovery: +${endRecover}\n${hopeRecover ? 'Hope recovery: +1 (you were at 0)\n' : ''}\nYou have ${fat} Fatigue. A night in a sheltered, safe place off the road — an inn, a hut, a friendly village, a Safe Haven — lifts 1. Camping in the wild or sleeping rough lifts none. Where are you sleeping?`, undefined, {yes:'Somewhere sheltered and safe', no:'Camped in the wild'});
   } else if (!opts.noConfirm) {
     if (!await confirmStyled(`🌙 Prolonged Rest (a night's sleep)\n\nEndurance recovery: +${endRecover}${char.wounded ? ' (Wounded: STRENGTH only)' : ' (full)'}\n${hopeRecover ? 'Hope recovery: +1 (you were at 0)' : ''}\n\nMax one Prolonged Rest per day (LM may allow more in safe/comfortable places).`, undefined, {yes:'Sleep', no:'Not now'})) return;
   }
@@ -3482,7 +3497,7 @@ async function takeProlongedRest(opts) {
   // Brief recap
   let recap = `🌙 Prolonged Rest applied. A new day dawns (Day ${char.dayCount}).\n\nEndurance: +${endRecover} → ${char.endCur} / ${max}`;
   if (hopeRecover > 0) recap += `\nHope: +${hopeRecover} → ${char.hopeCur} / ${hopeMax}`;
-  if (fatigueRemoved > 0) recap += `\nFatigue: −${fatigueRemoved} (Safe Haven rest) → ${char.fatigue}`;
+  if (fatigueRemoved > 0) recap += `\nFatigue: −${fatigueRemoved} (a sheltered rest) → ${char.fatigue}`;
   if (moderateHealed) recap += `\nThe Moderate Injury has closed — you are no longer Wounded.`;
   if (injuryTicked > 0) recap += `\nInjury: ${char.injuryDays + 1} → ${char.injuryDays} day(s) remaining` + (char.injuryDays === 0 ? ' — the wound has run its course; you may clear Wounded.' : '');
   alert(recap);
@@ -3952,6 +3967,7 @@ async function unlockDormantQuality(itemIdx) {
 }
 
 async function flyYouFools() {
+  if (typeof heroDown === 'function' && heroDown()) return _downRefusal('flee');
   // Finding 11: this used to send you to the Dice tab to "roll your attack", where the foe's Parry
   // is not part of the TN — the same swing was TN 12 there and TN 17 here. The escape roll is now
   // made in place, against the engaged foe, with its Parry applied like any other attack.
@@ -4530,8 +4546,11 @@ function _playChoices() {
   const C = (label, fn, hint) => ({ label, fn, hint });
   // At 0 Endurance nothing else is the right move. Lead with the things that fix it.
   const lead = [];
-  if ((parseInt(char.endCur) || 0) <= 0) {
-    lead.push(C('🌙 Rest until you can stand', 'playRest()', 'A Prolonged Rest — the way out of Dying.'));
+  if (heroDying()) {
+    lead.push(C('🩹 Save your life — a HEALING roll', 'playFirstAid()', 'Within the hour, or you perish. A success brings you round at 1 Endurance.'));
+    lead.push(C('✝ They do not survive', 'sagaEnd()', 'The tale ends here.'));
+  } else if (heroDown()) {
+    lead.push(C('⏳ Come round', 'heroComeRound()', 'An hour later you wake with 1 Endurance.'));
     if (char.wounded) lead.push(C('🩹 Tend the wound', 'playFirstAid()', 'A HEALING roll against your injury.'));
   } else if (char.wounded) {
     lead.push(C('🩹 Tend the wound', 'playFirstAid()', 'A HEALING roll — a Wound will not rest off.'));
@@ -5082,7 +5101,7 @@ async function playArrive() {
   playScene(`At ${dest}`);
   playSay(`You reach <strong>${escapeHtml(dest)}</strong>.`);
   const fatGained = (parseInt(char.fatigue) || 0) - fatBefore;
-  if (fatGained > 0) playSay(`The road has left its mark: <strong>+${fatGained} Fatigue</strong>. A Prolonged Rest in a Safe Haven clears 1 at a time.`, 'aside');
+  if (fatGained > 0) playSay(`The road has left its mark: <strong>+${fatGained} Fatigue</strong>. Each night somewhere sheltered and safe clears 1; a Fellowship Phase clears it all.`, 'aside');
   renderPlay();
 }
 
@@ -5150,6 +5169,15 @@ async function playSetOutHome() {
 
 /** A HEALING roll against the current injury, run from the Play tab. */
 async function playFirstAid() {
+  if (heroDying()) {
+    const sk = _heroSkill('Healing');
+    const r = _doInlineRoll(sk.rating, sk.favoured ? 'fav' : 'normal', sk.tn, 'Healing · saving a life');
+    const ok = String(r.outcome).startsWith('SUCCESS');
+    applyFirstAidResult(ok, r.icons);
+    playSay((ok ? '<strong>You are saved.</strong> An hour later you come round, with 1 Endurance. The Wound is still open.'
+      : '<strong>The care is not enough.</strong> Without a successful HEALING roll within the hour, you perish. Try again, or let the tale end.') + ' ' + _pillText('Healing', r.total, sk.tn, ok));
+    return renderPlay();
+  }
   if (!char.wounded) { playSay('You are not Wounded — there is nothing to treat.', 'aside'); return renderPlay(); }
   const days = parseInt(char.injuryDays) || 0;
   if (days <= 0 || char.firstAidUsed) {
@@ -5173,20 +5201,20 @@ async function playFirstAid() {
 
 async function playRest() {
   const before = parseInt(char.endCur) || 0, fatBefore = parseInt(char.fatigue) || 0;
-  // Where the hero sleeps decides whether lingering Fatigue lifts (only in a Safe Haven). Play
-  // used to answer "yes, a Safe Haven" for every rest — camped on the road included.
+  // Fatigue lifts by 1 for a night in a sheltered, safe refuge — any place off the road: an inn,
+  // a hut, a friendly village as much as a Safe Haven. Camping in the wild lifts none.
   const st = sagaState().step, onRoad = !!(char.journey && char.journey.active);
   let haven = !onRoad && (st === 'haven' || st === 'fellowship');
   if (!onRoad && st === 'location' && fatBefore > 0) {
-    const where = await showModal({ title: '🌙 Where do you rest?', message: 'Lingering Fatigue lifts only in a Safe Haven — a place of real safety, like a friendly house or an Elf-haven.',
-      buttons: [{ label: 'A Safe Haven', value: 'haven' }, { label: 'Out in the wild', value: 'wild' }, { label: 'Not now', value: null, cancel: true }] });
+    const where = await showModal({ title: '🌙 Where do you rest?', message: 'A night somewhere sheltered and safe — an inn, a hut, a friendly village — lifts 1 Fatigue. Camping in the wild or in a draughty ruin lifts none.',
+      buttons: [{ label: 'Somewhere sheltered and safe', value: 'haven' }, { label: 'Camped in the wild', value: 'wild' }, { label: 'Not now', value: null, cancel: true }] });
     if (!where) return;
     haven = where === 'haven';
   }
   await takeProlongedRest({ safeHaven: haven, noConfirm: true });
   const fatNow = parseInt(char.fatigue) || 0;
   playSay(`You rest through the night. Endurance ${before} → ${char.endCur}.` +
-    (fatBefore > fatNow ? ` Fatigue ${fatBefore} → ${fatNow}.` : fatBefore > 0 ? ' <em>Your Fatigue stays — it lifts only in a Safe Haven.</em>' : ''));
+    (fatBefore > fatNow ? ` Fatigue ${fatBefore} → ${fatNow}.` : fatBefore > 0 ? ' <em>Your Fatigue stays — it lifts only for a night somewhere sheltered and safe, off the road.</em>' : ''));
   renderPlay();
 }
 
@@ -5623,7 +5651,7 @@ function renderBandPill() {
 function _hudConditions() {
   const t = [];
   const end = parseInt(char.endCur) || 0;
-  if (end <= 0 && char.culture) t.push({ k: 'dying', label: 'Dying', set: true });
+  if (end <= 0 && char.culture) t.push({ k: 'dying', label: char.dying ? 'Dying' : 'Unconscious', set: true });
   if (char.wounded) t.push({ k: 'wounded', label: 'Wounded', set: true });
   const autoWeary = end <= (parseInt(char.load) || 0) + (parseInt(char.fatigue) || 0);
   const shadowT = (parseInt(char.shadow) || 0) + (parseInt(char.scars) || 0);
@@ -5753,7 +5781,7 @@ function renderVitalsBody() {
     row('Endurance', 'endCur', parseInt(char.endCur) || 0, parseInt(char.endMax) || 0, 'Goes down when you are hurt or tire.') +
     row('Hope', 'hopeCur', parseInt(char.hopeCur) || 0, parseInt(char.hopeMax) || 0, 'Spend it for +1 die. Rest restores it.') +
     row('Shadow', 'shadow', sh, null, sc ? `Plus ${sc} permanent Scar${sc > 1 ? 's' : ''}.` : 'Dread and misdeeds add it.') +
-    row('Fatigue', 'fatigue', parseInt(char.fatigue) || 0, null, 'From travel. A Safe Haven rest clears it.') +
+    row('Fatigue', 'fatigue', parseInt(char.fatigue) || 0, null, 'From travel. Each night somewhere sheltered and safe clears 1; a Fellowship Phase clears it all.') +
     `<div class="v-actions">
        <button class="btn btn-secondary" onclick="closeVitals();takeShortRest()">Short rest</button>
        <button class="btn btn-secondary" onclick="closeVitals();takeProlongedRest()">Sleep (long rest)</button>
@@ -5764,15 +5792,16 @@ function renderVitalsBody() {
 }
 
 function _playConditionBanner() {
-  const dying = (parseInt(char.endCur) || 0) <= 0;
+  const down = heroDown(), dying = heroDying();
   const notes = [];
-  if (dying) notes.push('<strong>You are Dying.</strong> Endurance has hit 0. You are not dead — you are down: you cannot act, cannot defend yourself, and cannot spend Hope, and any further harm can kill you. Get Endurance above 0 before anything else.');
-  if (char.wounded) notes.push('<strong>You are Wounded.</strong> A Wound does not heal with an ordinary rest — it needs treatment and time. Wounded <em>and</em> at 0 Endurance is how heroes actually die.');
-  if (!dying && char.miserable) notes.push('<strong>You are Miserable.</strong> Shadow has caught up with you: an 👁 on the Feat die now fails the roll automatically.');
-  if (!dying && !char.miserable && char.weary) notes.push('<strong>You are Weary.</strong> Success dice showing 1–3 count as nothing until you rest.');
+  if (dying) notes.push('<strong>You are Dying.</strong> Unconscious at 0 Endurance and Wounded twice. Only a successful HEALING roll within the hour saves you — then you come round an hour later with 1 Endurance. No rest helps.');
+  else if (down) notes.push('<strong>You are unconscious.</strong> Endurance has hit 0: you cannot act, fight or flee. Unless something finishes you, you come round an hour later with 1 Endurance.');
+  if (char.wounded && !dying) notes.push('<strong>You are Wounded.</strong> A Wound does not heal with an ordinary rest — it needs treatment and time. A second Wound leaves you Dying.');
+  if (!down && char.miserable) notes.push('<strong>You are Miserable.</strong> Shadow has caught up with you: an 👁 on the Feat die now fails the roll automatically.');
+  if (!down && !char.miserable && char.weary) notes.push('<strong>You are Weary.</strong> Success dice showing 1–3 count as nothing until you rest.');
   if (!notes.length) return '';
   return `<div class="card callout danger">
-    <h3 class="card-title"${dying ? ' data-hint="Dying"' : ''}>${dying ? 'You are Dying' : 'Take care'}</h3>
+    <h3 class="card-title"${dying ? ' data-hint="Dying"' : down ? ' data-hint="Unconscious"' : ''}>${dying ? 'You are Dying' : down ? 'You are unconscious' : 'Take care'}</h3>
     <p>${notes.join('</p><p>')}</p>
   </div>`;
 }
@@ -6044,6 +6073,7 @@ function _playAfterRoll() {
 }
 async function playTrayRoll(name) {
   const r = _rollables().find(x => x.item.name === name); if (!r) return;
+  if (heroDown()) { showToast(heroDying() ? 'You are Dying — only someone else\'s HEALING roll can help now.' : 'You are unconscious — you can do nothing until you come round.'); return; }
   const hope = parseInt(char.hopeCur) || 0;
   const tn = parseInt(char[r.item.attr + 'TN']) || 0;
   const fav = r.s.favoured || r.blessingFav;

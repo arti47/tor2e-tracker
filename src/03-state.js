@@ -661,7 +661,7 @@ function renderPartyViewLive(members, err) {
   const keys = members ? Object.keys(members) : [];
   const rows = keys.map(uid => {
     const m = members[uid] || {}; const v = m.vitals || {};
-    const conds = [v.weary && 'Weary', v.miserable && 'Miserable', v.wounded && 'Wounded', v.dying && 'DYING'].filter(Boolean).join(', ') || '—';
+    const conds = [v.weary && 'Weary', v.miserable && 'Miserable', v.wounded && 'Wounded', v.dying ? 'DYING' : (v.down && 'Unconscious')].filter(Boolean).join(', ') || '—';
     const dot = m.online ? '🟢' : '⚪';
     return `<tr style="${uid === myUid ? 'background:var(--gold-soft)' : ''}">
       <td ${td}>${dot} <strong>${escapeHtml(v.name || m.displayName || 'Hero')}</strong>${uid === myUid ? ' ★' : ''}<br><small style="color:var(--text-muted)">${m.role === 'loremaster' ? '🎲 Loremaster' : 'Player'}</small></td>
@@ -975,8 +975,8 @@ function _bsMeter(cls, cur, max, extra) {
 function _bsHero(name, v, opts) {
   const o = opts || {};
   const sh = parseInt(v.shadow) || 0, hm = Math.max(1, parseInt(v.hopeMax) || 0);
-  const dying = v.dying || (parseInt(v.endCur) || 0) <= 0;
-  const chips = [dying && 'Dying', v.weary && 'Weary', v.miserable && 'Miserable', v.wounded && 'Wounded'].filter(Boolean)
+  const dying = !!v.dying, down = v.down || (parseInt(v.endCur) || 0) <= 0;
+  const chips = [dying ? 'Dying' : down && 'Unconscious', v.weary && 'Weary', v.miserable && 'Miserable', v.wounded && 'Wounded'].filter(Boolean)
     .map(t => `<span class="tv-chip">${t}</span>`).join('');
   // Round 8: a portrait oval with the culture's figure beside the name and meters
   const sil = v.culture && typeof cultureSilhouette === 'function' ? cultureSilhouette(v.culture).replace('class="silhouette"', 'class="silhouette tv-sil"') : '';
@@ -1822,9 +1822,9 @@ async function foeAttacks(id) {
   const roll = _doInlineRoll(parseInt(f.atkDice) || 0, 'normal', tn, null, { foe: true });
   _suspendInlineEye(false);
   const hit = roll.outcome.startsWith('SUCCESS');
-  const score = roll.featSpecial === 'rune' ? '★(Rune)' : (roll.featSpecial === 'eye' ? '✗(Eye)' : roll.total);
-  // Piercing Blow: a Gandalf rune or a 10 on the foe's Feat die (matches the hero-attack model).
-  const piercing = hit && (roll.featSpecial === 'rune' || roll.featValue === 10);
+  const score = roll.featSpecial === 'eye' ? '★(Eye)' : roll.total;
+  // Piercing Blow: for an adversary the Eye (its best result) or a 10 on the Feat die.
+  const piercing = hit && (roll.featSpecial === 'eye' || roll.featValue === 10);
   let line = `${c.foeName} attacks · ${score} vs TN ${tn} (${f.atkTN} + Parry ${heroParry}) → `;
   if (hit) {
     const dmg = parseInt(f.atkDmg) || 0;

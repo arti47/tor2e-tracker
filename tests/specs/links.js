@@ -758,6 +758,86 @@ module.exports = {
     checks.push({ ok: !opb.err && opb.banner && opb.back && opb.goneWhenOver,
       msg: `the Combat tab says a fight is being fought on ▶ Play and takes you back there; the note goes when the fight is over (${JSON.stringify(opb)})` });
 
+    // RAW: at 0 Endurance a hero drops unconscious — no attack, no flight; a foe hits automatically and
+    // only a Protection test stands between them and a Wound. A second Wound makes them Dying; a HEALING
+    // roll saves them; otherwise they come round at 1 Endurance.
+    const ko = await safe(`
+      const save = JSON.stringify(char);
+      const realRoll = window._doInlineRoll, realProt = window._protectionRoll, realSev = window.rollWoundSeverity, realAlert = window.alert, realModal = window.showModal;
+      window.alert = () => {}; window.showModal = async () => true;
+      const foe = { id: 'k1', name: 'Orc', endMax: 12, endCur: 12, parry: 2, armour: 1, might: 0, hateMax: 2, hateCur: 2, atkTN: 14,
+        attacks: [{ name: 'scimitar', dice: 2, dmg: 4, inj: 16 }], fell: '', engaged: true, wounded: false, slain: false };
+      char.saga = Object.assign({}, char.saga || {}, { started: true, ended: false });
+      char.encounter = { active: true, round: 1, turn: 'hero', foes: [foe], weaponIdx: 0, adv: {} };
+      char.endCur = 0; char.wounded = false; char.dying = false; saveCharacter(); render();
+      const out = {};
+      await heroAttackFoe('k1');
+      out.noAttack = enc().foes[0].endCur === 12;
+      const before = char.flyPending;
+      await flyYouFools(); out.noFlee = (char.encounter.foes || []).length === 1;
+      let rolled = 0; window._doInlineRoll = (...a) => { rolled++; return realRoll(...a); };
+      window._protectionRoll = () => ({ total: 3, outcome: 'FAIL', isAutoSuccess: false, isAutoFail: false });
+      window.rollWoundSeverity = () => ({ label: 'Severe Injury', detail: '3 days', days: 3, kind: 'severe' });
+      enc().turn = 'foes';
+      await foeAttackHero('k1', 0);
+      out.autoHit = rolled === 0 && char.wounded === true && !char.dying;
+      enc().foes[0].acted = false; enc().turn = 'foes';
+      await foeAttackHero('k1', 0);
+      out.secondWoundDying = char.dying === true && heroDying();
+      renderPlay();
+      out.dyingChoices = !!document.querySelector('#panel-play button[onclick="playFirstAid()"]') && !!document.querySelector('#panel-play button[onclick="sagaEnd()"]');
+      window._doInlineRoll = () => ({ total: 20, outcome: 'SUCCESS', icons: 0, featValue: 10, featSpecial: null });
+      await playFirstAid();
+      out.saved = !char.dying && char.endCur === 1 && char.wounded === true;
+      char.endCur = 0; char.dying = false; char.encounter = JSON.parse(JSON.stringify(DEFAULT_CHARACTER.encounter)); saveCharacter(); renderPlay();
+      out.comeRoundOffered = !!document.querySelector('#panel-play button[onclick="heroComeRound()"]');
+      heroComeRound(); out.cameRound = char.endCur === 1;
+      window._doInlineRoll = realRoll; window._protectionRoll = realProt; window.rollWoundSeverity = realSev; window.alert = realAlert; window.showModal = realModal;
+      Object.assign(char, JSON.parse(save)); saveCharacter(); render();
+      return out;`);
+    checks.push({ ok: !ko.err && ko.noAttack && ko.noFlee && ko.autoHit && ko.secondWoundDying && ko.dyingChoices && ko.saved && ko.comeRoundOffered && ko.cameRound,
+      msg: `at 0 Endurance the hero is unconscious: cannot attack or flee, a foe hits without a roll (Protection decides the Wound), a second Wound is Dying, HEALING saves them, otherwise they come round at 1 Endurance (${JSON.stringify(ko)})` });
+
+    // RAW: an adversary reads the Feat die the other way round — the Eye is its best (automatic success,
+    // a Piercing Blow), the Rune counts 0.
+    const fd = await safe(`
+      const real = window.rollFeatOnce; let next = null;
+      window.rollFeatOnce = () => next;
+      next = { label: '👁', value: 0, special: 'eye' }; const eye = _doInlineRoll(0, 'normal', 30, null, { foe: true });
+      next = { label: 'ᚱ', value: 11, special: 'rune' }; const rune = _doInlineRoll(0, 'normal', 1, null, { foe: true });
+      next = { label: 'ᚱ', value: 11, special: 'rune' }; const heroRune = _doInlineRoll(0, 'normal', 30, null);
+      next = { label: '👁', value: 0, special: 'eye' }; const prot = _foeProtectionRoll({ armour: 0 }, 30);
+      window.rollFeatOnce = real;
+      return { eyeWins: eye.outcome.startsWith('SUCCESS'), runeZero: rune.total === 0 && rune.outcome === 'FAIL', heroRuneWins: heroRune.outcome.startsWith('SUCCESS'), protEye: prot.outcome.startsWith('SUCCESS') };`);
+    checks.push({ ok: !fd.err && fd.eyeWins && fd.runeZero && fd.heroRuneWins && fd.protEye,
+      msg: `a foe's Eye is its automatic success and its Rune counts 0 (a hero's Rune still wins); a foe's Protection succeeds on the Eye (${JSON.stringify(fd)})` });
+
+    // Fatigue: any night somewhere sheltered and safe off the road lifts 1; a Fellowship Phase lifts all.
+    const fat = await safe(`
+      const save = JSON.stringify({ fat: char.fatigue, saga: char.saga, j: char.journey, end: char.endCur });
+      const realModal = window.showModal, realAlert = window.alert; window.alert = () => {};
+      char.saga = Object.assign({}, char.saga || {}, { started: true, ended: false, step: 'location' });
+      char.journey = Object.assign({}, char.journey || {}, { active: false });
+      char.fatigue = 3; saveCharacter();
+      let asked = '';
+      window.showModal = async (o) => { asked = (o.buttons || []).map(b => b.label).join('|'); return 'haven'; };
+      await playRest();
+      const out = { inn: char.fatigue === 2 && /sheltered and safe/i.test(asked) };
+      char.fatigue = 4; saveCharacter();
+      out.fpLabel = /Fellowship Phase clears it all/.test(hintRow('Fatigue')[1] || '');
+      const realConf = window.confirmStyled; window.confirmStyled = async () => true;
+      const wasMoria = char.moriaMode; char.moriaMode = false; char.fpWizardState = null;
+      openFPWizard(true); fpState.recoveryApplied = true; fpState.selectedUndertakings = [];
+      await fpComplete();
+      out.fpClears = (parseInt(char.fatigue) || 0) === 0;
+      window.confirmStyled = realConf; char.moriaMode = wasMoria;
+      document.getElementById('fp-wizard-overlay').classList.remove('show');
+      window.showModal = realModal; window.alert = realAlert;
+      const o = JSON.parse(save); char.fatigue = o.fat; char.saga = o.saga; char.journey = o.j; char.endCur = o.end; saveCharacter(); render();
+      return out;`);
+    checks.push({ ok: !fat.err && fat.inn && fat.fpLabel && fat.fpClears,
+      msg: `a night somewhere sheltered and safe off the road (not only a Safe Haven) lifts 1 Fatigue, and finishing a Fellowship Phase clears it all (${JSON.stringify(fat)})` });
+
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length}${errors.length ? ': ' + errors[0] : ''})` });
     await context.close();
     return { checks };

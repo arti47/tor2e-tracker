@@ -151,7 +151,7 @@ function _tblPhaseCard() {
 function _tblSheetHtml() {
   const n = v => parseInt(v) || 0;
   const conds = ['weary', 'miserable', 'wounded'].filter(k => char[k]).map(k => `<span class="tbl-chip bad">${k[0].toUpperCase() + k.slice(1)}</span>`).join('');
-  const dying = n(char.endCur) <= 0 ? '<span class="tbl-chip bad">Dying</span>' : '';
+  const dying = n(char.endCur) <= 0 ? `<span class="tbl-chip bad">${char.dying ? 'Dying' : 'Unconscious'}</span>` : '';
   const weapons = (char.weapons || []).filter(w => w && w.name).map(w =>
     `<li><strong>${escapeHtml(w.name)}</strong> <small>Damage ${n(w.dmg)} · Injury ${escapeHtml(String(w.inj || '—'))}</small></li>`).join('');
   const solo = isSolo() ? `<div class="card callout info"><strong>This hero is set up for solo play.</strong> At a table the Target Numbers are 20 − Rating, not 18 − Rating.
@@ -320,7 +320,7 @@ function _tblConsoleUpdate() {
   const code = (typeof campaignInfo === 'function' && campaignInfo().code) || '';
   if (party) party.innerHTML = _tblPlayers().map(m => {
     const v = m.vitals || {};
-    const chips = [v.dying && 'Dying', v.weary && 'Weary', v.miserable && 'Miserable', v.wounded && 'Wounded'].filter(Boolean).map(t => `<span class="tbl-chip bad">${t}</span>`).join('');
+    const chips = [v.dying ? 'Dying' : (v.down && 'Unconscious'), v.weary && 'Weary', v.miserable && 'Miserable', v.wounded && 'Wounded'].filter(Boolean).map(t => `<span class="tbl-chip bad">${t}</span>`).join('');
     return `<div class="tbl-prow${m.online === false ? ' off' : ''}"><div class="tbl-prow-head"><span class="dot" aria-hidden="true"></span>${v.culture && typeof cultureCrest === 'function' ? `<span class="tbl-crest" aria-hidden="true">${cultureCrest(v.culture, 22, v.name)}</span>` : ''}<strong>${escapeHtml(v.name || m.displayName || 'Hero')}</strong>${m.online === false ? '<em>away</em>' : ''}
         ${m.characterId && typeof gmPeek === 'function' ? `<button type="button" class="btn btn-quiet" onclick="gmPeek('${m.characterId}')">Sheet</button>` : ''}</div>
       <span>Endurance ${v.endCur ?? '?'}/${v.endMax ?? '?'} · Hope ${v.hopeCur ?? '?'}/${v.hopeMax ?? '?'} · Shadow ${v.shadow ?? 0}</span>${chips ? `<div class="tbl-chips">${chips}</div>` : ''}</div>`;
@@ -716,7 +716,7 @@ function _tcActed(m, round) {
 }
 function tableTurnOrder() {
   const rank = st => { const i = TC_STANCES.findIndex(x => x[0] === st); return i < 0 ? 9 : i; };
-  return _tblPlayers().filter(m => !((m.vitals || {}).dying)).sort((a, b) => rank(_tcStanceOf(a)) - rank(_tcStanceOf(b)) || String((a.vitals || {}).name).localeCompare(String((b.vitals || {}).name)));
+  return _tblPlayers().filter(m => !((m.vitals || {}).dying || (m.vitals || {}).down)).sort((a, b) => rank(_tcStanceOf(a)) - rank(_tcStanceOf(b)) || String((a.vitals || {}).name).localeCompare(String((b.vitals || {}).name)));
 }
 /** Whose turn it is: a hero, or null when every hero has acted (the foes' turn). */
 function tableTurnNow() { const r = _tcRound(); return tableTurnOrder().find(m => !_tcActed(m, r)) || null; }

@@ -87,7 +87,7 @@ function renderGm() {
     const dying = (parseInt(d.endCur) || 0) <= 0;
     const cbtn = (cond, label) => `<button onclick="gmCond('${e.id}','${cond}')" aria-pressed="${!!d[cond]}" style="${sb};background:${d[cond] ? 'var(--btn-alert-bg)' : 'var(--bg-deep)'};color:${d[cond] ? '#fff' : 'var(--ink)'}">${label}</button>`;
     return `<div class="card gm-hero" data-id="${e.id}" style="padding:10px 12px;margin-bottom:8px">
-      <div style="font-weight:700">${escapeHtml(heroLabel(d))}${here ? ' ★' : ''}${dying ? ' <span style="color:var(--error-text)">DYING</span>' : ''}</div>
+      <div style="font-weight:700">${escapeHtml(heroLabel(d))}${here ? ' ★' : ''}${dying ? ` <span style="color:var(--error-text)">${d.dying ? 'DYING' : 'UNCONSCIOUS'}</span>` : ''}</div>
       <div style="font-size:var(--fs-xs);color:var(--text-muted);margin:2px 0 6px">❤ ${d.endCur ?? '?'}/${d.endMax ?? '?'} &middot; ✦ ${d.hopeCur ?? '?'}/${d.hopeMax ?? '?'} &middot; 🌑 ${totalShadow}</div>
       <div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center">
         <button onclick="gmDamage('${e.id}',1)" style="${sb}" aria-label="Deal 1 damage to ${escapeHtml(d.name || 'hero')}">−1 End</button>
@@ -137,7 +137,7 @@ function renderGmCampaign() {
   const members = (Sync.lastParty && Sync.lastParty()) || {};
   const rows = Object.keys(members).filter(uid => (members[uid] || {}).role !== 'loremaster').map(uid => {
     const m = members[uid] || {}; const v = m.vitals || {};
-    const conds = [v.weary && 'Weary', v.miserable && 'Miserable', v.wounded && 'Wounded', v.dying && 'DYING'].filter(Boolean).join(', ');
+    const conds = [v.weary && 'Weary', v.miserable && 'Miserable', v.wounded && 'Wounded', v.dying ? 'DYING' : (v.down && 'Unconscious')].filter(Boolean).join(', ');
     return `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)">
       <span>${m.online ? '🟢' : '⚪'} <b>${escapeHtml(v.name || m.displayName || 'Hero')}</b>${uid === Sync.uid ? ' ★' : ''}
         <small style="color:var(--text-muted)">❤ ${v.endCur ?? '?'}/${v.endMax ?? '?'} · ✦ ${v.hopeCur ?? '?'}/${v.hopeMax ?? '?'} · 🌑 ${v.shadow ?? 0}${conds ? ' · <span style="color:var(--error-text)">' + conds + '</span>' : ''}</small></span>

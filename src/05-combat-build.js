@@ -154,7 +154,27 @@ function applyPierce() {
 }
 
 /** A Severe Injury mends when its day-count runs out — the Wound is gone, not just "minor". */
+/* 0 Endurance (Core Rules): the hero drops unconscious at once and can take no action — no attack,
+   no stance, no flight — while the fight goes on around them. They come round an hour later with
+   1 Endurance. Dying is the worse case: 0 Endurance with a second Wound or a Grievous Injury, and
+   then only a HEALING roll within the hour saves them. */
+function heroDown() { return !!(char && char.culture) && (parseInt(char.endCur) || 0) <= 0; }
+function heroDying() { return heroDown() && !!char.dying; }
+function heroComeRound() {
+  if (!heroDown()) return;
+  if (heroDying()) { alert('You are Dying, not merely knocked out. Only a HEALING roll within the hour saves you — tend the wound.'); return; }
+  char.endCur = 1; saveCharacter();
+  if (typeof logTimeline === 'function') logTimeline('status', 'Came round after being knocked out');
+  if (typeof playNote === 'function') playNote('An hour later you come round, with <strong>1 Endurance</strong>.');
+  render();
+}
+function _downRefusal(what) {
+  alert(`You are unconscious (Endurance 0) and cannot ${what}.
+
+The fight goes on around you. ${heroDying() ? 'You are Dying: only a HEALING roll within the hour can save you.' : 'You come round an hour later with 1 Endurance.'}`);
+}
 function mendWound() {
+  char.dying = false;
   char.wounded = false;
   char.injury = '';
   char.injuryDays = 0;
@@ -166,6 +186,14 @@ function mendWound() {
 /** One First Aid rule for the Dice tab and ▶ Play: a success takes 1 + ✦ days off a Severe
     Injury; at 0 days the Wound is mended. Returns {before, after, mended}. */
 function applyFirstAidResult(ok, icons) {
+  // A Dying hero's HEALING roll is the save itself: a success revives them (they come round an hour
+  // later at 1 Endurance); the Wound stays open and mends as before.
+  if (heroDying()) {
+    if (ok) { char.dying = false; char.endCur = 1; if (typeof logTimeline === 'function') logTimeline('status', 'Saved from dying by a Healing roll'); }
+    saveCharacter();
+    const d = parseInt(char.injuryDays) || 0;
+    return { before: d, after: d, mended: false, revived: !!ok, dyingSave: true };
+  }
   char.firstAidUsed = true;   // success or fail, the attempt is spent
   const before = parseInt(char.injuryDays) || 0;
   if (!ok) { saveCharacter(); return { before, after: before, mended: false }; }
@@ -986,6 +1014,7 @@ function _protectionRoll(tn, protDice) {
 // Mark Wounded + roll & record Wound Severity (shared by the Dice tab and the foe-attack flow).
 // Returns the severity result.
 async function _applyWoundFromFail() {
+  const second = !!char.wounded;   // Wounded already: a second Wound
   char.wounded = true;
   const r = rollWoundSeverity();
   char.injury = `${r.label} — ${r.detail}`;
@@ -997,9 +1026,11 @@ async function _applyWoundFromFail() {
   // The Grievous result's own printed effect — "Unconscious & Dying (as if Wounded twice)" — was
   // rolled, written into the Injury field, and then applied to nothing: the hero kept full
   // Endurance and full agency. It puts you at 0 Endurance, which is what Dying means here.
-  if (r.kind === 'grievous') {
-    char.endCur = 0;
-    extra = '\n\nYou are Unconscious and Dying — this counts as being Wounded twice. You act only when someone brings you round.';
+  if (r.kind === 'grievous' || second) {
+    char.endCur = 0; char.dying = true;
+    extra = second && r.kind !== 'grievous'
+      ? '\n\nYou were already Wounded: a second Wound leaves you Unconscious and Dying. Only a HEALING roll within the hour saves you.'
+      : '\n\nYou are Unconscious and Dying — this counts as being Wounded twice. Only a HEALING roll within the hour saves you.';
   } else if (r.kind === 'moderate') {
     extra = '\n\nA few hours will see it closed: take a Prolonged Rest and the Wound clears itself.';
   }
@@ -1118,13 +1149,14 @@ async function _encFoeDone(foeId) {
 async function _encNewRound() {
   const e = enc();
   e.round = (parseInt(e.round) || 1) + 1;
-  e.turn = 'hero'; (e.foes || []).forEach(f => { f.acted = false; });
+  e.turn = heroDown() ? 'foes' : 'hero'; (e.foes || []).forEach(f => { f.acted = false; });
   saveCharacter(); render(); renderEncounter();
-  if (typeof showToast === 'function') showToast(`Round ${e.round} — your turn`);
+  if (typeof showToast === 'function') showToast(heroDown() ? `Round ${e.round} — you lie senseless; the foes act` : `Round ${e.round} — your turn`);
   await _encRoundFellPrompt(e.round);
 }
 /** "I do something else" — a turn spent on anything but an attack (a combat task, a rally…). */
 async function encHeroPass() {
+  if (heroDown() && enc().turn === 'hero') { _encHeroDone(); saveCharacter(); renderEncounter(); return; }
   _encHeroDone();
   const e = enc();
   if (e.turn === 'foes') {
@@ -1491,16 +1523,18 @@ function _foeProtectionRoll(foe, tn) {
   const feat = rollFeatOnce();
   let sum = 0, icons = 0;
   for (let i = 0; i < dice; i++) { const v = Math.floor(Math.random() * 6) + 1; if (v === 6) icons++; sum += v; }
-  const isAutoSuccess = feat.special === 'rune';
-  const featVal = feat.special === 'eye' ? 0 : (feat.special === 'rune' ? 0 : feat.value);
+  // An adversary's Feat die: the Eye is its best result (automatic success), the Rune counts 0.
+  const isAutoSuccess = feat.special === 'eye';
+  const featVal = feat.special === 'rune' ? 0 : (feat.special === 'greyWizard' ? 1 : feat.value);
   const total = isAutoSuccess ? null : featVal + sum;
-  const outcome = isAutoSuccess ? 'SUCCESS (Rune!)' : (total >= tn ? 'SUCCESS' : 'FAIL');
+  const outcome = isAutoSuccess ? 'SUCCESS (Eye)' : (total >= tn ? 'SUCCESS' : 'FAIL');
   return { total, outcome, isAutoSuccess, isAutoFail: false, icons };
 }
 
 // ----- HERO attacks a foe -----
 async function heroAttackFoe(foeId) {
   const f = getFoe(foeId); if (!f || f.slain) return;
+  if (heroDown()) return _downRefusal('attack');
   const wpns = _equippedWeapons();
   if (!wpns.length) return requireStep('You have nothing to fight with — no weapon is equipped.<br><br>Open <strong>War Gear</strong> on Hero → Gear and tap <strong>+ Pick Weapon</strong>. Unarmed is a valid choice too, if you meant it.', 'gear', 'war-gear-card', '⚠️ No weapon equipped');
   const e = enc();
@@ -1641,12 +1675,33 @@ async function foeAttackHero(foeId, attackIdx) {
   let stanceNote = volley ? ' · 🏹 Opening Volley: shield Parry doubled' : '';
   if (char.stance === 'forward') { atkDice += 1; stanceNote += ' · you Forward +1d'; }
   else if (char.stance === 'defensive') { atkDice = Math.max(0, atkDice - 1); stanceNote += ' · you Defensive −1d'; }
+  if (heroDown()) {
+    // An unconscious hero is struck without a roll to hit; the blow is a Protection test against Wounds.
+    const injTN = parseInt(atk.inj) || 0;
+    let line = `<strong>${escapeHtml(f.name)}</strong> · ${escapeHtml(atk.name)} · strikes you as you lie senseless → automatic hit`;
+    const said = [];
+    let pill = '';
+    if (injTN > 0) {
+      const protDice = (parseInt(char.armourProt) || 0) + (parseInt(char.helmProt) || 0);
+      const P = _protectionRoll(injTN, protDice);
+      const held = P.outcome.startsWith('SUCCESS');
+      pill = rollPillHtml('Protection', P.isAutoSuccess ? 'Rune' : P.total, injTN, held);
+      if (held) { line += ` · Protection ${P.total ?? '★'} vs ${injTN} → resisted`; said.push('Your armour holds — no Wound.'); }
+      else { const wr = await _applyWoundFromFail(); line += ` · Protection ${P.total ?? '✗'} vs ${injTN} → WOUNDED (${wr.label})`; said.push(`<strong>You are Wounded</strong> (${escapeHtml(wr.label)}).`); if (heroDying()) said.push('<strong>You are Dying.</strong>'); }
+    }
+    _encStash(foeId, line, [], _fightSaid(pill, 'It strikes you as you lie there', said, '', false));
+    saveCharacter(); encLogRoll(line); render(); renderEncounter();
+    await _encFoeDone(foeId);
+    return;
+  }
   _suspendInlineEye(true);
   const roll = _doInlineRoll(atkDice, 'normal', tn, null, { foe: true });
   _suspendInlineEye(false);
   const hit = roll.outcome.startsWith('SUCCESS');
-  const piercing = hit && (roll.featSpecial === 'rune' || roll.featValue === 10);
-  const score = roll.featSpecial === 'rune' ? '★' : (roll.featSpecial === 'eye' ? '✗' : roll.total);
+  // An adversary reads the Feat die the other way round: the Eye is its best result (an automatic
+  // success and a Piercing Blow, as a 10 is) and the Gandalf Rune counts 0.
+  const piercing = hit && (roll.featSpecial === 'eye' || roll.featValue === 10);
+  const score = roll.featSpecial === 'eye' ? '👁' : roll.total;
   let line = `<strong>${escapeHtml(f.name)}</strong> · ${escapeHtml(atk.name)} · ${score} vs your Parry ${tn}${stanceNote} → `;
   let said;
   if (hit) {
@@ -1654,7 +1709,7 @@ async function foeAttackHero(foeId, attackIdx) {
     char.endCur = Math.max(0, (parseInt(char.endCur) || 0) - dmg);
     line += `HIT · −${dmg} End → ${char.endCur}/${char.endMax}`;
     said = [`You lose ${dmg} Endurance — ${char.endCur} left.`];
-    if (char.endCur === 0) { line += ' · ⚠ you are Dying'; said.push('<strong>You are Dying.</strong>'); }
+    if (char.endCur === 0) { line += ' · ⚠ you drop unconscious'; said.push('<strong>You drop unconscious.</strong> You can do nothing more in this fight.'); }
     saveCharacter();
   } else { line += `miss`; said = []; }
   if (piercing && atk.inj && atk.inj !== '—' && parseInt(atk.inj) > 0) {
@@ -1667,7 +1722,7 @@ async function foeAttackHero(foeId, attackIdx) {
       else { line += ` · Piercing Blow — Protection ${pScore} vs ${injTN} → WOUNDED`; const wr = await _applyWoundFromFail(); line += ` (${wr.label})`; said.push(`Piercing Blow — <strong>you are Wounded</strong> (${escapeHtml(wr.label)}).`); }
     } else { line += ` · Piercing Blow (resolve manually)`; said.push('Piercing Blow — resolve it by hand.'); }
   }
-  const show = _fightSaid(rollPillHtml(atk.name, roll.total, tn, !hit,
+  const show = _fightSaid(rollPillHtml(atk.name, roll.featSpecial === 'eye' ? 'Eye' : roll.total, tn, !hit,
     `${f.name}'s ${atk.name}: ${score} against your Parry ${tn}`),
     hit ? 'It hits you' : 'It misses you', said,
     stanceNote ? stanceNote.replace(/^ · /, '').replace(/🏹 /, '').replace(/you Forward \+1d/, 'Forward stance: +1d to its attack').replace(/you Defensive −1d/, 'Defensive stance: −1d to its attack') : '', !hit);
@@ -1847,6 +1902,11 @@ function _renderHeroCard(e, myTurn, gearHtml) {
       <div class="foe-bar"><span>Endurance <strong>${end}/${endMax}</strong></span>${bar(end, endMax, 'nb-end', 'Endurance')}</div>
       <div class="foe-bar"><span>Hope <strong>${hope}/${hopeMax}</strong></span>${bar(hope, hopeMax, 'nb-hope', 'Hope')}</div>
     </div>`;
+  if (heroDown()) {
+    h += `<div class="hero-down"><strong>${heroDying() ? 'You are Dying' : 'You are unconscious'}</strong> — Endurance 0. You cannot attack, change stance or flee; the fight goes on around you. A foe that strikes you hits at once, and only your armour (a Protection test) stands between you and a Wound.${heroDying() ? ' Only a HEALING roll within the hour can save you.' : ' You come round an hour later with 1 Endurance.'}</div>`;
+    if (myTurn) h += `<button onclick="encHeroPass()" class="btn btn-block">Let the foes act</button>`;
+    return h + `</div>`;
+  }
   if (myTurn) {
     h += gearHtml;
     standing.forEach((f, i) => { h += `<button onclick="heroAttackFoe('${f.id}')" class="btn btn-block foe-you${i ? ' btn-secondary' : ''}">⚔ Attack ${escapeHtml(f.name)}</button>`; });
@@ -3713,11 +3773,12 @@ const REFERENCE = {
     ['Great Success', 'Two ✦ icons = Great success; three = Extraordinary — stronger effects and special damage.']
   ],
   terms: [
-    ['Endurance', 'Your stamina/health pool. Reduced by damage and Load; restored by rest. At 0 you are Dying.'],
-    ['Dying', 'Endurance has hit 0. You are not dead — you are down and out of the fight: you cannot act, cannot defend yourself, and cannot spend Hope. You stay that way until someone helps you or the fight ends. Any further damage while Dying, or a failed Protection roll, can kill you outright. Get Endurance above 0 as fast as you can: a companion\'s HEALING roll, a Short Rest once you are safe, or a Prolonged Rest. If you are also Wounded, the Wound must be treated too — being Wounded and at 0 Endurance is how heroes actually die.'],
+    ['Endurance', 'Your stamina/health pool. Reduced by damage and Load; restored by rest. At 0 you drop Unconscious; with a second Wound as well you are Dying.'],
+    ['Unconscious', 'Endurance has hit 0: you drop unconscious at once. You cannot attack, change stance or flee, and the fight goes on around you — a foe that strikes you hits automatically, and only a Protection test keeps the blow from Wounding you. If you are not Dying you come round an hour later with 1 Endurance.'],
+    ['Dying', 'Unconscious (Endurance 0) and Wounded twice — a second Wound, or a Grievous Injury. Only a successful HEALING roll within the hour saves you; then you come round an hour later with 1 Endurance. No rest helps.'],
     ['Hope', 'Spend 1 to add +1d to a roll (doubled to +2d if Inspired). Restored in the Fellowship Phase and from Fellowship points.'],
     ['Shadow / Scars', 'Corruption. Shadow + permanent Scars ≥ Hope → Miserable; reaching that point again can trigger a Bout of Madness.'],
-    ['Fatigue', 'Weariness from Load and travel. When Fatigue ≥ Endurance you become Weary.'],
+    ['Fatigue', 'Weariness from Load and travel. When Fatigue ≥ Endurance you become Weary. Each night somewhere sheltered and safe off the road clears 1; a Fellowship Phase clears it all.'],
     ['Parry', 'Your defence TN — the number an adversary must beat to hit you (plus your shield).'],
     ['Load', 'Total weight carried; high Load drives Fatigue.'],
     ['Valour', 'Martial renown. Each rank grants Valour rolls and unlocks a Reward.'],
