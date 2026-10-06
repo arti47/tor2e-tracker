@@ -129,6 +129,97 @@ module.exports = {
       const r = _heroSkill('Awareness').rating; char.magicalItems = []; saveCharacter(); return { base, r };`);
     checks.push({ ok: !gear.err && gear.r === gear.base + 2, msg: `a Blessing adds its +2d to the Journey/Play/Council skill roll (${JSON.stringify(gear)})` });
 
+    // ===== Clarity pass (2026-10-06): results read as a picture and a sentence, not a rules dump =====
+    const ev = await safe(`
+      ${reset.replace(/\n/g, ' ')}
+      char.moriaMode = true; char.saga.step = 'journey'; saveCharacter(); refreshStriderUI();
+      char.journey = { active: true, origin: 'Moria — First Hall', destination: 'Third hall', totalHexes: 18, currentHex: 2, hardTerrainHexes: 0,
+        season: 'Spring', region: 'Dark', daysElapsed: 2, travelFatigue: 0, events: [{ day: 1, hex: 1, text: '🚶 Marching Test — x' }], nextEventHex: 2, roles: {} };
+      saveCharacter(); playClearFeed();
+      openNavGroup(navGroupOf('play').id); document.querySelector('.tab[data-tab="play"]').click();
+      window._realFeat = window._realFeat || rollFeatOnce; rollFeatOnce = () => ({ label: '8', value: 8 });
+      await playEvent();
+      ${unstub}
+      renderPlay();
+      const card = document.querySelector('#play-body .jev');
+      const body = document.getElementById('play-body').innerText;
+      return { card: !!card, name: card && card.querySelector('.jev-name').textContent.trim(),
+               find: !!(card && card.querySelector('.jev-find')), stakes: !!(card && card.querySelector('.jev-stakes li.bad')),
+               chips: card ? card.querySelectorAll('.jev-chip').length : 0,
+               junk: card ? /Sub-event roll|Feat 8|Dark Land|Either way|▶/.test(card.textContent) : true,
+               rc: (document.querySelector('#play-body .route-count')||{}).textContent, stretches: (body.match(/of 18 stretches/g) || []).length, camp: /· 1 camp$/.test(((document.querySelector('#play-body .route-count')||{}).textContent||'').trim()),
+               asks: /asks something of you/.test(body) };`);
+    checks.push({ ok: !ev.err && ev.card && /Branching Stairs/.test(ev.name || '') && ev.find && ev.stakes && ev.chips >= 2 && !ev.junk,
+      msg: `a journey event on Play is one card — name, what you find, what failing costs, what to roll — with no dice/table arithmetic (${JSON.stringify(ev)})` });
+    checks.push({ ok: !ev.err && ev.stretches === 1 && ev.camp && !ev.asks,
+      msg: `Play says where you are on the road once (the map), "1 camp" not "1 camps", and does not repeat the roll the button offers (${JSON.stringify(ev)})` });
+
+    const res = await safe(`
+      const pend = char.journey.pendingEventRoll;
+      window._realRand = window._realRand || Math.random; Math.random = () => 0;
+      window._realFeat = window._realFeat || rollFeatOnce; rollFeatOnce = () => ({ label: '1', value: 1 });
+      await playEventRoll();
+      ${unstub}
+      renderPlay();
+      const ps = [...document.querySelectorAll('#play-body .play-feed p')]; const last = ps[ps.length - 1];
+      openNavGroup(navGroupOf('journey').id); document.querySelector('.tab[data-tab="journey"]').click(); renderJourney();
+      const log = document.getElementById('j-event-log');
+      const out = { pend: !!pend, pill: !!(last && last.querySelector('.roll-pill')), arrows: last ? /→|\\(👁/.test(last.textContent) : true,
+        logCard: !!log.querySelector('.jev'), logPill: !!log.querySelector('.jev-res .roll-pill'),
+        logJunk: /Sub-event roll|Feat \\d|Dark Land/.test(log.textContent) };
+      char.moriaMode = false; char.journey = { active: false }; saveCharacter(); refreshStriderUI();
+      return out;`);
+    checks.push({ ok: !res.err && res.pend && res.pill && !res.arrows,
+      msg: `the event roll's result is a dice pill and a sentence, without running totals (${JSON.stringify(res)})` });
+    checks.push({ ok: !res.err && res.logCard && res.logPill && !res.logJunk,
+      msg: `the Journey log draws the same card and result lines as Play (${JSON.stringify(res)})` });
+
+    const foe = await safe(`
+      ensureEncounterActive();
+      enc().foes.push({ id: 'cf1', name: 'Test Orc', source: 'T', endMax: 10, endCur: 10, might: 1, hateMax: 2, hateCur: 2, parry: 2, armour: 0, atkTN: 14,
+        attacks: [{ name: 'Blade', dice: 2, dmg: 3, inj: 0, special: '' }], engaged: true, wounded: false, slain: false });
+      openNavGroup(navGroupOf('combat').id); document.querySelector('.tab[data-tab="combat"]').click();
+      await heroAttackFoe('cf1');
+      const said = document.querySelector('#encounter-card .foe-said');
+      const out = { pill: !!(said && said.querySelector('.roll-pill')), junk: said ? /Str \\+ Parry|vs TN|→ (FAIL|SUCCESS)/.test(said.textContent) : true,
+                    log: /Str \\+ Parry/.test(_encResults['cf1'] || '') };
+      char.encounter = JSON.parse(JSON.stringify(DEFAULT_CHARACTER.encounter)); saveCharacter(); render();
+      return out;`);
+    checks.push({ ok: !foe.err && foe.pill && !foe.junk && foe.log,
+      msg: `a foe card shows your attack as a pill and a sentence; the TN arithmetic stays in the log (${JSON.stringify(foe)})` });
+
+    const slog = await safe(`
+      openNavGroup(navGroupOf('council').id); document.querySelector('.tab[data-tab="council"]').click();
+      pickCouncilKind('endeavour'); startSkillEndeavour(); rollSkillEndeavourAttempt('Athletics'); rollSkillEndeavourAttempt('Awe');
+      const log = document.getElementById('se-roll-log');
+      const out = { rows: log.querySelectorAll('.slog-row .roll-pill').length, junk: /STR TN|HRT TN|WIT TN|Feat \\d|No contribution/.test(log.textContent) };
+      char.skillEndeavour.active = false; saveCharacter(); render();
+      return out;`);
+    checks.push({ ok: !slog.err && slog.rows === 2 && !slog.junk,
+      msg: `Council/Endeavour log rows are a pill and a phrase, not "Feat 6, total 11 vs STR TN 15, 0 ✦. No contribution. FAIL" (${JSON.stringify(slog)})` });
+
+    const ch = await safe(`
+      openNavGroup(navGroupOf('chronicle').id); document.querySelector('.tab[data-tab="chronicle"]').click();
+      if (typeof ensureActiveScene === 'function') ensureActiveScene();
+      pushBlock('auto', 'note', 'A test line.', 'play'); renderChronicle();
+      await new Promise(r => setTimeout(r, 50));
+      const row = [...document.querySelectorAll('#panel-chronicle .ch-row')].pop();
+      const tools = row && row.querySelector('.blk-tools'); const before = !!(tools && tools.checkVisibility());
+      row && row.querySelector('.blk-more').click();
+      const after = !!(tools && tools.checkVisibility());
+      return { before, after };`);
+    checks.push({ ok: !ch.err && ch.before === false && ch.after === true,
+      msg: `Chronicle line tools (▲ ▼ describe edit ×) sit behind one ⋯ until tapped (${JSON.stringify(ch)})` });
+
+    const misc = await safe(`
+      _tellingResult('', 'middling');
+      const lab = (oracleHistory[0] || {}).label || '';
+      openNavGroup(navGroupOf('oracle').id); document.querySelector('.tab[data-tab="oracle"]').click();
+      rollChamber(); const cr = document.getElementById('chamber-result').textContent;
+      return { lab, quotes: /""/.test(lab), chamberTyped: /Type:|Appearance:/.test(cr) };`);
+    checks.push({ ok: !misc.err && !misc.quotes && !misc.chamberTyped,
+      msg: `no empty "" in Oracle history for an unasked question; a chamber reads as one sentence (${JSON.stringify(misc)})` });
+
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length}${errors.length ? ': ' + errors[0] : ''})` });
     await context.close();
     return { checks };
