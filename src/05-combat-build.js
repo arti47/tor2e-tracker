@@ -1266,6 +1266,17 @@ function suggestFoes(opt) {
     if (ctx.hurt) { tier--; why.push('You are hurt, so something you can survive.'); }
   }
   tier = Math.max(0, Math.min(2, tier));
+  // Moria has its own rule for this: the Random Orc-Band table (a leader on the Feat die, one
+  // member per Success die). Use it whenever the suggestion is Orcs or goblins there; Easier /
+  // Harder (an explicit tier) fall back to single foes from the bestiary.
+  if (typeof isMoria === 'function' && isMoria() && (pool === 'orcs' || pool === 'goblins') && opt.tier === undefined && typeof rollOrcBandData === 'function') {
+    const band = rollOrcBandData();
+    const names = orcBandNames(band).map(n => { const e = _orcBandEntry(n); return e ? e.name : n; });
+    why.push(`Rolled on the Moria Orc-Band table (one Success die per hero: ${band.n}).`);
+    if (band.surprise) why.push('They are distracted — you can take them by surprise.');
+    if (names.length > 4) why.push('A band this size is a lot for one hero; if your allies fight beside you, you can run it as a Battle on the Battle tab instead.');
+    return { pool, tier: /troll|great orc/i.test(names[0]) ? 2 : 1, lead: names[0], minions: names.slice(1), roll: band.n, why, ctx, band };
+  }
   const P = FOE_POOLS[pool], names = t => (P.t[t] || []).filter(_foeExists);
   while (tier < 2 && !names(tier).length) tier++;           // trolls are never an ordinary fight
   while (tier > 0 && !names(tier).length) tier--;
@@ -1292,7 +1303,7 @@ function renderFoeSuggest(opt) {
     <div class="foe-sug-h">Suggested for you</div>
     <div class="foe-sug-main">${b && typeof foeSilhouette === 'function' ? foeSilhouette(b, 'foe-sug-sil') : ''}
       <div><strong class="foe-sug-names">${escapeHtml(_foeSugCount(sg))}</strong>
-      <small>${escapeHtml(FOE_POOLS[sg.pool].label)} · ${TIER_NAME[sg.tier]}${b ? ` · Endurance ${b.end}, Parry ${b.parry}` : ''}</small></div></div>
+      <small>${sg.band ? 'a Moria Orc-Band' : escapeHtml(FOE_POOLS[sg.pool].label)} · ${TIER_NAME[sg.tier]}${b ? ` · Endurance ${b.end}, Parry ${b.parry}` : ''}</small></div></div>
     ${sg.why.length ? `<p class="foe-sug-why">${sg.why.map(escapeHtml).join(' ')}</p>` : ''}
     <button type="button" class="btn btn-block" onclick="fightSuggested()">Fight ${sg.minions.length ? 'them' : 'it'}</button>
     <div class="foe-sug-row">
@@ -1307,7 +1318,8 @@ function fightSuggested() {
   const sg = window._foeSug; if (!sg) return;
   const all = allBestiary();
   const fromPlay = window._playFightPending; window._playFightPending = false;
-  [sg.lead, ...sg.minions].forEach(n => { const i = all.findIndex(b => b.name === n); if (i >= 0) _pushFoe(all[i]); });
+  if (sg.band) addOrcBandFoes(sg.band);
+  else [sg.lead, ...sg.minions].forEach(n => { const i = all.findIndex(b => b.name === n); if (i >= 0) _pushFoe(all[i]); });
   encDeriveEngaged(); _encEnsureGroup(); saveCharacter(); renderEncounter();
   document.getElementById('bestiary-overlay').classList.remove('show');
   if (fromPlay) {

@@ -1469,55 +1469,80 @@ function rollChamber() {
     + `<span>${escapeHtml(typeof chamberLine === 'function' ? chamberLine(c) : `${c.cond} · ${c.chal}`)}</span>`;
   logOracleRoll('Chamber', `${c.appr} ${c.type} — ${c.cond} — ${c.chal}`);
 }
+/** The Moria Random Orc-Band table, rolled: a leader on the Feat die, then one member result
+    per Success die. `n` defaults to the heroes in play (your living allies, at least 1). */
+function rollOrcBandData(n) {
+  const livingBand = (char.band && Array.isArray(char.band.allies)) ? char.band.allies.filter(a => !a.outOfAction).length : 0;
+  n = (n && n > 0) ? n : Math.max(1, livingBand);
+  const leader = ORC_BAND_LEADER[_chamberKey()];
+  const tally = {};
+  for (let i = 0; i < n; i++) { const m = ORC_BAND_MEMBER[Math.floor(Math.random() * 6) + 1]; tally[m] = (tally[m] || 0) + 1; }
+  return { leader, tally, n, surprise: /surprise/i.test(leader) };
+}
+/** The band as named foes: "2 Orc Soldiers" is two Orc Soldiers, "1 Orc Guard + 1 Goblin Archer"
+    is one of each. The 👁 leader ("a named Orc leader, a Great Orc Chief, or a Great Cave-troll")
+    defaults to the Great Orc Chief — change it in the Encounter if your story wants another. */
+function orcBandNames(band) {
+  const names = [];
+  const leader = /named Orc leader/i.test(band.leader) ? 'Great Orc Chief' : String(band.leader).replace(/\s*\(.*\)\s*$/, '');
+  names.push(leader);
+  Object.entries(band.tally).forEach(([label, times]) => {
+    String(label).split('+').forEach(part => {
+      const m = part.trim().match(/^(\d+)\s+(.+)$/); if (!m) return;
+      for (let i = 0; i < parseInt(m[1]) * times; i++) names.push(m[2].trim());
+    });
+  });
+  return names;
+}
+/** A band name → its bestiary entry ("Orc Soldiers" finds "Orc Soldier"), or null. */
+function _orcBandEntry(name) {
+  const all = (typeof allBestiary === 'function') ? allBestiary() : [];
+  const lc = String(name).toLowerCase();
+  return all.find(x => x.name.toLowerCase() === lc) || all.find(x => x.name.toLowerCase() === lc.replace(/s$/, '')) || null;
+}
 function rollOrcBand() {
   const inp = parseInt((document.getElementById('orcband-count') || {}).value);
-  const livingBand = (char.band && Array.isArray(char.band.allies)) ? char.band.allies.filter(a => !a.outOfAction).length : 0;
-  const n = (inp && inp > 0) ? inp : Math.max(1, livingBand);
-  const leader = ORC_BAND_LEADER[_chamberKey()];
-  const members = [];
-  for (let i = 0; i < n; i++) { members.push(ORC_BAND_MEMBER[Math.floor(Math.random() * 6) + 1]); }
+  const band = rollOrcBandData(inp);
   // Tally identical entries: "• 2 Orc Soldiers · • 1 Orc Soldier · • 1 Orc Soldier" is a list of
   // die results, not a band you can picture. Count them, then offer to put them in the Encounter.
-  const tally = {};
-  members.forEach(m => { tally[m] = (tally[m] || 0) + 1; });
-  const lines = Object.keys(tally).map(k => `• ${tally[k]} × ${k}`);
-  window._lastOrcBand = { leader, tally };
+  const lines = Object.keys(band.tally).map(k => `• ${band.tally[k]} × ${k}`);
+  window._lastOrcBand = band;
   const el = document.getElementById('orcband-result');
   el.style.display = 'block';
-  el.innerHTML = `<strong>Leader:</strong> ${leader}<br><strong>The band (${n} Success ${n === 1 ? 'die' : 'dice'}):</strong><br>` + lines.join('<br>')
+  el.innerHTML = `<strong>Leader:</strong> ${band.leader}<br><strong>The band (${band.n} Success ${band.n === 1 ? 'die' : 'dice'}):</strong><br>` + lines.join('<br>')
+    + `<br><small>In all: ${escapeHtml(_orcBandSummary(band))}</small>`
     + `<br><button class="add-row-btn" style="width:100%;margin-top:8px;font-size:var(--fs-xs)" onclick="orcBandToEncounter()">⚔️ Put this band into the Encounter</button>`;
-  logOracleRoll('Orc-Band', leader + ' + ' + lines.join(', ').replace(/•\s*/g, ''));
+  logOracleRoll('Orc-Band', band.leader + ' + ' + lines.join(', ').replace(/•\s*/g, ''));
 }
-
-/** Take the generated band into the Combat tab's Encounter, matching each entry to the bestiary
-    where a name matches and adding an editable custom foe where it does not. */
+function _orcBandSummary(band) {
+  const c = {}; orcBandNames(band).forEach(n => { const e = _orcBandEntry(n); const k = e ? e.name : n; c[k] = (c[k] || 0) + 1; });
+  return Object.entries(c).map(([n, k]) => `${k > 1 ? k + ' × ' : ''}${n}`).join(', ');
+}
+/** Put a band's foes into the Encounter: bestiary entries where a name matches, an editable
+    custom foe where it does not. Returns how many foes were added. */
+function addOrcBandFoes(band) {
+  if (typeof ensureEncounterActive !== 'function') return 0;
+  ensureEncounterActive();
+  const names = orcBandNames(band);
+  names.forEach(n => {
+    const b = _orcBandEntry(n);
+    if (b && typeof _pushFoe === 'function') return _pushFoe(b);
+    enc().foes.push({ id: _newFoeId(), name: n, source: 'Orc-Band', endMax: 12, endCur: 12, might: 0, hateMax: 2, hateCur: 2,
+      parry: 3, armour: 1, atkTN: 14, attacks: [{ name: 'Attack', dice: 2, dmg: 4, inj: 14, special: '' }],
+      fell: '', engaged: true, wounded: false, slain: false, _edit: true });
+  });
+  return names.length;
+}
 function orcBandToEncounter() {
   const band = window._lastOrcBand;
   if (!band) return;
-  if (typeof ensureEncounterActive !== 'function') return;
-  ensureEncounterActive();
-  const all = (typeof allBestiary === 'function') ? allBestiary() : [];
-  const add = (label, count) => {
-    const clean = String(label).replace(/^\d+\s*/, '').replace(/s$/, '');
-    const b = all.find(x => new RegExp('^' + clean.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + 's?$', 'i').test(x.name))
-           || all.find(x => new RegExp(clean.split(/\s+/).pop(), 'i').test(x.name));
-    for (let i = 0; i < count; i++) {
-      enc().foes.push(b
-        ? { id: _newFoeId(), name: b.name, source: b.source, endMax: b.end, endCur: b.end, might: b.might,
-            hateMax: b.hate, hateCur: b.hate, parry: b.parry, armour: b.armour, atkTN: b.atkTN,
-            attacks: JSON.parse(JSON.stringify(b.attacks)), fell: b.fell, engaged: true, wounded: false, slain: false }
-        : { id: _newFoeId(), name: clean, source: 'Orc-Band', endMax: 12, endCur: 12, might: 0, hateMax: 2, hateCur: 2,
-            parry: 3, armour: 1, atkTN: 14, attacks: [{ name: 'Attack', dice: 2, dmg: 4, inj: 14, special: '' }],
-            fell: '', engaged: true, wounded: false, slain: false, _edit: true });
-    }
-  };
-  add(band.leader, 1);
-  Object.keys(band.tally).forEach(k => add(k, band.tally[k]));
+  addOrcBandFoes(band);
   if (typeof encDeriveEngaged === 'function') encDeriveEngaged();
   saveCharacter();
   if (typeof renderEncounter === 'function') renderEncounter();
   document.querySelector('.tab[data-tab=combat]')?.click();
-  alert('The orc-band is in the Encounter on the Combat tab. Any foe the bestiary did not recognise is added with a starting stat line — tap ✎ to set it.');
+  alert('The orc-band is in the Encounter on the Combat tab.' + (band.surprise ? ' They are distracted — you can take them by surprise.' : '')
+    + (/named Orc leader/i.test(band.leader) ? ' The leader is a Great Orc Chief; if your story wants a named Orc leader or a Great Cave-troll, remove it and add that one instead.' : ''));
 }
 
 function refreshStriderUI() {

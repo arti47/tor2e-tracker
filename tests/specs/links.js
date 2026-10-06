@@ -348,6 +348,26 @@ module.exports = {
     checks.push({ ok: !fui.err && fui.shown && fui.btn && fui.want > 1 && fui.got === fui.want && fui.panel === 'panel-combat' && fui.closed,
       msg: `"Something attacks!" opens with a suggested foe at the top; one tap on Fight brings it into the fight on the Combat tab (${JSON.stringify(fui)})` });
 
+    const ob = await safe(`
+      const keepAlert = window.alert; window.alert = () => {};
+      const out = {};
+      try {
+        for (const [k, L] of [['eye', ORC_BAND_LEADER.eye], ['rune', ORC_BAND_LEADER.rune], ['six', ORC_BAND_LEADER[6]]]) {
+          char.encounter = JSON.parse(JSON.stringify(DEFAULT_CHARACTER.encounter));
+          window._lastOrcBand = { leader: L, tally: { '2 Orc Soldiers': 1, '1 Orc Guard + 1 Goblin Archer': 1 }, n: 2 };
+          try { orcBandToEncounter(); out[k] = enc().foes.map(f => f.name).join(','); } catch (e) { out[k] = 'THREW ' + e.message; }
+        }
+        char.moriaMode = true; char.encounter = JSON.parse(JSON.stringify(DEFAULT_CHARACTER.encounter));
+        const sg = suggestFoes({ pool: 'goblins' });
+        out.moria = { band: !!sg.band, why: sg.why.join(' '), n: 1 + sg.minions.length };
+      } finally { window.alert = keepAlert; char.moriaMode = false; char.encounter = JSON.parse(JSON.stringify(DEFAULT_CHARACTER.encounter)); saveCharacter(); render(); }
+      return out;`);
+    const want = 'Orc Soldier,Orc Soldier,Orc Guard,Goblin Archer';
+    checks.push({ ok: !ob.err && ob.six === 'Orc-chieftain,' + want && ob.rune === 'Orc-chieftain,' + want && ob.eye === 'Great Orc Chief,' + want,
+      msg: `a rolled Orc-Band enters the fight whole: "2 Orc Soldiers" is two, "1 Orc Guard + 1 Goblin Archer" is both, the ᚱ leader no longer throws, the 👁 leader is a Great Orc Chief (${JSON.stringify(ob)})` });
+    checks.push({ ok: !ob.err && ob.moria && ob.moria.band && /Orc-Band table/.test(ob.moria.why) && ob.moria.n >= 2,
+      msg: `in Moria, a suggested Orc or goblin fight is rolled on the Moria Orc-Band table (${JSON.stringify(ob.moria)})` });
+
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length}${errors.length ? ': ' + errors[0] : ''})` });
     await context.close();
     return { checks };
