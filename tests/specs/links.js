@@ -190,7 +190,7 @@ module.exports = {
 
     const slog = await safe(`
       openNavGroup(navGroupOf('council').id); document.querySelector('.tab[data-tab="council"]').click();
-      pickCouncilKind('endeavour'); startSkillEndeavour(); rollSkillEndeavourAttempt('Athletics'); rollSkillEndeavourAttempt('Awe');
+      pickCouncilKind('endeavour'); startSkillEndeavour(); char.skillEndeavour.resistance = 99; char.skillEndeavour.timeLimit = 10; char.skillEndeavour.riskLevel = 'standard'; rollSkillEndeavourAttempt('Athletics'); rollSkillEndeavourAttempt('Awe');
       const log = document.getElementById('se-roll-log');
       const out = { rows: log.querySelectorAll('.slog-row .roll-pill').length, junk: /STR TN|HRT TN|WIT TN|Feat \\d|No contribution/.test(log.textContent) };
       char.skillEndeavour.active = false; saveCharacter(); render();
