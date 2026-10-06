@@ -1086,7 +1086,7 @@ function rollSkillEndeavourAttempt(skillName) {
   const tnAttr = SKILLS.str.includes(skillName) ? 'str' : (SKILLS.hrt.includes(skillName) ? 'hrt' : 'wit');
   const actualTn = parseInt(char[tnAttr + 'TN']) || 14;
   const roleplayBonus = parseInt(document.querySelector('#se-roleplay-pick .seg-btn.active')?.dataset.val) || 0;
-  const successDice = Math.max(0, s.rating + roleplayBonus);
+  const successDice = Math.max(0, _heroSkill(skillName).rating + roleplayBonus);
   let fav = s.favoured ? 'fav' : 'normal';
   const r = _doInlineRoll(successDice, fav, actualTn, `${skillName} · Skill Endeavour`);
   let success = r.outcome.startsWith('SUCCESS');
@@ -1367,7 +1367,7 @@ function rollCouncilIntro(skillName) {
   const actualTn = parseInt(char[tnAttr + 'TN']) || 14;
   // Attitude modifier (applied as +1d/-1d on success dice)
   const attMod = c.attitude === 'reluctant' ? -1 : (c.attitude === 'friendly' ? 1 : 0);
-  const successDice = Math.max(0, s.rating + attMod);
+  const successDice = Math.max(0, _heroSkill(skillName).rating + attMod);
   let fav = s.favoured ? 'fav' : 'normal';
   const r = _doInlineRoll(successDice, fav, actualTn, `${skillName} · Council introduction`);
   let success = r.outcome.startsWith('SUCCESS');
@@ -1400,7 +1400,7 @@ function rollCouncilAttempt(skillName) {
   const attMod = c.attitude === 'reluctant' ? -1 : (c.attitude === 'friendly' ? 1 : 0);
   const roleplayBonus = parseInt(document.querySelector('#c-roleplay-pick .seg-btn.active')?.dataset.val) || 0;
   const supportBonus = c.supportNext ? 1 : 0;
-  const successDice = Math.max(0, s.rating + attMod + roleplayBonus + supportBonus);
+  const successDice = Math.max(0, _heroSkill(skillName).rating + attMod + roleplayBonus + supportBonus);
   let fav = s.favoured ? 'fav' : 'normal';
   const r = _doInlineRoll(successDice, fav, actualTn, `${skillName} · Council`);
   let success = r.outcome.startsWith('SUCCESS');
@@ -1472,12 +1472,15 @@ function closeCouncilAndReset() {
 }
 
 /* ---------- JOURNEY ---------- */
-function _doInlineRoll(successDice, fav, tn, label) {
+function _doInlineRoll(successDice, fav, tn, label, opts) {
+  opts = opts || {};
+  const foe = !!opts.foe;   // a foe's dice: none of the hero's states (Despair, Weary) apply to them
   // Inline dice roller used by Journey for Marching Tests / Event Feat dice / Arrival roll.
   // Returns: { featValue, featSpecial, featLabel, total, icons, outcome }
   // Despair (Core Rules p.137): at Shadow + Scars = Max Hope, every Feat die is Ill-Favoured.
   // Layer it against the caller's fav per RAW p.20 (Fav + Ill cancel to Normal).
-  if (shadowDespairActive()) fav = (fav === 'fav') ? 'normal' : 'ill';
+  if (!foe && shadowDespairActive()) fav = (fav === 'fav') ? 'normal' : 'ill';
+  const weary = !foe && heroIsWeary();
   let featRolls;
   if (fav === 'normal') featRolls = [rollFeatOnce()];
   else featRolls = [rollFeatOnce(), rollFeatOnce()];
@@ -1487,19 +1490,23 @@ function _doInlineRoll(successDice, fav, tn, label) {
   const successRolls = [];
   for (let i = 0; i < successDice; i++) {
     const v = Math.floor(Math.random() * 6) + 1;
-    successRolls.push({ value: v, icon: v === 6 });
+    // Weary: a Success die showing 1, 2 or 3 counts as 0 — on every roll, as on the Dice tab.
+    successRolls.push({ value: v, icon: v === 6, wearied: weary && v <= 3 });
   }
   const icons = successRolls.filter(s => s.icon).length;
-  const sumSuccess = successRolls.reduce((sum, s) => sum + s.value, 0);
+  const sumSuccess = successRolls.reduce((sum, s) => sum + (s.wearied ? 0 : s.value), 0);
   const total = chosen.special === 'rune' ? null : chosen.value + sumSuccess;
   let outcome;
   if (tn === null) outcome = 'N/A';
   else if (chosen.special === 'rune') outcome = 'SUCCESS (Rune)';
-  else if (chosen.special === 'eye') outcome = 'FAIL (Eye)';
+  // An Eye counts as 0 on the Feat die; it is an automatic failure only for a Miserable hero —
+  // exactly as on the Dice tab. Every other roll (Play, Journey, Council, Endeavour, attacks)
+  // used to fail outright on any Eye, however many Success dice came up.
+  else if (chosen.special === 'eye' && (foe || char.miserable)) outcome = 'FAIL (Eye)';
   else if (total >= tn) outcome = 'SUCCESS';
   else outcome = 'FAIL';
-  const res = { featValue: chosen.value, featSpecial: chosen.special, featLabel: chosen.label, total, icons, outcome };
-  _soloEyeFromRoll(res);
+  const res = { featValue: chosen.value, featSpecial: chosen.special, featLabel: chosen.label, total, icons, outcome, weary };
+  if (!foe) _soloEyeFromRoll(res);
   // One record of every roll: rolls made on Play, the Journey, the Council and the Endeavour
   // go into the Dice tab's history too (they used to leave no trace there).
   if (label && tn !== null && typeof history !== 'undefined' && Array.isArray(history)) {
@@ -1838,7 +1845,7 @@ async function rollMarchingTest() {
   if (char.miserable) {
     // Miserable doesn't ill-fav, but does cause Eye = auto-fail (handled in _doInlineRoll? no — let me handle it here)
   }
-  const r = _doInlineRoll(s.rating, fav, tn, 'Travel · Marching Test');
+  const r = _doInlineRoll(_heroSkill('Travel').rating, fav, tn, 'Travel · Marching Test');
   // Miserable: an Eye result becomes auto-fail (matches main dice roller)
   let success = r.outcome.startsWith('SUCCESS');
   if (char.miserable && r.featSpecial === 'eye') success = false;
@@ -1891,7 +1898,23 @@ function _skillTN(name) {
 }
 function _heroSkill(name) {
   const s = (char.skills && char.skills[name]) || { rating: 0, favoured: false };
-  return { rating: parseInt(s.rating) || 0, favoured: !!s.favoured, tn: _skillTN(name) };
+  return { rating: (parseInt(s.rating) || 0) + _skillBonusDice(name), favoured: !!s.favoured, tn: _skillTN(name) };
+}
+/** The dice a hero's gear adds to a Skill roll — a Useful Item (+1d) and a Marvellous Artefact or
+    Wondrous Item blessing that Skill (+2d). The Dice tab always added them; the rolls made on Play,
+    the Journey, the Council and the Endeavour did not, so the same hero rolled fewer dice there. */
+function _skillBonusDice(name) {
+  let d = 0;
+  try { if (typeof getUsefulItemForSkill === 'function' && getUsefulItemForSkill(name)) d += 1; } catch (e) {}
+  if (Array.isArray(char.magicalItems) && char.magicalItems.some(mi => (mi.type === 'Marvellous Artefact' || mi.type === 'Wondrous Item') && Array.isArray(mi.blessings) && mi.blessings.includes(name))) d += 2;
+  return d;
+}
+/** Weary is a state the rules impose, not a choice: Endurance at or below Load (Fatigue counts
+    as Load) makes a hero Weary whether or not the toggle is set. */
+function heroIsWeary() {
+  if (char.weary) return true;
+  const end = parseInt(char.endCur) || 0, load = (parseInt(char.load) || 0) + (parseInt(char.fatigue) || 0);
+  return end <= load;
 }
 function _bestProf() {
   let best = { name: 'Brawling', rating: 0 };
@@ -3127,7 +3150,7 @@ async function arriveAtDestination() {
   const s = char.skills['Travel'] || { rating: 0, favoured: false };
   const tn = parseInt(char.hrtTN) || 14;
   const fav = s.favoured ? 'fav' : 'normal';
-  const r = _doInlineRoll(s.rating, fav, tn, 'Travel · Arrival');
+  const r = _doInlineRoll(_heroSkill('Travel').rating, fav, tn, 'Travel · Arrival');
   let success = r.outcome.startsWith('SUCCESS');
   if (char.miserable && r.featSpecial === 'eye') success = false;
   if (success) {

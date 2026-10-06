@@ -790,7 +790,7 @@ function quickRoll(item, s) {
   diceState.shadowTest = item.shadowTest || '';
   diceState.firstAid = !!item.firstAid;
   diceState.lastAttackProf = item.isProf ? item.name : (diceState.lastAttackProf || '');
-  diceState.weary = !!char.weary;
+  diceState.weary = typeof heroIsWeary === 'function' ? heroIsWeary() : !!char.weary;
   diceState.miserable = !!char.miserable;
 
   // Update UI

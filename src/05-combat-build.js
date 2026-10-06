@@ -1392,7 +1392,7 @@ async function foeAttackHero(foeId, attackIdx) {
   if (char.stance === 'forward') { atkDice += 1; stanceNote += ' · you Forward +1d'; }
   else if (char.stance === 'defensive') { atkDice = Math.max(0, atkDice - 1); stanceNote += ' · you Defensive −1d'; }
   _suspendInlineEye(true);
-  const roll = _doInlineRoll(atkDice, 'normal', tn);
+  const roll = _doInlineRoll(atkDice, 'normal', tn, null, { foe: true });
   _suspendInlineEye(false);
   const hit = roll.outcome.startsWith('SUCCESS');
   const piercing = hit && (roll.featSpecial === 'rune' || roll.featValue === 10);

@@ -1775,7 +1775,7 @@ async function foeAttacks(id) {
   const heroParry = (parseInt(char.parry) || 0) + (parseInt(char.shieldTotal) || 0);
   const tn = (parseInt(f.atkTN) || 0) + heroParry;
   _suspendInlineEye(true);                       // legacy Chronicle combat log — still combat
-  const roll = _doInlineRoll(parseInt(f.atkDice) || 0, 'normal', tn);
+  const roll = _doInlineRoll(parseInt(f.atkDice) || 0, 'normal', tn, null, { foe: true });
   _suspendInlineEye(false);
   const hit = roll.outcome.startsWith('SUCCESS');
   const score = roll.featSpecial === 'rune' ? '★(Rune)' : (roll.featSpecial === 'eye' ? '✗(Eye)' : roll.total);
