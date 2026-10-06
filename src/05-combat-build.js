@@ -1123,7 +1123,20 @@ async function _encNewRound() {
   await _encRoundFellPrompt(e.round);
 }
 /** "I do something else" — a turn spent on anything but an attack (a combat task, a rally…). */
-function encHeroPass() { _encHeroDone(); saveCharacter(); renderEncounter(); }
+async function encHeroPass() {
+  _encHeroDone();
+  const e = enc();
+  if (e.turn === 'foes') {
+    saveCharacter(); renderEncounter();
+    if (typeof showToast === 'function') showToast('You spend your turn on something else — now the foes act.');
+    // Take the player to what happens next; the hero card above is now greyed out.
+    const next = document.querySelector('#encounter-card .foe-card.turn-on') || document.querySelector('#encounter-card button[onclick^="allFoesAttack"]');
+    if (next && next.scrollIntoView) next.scrollIntoView({ behavior: 'auto', block: 'center' });
+    return;
+  }
+  // No foe is engaged with you (you slipped away, or they all fell back): the round simply passes.
+  await _encNewRound();
+}
 /** The foes' turn can be cut short — they hold back, or the fight moved on. */
 async function encFoesHold() { await _encNewRound(); }
 

@@ -420,6 +420,22 @@ module.exports = {
         && fc.trait.abilities[0].name === 'Hatred' && fc.trait.words[0] === 'Sunlight-averse',
       msg: `a foe card lists its abilities as names and opens one's rule text on a tap, instead of printing every ability in full (${JSON.stringify(fc)})` });
 
+    // "I do something else this turn" always moves the fight on — even with no foe engaged.
+    const hp = await safe(`
+      char.encounter = JSON.parse(JSON.stringify(DEFAULT_CHARACTER.encounter));
+      const all = allBestiary(); ['Orc-chieftain', 'Orc Soldier'].forEach(n => addFoeFromBestiary(all.findIndex(x => x.name === n)));
+      document.querySelectorAll('.menu-overlay.show').forEach(o => o.classList.remove('show'));
+      const out = {};
+      await encHeroPass(); out.t1 = enc().turn;
+      await encFoesHold(); out.r1 = enc().round;
+      enc().foes.forEach(f => { f.engaged = false; });
+      await encHeroPass(); out.r2 = enc().round; out.t2 = enc().turn;
+      document.querySelectorAll('.menu-overlay.show').forEach(o => o.classList.remove('show'));
+      char.encounter = JSON.parse(JSON.stringify(DEFAULT_CHARACTER.encounter)); saveCharacter(); render();
+      return out;`);
+    checks.push({ ok: !hp.err && hp.t1 === 'foes' && hp.r2 === hp.r1 + 1 && hp.t2 === 'hero',
+      msg: `"I do something else this turn" hands the turn to the foes, and with no foe engaged it passes the round instead of doing nothing (${JSON.stringify(hp)})` });
+
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length}${errors.length ? ': ' + errors[0] : ''})` });
     await context.close();
     return { checks };
