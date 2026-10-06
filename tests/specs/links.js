@@ -324,15 +324,18 @@ module.exports = {
       const keepEnd = char.endCur, keepJ = JSON.stringify(char.journey);
       char.journey = Object.assign(JSON.parse(JSON.stringify(DEFAULT_CHARACTER.journey)), { active: true, region: 'dark', totalHexes: 9, currentHex: 2, events: [], pendingScene: { name: 'Despair', detail: 'Dire confrontation' } });
       char.endCur = char.endMax; const hard = suggestFoes({ pool: 'orcs' }).tier;
-      char.journey.region = 'free'; char.journey.pendingScene = null; char.endCur = 1; const easy = suggestFoes({ pool: 'bandits' }).tier;
+      char.journey.region = 'dark'; char.journey.pendingScene = null; char.endCur = 1; const easy = suggestFoes({ pool: 'bandits' }).tier;
       char.endCur = keepEnd; char.journey = JSON.parse(keepJ); saveCharacter();
       return { missing, story, moria, freeTrolls: 'trolls' in freeW, hard, easy };`);
     checks.push({ ok: !fs.err && !fs.missing.length && fs.story === 'servants' && fs.moria === 'goblins' && !fs.freeTrolls && fs.hard === 2 && fs.easy === 0,
-      msg: `"Pick a foe for me" follows the story, the land and the hero: event names the foe, Moria means goblins, no trolls in the Free Lands, a dire Dark-Land fight is deadly, a hurt hero gets an ordinary one (${JSON.stringify(fs)})` });
+      msg: `"Pick a foe for me" follows the story, the land and the hero: event names the foe, Moria means goblins, no trolls in the Free Lands, a dire Dark-Land fight is deadly, a hurt hero in the Dark Lands gets an ordinary one (${JSON.stringify(fs)})` });
 
     const fui = await safe(`
       openNavGroup('play'); char.encounter = JSON.parse(JSON.stringify(DEFAULT_CHARACTER.encounter)); saveCharacter();
-      await playFight(); await new Promise(r => setTimeout(r, 80));
+      await playFight();
+      const rnd = Math.random; Math.random = () => 0.99;   // a 6 on the count die: ordinary Orcs bring company
+      try { renderFoeSuggest({ pool: 'orcs', tier: 0 }); } finally { Math.random = rnd; }
+      await new Promise(r => setTimeout(r, 80));
       const card = document.querySelector('#bestiary-overlay.show .foe-sug');
       const btn = card && [...card.querySelectorAll('button')].find(b => /^Fight (it|them)$/.test(b.textContent.trim()));
       const want = window._foeSug ? 1 + window._foeSug.minions.length : -1;
@@ -342,7 +345,7 @@ module.exports = {
         closed: !document.getElementById('bestiary-overlay').classList.contains('show') };
       char.encounter = JSON.parse(JSON.stringify(DEFAULT_CHARACTER.encounter)); saveCharacter(); render();
       return out;`);
-    checks.push({ ok: !fui.err && fui.shown && fui.btn && fui.want > 0 && fui.got === fui.want && fui.panel === 'panel-combat' && fui.closed,
+    checks.push({ ok: !fui.err && fui.shown && fui.btn && fui.want > 1 && fui.got === fui.want && fui.panel === 'panel-combat' && fui.closed,
       msg: `"Something attacks!" opens with a suggested foe at the top; one tap on Fight brings it into the fight on the Combat tab (${JSON.stringify(fui)})` });
 
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length}${errors.length ? ': ' + errors[0] : ''})` });
