@@ -711,7 +711,7 @@ module.exports = {
     const ed = await safe(`
       openNavGroup('hero'); document.querySelector('.tab[data-tab="character"]').click();
       setCharEditing(true); await new Promise(r => setTimeout(r, 20));
-      const rows = [...document.querySelectorAll('#edit-menu .edit-row')].filter(b => b.checkVisibility()).length;
+      const rows = [...document.querySelectorAll('#edit-menu .edit-row[onclick^="setEditSection"]')].filter(b => b.checkVisibility()).length;
       const cardVis = t => [...document.querySelectorAll('#char-edit .card-title')].some(h => h.textContent.trim().startsWith(t) && h.checkVisibility());
       const menuHidesCards = !cardVis('Attributes') && !cardVis('Name');
       [...document.querySelectorAll('#edit-menu .edit-row')].find(b => /Numbers/.test(b.textContent)).click();

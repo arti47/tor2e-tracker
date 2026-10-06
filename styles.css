@@ -2976,3 +2976,23 @@ button.xp-token:hover, button.xp-token:focus-visible { background: color-mix(in 
 .foe-said.old { opacity: .6; }
 .foe-said-when { display: block; font-size: var(--fs-xs); color: var(--text-faint); font-variant: small-caps; letter-spacing: .04em; margin-bottom: 2px; }
 .hfc-skip-why { font-size: var(--fs-xs); color: var(--text-muted); text-align: center; margin-top: 2px; line-height: 1.4; }
+
+/* Moria: the Band at a glance on the hero sheet */
+.band-sum .sb-top { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--sp-2, 8px); margin-bottom: var(--sp-2, 8px); }
+.band-sum .sb-top span, .band-sum .sb-disp { display: flex; flex-direction: column; align-items: center; text-align: center; min-width: 0; }
+.band-sum .sb-top small { color: var(--label, var(--text-muted)); font-size: var(--fs-xs); font-variant: small-caps; }
+.band-sum .sb-top strong, .band-sum .sb-disp strong { font-family: var(--font-display, serif); font-size: var(--fs-lg); line-height: 1.1; }
+.band-sum .sb-disps { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; padding: var(--sp-2, 8px) 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.band-sum .sb-disp span { font-size: var(--fs-xs); color: var(--text-muted); overflow-wrap: anywhere; }
+.band-sum .sb-allies { margin: var(--sp-2, 8px) 0; }
+.band-sum .sb-ally { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px dotted var(--border); }
+.band-sum .sb-ally > div:first-child { min-width: 0; }
+.band-sum .sb-ally small { display: block; color: var(--text-muted); font-size: var(--fs-xs); }
+.band-sum .sb-ally small.sb-hard { display: inline; color: var(--gold); }
+.band-sum .sb-ally.out strong { text-decoration: line-through; opacity: .7; }
+.band-sum .sb-state { display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; flex: 0 0 auto; max-width: 50%; }
+.band-sum .sb-state span { font-size: var(--fs-xs); padding: 1px 6px; border-radius: var(--r-sm); white-space: nowrap; }
+.band-sum .sb-ok { color: var(--success-text); background: var(--success-bg); }
+.band-sum .sb-hurt { color: var(--error-text); background: var(--error-bg); }
+.band-sum .sb-out { color: var(--pure-white); background: var(--btn-alert-bg); }
+.band-sum .btn { width: 100%; }

@@ -57,7 +57,26 @@ function openNavGroup(gid) {
   const t = pick && document.querySelector(`.tab[data-tab="${pick}"]`);
   if (t) t.click();
 }
+/** Build is for making a hero. It sits in the Hero group until the hero is built, then leaves the
+    bar; it is still reached from Menu → Creation steps, from Edit on the sheet, and from any link
+    that clicks its tab (it stays while open). */
+function heroBuilt() {
+  if (!char || !char.culture) return false;
+  if (char.saga && char.saga.started) return true;
+  return typeof _buildSteps === 'function' && _buildSteps().every(s => s.done);
+}
+function refreshBuildTab() {
+  const t = document.querySelector('.tab[data-tab="build"]'); if (!t) return;
+  const show = !heroBuilt() || t.classList.contains('active');
+  t.style.display = show ? '' : 'none';
+}
+function openBuild() {
+  const m = document.getElementById('menu-overlay'); if (m && m.classList.contains('show') && typeof toggleMenu === 'function') toggleMenu();
+  { const pc = document.getElementById('panel-character'); if (pc && pc.classList.contains('editing') && typeof setCharEditing === 'function') setCharEditing(false); }
+  const t = document.querySelector('.tab[data-tab="build"]'); if (t) t.click();
+}
 function refreshNav() {
+  refreshBuildTab();
   const active = document.querySelector('.tab.active');
   const cur = navGroupOf(active ? active.dataset.tab : 'play');
   if (active) _navLast[cur.id] = active.dataset.tab;
@@ -2506,6 +2525,7 @@ function menuActions() {
   add('Fellowship Phase', 'end adventure yule undertaking', () => openFPWizard());
   add('Equipment — weapons & armour', 'gear war weapon shield helm armour', () => openEquipment());
   add('Start a journey', 'travel road hexes', () => _goTab('journey'));
+  add('Creation steps', 'build culture calling reward virtue lifepath create', () => openBuild());
   add('Edit hero', 'change name attributes', () => { _goTab('character'); setCharEditing(true); });
   add('Your heroes', 'roster switch character new', () => openRoster());
   add('Ready-made heroes', 'pregen pregenerated', () => openPregens());

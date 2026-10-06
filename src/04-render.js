@@ -5324,6 +5324,25 @@ function explainNoPoints(kind) {
     : 'You earn them at the <strong>end of each session</strong> (+3 each). End a session from the vitals bar (tap your Endurance and Hope).';
   alertStyled(`You have no ${what} to spend yet.<br><br>${how}<br><br>Spend them between adventures, in a Fellowship Phase.`);
 }
+/** Moria: the Band at a glance on the hero sheet — only once a Band exists. Rolls and tests stay on the Band tab. */
+function _sheetBandHtml() {
+  if (typeof isMoria !== 'function' || !isMoria()) return '';
+  const b = char.band || {}; const allies = b.allies || [];
+  if (!allies.length) return '';
+  const n = v => parseInt(v) || 0;
+  const disp = DISPOSITIONS.map(d => `<div class="sb-disp"><strong>${n((b.dispositions || {})[d.key])}</strong><span>${d.name}${b.dispositionFocus === d.key ? ' <b class="fav" title="Disposition Focus">★</b>' : ''}</span></div>`).join('');
+  const state = a => a.outOfAction ? '<span class="sb-out">Out of action</span>'
+    : [a.injury && `${a.injury} injury`, a.fatigue && `${a.fatigue} fatigue`].filter(Boolean).map(x => `<span class="sb-hurt">${escapeHtml(x)}</span>`).join('') || '<span class="sb-ok">Ready</span>';
+  const rows = allies.map(a => `<div class="sb-ally${a.outOfAction ? ' out' : ''}"><div><strong>${escapeHtml(a.name || 'Dwarf')}</strong>${a.hardened ? ' <small class="sb-hard">Hardened</small>' : ''}<small>${escapeHtml(a.gift || '')}${a.giftWasted ? ' (wasted)' : ''}</small></div><div class="sb-state">${state(a)}</div></div>`).join('');
+  const burden = b.burden ? String(b.burden)[0].toUpperCase() + String(b.burden).slice(1) : '—';
+  return `<div class="card band-sum" id="sheet-band">
+    <h3 class="card-title">Your Band</h3>
+    <div class="sb-top"><span><small>Readiness</small><strong>${n(b.readiness)}</strong></span><span><small>TN</small><strong>${typeof bandTN === 'function' ? bandTN() : 20 - n(b.readiness)}</strong></span><span><small>Burden</small><strong>${escapeHtml(burden)}</strong></span><span><small>Allies</small><strong>${allies.filter(a => !a.outOfAction).length}/${allies.length}</strong></span></div>
+    <div class="sb-disps">${disp}</div>
+    <div class="sb-allies">${rows}</div>
+    <button type="button" class="btn btn-secondary" onclick="requireStepGo('band','band-allies-card')">Open the Band tab — rolls and tests</button>
+  </div>`;
+}
 function renderHeroSheet() {
   const host = document.getElementById('hero-sheet'); if (!host) return;
   if (!char.culture) { host.innerHTML = ''; return; }
@@ -5350,6 +5369,7 @@ function renderHeroSheet() {
     ['Distinctive Features', _chips(char.features)], ['Flaws', _chips(char.flaws, 'flaw')],
     ['Rewards', _chips(char.rewards, 'reward')], ['Virtues', _chips(char.virtues, 'virtue')]
   ].filter(([, h]) => h).map(([t, h]) => `<div class="s-h">${t}</div><div class="traits">${h}</div>`).join('');
+  const bandHtml = _sheetBandHtml();
   const owed = owedChoices();
   const owedHtml = owed.length ? `<div class="card owed-card"><h3 class="card-title">Waiting for you</h3>${owed.map(o =>
     `<button type="button" class="btn${o.label.startsWith('🌑') || o.label.startsWith('👁') ? '' : ' btn-secondary'} owed-btn" onclick="${o.fn}">${escapeHtml(o.label)}</button><p class="hint" style="margin:2px 0 8px">${escapeHtml(o.hint)}</p>`).join('')}</div>` : '';
@@ -5379,6 +5399,7 @@ function renderHeroSheet() {
     ${weapons}
     <div class="s-armour"><span>Protection <strong>${protection}d</strong></span>${armourBits ? `<span>${armourBits}</span>` : ''}</div>
   </div>
+  ${bandHtml}
   ${traits ? `<div class="card"><h3 class="card-title">Traits</h3>${traits}</div>` : ''}
   <div class="card">
     <h3 class="card-title">Experience &amp; wealth</h3>

@@ -502,6 +502,7 @@
       <button type="button" class="edit-row" onclick="setEditSection('skills')"><svg class="ic"><use href="#i-dice"/></svg><span><strong>Skill ratings</strong><small>Correct a rating or a Favoured mark; skill notes</small></span><svg class="ic chev"><use href="#i-chev"/></svg></button>
       <button type="button" class="edit-row" onclick="setEditSection('traits')"><svg class="ic"><use href="#i-star"/></svg><span><strong>Traits</strong><small>Features, Flaws, Rewards, Virtues</small></span><svg class="ic chev"><use href="#i-chev"/></svg></button>
       <button type="button" class="edit-row" onclick="setEditSection('story')"><svg class="ic"><use href="#i-feather"/></svg><span><strong>Story</strong><small>Your hero’s history, in your words</small></span><svg class="ic chev"><use href="#i-chev"/></svg></button>
+      <button type="button" class="edit-row" id="edit-build-row" onclick="openBuild()"><svg class="ic"><use href="#i-hammer"/></svg><span><strong>Creation steps</strong><small>Culture, Calling, Previous Experience, Rewards, Virtues</small></span><svg class="ic chev"><use href="#i-chev"/></svg></button>
     </div>
   <div class="card tab-intro" data-sec="menu"><p class="hint" style="text-align:left;line-height:1.55;margin:0"><strong>Change what the app cannot work out for you.</strong> Most numbers are calculated — a 🔒 means the app owns that value, so change its source instead (the <strong>Build</strong> tab, or <strong>Spend points</strong> on the sheet). Resting, Harden Will and ending a session live in the vitals bar at the top.</p></div>
 
@@ -2153,6 +2154,7 @@
     <details class="menu-sec">
       <summary class="menu-group"><svg class="ic mg-ic" aria-hidden="true"><use href="#i-users"/></svg>Heroes</summary>
       <button onclick="openPregens()">Ready-made heroes</button>
+      <button onclick="openBuild()">Creation steps (Build)</button>
       <button onclick="newCharacter();toggleMenu()">New blank hero</button>
       <button onclick="openShare()">Share this hero (link / QR)</button>
       <button onclick="openTimeline()">Campaign timeline</button>

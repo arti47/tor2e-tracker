@@ -559,6 +559,45 @@ module.exports = {
     checks.push({ ok: !fl.err && fl.twoLeft && fl.oneEnded,
       msg: `a successful escape from every foe ends the encounter; getting clear of one while another is still on you does not (${JSON.stringify(fl)})` });
 
+    // Moria: the Band shows on the hero sheet only once a Band exists, and only in Moria.
+    const sb = await safe(`
+      const was = char.moriaMode, wasBand = JSON.parse(JSON.stringify(char.band));
+      const out = {};
+      char.moriaMode = false; char.band.allies = [{ id: 'x1', name: 'Fundin', gift: 'Stout', injury: 'moderate', fatigue: '' }]; render();
+      out.offMoria = !document.getElementById('sheet-band');
+      char.moriaMode = true; char.band.allies = []; render();
+      out.noBand = !document.getElementById('sheet-band');
+      char.band.allies = [{ id: 'x1', name: 'Fundin', gift: 'Stout', injury: 'moderate', fatigue: '' }, { id: 'x2', name: 'Thrór', gift: 'Keen', outOfAction: true }];
+      char.band.readiness = 4; render();
+      const el = document.getElementById('sheet-band');
+      const t = el ? el.textContent : '';
+      out.shown = !!el && /Fundin/.test(t) && /Stout/.test(t) && /moderate injury/.test(t) && /Out of action/.test(t) && /Readiness\s*4/.test(t) && /Rally/.test(t) && t.includes('1/2');
+      out.link = !!(el && el.querySelector('button[onclick*="band"]'));
+      char.moriaMode = was; char.band = wasBand; saveCharacter(); render();
+      return out;`);
+    checks.push({ ok: !sb.err && sb.offMoria && sb.noBand && sb.shown && sb.link,
+      msg: `the hero sheet shows the Band only in Moria and only once a Band is rolled — Readiness, Dispositions, each dwarf's Gift and state, and a link to the Band tab (${JSON.stringify(sb)})` });
+
+    // Build is in the Hero group only while the hero is not built; afterwards it is reached on purpose.
+    const bt = await safe(`
+      const save = JSON.stringify(char);
+      const vis = () => { const t = document.querySelector('.tab[data-tab="build"]'); return !!t && t.style.display !== 'none'; };
+      const out = {};
+      document.querySelector('.tab[data-tab="character"]').click();
+      char.culture = ''; render(); refreshNav();
+      out.blank = vis();
+      char.culture = 'Bardings'; char.saga = Object.assign({}, char.saga || {}, { started: true }); render(); refreshNav();
+      out.builtHidden = !vis();
+      out.inMenu = !!document.querySelector('#menu-overlay button[onclick="openBuild()"]') && !!document.querySelector('#edit-build-row');
+      openBuild();
+      out.opens = document.querySelector('.tab.active') && document.querySelector('.tab.active').dataset.tab === 'build' && vis();
+      document.querySelector('.tab[data-tab="character"]').click();
+      out.leaves = !vis();
+      Object.assign(char, JSON.parse(save)); saveCharacter(); render(); refreshNav();
+      return out;`);
+    checks.push({ ok: !bt.err && bt.blank && bt.builtHidden && bt.inMenu && bt.opens && bt.leaves,
+      msg: `Build sits in the Hero group only until the hero is built; then Menu → Creation steps or Edit opens it, and it leaves the bar again afterwards (${JSON.stringify(bt)})` });
+
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length}${errors.length ? ': ' + errors[0] : ''})` });
     await context.close();
     return { checks };
