@@ -165,7 +165,7 @@ module.exports = {
       await playEventRoll();
       ${unstub}
       renderPlay();
-      const ps = [...document.querySelectorAll('#play-body .play-feed p')]; const last = ps[ps.length - 1];
+      const ps = [...document.querySelectorAll('#play-body .play-feed p')].filter(p => !/^Beyond it/.test(p.textContent.trim())); const last = ps[ps.length - 1];
       openNavGroup(navGroupOf('journey').id); document.querySelector('.tab[data-tab="journey"]').click(); renderJourney();
       const log = document.getElementById('j-event-log');
       const out = { pend: !!pend, pill: !!(last && last.querySelector('.roll-pill')), arrows: last ? /→|\\(👁/.test(last.textContent) : true,
@@ -860,6 +860,37 @@ module.exports = {
       return out;`);
     checks.push({ ok: !mr.err && mr.fromTable && mr.objectiveSet && mr.saysBalin && mr.havenShowsMission,
       msg: `in Moria the saga begins with Balin's mission rolled on the Mission Objective table, and the haven shows that mission as the reason to set out (${JSON.stringify(mr)})` });
+
+    // Moria road: the chamber a Branching-Stairs event leads to is the next thing met on Play, after the event's own roll.
+    const rch = await safe(`
+      const save = JSON.stringify({ moria: char.moriaMode, journey: char.journey, saga: char.saga, band: char.band, mission: char.mission });
+      const realMap = window.mapMoriaEvent, realGen = window.genChamber;
+      window.mapMoriaEvent = () => MORIA_JOURNEY_EVENTS.e69;
+      window.genChamber = () => ({ appr: 'Austere', type: 'Great Hall', cond: 'Flooded', chal: 'Lore' });
+      char.moriaMode = true; char.striderMode = char.striderMode || false;
+      char.band.allies = [{ id: 'm1', name: 'Nár', gift: 'Stout' }]; char.mission.active = true;
+      if (!char.saga.started) { char.saga.started = true; char.saga.premise = 'Reclaim the halls'; }
+      sagaState().step = 'journey';
+      char.journey = { active: true, origin: 'First Hall', destination: 'Dwarrowdelf', totalHexes: 9, currentHex: 3, hardTerrainHexes: 0,
+        region: 'Dark', season: 'Spring', events: [], travelFatigue: 0, daysElapsed: 1, nextEventHex: 3, roles: {} };
+      saveCharacter(); openNavGroup('play'); renderPlay();
+      const labels = () => [...document.querySelectorAll('#panel-play .play-choice, #panel-play button')].map(b => b.textContent.trim());
+      await playEvent();
+      const out = { armed: !!(char.journey.pendingChamber && char.journey.pendingChamber.skill === 'Lore') };
+      const sk = (char.journey.pendingEventRoll || {}).skill || '#'; out.rollFirst = labels().some(t => t.includes('Roll ' + sk)) && !labels().some(t => /Meet the chamber/.test(t));
+      playEventSkip();
+      out.chamberNext = labels().some(t => /Meet the chamber: Lore/.test(t)) && !labels().some(t => /Travel onward/.test(t));
+      out.said = /Beyond it/.test(document.querySelector('#panel-play').textContent);
+      const hist = history.length;
+      playChamberChallenge();
+      out.rolled = /Lore.*Great Hall/.test(history[0].label || '');
+      out.met = !!char.journey.pendingChamber.met;
+      out.onward = labels().some(t => /Travel onward/.test(t));
+      window.mapMoriaEvent = realMap; window.genChamber = realGen;
+      const o = JSON.parse(save); char.moriaMode = o.moria; char.journey = o.journey; char.saga = o.saga; char.band = o.band; char.mission = o.mission; saveCharacter(); render();
+      return out;`);
+    checks.push({ ok: !rch.err && rch.armed && rch.rollFirst && rch.chamberNext && rch.said && rch.rolled && rch.met && rch.onward,
+      msg: `a Moria road event's chamber ("Then you come to…") is offered on Play after the event roll — Meet it: Lore rolls it, then the road goes on (${JSON.stringify(rch)})` });
 
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length}${errors.length ? ': ' + errors[0] : ''})` });
     await context.close();

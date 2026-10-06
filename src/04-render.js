@@ -1719,6 +1719,15 @@ function renderJourneyEventRoll() {
       `<p class="hint" style="text-align:left;margin:0 0 6px;font-size:var(--fs-xs)">A noteworthy encounter — how do you meet it?</p>` + _sceneButtons();
     return;
   }
+  const chm = j.pendingChamber;
+  if (j.active && (!pend || !pend.skill) && chm && !chm.met && (chm.skill || chm.band)) {
+    row.style.display = 'block';
+    row.innerHTML = `<div style="font-size:var(--fs-xs);font-weight:600;color:var(--red-dark);margin-bottom:4px">▶ Beyond it: the ${escapeHtml(String(chm.type).toLowerCase())}</div>` +
+      `<p class="hint" style="text-align:left;margin:0 0 6px;font-size:var(--fs-xs)">${escapeHtml(chamberLine(chm))}</p>` +
+      (chm.band ? `<button class="btn" onclick="playChamberFight()">Fight the orc-band</button> <button class="btn btn-secondary" onclick="playChamberSlip();renderJourney()">Try to slip past</button>`
+                : `<button class="btn" onclick="playChamberChallenge();renderJourney()">Meet it: roll ${escapeHtml(chm.skill)}</button> <button class="btn btn-secondary" onclick="playChamberPass();renderJourney()">Pass it by</button>`);
+    return;
+  }
   if (!j.active || !pend || !pend.skill) { row.style.display = 'none'; row.innerHTML = ''; return; }
   const sk = _heroSkill(pend.skill);
   const effect = JOURNEY_EVENT_ROLL_EFFECT[pend.eventKey];
@@ -3128,7 +3137,7 @@ function journeyEventCard(e) {
     ${chips.length ? `<div class="jev-chips">${chips.join('')}</div>` : ''}
     ${v.noteworthy ? '<div class="jev-scene">No single roll decides this. Meet it as a scene: fight, talk, or overcome it — choose below.</div>'
       : (st.fail || st.ok) ? `<ul class="jev-stakes">${st.ok ? `<li class="ok"><b>If it goes well</b><span>${escapeHtml(_sentence(st.ok))}</span></li>` : ''}${st.fail ? `<li class="bad"><b>If it fails</b><span>${escapeHtml(_sentence(st.fail))}</span></li>` : ''}</ul>` : ''}
-    ${v.chamber ? `<div class="jev-find"><b>Further on</b> ${escapeHtml(chamberLine(v.chamber))}</div>` : ''}
+    ${v.chamber ? `<div class="jev-find"><b>Then</b> ${escapeHtml(chamberLine(v.chamber))}${v.chamber.chal && !/^None|hope/i.test(v.chamber.chal) ? ' <span class="jev-chip">You meet it next</span>' : ''}</div>` : ''}
   </div>`;
 }
 /** A Moria chamber as one sentence: "You come to an ancient storeroom, goblin-gnawed. It will test your Battle." */
@@ -3322,6 +3331,11 @@ function resolveJourneyEvent(isPeril) {
   // A Noteworthy Encounter is played out as a scene — fight, council or endeavour. It used to arm
   // nothing and print the parent event's "If it fails", with no roll anywhere to fail.
   j.pendingScene = (noteworthy && mine) ? { name: String(event.name).replace(/\s*[👁ᚱ]\s*$/u, ''), detail: detailRec.event } : null;
+  // Branching Stairs: "Either way, roll the Random Chamber Generator" — the passage leads to a
+  // chamber, and that chamber is the next thing met on the road (after the event's own roll).
+  // It used to be printed as "Further on" and then forgotten; ▶ Play now offers it before
+  // "Travel onward", with the same choices as a chamber at the destination.
+  j.pendingChamber = chamberRec ? _newChamber(chamberRec, 'road') : null;
   saveCharacter();
   renderJourney();
   if (typeof journalAuto === 'function') journalAuto('ojc', 'oracle', `${isPeril ? '[Peril] ' : ''}Journey event — ${event.name}${event.effect ? ' (' + event.effect.replace(/<[^>]+>/g, '') + ')' : ''}`);
@@ -4731,6 +4745,8 @@ function _playRoadChoices(C, homeward) {
     C(`🎲 Roll ${jc.pendingEventRoll.skill}`, 'playEventRoll()', 'The road is asking something of you.'),
     C('↷ Let it happen', 'playEventSkip()', 'Skip the roll and take what comes.')
   ];
+  const chamberNext = _playRoadChamberChoices(C);
+  if (chamberNext) return chamberNext;
   // A Perilous Area set on the Journey tab (or by the map) adds its own events; Play offers them too.
   const peril = parseInt(jc.perilEventsRemaining) || 0;
   const perilC = peril > 0 ? [C(`⚠️ Face the perilous area (${peril} left)`, 'playPeril()', 'A Perilous Area brings extra Journey Events.')] : [];
@@ -4975,7 +4991,15 @@ async function playEventRoll() {
       playSay(`${v.ok ? `Your ${escapeHtml(v.skill)} roll succeeds — the ${escapeHtml(evName)} goes your way.` : `Your ${escapeHtml(v.skill)} roll fails — the ${escapeHtml(evName)} goes against you.`} ${escapeHtml(what)} ${_pillText(v.skill, v.total, v.tn, v.ok)}`.replace(/\s+/g, ' ').trim());
     } else playSay(String(line.text).replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim());
   }
+  _playChamberAhead();
   renderPlay();
+}
+/** Once the event's roll is done, the chamber it led to is what comes next — say so. */
+function _playChamberAhead() {
+  const ch = (char.journey || {}).pendingChamber;
+  if (!ch || ch.met) return;
+  playSay(`<strong>Beyond it:</strong> ${escapeHtml(chamberLine(ch))}` +
+    (ch.band ? ` <strong>An Orc-band holds it:</strong> ${escapeHtml(_orcBandSummary(ch.band))}.` : ''));
 }
 
 function playEventSkip() {
@@ -4983,6 +5007,7 @@ function playEventSkip() {
   if (typeof skipJourneyEventRoll === 'function') skipJourneyEventRoll();
   playSay(pend ? `You let it pass without testing yourself against it — the ${escapeHtml(pend.eventName)} takes its course.`
                : 'You let it pass.', 'aside');
+  _playChamberAhead();
   renderPlay();
 }
 
@@ -5244,9 +5269,38 @@ async function playRest() {
    Generator) and its orcs as a Random Orc-Band. Both lived only on the Oracle tab, so a whole
    session on ▶ Play never rolled either. Play now runs them where the story needs them. */
 function _playChamberHere() {
+  const j = char.journey || {};
+  if (j.active && j.pendingChamber && !j.pendingChamber.met) return j.pendingChamber;   // on the road
   const ch = char.saga && char.saga.chamber;
   const here = (char.journey && char.journey.destination) || '';
   return ch && ch.at === here ? ch : null;
+}
+/** A rolled chamber made ready to meet: an Orc-band for Combat, a skill to test, else nothing to do. */
+function _newChamber(c, at) {
+  const chal = String(c.chal || '');
+  const ch = { appr: c.appr, type: c.type, cond: c.cond, chal: c.chal, at, met: false };
+  if (/^Combat$/i.test(chal)) ch.band = rollOrcBandData();
+  else if (!/^None|hope/i.test(chal)) ch.skill = chal;
+  else ch.met = true;
+  return ch;
+}
+/** The chamber a Branching-Stairs event led to, met before the road goes on. */
+function _playRoadChamberChoices(C) {
+  const ch = (char.journey || {}).pendingChamber;
+  if (!ch || ch.met) return null;
+  const pass = C('↷ Pass it by', 'playChamberPass()', 'Leave it be and take what comes of that.');
+  if (ch.band) return [
+    C('⚔️ Fight the orc-band', 'playChamberFight()', _orcBandSummary(ch.band) + ' — in the chamber ahead.'),
+    C('🤫 Try to slip past them', 'playChamberSlip()', 'A Stealth roll. If it fails, they find you.')
+  ];
+  if (ch.skill) return [C(`🎯 Meet the chamber: ${ch.skill}`, 'playChamberChallenge()', `The ${String(ch.type).toLowerCase()} ahead tests you — the app rolls it.`), pass];
+  return null;
+}
+function playChamberPass() {
+  const ch = (char.journey || {}).pendingChamber; if (!ch) return renderPlay();
+  ch.met = true; saveCharacter();
+  playSay(`You leave the ${escapeHtml(String(ch.type).toLowerCase())} untested and go on.`, 'aside');
+  renderPlay();
 }
 function _playMoriaChamberChoices(C) {
   if (typeof isMoria !== 'function' || !isMoria()) return [];
@@ -5263,10 +5317,7 @@ function _playMoriaChamberChoices(C) {
 function playExploreChamber() {
   const c = genChamber();
   const chal = String(c.chal || '');
-  const ch = { ...c, at: (char.journey && char.journey.destination) || '', met: false };
-  if (/^Combat$/i.test(chal)) ch.band = rollOrcBandData();
-  else if (!/^None|hope/i.test(chal)) ch.skill = chal;
-  else ch.met = true;
+  const ch = _newChamber(c, (char.journey && char.journey.destination) || '');
   sagaState().chamber = ch;
   logOracleRoll('Chamber', `${c.appr} ${c.type} — ${c.cond} — ${c.chal}`);
   playSay(escapeHtml(chamberLine(c)));
