@@ -4947,7 +4947,7 @@ async function playRest() {
 
 async function playFight() {
   playSay('<strong>Something comes at you out of the dark.</strong>');
-  playSay('Pick your foe — the fight runs on the Combat tab. When it is over, come back here and carry on.', 'aside');
+  playSay('The app suggests a foe from where you are and what just happened — take it, ask for something else, or pick your own. The fight runs on the Combat tab; when it is over, come back here and carry on.', 'aside');
   window._playFightPending = true;      // the first foe picked takes you to the fight
   openBestiary();
   renderPlay();

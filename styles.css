@@ -2932,3 +2932,15 @@ button.xp-token:hover, button.xp-token:focus-visible { background: color-mix(in 
 .fs-head b { font-size: var(--fs-md); }
 .fs-head b.ok { color: var(--success-text); } .fs-head b.bad { color: var(--error-text); }
 .fs-line { margin-top: 3px; }
+
+/* Pick a foe for me (2026-10-06) */
+.foe-sug { border: 1px solid var(--gold); border-radius: var(--r-md); padding: var(--sp-3); margin-bottom: var(--sp-3); background: var(--bg); }
+.foe-sug-h { font-family: var(--font-display, serif); font-variant: small-caps; letter-spacing: .04em; color: var(--label, var(--text-muted)); font-size: var(--fs-sm); margin-bottom: 4px; }
+.foe-sug-main { display: flex; align-items: center; gap: 10px; }
+.foe-sug-main .foe-sug-sil { width: 44px; height: 44px; flex: 0 0 44px; }
+.foe-sug-main strong { display: block; font-size: var(--fs-md); }
+.foe-sug-main small { color: var(--text-muted); font-size: var(--fs-xs); }
+.foe-sug-why { margin: 6px 0 8px; font-size: var(--fs-xs); color: var(--text-muted); line-height: 1.4; }
+.foe-sug-row { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+.foe-sug-row .btn { flex: 1 1 0; min-width: 0; }
+.foe-sug-or { margin-top: 10px; font-size: var(--fs-xs); color: var(--text-muted); }

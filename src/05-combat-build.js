@@ -1167,7 +1167,7 @@ async function endEncounter() {
 }
 
 // ----- bestiary / adding foes -----
-function openBestiary() { renderBestiaryList(); document.getElementById('bestiary-overlay').classList.add('show'); }
+function openBestiary() { renderFoeSuggest(); renderBestiaryList(); document.getElementById('bestiary-overlay').classList.add('show'); }
 function renderBestiaryList() {
   const q = (document.getElementById('bestiary-filter')?.value || '').toLowerCase().trim();
   const list = document.getElementById('bestiary-list'); if (!list) return;
@@ -1181,6 +1181,141 @@ function renderBestiaryList() {
   });
   list.innerHTML = html || '<div style="color:var(--text-faint);text-align:center;padding:10px">No match.</div>';
 }
+/* ---------- Pick a foe for me (2026-10-06) ----------
+   Choosing the adversary was the hardest call of a solo fight. The app suggests one from what the
+   story already says: the journey event that started it, the land of the hex you stand in, the
+   place you came to, and how close the Eye is. Advice, not a rulebook table — you can re-roll,
+   make it harder or easier, or ignore it and pick from the list. */
+const FOE_POOLS = {
+  bandits:  { label: 'outlaws and ruffians', t: [['Footpad', 'Highway Robber'], ['Ruffian Chief', 'Southerner Raider'], ['Southerner Champion']] },
+  orcs:     { label: 'Orcs', t: [['Orc Soldier', 'Goblin Archer'], ['Orc Guard', 'Orc-chieftain'], ['Black Uruk', 'Great Orc Bodyguard']] },
+  goblins:  { label: 'goblins of the deep', t: [['Goblin of Moria', 'Goblin Archer'], ['Goblin Captain', 'Orc Guard'], ['Cave-troll Slinker', 'Cave-troll']] },
+  wolves:   { label: 'wolves', t: [['Wild Wolf'], ['Warg', 'Wolf-chieftain'], ['Werewolf — Hound of Sauron', 'Werewolf']] },
+  spiders:  { label: 'spiders', t: [['Mirkwood Spider'], ['Great Spider'], ['Great Spider']] },
+  beasts:   { label: 'a wild beast', t: [['Wild Wolf'], ['Wild Bear'], ['Werewolf']] },
+  undead:   { label: 'the restless dead', t: [['Marsh-dweller', 'Forgotten Dead'], ['Ash-wraith'], ['Barrow-wight', 'The Evil in the Shadows']] },
+  trolls:   { label: 'trolls', t: [[], [], ['Hill-troll', 'Stone-troll', 'Hill-troll Stalker', 'Stone-troll Robber']] },
+  servants: { label: 'servants of the Enemy', t: [['Black Númenórean Spy', 'Orc Soldier'], ['Black Númenórean Sailor', 'Orc Guard', 'Udûn-orc Fanatic'], ['Black Númenórean Soldier', 'Black Uruk', 'Udûn-orc Fire-touched']] }
+};
+const FOE_WORDS = [
+  ['wolves', /wolf|wolves|warg|hound|howl|stalking/], ['spiders', /spider|web/],
+  ['undead', /dead|wight|barrow|ghost|haunt|tomb|wraith/], ['trolls', /troll/],
+  ['orcs', /orc|goblin|uruk/], ['servants', /servants of the enemy|spy|spies|assassin|númenórean|sorcer/],
+  ['bandits', /bandit|robber|ruffian|thie|outlaw|brigand|ambush/], ['beasts', /bear|beast|boar/]
+];
+const FOE_TERRAIN = {
+  moria: { goblins: 6, orcs: 2, trolls: 1, undead: 1 }, forest: { spiders: 3, wolves: 3, orcs: 2, beasts: 1 },
+  hills: { wolves: 3, orcs: 3, bandits: 1, trolls: 1 }, mountains: { orcs: 3, wolves: 2, trolls: 2, goblins: 1 },
+  ruins: { undead: 3, bandits: 2, orcs: 2 }, river: { undead: 2, bandits: 2, wolves: 1 },
+  road: { bandits: 4, wolves: 2, orcs: 1 }, haven: { bandits: 4, wolves: 1 }
+};
+const FOE_LAND = {
+  free: { bandits: 2, trolls: -9 }, border: { bandits: 1, wolves: 1, trolls: -9 }, wild: { orcs: 1, wolves: 1, trolls: 1 },
+  shadow: { orcs: 2, servants: 2, undead: 1 }, dark: { orcs: 3, servants: 3, trolls: 1 }
+};
+const TIER_NAME = ['an ordinary fight', 'a hard fight', 'a deadly fight'];
+const LAND_NAME = { free: 'the Free Lands', border: 'the Border Lands', wild: 'the Wild Lands', shadow: 'the Shadow Lands', dark: 'the Dark Lands' };
+/** What the story says right now, read from the journey, the place and the Eye. */
+function foeContext() {
+  const jr = char.journey || {}, moria = typeof isMoria === 'function' && isMoria();
+  const hex = parseInt(jr.currentHex) || 0;
+  const land = String((jr.active && typeof journeyRegionNow === 'function' ? journeyRegionNow(jr, hex) : '') || jr.region || '').toLowerCase();
+  const terrain = moria ? 'moria' : (typeof sceneTerrain === 'function' ? sceneTerrain() : 'road');
+  const last = jr.pendingScene || (jr.active ? ((jr.events || []).filter(e => e.ev).slice(-1)[0] || {}).ev : null);
+  const story = last ? [last.detail, last.name].filter(Boolean).join(' — ') : '';
+  let eyeNear = false;
+  if (typeof isSolo === 'function' && isSolo() && typeof huntThreshold === 'function') {
+    const h = huntThreshold(char); eyeNear = h > 0 && (parseInt(char.eyeAwareness) || 0) >= h - 2;
+  }
+  const end = parseInt(char.endCur) || 0, endMax = parseInt(char.endMax) || 1;
+  return { land, terrain, story, eyeNear, hurt: end < endMax / 2, place: (jr.destination || '').trim() };
+}
+function _foeExists(n) { return allBestiary().some(b => b.name === n); }
+function _foePoolWeights(ctx) {
+  const w = {};
+  const add = (k, n) => { w[k] = (w[k] || 0) + n; };
+  Object.entries(FOE_TERRAIN[ctx.terrain] || FOE_TERRAIN.road).forEach(([k, n]) => add(k, n));
+  Object.entries(FOE_LAND[ctx.land] || {}).forEach(([k, n]) => add(k, n));
+  const words = (ctx.story + ' ' + ctx.place).toLowerCase();
+  FOE_WORDS.forEach(([k, re]) => { if (re.test(words)) add(k === 'orcs' && ctx.terrain === 'moria' ? 'goblins' : k, 30); });
+  Object.keys(w).forEach(k => { if (w[k] <= 0 || !FOE_POOLS[k]) delete w[k]; });
+  return w;
+}
+/** One suggestion: {pool, tier, lead, minions, roll, why[]}. `opt.tier` forces the difficulty,
+    `opt.pool` keeps the kind of foe, `opt.not` excludes one (for "Something else"). */
+function suggestFoes(opt) {
+  opt = opt || {};
+  const ctx = foeContext();
+  const w = _foePoolWeights(ctx);
+  if (opt.not && Object.keys(w).length > 1) delete w[opt.not];
+  let pool = opt.pool && FOE_POOLS[opt.pool] ? opt.pool : null;
+  if (!pool) {
+    const total = Object.values(w).reduce((a, b) => a + b, 0) || 1;
+    let r = Math.random() * total; pool = Object.keys(w)[0] || 'bandits';
+    for (const [k, n] of Object.entries(w)) { r -= n; if (r < 0) { pool = k; break; } }
+  }
+  const why = [];
+  if (ctx.story) why.push(`The story: ${ctx.story}.`);
+  if (LAND_NAME[ctx.land]) why.push(`You are in ${LAND_NAME[ctx.land]}.`);
+  let tier = 0;
+  if (opt.tier !== undefined) tier = opt.tier;
+  else {
+    if (/dire|confrontation|chief|captain|champion/i.test(ctx.story)) tier++;
+    if (ctx.land === 'shadow' || ctx.land === 'dark' || ctx.terrain === 'moria') tier++;
+    if (ctx.eyeNear) { tier++; why.push('The Eye is close to finding you.'); }
+    if (ctx.hurt) { tier--; why.push('You are hurt, so something you can survive.'); }
+  }
+  tier = Math.max(0, Math.min(2, tier));
+  const P = FOE_POOLS[pool], names = t => (P.t[t] || []).filter(_foeExists);
+  while (tier < 2 && !names(tier).length) tier++;           // trolls are never an ordinary fight
+  while (tier > 0 && !names(tier).length) tier--;
+  const list = names(tier);
+  const lead = list[Math.floor(Math.random() * list.length)] || 'Orc Soldier';
+  const roll = Math.floor(Math.random() * 6) + 1;           // how many: a Success die
+  const weak = names(0);
+  let minions = [];
+  if (tier === 0) minions = Array(roll >= 6 ? 2 : roll >= 4 ? 1 : 0).fill(lead);
+  else if (weak.length && roll >= (tier === 1 ? 5 : 6)) minions = [weak[0]];
+  if (pool === 'trolls') why.push('Trolls are deadly — think about hiding, fleeing or outwitting it before you fight.');
+  return { pool, tier, lead, minions, roll, why, ctx };
+}
+function _foeSugCount(sg) {
+  const names = [sg.lead, ...sg.minions], c = {};
+  names.forEach(n => { c[n] = (c[n] || 0) + 1; });
+  return Object.entries(c).map(([n, k]) => `${k > 1 ? k + ' × ' : ''}${n}`).join(' and ');
+}
+function renderFoeSuggest(opt) {
+  const host = document.getElementById('foe-suggest'); if (!host) return;
+  const sg = window._foeSug = suggestFoes(opt);
+  const all = allBestiary(), b = all.find(x => x.name === sg.lead);
+  host.innerHTML = `<div class="foe-sug">
+    <div class="foe-sug-h">Suggested for you</div>
+    <div class="foe-sug-main">${b && typeof foeSilhouette === 'function' ? foeSilhouette(b, 'foe-sug-sil') : ''}
+      <div><strong class="foe-sug-names">${escapeHtml(_foeSugCount(sg))}</strong>
+      <small>${escapeHtml(FOE_POOLS[sg.pool].label)} · ${TIER_NAME[sg.tier]}${b ? ` · Endurance ${b.end}, Parry ${b.parry}` : ''}</small></div></div>
+    ${sg.why.length ? `<p class="foe-sug-why">${sg.why.map(escapeHtml).join(' ')}</p>` : ''}
+    <button type="button" class="btn btn-block" onclick="fightSuggested()">Fight ${sg.minions.length ? 'them' : 'it'}</button>
+    <div class="foe-sug-row">
+      <button type="button" class="btn btn-secondary" onclick="renderFoeSuggest({not:window._foeSug.pool})">Something else</button>
+      <button type="button" class="btn btn-secondary" onclick="renderFoeSuggest({pool:window._foeSug.pool,tier:window._foeSug.tier-1})"${sg.tier === 0 ? ' hidden' : ''}>Easier</button>
+      <button type="button" class="btn btn-secondary" onclick="renderFoeSuggest({pool:window._foeSug.pool,tier:window._foeSug.tier+1})"${sg.tier === 2 ? ' hidden' : ''}>Harder</button>
+    </div>
+    <div class="foe-sug-or">Or choose any foe yourself:</div></div>`;
+}
+/** Bring the suggested foes into the fight, through the same path as picking them by hand. */
+function fightSuggested() {
+  const sg = window._foeSug; if (!sg) return;
+  const all = allBestiary();
+  const fromPlay = window._playFightPending; window._playFightPending = false;
+  [sg.lead, ...sg.minions].forEach(n => { const i = all.findIndex(b => b.name === n); if (i >= 0) _pushFoe(all[i]); });
+  encDeriveEngaged(); _encEnsureGroup(); saveCharacter(); renderEncounter();
+  document.getElementById('bestiary-overlay').classList.remove('show');
+  if (fromPlay) {
+    if (typeof playNote === 'function') playNote(`<strong>${escapeHtml(_foeSugCount(sg))}</strong> attack${sg.minions.length ? '' : 's'}.`);
+    if (typeof _goTab === 'function') _goTab('combat');
+  }
+  _encRoundFellPrompt(enc().round || 1);
+}
 /* Round 8: the empty fight offers the common foes as one-tap picks, each with its silhouette. */
 const QUICK_FOES = ['Orc Soldier', 'Goblin Archer', 'Warg', 'Hill-troll', 'Great Spider', 'Barrow-wight'];
 function _quickFoesHtml() {
@@ -1190,8 +1325,7 @@ function _quickFoesHtml() {
   return `<div class="quick-foes-h">Or start with a common foe</div><div class="quick-foes">${picks.map(x =>
     `<button type="button" class="quick-foe" onclick="addFoeFromBestiary(${x.i})">${typeof foeSilhouette === 'function' ? foeSilhouette(all[x.i], 'qf-sil') : ''}<span>${escapeHtml(x.n)}</span></button>`).join('')}</div>`;
 }
-function addFoeFromBestiary(idx) {
-  const b = allBestiary()[idx]; if (!b) return;
+function _pushFoe(b) {
   ensureEncounterActive();
   enc().foes.push({
     id: _newFoeId(), name: b.name, source: b.source,
@@ -1200,6 +1334,10 @@ function addFoeFromBestiary(idx) {
     attacks: JSON.parse(JSON.stringify(b.attacks)), fell: b.fell,
     engaged: true, wounded: false, slain: false
   });
+}
+function addFoeFromBestiary(idx) {
+  const b = allBestiary()[idx]; if (!b) return;
+  _pushFoe(b);
   encDeriveEngaged(); _encEnsureGroup(); saveCharacter(); renderEncounter();
   document.getElementById('bestiary-overlay').classList.remove('show');
   // Picked from ▶ Play's "Something attacks!": take the hero to where the fight is run.
