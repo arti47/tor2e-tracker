@@ -4138,6 +4138,21 @@ function sagaEndSignals() {
 }
 
 /** A suggested errand from the hero's Patron, if they have one. '' otherwise. */
+/** In Moria the reason to set out is Balin's mission, rolled on the Mission Objective table — not
+    the general Patron Quests (that table is for the rest of Middle-earth). */
+function _moriaMissionSeed() {
+  if (typeof isMoria !== 'function' || !isMoria() || typeof MISSION_OBJECTIVES === 'undefined') return '';
+  const m = char.mission || {};
+  if (m.objective && !m.active) return m.objective;          // already rolled or written, not yet carried out
+  const fk = _featKey();
+  return MISSION_OBJECTIVES[fk][(Math.floor(Math.random() * 6) + 1) <= 3 ? 0 : 1];
+}
+/** The errand chosen for an adventure: in Moria it is the mission objective as well. */
+function _setMoriaObjective(text) {
+  if (typeof isMoria !== 'function' || !isMoria() || !text) return;
+  char.mission = char.mission || {};
+  if (!char.mission.active) char.mission.objective = text;
+}
 function _patronQuestSeed() {
   const pk = (typeof patronKey === 'function') ? patronKey(char.patron) : char.patron;
   const quests = (typeof PATRON_QUESTS !== 'undefined' && pk) ? PATRON_QUESTS[pk] : null;
@@ -4152,15 +4167,18 @@ async function sagaBegin() {
   }
   // A premise comes from the Patron if there is one — that is what Patrons are FOR — otherwise
   // the player writes their own reason to leave home.
-  const seed = _patronQuestSeed();
+  const moria = typeof isMoria === 'function' && isMoria();
+  const seed = moria ? _moriaMissionSeed() : _patronQuestSeed();
   const premise = await promptStyled(
     'What sends your hero out?<br><br>' +
-    (seed ? `Your patron <strong>${escapeHtml(char.patron)}</strong> suggests:<br><em>${escapeHtml(seed)}</em><br><br>Keep it, or write your own.`
+    (moria && seed ? `<strong>Balin</strong> sends you out. The mission he gives you (rolled on the Mission Objective table):<br><em>${escapeHtml(seed)}</em><br><br>Keep it, or write your own.`
+      : seed ? `Your patron <strong>${escapeHtml(char.patron)}</strong> suggests:<br><em>${escapeHtml(seed)}</em><br><br>Keep it, or write your own.`
           : 'One sentence is enough — a rumour, a debt, a summons, a threat to somewhere you love.'),
     seed, '🗺️ Begin your saga', 'e.g. Word came that the road east is no longer safe…', 'Begin the saga');
   if (premise === null) return;
   s.started = true;
   s.premise = String(premise).trim() || seed || 'The road calls.';
+  _setMoriaObjective(s.premise);
   s.sessions = 0; s.adventures = 1; s.ended = false; s.endedHow = '';
   logTimeline('saga', 'Saga begins: ' + s.premise);
   saveCharacter();
@@ -4495,7 +4513,10 @@ function _playSituation() {
                     ? `Your Band: <strong>${(char.band.allies || []).filter(a => !a.outOfAction).length}</strong> dwarves ready${char.mission && char.mission.active ? ', the mission planned' : ' — the mission is not planned yet'}.<br><br>`
                     : 'You have no Band yet. In Moria nobody goes into the dark alone.<br><br>')
                 : '') +
-              (s.premise ? 'Why you are about to leave: <em>' + escapeHtml(s.premise) + '</em>' : 'You have no errand yet — ask around, and one will find you.') };
+              (typeof isMoria === 'function' && isMoria()
+                ? ((char.mission && char.mission.objective) ? 'Balin\'s mission for you: <em>' + escapeHtml(char.mission.objective) + '</em>'
+                    : 'Balin has no mission for you yet — plan one, and it will be rolled for you.')
+                : (s.premise ? 'Why you are about to leave: <em>' + escapeHtml(s.premise) + '</em>' : 'You have no errand yet — ask around, and one will find you.')) };
     }
     case 'journey':
       const j = char.journey || {};
@@ -5363,14 +5384,15 @@ async function playNextAdventure() {
   // The button promises "Back to the haven, with a new reason to leave" — so ask for one.
   // Without this the Play tab went on restating the old, already-resolved premise as the
   // hero's motive for the next adventure.
-  const seed = _patronQuestSeed();
+  const moria = typeof isMoria === 'function' && isMoria();
+  const seed = moria ? _moriaMissionSeed() : _patronQuestSeed();
   const reason = await promptStyled(
     'What sends your hero out this time?<br><br>One line is enough — an errand, a rumour, a threat to someone they care about. ' +
-    (seed ? `Your Patron suggests: <em>${escapeHtml(seed)}</em>` : 'Leave it blank to keep the old reason.'),
+    (moria && seed ? `Balin's next mission for you: <em>${escapeHtml(seed)}</em>` : seed ? `Your Patron suggests: <em>${escapeHtml(seed)}</em>` : 'Leave it blank to keep the old reason.'),
     seed || '', '▶ The next adventure', 'e.g. word came that the road east is closed');
   if (reason === null) return;  // cancelled — stay where you are
   const newPremise = String(reason).trim();
-  if (newPremise) s.premise = newPremise;
+  if (newPremise) { s.premise = newPremise; _setMoriaObjective(newPremise); }
   s.adventures = (parseInt(s.adventures) || 0) + 1;
   if (typeof logTimeline === 'function') logTimeline('saga', `Adventure ${s.adventures} begins${newPremise ? ': ' + newPremise : ''}.`);
   s.step = 'haven';
@@ -5941,7 +5963,7 @@ function _renderPlayBody(host, s, pp) {
        <div class="eyebrow">Where you are</div>
        <h3 class="card-title">${escapeHtml(sit.title)}</h3>
        <div class="play-sit">${sit.text}</div>
-       ${missionActive() && char.mission.objective ? `<p class="play-mission"><small>Mission</small> ${escapeHtml(char.mission.objective)}</p>` : ''}
+       ${missionActive() && char.mission.objective && s.step !== 'haven' ? `<p class="play-mission"><small>Mission</small> ${escapeHtml(char.mission.objective)}</p>` : ''}
        ${road}
        ${feed ? `<div class="play-feed" aria-live="polite">${feed}</div>` : ''}
      </div>${_playStoryCard(!!road)}${typeof heroPlate === 'function' ? heroPlate(!road) : ''}</div>

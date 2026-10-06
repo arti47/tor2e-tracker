@@ -840,6 +840,27 @@ module.exports = {
     checks.push({ ok: !fat.err && fat.inn && fat.fpLabel && fat.fpClears,
       msg: `a night somewhere sheltered and safe off the road (not only a Safe Haven) lifts 1 Fatigue, and finishing a Fellowship Phase clears it all (${JSON.stringify(fat)})` });
 
+    // In Moria the reason to set out is Balin's mission (the Mission Objective table), not a Patron Quest.
+    const mr = await safe(`
+      const save = JSON.stringify({ moria: char.moriaMode, mission: char.mission, saga: char.saga, band: char.band });
+      const realPrompt = window.promptStyled; let shown = '';
+      window.promptStyled = async (msg, def) => { shown = msg; return def; };
+      char.moriaMode = true; char.band.allies = [{ id: 'm1', name: 'Nár', gift: 'Stout' }];
+      char.mission = { active: false, objective: '', size: 'medium', warGear: 'prepared', specialisation: '', prevOutcome: '', fpDuration: 'brief', roster: [] };
+      char.saga = { started: false, step: 'haven' }; saveCharacter();
+      await sagaBegin();
+      const all = Object.values(MISSION_OBJECTIVES).flat();
+      const out = { fromTable: all.includes(char.saga.premise), objectiveSet: char.mission.objective === char.saga.premise, saysBalin: /Balin/.test(shown) };
+      char.saga.premise = 'Dark whispers plague a Dwarven territory.'; char.mission.objective = 'Establish a new expeditionary camp'; char.saga.step = 'haven'; saveCharacter();
+      openNavGroup('play'); renderPlay();
+      const t = document.querySelector('#panel-play .play-sit').textContent;
+      out.havenShowsMission = /Establish a new expeditionary camp/.test(t) && !/Dark whispers/.test(t);
+      window.promptStyled = realPrompt;
+      const o = JSON.parse(save); char.moriaMode = o.moria; char.mission = o.mission; char.saga = o.saga; char.band = o.band; saveCharacter(); render();
+      return out;`);
+    checks.push({ ok: !mr.err && mr.fromTable && mr.objectiveSet && mr.saysBalin && mr.havenShowsMission,
+      msg: `in Moria the saga begins with Balin's mission rolled on the Mission Objective table, and the haven shows that mission as the reason to set out (${JSON.stringify(mr)})` });
+
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length}${errors.length ? ': ' + errors[0] : ''})` });
     await context.close();
     return { checks };
