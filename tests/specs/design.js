@@ -814,7 +814,7 @@ module.exports = {
     const rb = await safe(`
       rollFromSheet('Awe'); await new Promise(r => setTimeout(r, 60));
       const b = document.getElementById('roll-banner'); const word = b.querySelector('.rb-ribbon').textContent, why = b.querySelector('.rb-why').textContent;
-      const verdict = /SUCCESS/.test(document.querySelector('#result-summary .rs-head').textContent);
+      const verdict = /success/i.test(document.querySelector('#result-summary .rs-head').textContent);
       closeRollDrawer();
       return { shown: !b.hidden && b.checkVisibility(), word, why, agrees: verdict === /uccess/.test(word) };`);
     checks.push({ ok: !rb.err && rb.shown && /^(Success|Great success|Extraordinary success|Failure)$/.test(rb.word) && /(vs TN|Rune|Eye)/.test(rb.why) && rb.agrees, msg: `a roll opens on a ribbon with the verdict and why (${rb.word}: ${rb.why})` });

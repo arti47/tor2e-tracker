@@ -740,6 +740,24 @@ module.exports = {
     checks.push({ ok: !scn.err && scn.setupOnPlay && scn.activeOnPlay && scn.back && scn.home && scn.fpOnPlay && scn.fpHome,
       msg: `a Council is set up, rolled and finished on ▶ Play and then the story comes back; the Fellowship Phase opens on Play, not as a pop-up (${JSON.stringify(scn)})` });
 
+    // The setup tabs say when what they hold is being played on ▶ Play, and take you back there.
+    const opb = await safe(`
+      const save = JSON.stringify({ enc: char.encounter, saga: char.saga });
+      const out = {};
+      char.saga = Object.assign({}, char.saga || {}, { started: true, ended: false, scene: null });
+      char.encounter = { active: true, round: 1, foes: [{ id: 'b1', name: 'Orc', endCur: 8, endMax: 8, hateCur: 2, hateMax: 2, parry: 2, armour: 1, slain: false, engaged: true, attacks: [] }], weaponIdx: 0, adv: {} };
+      saveCharacter(); render(); openNavGroup('adventure'); document.querySelector('.tab[data-tab="combat"]').click();
+      const ban = document.querySelector('#panel-combat > .on-play');
+      out.banner = !!ban && /▶ Play/.test(ban.textContent) && !!document.querySelector('#panel-combat #encounter-card-wrap');
+      ban && ban.querySelector('button').click();
+      out.back = document.querySelector('.tab.active').dataset.tab === 'play' && !!document.querySelector('#play-fight #encounter-card-wrap');
+      const o = JSON.parse(save); char.encounter = o.enc; char.saga = o.saga; saveCharacter(); render();
+      document.querySelector('.tab[data-tab="combat"]').click();
+      out.goneWhenOver = !document.querySelector('#panel-combat > .on-play');
+      return out;`);
+    checks.push({ ok: !opb.err && opb.banner && opb.back && opb.goneWhenOver,
+      msg: `the Combat tab says a fight is being fought on ▶ Play and takes you back there; the note goes when the fight is over (${JSON.stringify(opb)})` });
+
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length}${errors.length ? ': ' + errors[0] : ''})` });
     await context.close();
     return { checks };

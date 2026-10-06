@@ -4569,7 +4569,7 @@ function owedChoices(C) {
   return out;
 }
 function _playFoesStanding() {
-  try { const e = typeof enc === 'function' ? enc() : char.encounter; return ((e && e.foes) || []).filter(f => !f.slain).length; } catch (e) { return 0; }
+  try { const e = typeof enc === 'function' ? enc() : char.encounter; if (!e || e.active === false) return 0; return (e.foes || []).filter(f => !f.slain).length; } catch (e) { return 0; }
 }
 function playRollNote(label, total, tn, outcome, icons) {
   const panel = document.getElementById('panel-play');
@@ -4621,6 +4621,24 @@ function playEndScene() {
   const k = sagaState().scene;
   if (k === 'fp' && document.getElementById('fp-wizard-box') && typeof fpState !== 'undefined' && fpState) { fpClose(); return; }
   sagaState().scene = null; saveCharacter(); renderPlay();
+}
+/** The setup tabs say so when what they hold is being played on ▶ Play, with one tap back there. */
+const ON_PLAY_TABS = {
+  combat:  () => _playFoesStanding() > 0 && 'This fight is being fought on ▶ Play.',
+  battle:  () => !!(char.battle && char.battle.active) && 'This battle is being led on ▶ Play.',
+  council: () => ((char.council && char.council.active) || (char.skillEndeavour && char.skillEndeavour.active)) && 'This is being played on ▶ Play.',
+  journey: () => !!(char.journey && char.journey.active) && 'This journey is being travelled on ▶ Play.'
+};
+function renderOnPlayBanner(tab) {
+  Object.keys(ON_PLAY_TABS).forEach(t => {
+    const panel = document.getElementById('panel-' + t); if (!panel) return;
+    let el = panel.querySelector(':scope > .on-play');
+    const msg = (t === tab || tab === undefined) && _playFightable() ? ON_PLAY_TABS[t]() : '';
+    if (!msg) { if (el) el.remove(); return; }
+    if (!el) { el = document.createElement('div'); el.className = 'card callout on-play'; panel.insertBefore(el, panel.firstElementChild); }
+    const scene = t === 'council' ? ((char.council && char.council.active) ? "playOpenScene('council')" : "playOpenScene('endeavour')") : "_goTab('play')";
+    el.innerHTML = `<span>${msg}</span><button type="button" class="btn" onclick="${scene}">Play it there</button>`;
+  });
 }
 const _fightHomes = {};
 function _placeFight() {
@@ -6085,4 +6103,3 @@ async function playBandTest(kind) {
   }
   _playAfterRoll();
 }
-function rollAgain() { const l = window._lastQuick; if (l) quickRoll(l.item, l.s); }

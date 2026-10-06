@@ -14,6 +14,7 @@ function bindTabs() {
       }
       if (t.dataset.tab !== 'character' && typeof adjustMode !== 'undefined' && adjustMode) toggleAdjustMode(false);
       if (typeof _placeFight === 'function') _placeFight();   // a fight on Play goes home when its own tab opens
+      if (typeof renderOnPlayBanner === 'function') renderOnPlayBanner(t.dataset.tab);
       if (t.dataset.tab === 'play' && typeof renderPlay === 'function') renderPlay();
       if (t.dataset.tab === 'chronicle') renderChronicle();
       if (t.dataset.tab === 'reference') renderReference();
@@ -156,6 +157,9 @@ function initRollDrawer() {
 function openRollDrawer() {
   const d = document.getElementById('roll-drawer'); if (!d) return;
   if (window._inlineToPlay) { if (typeof sfx === 'function') sfx('dice'); return; }   // a roll from ▶ Play is told in the story; Details opens this
+  // A player's roll at the table is told in the table feed on their sheet, not in a drawer over it.
+  if (typeof tableActive === 'function' && tableActive() && typeof tableIsGm === 'function' && !tableIsGm() && !window._drawerForce &&
+      document.querySelector('.tab.active') && document.querySelector('.tab.active').dataset.tab === 'play') { if (typeof sfx === 'function') sfx('dice'); return; }
   d.classList.add('open'); document.body.classList.add('drawer-open');
   if (typeof sfx === 'function') sfx('dice');
   const b = d.querySelector('.rd-body'); if (b) b.scrollTop = 0;

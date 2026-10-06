@@ -109,6 +109,8 @@ module.exports = {
     await pl.page.evaluate(() => { const b = [...document.querySelectorAll('#panel-play .tbl-roll')].find(x => x.textContent.startsWith('Athletics')); if (b) b.click(); });
     const viaSheet = await until(gm.page, () => { const call = Object.keys(Table.calls).find(id => Table.calls[id].skill === 'Athletics'); return call && Table.feed.some(f => f.callId === call); });
     checks.push({ ok: viaSheet, msg: 'rolling the called skill from the sheet answers the call too' });
+    const drawerShut = await pl.page.evaluate(() => !document.getElementById('roll-drawer').classList.contains('open') && document.querySelector('.tab.active').dataset.tab === 'play');
+    checks.push({ ok: drawerShut, msg: 'a roll from the table sheet is told in the table feed — no drawer pops up over the sheet' });
 
     // Hand-outs land on the hero's own phone through the normal rules, exactly once.
     const end0 = await pl.page.evaluate(() => parseInt(char.endCur));

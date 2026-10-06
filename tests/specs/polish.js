@@ -96,7 +96,8 @@ module.exports = {
     const foe = await safe(`
       addFoeFromBestiary(0); document.querySelectorAll('.menu-overlay.show').forEach(o => o.classList.remove('show'));
       const b = document.querySelector('#panel-combat .foe-card .foe-bar button');
-      const r = b ? b.getBoundingClientRect() : null; endEncounter && 0;
+      const r = b ? b.getBoundingClientRect() : null;
+      char.encounter = JSON.parse(JSON.stringify(DEFAULT_CHARACTER.encounter)); saveCharacter(); render();   // the fight would otherwise hold ▶ Play for the checks below
       return r ? { w: Math.round(r.width), h: Math.round(r.height) } : { err: 'no stepper' };`);
     checks.push({ ok: !foe.err && foe.w >= 40 && foe.h >= 40, msg: `a foe's Endurance/Hate −/+ are at least 40px (${JSON.stringify(foe)})` });
 

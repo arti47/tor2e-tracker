@@ -3098,3 +3098,5 @@ body[data-group="play"] .toast-strip { bottom: calc(var(--nav-h) + var(--safe-bo
   border: 1px solid var(--line); border-radius: var(--r-md); box-shadow: var(--elev-1, none); animation: none; margin-bottom: var(--sp-3); padding: var(--sp-4); }
 .play-fight > .menu::before { display: none; }
 .play-fight-log .btn-block { margin-top: 8px; }
+.on-play { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; border-color: var(--gold); background: var(--gold-soft); }
+.on-play .btn { flex: 0 0 auto; margin: 0; }
