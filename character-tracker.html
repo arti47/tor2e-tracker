@@ -61,12 +61,13 @@
 <header class="header">
   <div class="header-row">
     <button class="menu-btn" onclick="toggleMenu()" aria-label="Menu"><svg class="ic"><use href="#i-menu"/></svg></button>
-    <button type="button" class="char-name" id="char-name" onclick="openRoster()" aria-label="Your heroes — switch or add a hero">
+    <button type="button" class="char-name" id="char-name" onclick="openPeek('hero')" aria-label="Your hero — look at the sheet">
       <span class="monogram" id="hdr-monogram" aria-hidden="true" style="display:none"></span>
       <span class="hn-text" id="char-name-text">Unnamed hero</span>
       <svg class="ic hn-chev" aria-hidden="true"><use href="#i-chev"/></svg>
     </button>
     <button type="button" class="char-name lm-title" id="lm-title" onclick="openCampaign()" aria-label="Your table — code and players" hidden><span class="lm-kicker">Loremaster</span><span class="hn-text" id="lm-title-text">Your table</span><svg class="ic hn-chev" aria-hidden="true"><use href="#i-chev"/></svg></button>
+    <button type="button" id="band-pill" class="band-pill" onclick="openPeek('band')" hidden aria-label="Your Band — look at it"></button>
     <span id="retired-pill" style="display:none;background:var(--btn-alert-bg);color:white;padding:3px 10px;border-radius:10px;font-size:var(--fs-xs);font-weight:700;letter-spacing:1px;text-transform:uppercase" title=""></span>
     <button id="campaign-pill" onclick="openCampaign()" style="display:none;background:var(--gold-soft);color:var(--ink);border:1px solid var(--gold);padding:3px 10px;border-radius:10px;font-size:var(--fs-xs);font-weight:700" title="Fellowship campaign" aria-label="Fellowship campaign — open campaign panel"></button>
     <button class="menu-btn" id="undo-btn" onclick="undoLast()" aria-label="Undo" title="Undo last change" style="display:none"><svg class="ic"><use href="#i-undo"/></svg></button>
@@ -2513,6 +2514,13 @@
 <!-- Firebase compat SDK (OPTIONAL cloud sync). Loaded from CDN; a failed load (offline / file://)
      is harmless — the Sync module detects the missing SDK and the app runs fully local. -->
 <!-- Quick-adjust sheet for the vitals bar. -->
+<div class="menu-overlay" id="peek-overlay" onclick="if(event.target===this)closePeek()">
+  <div class="menu peek-sheet" role="dialog" aria-labelledby="peek-title">
+    <div class="peek-bar"><h3 id="peek-title">Your hero</h3><div class="pt-tabs" id="peek-tabs"></div></div>
+    <div id="peek-body"></div>
+    <button class="close" onclick="closePeek()">Close</button>
+  </div>
+</div>
 <div class="menu-overlay" id="vitals-overlay" onclick="if(event.target===this)closeVitals()">
   <div class="menu" role="dialog" aria-labelledby="vitals-title">
     <h3 id="vitals-title">How is your hero?</h3>

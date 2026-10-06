@@ -658,6 +658,35 @@ module.exports = {
     checks.push({ ok: !tr.err && tr.tray && tr.hopeSpent && tr.inFeed && tr.drawerShut && tr.bandSide && tr.bandFeed && tr.endFeed,
       msg: `▶ Play's roll tray rolls a skill (with an optional Hope spend) and the Band's Dispositions and tests in place, and tells each result in the story (${JSON.stringify(tr)})` });
 
+    // Look things up without leaving Play: the header name opens the hero sheet over the page, the Band chip the Band;
+    // a skill tapped there rolls into Play's story.
+    const pk = await safe(`
+      const save = JSON.stringify({ moria: char.moriaMode, band: char.band, saga: char.saga, hope: char.hopeCur });
+      const out = {};
+      char.saga = Object.assign({}, char.saga || {}, { started: true, ended: false, step: 'haven' });
+      char.hopeCur = 0; playClearFeed();
+      char.moriaMode = true; char.band.allies = [{ id: 'q1', name: 'Bofri', gift: 'Stout' }]; saveCharacter(); render();
+      document.querySelector('.bn-item[data-group="play"]').click(); renderPlay();
+      window.scrollTo(0, 0); if (typeof setSlimHeader === 'function') setSlimHeader(false);
+      document.getElementById('char-name').click();
+      const ov = document.getElementById('peek-overlay');
+      out.hero = ov.classList.contains('show') && document.querySelectorAll('#peek-body .s-skill').length >= 18;
+      out.stillPlay = document.querySelector('.tab.active').dataset.tab === 'play';
+      const pill = document.getElementById('band-pill');
+      out.pill = !!pill && !pill.hidden && pill.textContent.includes('1/1');
+      [...document.querySelectorAll('#peek-body .s-skill')].find(b => /Awareness/.test(b.textContent)).click();
+      await new Promise(r => setTimeout(r, 50));
+      out.closed = !ov.classList.contains('show');
+      out.rolledIntoPlay = /Awareness/.test((document.querySelector('#panel-play .play-feed') || {}).textContent || '');
+      pill.click();
+      out.band = ov.classList.contains('show') && /Bofri/.test(document.getElementById('peek-body').textContent);
+      closePeek();
+      const o = JSON.parse(save); char.moriaMode = o.moria; char.band = o.band; char.saga = o.saga; char.hopeCur = o.hope; saveCharacter(); render();
+      out.pillGone = document.getElementById('band-pill').hidden === !(o.moria && (o.band.allies || []).length);
+      return out;`);
+    checks.push({ ok: !pk.err && pk.hero && pk.stillPlay && pk.pill && pk.closed && pk.rolledIntoPlay && pk.band && pk.pillGone,
+      msg: `the header name opens the hero sheet over Play (a skill tapped there rolls into the story), and in Moria a Band chip opens the Band (${JSON.stringify(pk)})` });
+
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length}${errors.length ? ': ' + errors[0] : ''})` });
     await context.close();
     return { checks };

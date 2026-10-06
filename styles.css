@@ -3069,3 +3069,16 @@ body[data-group="play"] .toast-strip { bottom: calc(var(--nav-h) + var(--safe-bo
 .pt-roll small { font-family: var(--font-body); font-feature-settings: normal; }
 .pt-disp > span { flex: 1 1 auto; text-align: left; }
 .pt-disp > span.pt-pips { flex: 0 0 auto; }
+
+/* Peek: the hero / the Band over any tab */
+.peek-sheet { max-height: 88vh; overflow: auto; }
+.peek-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.peek-bar h3 { margin: 0; }
+.peek-sheet .card { box-shadow: none; }
+.peek-sheet .sh-silhouette, .peek-sheet .cult-sil { display: none; }
+.peek-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+.peek-actions .btn { flex: 1 1 160px; }
+.band-pill { display: inline-flex; align-items: center; gap: 5px; min-height: 32px; padding: 0 10px; border: 1px solid var(--gold); border-radius: 999px;
+  background: var(--gold-soft); color: var(--ink); font-size: var(--fs-xs); white-space: nowrap; }
+.band-pill .ic { width: 14px; height: 14px; }
+.band-pill[hidden] { display: none; }

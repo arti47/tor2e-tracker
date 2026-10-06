@@ -5395,7 +5395,10 @@ function _sheetBandHtml() {
 }
 function renderHeroSheet() {
   const host = document.getElementById('hero-sheet'); if (!host) return;
-  if (!char.culture) { host.innerHTML = ''; return; }
+  host.innerHTML = char.culture ? heroSheetHtml() : '';
+  if (document.getElementById('peek-overlay') && document.getElementById('peek-overlay').classList.contains('show')) renderPeek();
+}
+function heroSheetHtml() {
   const n = v => parseInt(v) || 0;
   const meta = [
     char.patron && ['Patron', char.patron], char.safeHaven && ['Safe Haven', char.safeHaven],
@@ -5423,7 +5426,7 @@ function renderHeroSheet() {
   const owed = owedChoices();
   const owedHtml = owed.length ? `<div class="card owed-card"><h3 class="card-title">Waiting for you</h3>${owed.map(o =>
     `<button type="button" class="btn${o.label.startsWith('🌑') || o.label.startsWith('👁') ? '' : ' btn-secondary'} owed-btn" onclick="${o.fn}">${escapeHtml(o.label)}</button><p class="hint" style="margin:2px 0 8px">${escapeHtml(o.hint)}</p>`).join('')}</div>` : '';
-  host.innerHTML = owedHtml + `
+  return owedHtml + `
   <div class="card ornate sheet-head">
     ${typeof cultureSilhouette === 'function' ? cultureSilhouette(char.culture) : ''}
     <div class="sh-crest">${cultureCrest(char.culture, 76, char.name)}</div>
@@ -5457,6 +5460,59 @@ function renderHeroSheet() {
     ${_spendOne(n(char.skillPts), n(char.advPts))}
   </div>
   ${String(char.history || '').trim() ? `<div class="card"><h3 class="card-title">History</h3><p class="s-history">${escapeHtml(char.history)}</p></div>` : ''}`;
+}
+
+/* ---------- PEEK: the hero and the Band, over whatever you are doing ----------
+   Tap the name in the header (or the Band chip in Moria): the sheet slides up, read-only, and
+   tap-to-roll still works. Close it and you are exactly where you were. Edit stays on the Hero tab. */
+let _peekSide = 'hero';
+function openPeek(side) {
+  _peekSide = side === 'band' && _trayHasBand() ? 'band' : 'hero';
+  renderPeek();
+  document.getElementById('peek-overlay').classList.add('show');
+}
+function closePeek() { const o = document.getElementById('peek-overlay'); if (o) o.classList.remove('show'); }
+function peekRoll(name) {
+  closePeek();
+  const onPlay = document.querySelector('.tab.active') && document.querySelector('.tab.active').dataset.tab === 'play';
+  if (onPlay && typeof playTrayRoll === 'function') return playTrayRoll(name);
+  rollFromSheet(name);
+}
+function peekGo(where) {
+  closePeek();
+  if (where === 'edit') { document.querySelector('.tab[data-tab=character]').click(); setCharEditing(true); }
+  else if (where === 'heroes') openRoster();
+  else if (where === 'band') requireStepGo('band', 'band-allies-card');
+  else if (where === 'sheet') { openNavGroup('hero'); document.querySelector('.tab[data-tab=character]').click(); }
+}
+function renderPeek() {
+  const body = document.getElementById('peek-body'), tabs = document.getElementById('peek-tabs'), title = document.getElementById('peek-title');
+  if (!body) return;
+  const band = _trayHasBand();
+  if (_peekSide === 'band' && !band) _peekSide = 'hero';
+  if (tabs) tabs.innerHTML = band ? `<button type="button" class="${_peekSide === 'hero' ? 'on' : ''}" onclick="_peekSide='hero';renderPeek()">Hero</button><button type="button" class="${_peekSide === 'band' ? 'on' : ''}" onclick="_peekSide='band';renderPeek()">Band</button>` : '';
+  if (title) title.textContent = _peekSide === 'band' ? 'Your Band' : 'Your hero';
+  if (!char.culture) { body.innerHTML = '<p class="hint">No hero yet.</p><button class="btn btn-block" onclick="peekGo(\'heroes\')">Your heroes</button>'; return; }
+  if (_peekSide === 'band') {
+    body.innerHTML = _sheetBandHtml().replace(/ id="(sheet-band|mission-now)"/g, '').replace('<h3 class="card-title">Your Band</h3>', '')
+      .replace(`onclick="requireStepGo('band','band-allies-card')">Open the Band tab — rolls and tests`, `onclick="peekGo('band')">Open the Band tab — roster and mission`) +
+      `<p class="hint" style="text-align:left">Roll the Band's Dispositions and tests from the <strong>Roll</strong> tray on ▶ Play.</p>`;
+    return;
+  }
+  // The same sheet as the Hero tab, without its ids (they belong to the tab) and with rolls routed here.
+  body.innerHTML = heroSheetHtml()
+    .replace(/ id="[^"]*"/g, '')
+    .replace(/rollFromSheet\(/g, 'peekRoll(')
+    .replace(/onclick="setCharEditing\(true\)"/g, `onclick="peekGo('edit')"`) +
+    `<div class="peek-actions"><button type="button" class="btn btn-secondary" onclick="peekGo('heroes')">Switch or add a hero</button><button type="button" class="btn btn-quiet" onclick="peekGo('sheet')">Open the Hero tab</button></div>`;
+}
+function renderBandPill() {
+  const p = document.getElementById('band-pill'); if (!p) return;
+  const on = _trayHasBand();
+  p.hidden = !on;
+  if (!on) return;
+  const all = char.band.allies, up = all.filter(a => !a.outOfAction).length;
+  p.innerHTML = `<svg class="ic" aria-hidden="true"><use href="#i-users"/></svg>Band <strong>${up}/${all.length}</strong>`;
 }
 
 /* ---------- VITALS BAR (header HUD) ----------
@@ -5526,6 +5582,7 @@ function renderHud() {
     const key = (char.culture || '') + '|' + (char.name || '');
     if (mono.dataset.key !== key) { mono.dataset.key = key; mono.innerHTML = cultureCrest(char.culture, 36, char.name); }
   }
+  renderBandPill();
   const nameEl = document.getElementById('char-name-text');
   if (nameEl) {
     const n = String(char.name || '').trim(); const full = n || (built ? heroLabel(char) : 'Unnamed hero');

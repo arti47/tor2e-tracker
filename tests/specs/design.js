@@ -652,10 +652,12 @@ module.exports = {
       const isBtn = n.tagName === 'BUTTON' && !document.querySelector('.header input');
       // a folded (slim) header answers a tap by unfolding, by design — start from the full header
       window.scrollTo(0, 0); if (typeof setSlimHeader === 'function') setSlimHeader(false);
-      n.click(); const open = document.getElementById('roster-overlay').classList.contains('show'); closeRoster && closeRoster();
+      n.click(); const peek = document.getElementById('peek-overlay').classList.contains('show');
+      const sw = [...document.querySelectorAll('#peek-body button')].find(b => /Switch or add a hero/.test(b.textContent)); if (sw) sw.click();
+      const open = document.getElementById('roster-overlay').classList.contains('show'); closeRoster && closeRoster();
       document.getElementById('roster-overlay').classList.remove('show');
-      return { isBtn, open, text: document.getElementById('char-name-text').textContent };`);
-    checks.push({ ok: !hn.err && hn.isBtn && hn.open && /Beran/.test(hn.text), msg: `the header name is a button that opens Your heroes (${JSON.stringify(hn)})` });
+      return { isBtn, peek, open, text: document.getElementById('char-name-text').textContent };`);
+    checks.push({ ok: !hn.err && hn.isBtn && hn.peek && hn.open && /Beran/.test(hn.text), msg: `the header name is a button that opens the hero sheet over the page, which leads on to Your heroes (${JSON.stringify(hn)})` });
 
     // ---- Number boxes keep a placeholder that fits; the words move to the label ----
     const ph = await safe(`const i = document.getElementById('prot-dice'); return { ph: i.getAttribute('placeholder'), al: i.getAttribute('aria-label') };`);
