@@ -1086,7 +1086,7 @@
       </div>
     </div>
     <div style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
-      <button class="add-row-btn" onclick="rollMarchingTest()" style="background:var(--red)">🚶 Marching Test (Guide TRAVEL)</button>
+      <button class="add-row-btn" onclick="rollMarchingTest()" style="background:var(--red)">🚶 Marching Test (Travel roll)</button>
       <button class="add-row-btn" onclick="resolveJourneyEvent()" id="j-resolve-event-btn" style="background:var(--btn-secondary-bg)" disabled>🎲 Resolve Event Now</button>
     </div>
     <!-- An event that names a skill now brings its own roll with it. Previously the log said
@@ -1990,10 +1990,10 @@
          and were invisible, and the next Clash overwrote the banked success. Same container trap
          as the Shadow Tests inside #roll-result; same fix — it lives outside now. -->
     <div id="b-spend" style="margin-top:8px"></div>
-    <div style="display:flex;gap:8px;margin-top:10px">
-      <button class="add-row-btn" onclick="addAdvantagePrompt()" style="flex:1;font-size:var(--fs-xs)">+ Advantage</button>
-      <button class="add-row-btn" onclick="addComplicationPrompt()" style="flex:1;font-size:var(--fs-xs);background:var(--btn-secondary-bg)">+ Complication</button>
-      <button class="add-row-btn" onclick="endBattle()" style="flex:1;font-size:var(--fs-xs);background:var(--btn-alert-bg)">End Battle</button>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px">
+      <button class="add-row-btn" onclick="addAdvantagePrompt()" style="flex:1 1 auto;white-space:nowrap;font-size:var(--fs-xs)">+ Advantage</button>
+      <button class="add-row-btn" onclick="addComplicationPrompt()" style="flex:1 1 auto;white-space:nowrap;font-size:var(--fs-xs);background:var(--btn-secondary-bg)">+ Complication</button>
+      <button class="add-row-btn" onclick="endBattle()" style="flex:1 1 auto;white-space:nowrap;font-size:var(--fs-xs);background:var(--btn-alert-bg)">End Battle</button>
     </div>
   </div>
 

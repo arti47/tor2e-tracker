@@ -1599,6 +1599,11 @@ function dateLabel(d) {
   }
   return `${d.season || ''}, Day ${d.day}, Year ${d.year}${d.phase === 'Fellowship' ? ' · Fellowship' : ''}`;
 }
+function toggleBlkTools(btn) {
+  const row = btn.closest('.ch-row'); if (!row) return;
+  const on = row.classList.toggle('tools-on');
+  btn.setAttribute('aria-expanded', on ? 'true' : 'false');
+}
 function renderChronicleTimeline() {
   const wrap = document.getElementById('ch-timeline');
   if (!wrap) return;
@@ -1624,6 +1629,9 @@ function renderChronicleTimeline() {
         <button onclick="cancelBlockEdit()" class="add-row-btn" style="background:var(--btn-secondary-bg);font-size:var(--fs-xs);flex:1">Cancel</button>
       </div>
     </div>`;
+  // Five tools under every line (▲ ▼ ✎ describe edit ×) made the journal read like a form. They
+  // now sit behind one quiet "⋯" per line (always shown on a device with a mouse, on hover).
+  const blkMore = `<button class="blk-more" type="button" aria-label="Line options" aria-expanded="false" onclick="toggleBlkTools(this)">⋯</button>`;
   const moveBtns = (id) => `<button onclick="moveBlock('${id}',-1)" title="Move up" style="flex:0 0 auto;background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:var(--fs-xs)">▲</button><button onclick="moveBlock('${id}',1)" title="Move down" style="flex:0 0 auto;background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:var(--fs-xs)">▼</button>`;
   // Newest scene first; blocks within a scene stay in chronological (written) order.
   journal.scenes.slice().reverse().forEach(sc => {
@@ -1656,21 +1664,21 @@ function renderChronicleTimeline() {
     const renderOne = (b) => {
       if (_editingBlockId === b.id) return editTextarea(b);
       if (b.kind === 'prose') {
-        return `<div style="display:flex;gap:4px;padding:2px 10px 6px;align-items:flex-start">
+        return `<div class="ch-row" style="display:flex;gap:4px;padding:2px 10px 6px;align-items:flex-start">
           <div class="ch-p${b.id === firstProseId ? ' ch-first' : ''}" style="flex:1;min-width:0;line-height:1.55;white-space:pre-wrap">${escapeHtml(b.text)}</div>
-          ${moveBtns(b.id)}
+          ${blkMore}<span class="blk-tools">${moveBtns(b.id)}
           <button onclick="editBlock('${b.id}')" title="Edit" style="flex:0 0 auto;background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:var(--fs-xs)">✎</button>
-          <button onclick="deleteChronicleEntry('${b.id}')" title="Delete" style="flex:0 0 auto;background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:var(--fs-sm)">×</button>
+          <button onclick="deleteChronicleEntry('${b.id}')" title="Delete" style="flex:0 0 auto;background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:var(--fs-sm)">×</button></span>
         </div>`;
       }
       const t = JOURNAL_TYPES[b.type] || JOURNAL_TYPES.note;
-      let h = `<div class="ch-auto" style="display:flex;gap:6px;padding:5px 10px 1px;align-items:baseline;opacity:0.72">
+      let h = `<div class="ch-auto ch-row" style="display:flex;gap:6px;padding:5px 10px 1px;align-items:baseline;opacity:0.72">
           <span style="flex:0 0 auto;font-size:var(--fs-xs);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted)">${t.label}</span>
           <span style="flex:1;min-width:0;font-size:var(--fs-xs);font-style:italic;color:var(--text-muted)">${escapeHtml(b.text)}</span>
-          ${moveBtns(b.id)}
+          ${blkMore}<span class="blk-tools">${moveBtns(b.id)}
           <button onclick="describeBlock('${b.id}')" title="Describe below" style="flex:0 0 auto;background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:var(--fs-xs)">✎ describe</button>
           <button onclick="editBlock('${b.id}')" title="Edit line" style="flex:0 0 auto;background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:var(--fs-xs)">edit</button>
-          <button onclick="deleteChronicleEntry('${b.id}')" title="Delete" style="flex:0 0 auto;background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:var(--fs-sm)">×</button>
+          <button onclick="deleteChronicleEntry('${b.id}')" title="Delete" style="flex:0 0 auto;background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:var(--fs-sm)">×</button></span>
         </div>`;
       if (_describingId === b.id) {
         h += `<div style="padding:2px 10px 6px 22px">

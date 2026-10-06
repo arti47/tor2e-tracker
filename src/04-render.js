@@ -1056,6 +1056,26 @@ function renderSkillEndeavour() {
   _councilLayout();
 }
 
+/** One Council / Endeavour roll as a log row: number, dice pill, and what came of it in words.
+    The rows used to read "#2 Athletics — Feat 6, total 11 vs STR TN 15, 0 ✦. No contribution. FAIL". */
+function _skillLogRow(r, num) {
+  const d = String(r.detail || '');
+  const m = d.match(/total (\S+) vs \w+ TN (\d+)/);
+  const total = m ? (m[1] === '★' ? null : parseInt(m[1])) : null, tn = m ? m[2] : '?';
+  let said;
+  if (r.intro) {
+    const tl = (d.match(/Time Limit set to (\d+)/) || [])[1];
+    said = r.success ? `A good opening — <strong>${tl || '?'} attempts</strong> to win them over.` : `A poor opening — only <strong>${tl || 3} attempts</strong>.`;
+  } else if (r.contributed > 0) said = `<strong>+${r.contributed}</strong> toward the goal.`;
+  else said = 'No progress.';
+  const extra = [];
+  if (r.bonus) extra.push(`roleplay +${r.bonus}d`);
+  if (/Support \+1d/.test(d)) extra.push('support +1d');
+  const woe = d.match(/Failure-with-Woe auto-applied: ([^<]*?)\.?<\/strong>/);
+  if (woe) said += ` <span class="slog-woe">Woe: ${woe[1].replace(/\s*\(now \d+\)/, '')}.</span>`;
+  if (/DISASTER/.test(d)) said += ' <span class="slog-woe">Disaster — the task fails for good.</span>';
+  return `<div class="slog-row"><span class="slog-n">${num}</span>${rollPillHtml(r.skill, total, tn, !!r.success)}<span class="slog-said">${said}${extra.length ? ` <small>(${extra.join(', ')})</small>` : ''}</span></div>`;
+}
 function renderSkillEndeavourLog() {
   const log = document.getElementById('se-roll-log');
   if (!log || !char.skillEndeavour) return;
@@ -1064,16 +1084,7 @@ function renderSkillEndeavourLog() {
     log.innerHTML = '<div style="text-align:center;color:var(--text-faint);padding:10px;font-size:var(--fs-xs)">No attempts yet.</div>';
     return;
   }
-  log.innerHTML = rolls.slice().reverse().map((r, i) => {
-    const num = rolls.length - i;
-    const tag = r.contributed > 0
-      ? `<span style="background:var(--success-text);color:white;padding:1px 6px;border-radius:var(--r-sm);font-size:var(--fs-xs)">+${r.contributed}</span>`
-      : (r.woeApplied ? `<span style="background:var(--btn-warn-bg);color:white;padding:1px 6px;border-radius:var(--r-sm);font-size:var(--fs-xs)">WOE</span>` : '');
-    const tagColor = r.contributed > 0 ? 'var(--success-text)' : 'var(--error-text)';
-    return `<div style="padding:6px 8px;border-bottom:1px solid var(--border)">
-      <strong>#${num} ${r.skill}</strong> ${tag} — ${r.detail} <span style="color:${tagColor};font-weight:600">${r.success ? 'SUCCESS' : 'FAIL'}</span>${r.bonus ? ` <small style="color:var(--gold)">(roleplay +${r.bonus}d)</small>` : ''}
-    </div>`;
-  }).join('');
+  log.innerHTML = rolls.slice().reverse().map((r, i) => _skillLogRow(r, rolls.length - i)).join('');
 }
 
 function rollSkillEndeavourAttempt(skillName) {
@@ -1342,18 +1353,7 @@ function renderCouncilLog() {
     log.innerHTML = '<div style="text-align:center;color:var(--text-faint);padding:10px;font-size:var(--fs-xs)">No rolls yet — make the Introduction roll to begin.</div>';
     return;
   }
-  log.innerHTML = rolls.slice().reverse().map((r, i) => {
-    const num = rolls.length - i;
-    const tagColor = r.contributed > 0 ? 'var(--success-text)' : (r.success ? '#666' : 'var(--error-text)');
-    const tag = r.intro
-      ? `<span style="background:var(--gold);color:white;padding:1px 6px;border-radius:var(--r-sm);font-size:var(--fs-xs)">INTRO</span>`
-      : (r.contributed > 0
-          ? `<span style="background:var(--success-text);color:white;padding:1px 6px;border-radius:var(--r-sm);font-size:var(--fs-xs)">+${r.contributed}</span>`
-          : '');
-    return `<div style="padding:6px 8px;border-bottom:1px solid var(--border)">
-      <strong>#${num} ${r.skill}</strong> ${tag} — ${r.detail} <span style="color:${tagColor};font-weight:600">${r.success ? 'SUCCESS' : 'FAIL'}</span>${r.bonus ? ` <small style="color:var(--gold)">(roleplay +${r.bonus}d)</small>` : ''}
-    </div>`;
-  }).join('');
+  log.innerHTML = rolls.slice().reverse().map((r, i) => _skillLogRow(r, rolls.length - i)).join('');
 }
 
 function rollCouncilIntro(skillName) {
@@ -1786,6 +1786,8 @@ async function rollJourneyEvent() {
   const score = (r.total === null) ? 'a Gandalf rune — automatic success' : `${r.total} vs TN ${sk.tn}`;
   j.events.push({
     day: j.daysElapsed, hex: j.currentHex,
+    res: { skill: pend.skill, eventName: pend.eventName, total: r.total, tn: sk.tn, ok, icons: r.icons, applied,
+           noPenalty: !!(effect && !effect.onFail) },
     text: `▶ <strong>${escapeHtml(pend.skill)}</strong> roll for ${escapeHtml(pend.eventName)} — ${score}${r.icons ? `, ${r.icons} ✦` : ''}: ` +
           (ok ? `<strong style="color:var(--success-text)">success</strong>${applied ? ' — ' + applied : ''}`
               : `<strong style="color:var(--error-text)">failure</strong>${applied ? ' — ' + applied : (effect && !effect.onFail ? ' — you simply do not get the benefit; nothing worse happens.' : " — the event's effect stands.")}`)
@@ -1811,7 +1813,7 @@ function renderJourneyLog() {
     return;
   }
   log.innerHTML = char.journey.events.slice().reverse().map(e =>
-    `<div style="padding:6px 8px;border-bottom:1px solid var(--border);"><strong>Day ${e.day}, hex ${e.hex}:</strong> ${e.text}</div>`
+    `<div class="jlog-row"><div class="jlog-when">Day ${e.day} · stretch ${e.hex}</div>${journeyLogEntry(e)}</div>`
   ).join('');
 }
 
@@ -1875,9 +1877,12 @@ function applyMarchingTestResult(success, icons, detail, quiet) {
   // The journey kept its own day counter and the hero's calendar never moved — after a nine-day
   // march the Endurance card still read "Day 1", and a Wounded hero's injury days never ticked.
   advanceDays(daysSpent);
+  const mt = String(detail || '').match(/total (\S+)/), mtn = String(detail || '').match(/TN (\d+)/);
   j.events.push({
     day: j.daysElapsed,
     hex: j.currentHex,
+    march: { ok: !!success, hexes: hexesToNext, days: daysSpent, forced: !!j.forcedMarch,
+             total: mt ? (mt[1] === '★' ? null : parseInt(mt[1])) : undefined, tn: mtn ? parseInt(mtn[1]) : null },
     text: `🚶 Marching Test — <strong>${success ? 'Success' : 'Failure'}</strong> (${detail}). Advanced ${hexesToNext} hex${hexesToNext!==1?'es':''} in ${daysSpent} day${daysSpent!==1?'s':''}${j.forcedMarch?' (forced march: +'+daysSpent+' Travel Fatigue)':''}. Event resolves at hex ${j.currentHex}.`
   });
   saveCharacter();
@@ -3000,6 +3005,94 @@ function journeyEventFor(r, solo) {
   return event;
 }
 
+/* ---------- Journey events, told plainly ----------
+   An event used to be one run-on string: name, Feat die, land, roll, Fatigue, the rule text,
+   the sub-table entry, its die, its skill, the chamber, and "▶ Roll X" — all in one paragraph,
+   on Play and on the Journey log alike. Events now carry their parts (`e.ev`, `e.res`) and both
+   surfaces draw them through ONE renderer, so they read the same everywhere (GOTCHA 24). */
+function _eventStakes(effectHtml, solo) {
+  let t = String(effectHtml || '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+  if (solo) t = t.replace(/\btarget is\b/g, 'you are').replace(/\btarget gains\b/g, 'you gain')
+                 .replace(/\bevery hero present gains\b/g, 'you gain').replace(/\bevery hero (recovers|regains)\b/g, 'you $1')
+                 .replace(/\beveryone regains\b/g, 'you regain').replace(/\byou (recovers|regains)\b/g, (m, v) => 'you ' + v.slice(0, -1));
+  const out = { fail: '', ok: '' };
+  t.split(/(?=If (?:the (?:skill )?roll|it) (?:fails|succeeds):)|(?=Either way)/).forEach(part => {
+    const m = part.match(/^If (?:the (?:skill )?roll|it) (fails|succeeds):\s*(.*)$/);
+    if (!m) return;
+    // "gain +2 Shadow" / "you gain +1 Shadow" → "+2 Shadow": the label already says who.
+    const txt = m[2].replace(/\.\s*$/, '').replace(/^(?:you |target )?gains?\s+(?=[+−-]?\d)/i, '').trim();
+    if (m[1] === 'fails') out.fail = txt; else out.ok = txt;
+  });
+  return out;
+}
+function _sentence(s) { s = String(s || '').trim(); return s ? s.charAt(0).toUpperCase() + s.slice(1).replace(/[.\s]*$/, '.') : ''; }
+/** One Journey Event as a small card: what it is, what you see, what is at stake, what to roll. */
+function journeyEventCard(e) {
+  const v = e && e.ev;
+  if (!v) return `<div class="jev-legacy">${e && e.text || ''}</div>`;
+  const chips = [];
+  if (v.noteworthy) chips.push('<span class="jev-chip warn">Noteworthy encounter — play it out as a scene</span>');
+  else if (v.skill) chips.push(`<span class="jev-chip">Roll ${escapeHtml(v.skill)}${v.hard ? ' (−1d, rough ground)' : ''}</span>`);
+  if (v.fatigue) chips.push(`<span class="jev-chip">+${v.fatigue} Travel Fatigue</span>`);
+  const st = v.stakes || {};
+  return `<div class="jev${v.peril ? ' peril' : ''}">
+    <div class="jev-name">${v.peril ? '<span class="jev-tag">Perilous area</span>' : ''}${escapeHtml(v.name)}</div>
+    ${v.detail ? `<div class="jev-what">${escapeHtml(_sentence(v.detail))}</div>` : ''}
+    ${v.chamber ? `<div class="jev-find">${escapeHtml(chamberLine(v.chamber))}</div>` : ''}
+    ${(st.fail || st.ok) ? `<ul class="jev-stakes">${st.ok ? `<li class="ok"><b>If it goes well</b> ${escapeHtml(st.ok)}</li>` : ''}${st.fail ? `<li class="bad"><b>If it fails</b> ${escapeHtml(st.fail)}</li>` : ''}</ul>` : ''}
+    ${chips.length ? `<div class="jev-chips">${chips.join('')}</div>` : ''}
+  </div>`;
+}
+/** A Moria chamber as one sentence: "You come to an ancient storeroom, goblin-gnawed. It will test your Battle." */
+function chamberLine(c) {
+  const lc = w => String(w || '').replace(/^\w/, m => m.toLowerCase());
+  const appr = /^Elven$/.test(c.appr) ? c.appr : lc(c.appr);
+  const art = /^[aeiou]/i.test(appr) ? 'an' : 'a';
+  const chal = String(c.chal || '');
+  const test = /^None/i.test(chal) ? `Nothing here tests you${/\((.*)\)/.test(chal) ? ' — ' + lc(chal.match(/\((.*)\)/)[1]) : ''}.`
+    : /^Combat$/i.test(chal) ? 'It means a fight.' : `It will test your ${chal}.`;
+  return `You come to ${art} ${appr} ${lc(c.type)}, ${lc(c.cond)}. ${test}`;
+}
+/** The same event as one plain line, for the Chronicle. */
+function journeyEventPlain(e) {
+  const v = e && e.ev; if (!v) return _playPlainText(e && e.text || '');
+  const bits = [v.name + (v.detail ? ' — ' + String(v.detail).replace(/\.$/, '') : '') + '.'];
+  if (v.chamber) bits.push(chamberLine(v.chamber));
+  if (v.skill && !v.noteworthy) bits.push(`Roll ${v.skill}.`);
+  if (v.fatigue) bits.push(`+${v.fatigue} Travel Fatigue.`);
+  return (v.peril ? 'Perilous area: ' : '') + bits.join(' ');
+}
+/** "+1 Shadow (0 → 1), and the Eye stirs (👁 2)" → "+1 Shadow, and the Eye stirs". The running
+    totals are on the vitals bar already; in a sentence they are noise. */
+function _tidyApplied(s) {
+  return String(s || '').replace(/<[^>]+>/g, '').replace(/\s*\((?:[^()]*→[^()]*|👁\s*\d+)\)/g, '').replace(/\s+/g, ' ').trim();
+}
+/** A roll's result as the dice pill the feeds share: "(Craft roll 8 vs 15 — failure.)" */
+function _pillText(skill, total, tn, ok) {
+  return `(${skill} roll ${total === null || total === undefined ? 'ᚱ' : total} vs ${tn} — ${ok ? 'success' : 'failure'}.)`;
+}
+/** A Marching Test as one line: the pill, then how far and how long. */
+function journeyMarchLine(e) {
+  const v = e.march;
+  const pill = v.total === undefined ? '<span class="jev-chip">Guide’s roll</span>' : rollPillHtml('Travel', v.total, v.tn, v.ok);
+  return `<div class="jev-res">${pill} <span>${v.ok ? 'Good going' : 'Hard going'}: ${v.hexes} stretch${v.hexes === 1 ? '' : 'es'} in ${v.days} day${v.days === 1 ? '' : 's'}.${v.forced ? ` Forced march: +${v.days} Travel Fatigue.` : ''}</span></div>`;
+}
+/** Arriving, as one line: the arrival roll and the Fatigue that stays with you. */
+function journeyArriveLine(e) {
+  const v = e.arr;
+  return `<div class="jev-res"><strong>Arrived at ${escapeHtml(v.place)}.</strong> ${rollPillHtml('Travel', v.roll.total, v.roll.tn, v.roll.ok)} <span>${v.left ? `${v.left} Fatigue stays with you (now ${v.after}) — a Prolonged Rest in a Safe Haven clears 1 at a time.` : 'You shake off the road’s weariness.'}</span></div>`;
+}
+/** Any journey log entry, drawn by the renderer that fits it. */
+function journeyLogEntry(e) {
+  return e.ev ? journeyEventCard(e) : e.res ? journeyRollLine(e) : e.march ? journeyMarchLine(e) : e.arr ? journeyArriveLine(e) : `<div class="jev-legacy">${e.text}</div>`;
+}
+/** One event roll's result as a line: the pill, then what came of it. */
+function journeyRollLine(e) {
+  const v = e && e.res; if (!v) return `<div class="jev-legacy">${e && e.text || ''}</div>`;
+  const what = v.applied ? _sentence(_tidyApplied(v.applied)) : (v.ok ? '' : (v.noPenalty ? 'You simply miss the benefit; nothing worse happens.' : ''));
+  return `<div class="jev-res">${_rollPills(_pillText(v.skill, v.total, v.tn, v.ok))} <span>${v.ok ? 'You manage it.' : 'It goes against you.'} ${escapeHtml(what)}</span></div>`;
+}
+
 function resolveJourneyEvent(isPeril) {
   const j = char.journey;
   if (isPeril) {
@@ -3065,10 +3158,11 @@ function resolveJourneyEvent(isPeril) {
 
   // Solo: roll the Event Detail sub-table to envision the specific event.
   const detailTable = moria ? MORIA_EVENT_DETAILS : SOLO_EVENT_DETAILS;
-  let detailLine = '';
+  let detailLine = '', detailRec = null, chamberRec = null;
   if (solo && detailTable[event.key]) {
     const die = Math.floor(Math.random() * 6) + 1;
     const detail = detailTable[event.key][die - 1];
+    detailRec = detail;
     // Override targetSkill if the sub-table specifies a different one
     if (detail.skill && detail.skill !== 'Noteworthy') {
       targetSkill = detail.skill;
@@ -3081,6 +3175,7 @@ function resolveJourneyEvent(isPeril) {
   // Branching Stairs (Moria): always roll the Random Chamber Generator.
   if (moria && event.key === 'branchingStairs') {
     const c = genChamber();
+    chamberRec = c;
     detailLine += `<br><span style="color:var(--gold)">⛏️ Chamber: <strong>${c.appr} ${c.type}</strong> — ${c.cond} · Challenge: ${c.chal}</span>`;
   }
 
@@ -3110,9 +3205,15 @@ function resolveJourneyEvent(isPeril) {
   // Append the detail line if we rolled one (Strider Mode)
   const detailSuffix = detailLine || '';
   const perilPrefix = isPeril ? '⚠️ <strong>[Peril]</strong> ' : '';
+  const noteworthy = !!(detailRec && detailRec.outcome === 'Noteworthy Encounter');
   j.events.push({
     day: j.daysElapsed,
     hex: isPeril ? j.currentHex : j.nextEventHex,
+    ev: { name: String(event.name).replace(/\s*[👁ᚱ]\s*$/u, ''), key: event.key, peril: !!isPeril, fatigue: event.fatigue,
+          skill: noteworthy ? null : (targetSkill || null), hard: j.hardTerrainHexes > 0, noteworthy,
+          detail: detailRec ? (noteworthy ? detailRec.event : `${detailRec.event} — ${detailRec.outcome}`) : '',
+          chamber: chamberRec ? { appr: chamberRec.appr, type: chamberRec.type, cond: chamberRec.cond, chal: chamberRec.chal } : null,
+          stakes: _eventStakes(event.effect, solo), feat: featSym, land: region },
     text: `${perilPrefix}🎲 <strong>${event.name}</strong> (Feat ${featSym}${ponderTag}, ${region} Land). ${rollClause} <strong>+${event.fatigue} Travel Fatigue</strong>. <em>${event.effect}</em>${detailSuffix}${playerHint}`
   });
   if (isPeril) {
@@ -3170,6 +3271,8 @@ async function arriveAtDestination() {
   j.events.push({
     day: j.daysElapsed,
     hex: j.totalHexes,
+    arr: { place: j.destination || 'the destination', travel: j.travelFatigue, left: totalFat, before, after: char.fatigue,
+           roll: { total: r.total, tn, ok: success } },
     text: `🏁 <strong>Arrived at ${j.destination || 'destination'}!</strong><br>${lines.join('<br>')}`
   });
   j.active = false;
@@ -3186,7 +3289,9 @@ async function arriveAtDestination() {
   setText('fat-v', char.fatigue);
   if (typeof journalAuto === 'function') journalAuto('ojc', 'milestone', `Arrived at ${j.destination || 'the destination'} after ${j.daysElapsed || '?'} days (from ${j.origin || '?'}).`);
   if (typeof logTimeline === 'function') logTimeline('journey', `Journey: ${j.origin || 'home'} → ${j.destination || 'the destination'}, ${j.daysElapsed || '?'} days, ${j.totalHexes || '?'} hexes.`);
-  const recap = 'Journey complete!\n\n' + lines.map(l => l.replace(/<[^>]+>/g, '')).join('\n');
+  // A short recap — the arithmetic (Feat, ✦, TN, Vigour, before → after) is in the Journey log.
+  const recap = `You reach ${j.destination || 'the destination'}. Your arrival Travel roll: ${r.total ?? 'a Gandalf rune'} against ${tn} — ${success ? 'success' : 'failure'}.\n` +
+    (totalFat ? `${totalFat} Fatigue stays with you (now ${char.fatigue}).` : 'You shake off the road’s weariness.');
   // In solo play, offer to open a fresh "at the landmark" scene in the Chronicle (montage → play hand-off).
   const dest = j.destination || 'the destination';
   if (isSolo() && await confirmStyled(escapeHtml(recap).replace(/\n/g, '<br>') + `<br><br>Start a Chronicle scene at <strong>${escapeHtml(dest)}</strong>?`, '🏁 Arrived', {yes:'Open a scene', no:'Not now'})) {
@@ -4213,7 +4318,7 @@ function renderAdventureLoop() {
 let _playFeed = [];           // narration lines, newest last
 let _playBusy = false;
 
-function playSay(text, kind) {
+function playSay(text, kind, plain) {
   _playFeed.push({ text, kind: kind || 'story' });
   if (_playFeed.length > 40) _playFeed.shift();
   // Asides are the app talking to the player ("Read those as a rumour…"), not events in the
@@ -4221,7 +4326,7 @@ function playSay(text, kind) {
   if (kind === 'aside') return;
   // Everything the app narrates is also written into the Chronicle, so the journal
   // fills itself for a player who never opens that tab.
-  try { if (typeof pushBlock === 'function' && isSolo()) pushBlock('auto', 'note', _playPlainText(text), 'play'); } catch (e) {}
+  try { if (typeof pushBlock === 'function' && isSolo()) pushBlock('auto', 'note', plain || _playPlainText(text), 'play'); } catch (e) {}
 }
 
 /** HTML the Play tab narrates → the plain prose the Chronicle stores.
@@ -4269,10 +4374,6 @@ function playScene(title) {
 /* ---- the moment-to-moment script ---------------------------------------- */
 
 /** "a Awareness roll" — the app names skills that start with a vowel. */
-function _anWord(w) {
-  const t = String(w || '');
-  return (/^[aeiou]/i.test(t) ? 'an ' : 'a ') + escapeHtml(t);
-}
 
 function _playSituation() {
   const s = sagaState();
@@ -4291,9 +4392,8 @@ function _playSituation() {
       const j = char.journey || {};
       return { title: 'On the road' + (j.destination ? ' to ' + escapeHtml(j.destination) : ''),
         text: j.active
-          ? `You have covered <strong>${j.currentHex || 0}</strong> of <strong>${j.totalHexes || 0}</strong> stretches. Day ${j.daysElapsed || 0}.` +
-            (_playEventDue() ? '<br><strong style="color:var(--error-text)">The road has something waiting for you here.</strong>' : '') +
-            ((j.pendingEventRoll && j.pendingEventRoll.skill) ? `<br><strong style="color:var(--red-dark)">${escapeHtml(j.pendingEventRoll.eventName)} — it wants ${_anWord(j.pendingEventRoll.skill)} roll.</strong>` : '')
+          ? _playRoadLine(j) +
+            (_playEventDue() ? '<br><strong style="color:var(--error-text)">The road has something waiting for you here.</strong>' : '')
           : (j.destination
               ? 'The road is behind you — you finished this journey on the Journey tab. Tap <strong>We have arrived</strong> to carry on.'
               : 'You are ready to travel, but have not set out yet.') };
@@ -4305,9 +4405,8 @@ function _playSituation() {
       const jh2 = char.journey || {};
       return { title: 'The road home',
         text: jh2.active
-          ? `You have covered <strong>${jh2.currentHex || 0}</strong> of <strong>${jh2.totalHexes || 0}</strong> stretches. Day ${jh2.daysElapsed || 0}.` +
-            (_playEventDue() ? '<br><strong style="color:var(--error-text)">The road has something waiting for you here.</strong>' : '') +
-            ((jh2.pendingEventRoll && jh2.pendingEventRoll.skill) ? `<br><strong style="color:var(--red-dark)">${escapeHtml(jh2.pendingEventRoll.eventName)} — it wants ${_anWord(jh2.pendingEventRoll.skill)} roll.</strong>` : '')
+          ? _playRoadLine(jh2) +
+            (_playEventDue() ? '<br><strong style="color:var(--error-text)">The road has something waiting for you here.</strong>' : '')
           : 'You turn back the way you came, carrying whatever you found — and whatever found you.' };
     }
     case 'fellowship':
@@ -4315,6 +4414,13 @@ function _playSituation() {
         text: 'The adventure is over. Time to rest properly, spend what you have earned, and let the Shadow ebb.' };
   }
   return { title: 'Somewhere', text: '' };
+}
+
+/** The one line under the road's title: Travel Fatigue so far, when there is any. Distance and
+    day are the map's caption — they used to be printed here as well, and again in every march. */
+function _playRoadLine(j) {
+  const tf = parseInt(j.travelFatigue) || 0;
+  return tf ? `Travel Fatigue so far: <strong>${tf}</strong> — it lands on you when you arrive.` : '';
 }
 
 function _playRetiredSituation() {
@@ -4577,12 +4683,10 @@ async function playTravel() {
   // were standing on — and one test could swallow a whole Play-tab road.
   applyMarchingTestResult(ok, r.icons, `Feat ${r.featLabel}, total ${r.total ?? '★'}, ${r.icons} ✦, vs Heart TN ${sk.tn}`, true);
   const gained = (j.currentHex || 0) - before, days = (j.daysElapsed || 0) - beforeDay;
-  const tscore = (r.total === null) ? 'a Gandalf rune — automatic success' : `${r.total} vs ${sk.tn}`;
+  // How far and how long, then the dice pill. Where you stand on the road is the map's caption,
+  // and the Travel Fatigue running total sits in the scene line — not repeated after every march.
   const dayWord = `${days} day${days === 1 ? '' : 's'}`;
-  playSay(ok
-    ? `You make good time. (Travel roll ${tscore} — success.) ${gained} stretch${gained === 1 ? '' : 'es'} in ${dayWord}; you are ${j.currentHex} of ${j.totalHexes} of the way.`
-    : `The going is hard and slow. (Travel roll ${tscore} — failure.) ${gained} stretch${gained === 1 ? '' : 'es'} in ${dayWord}; you are ${j.currentHex} of ${j.totalHexes} of the way.`);
-  if (j.travelFatigue) playSay(`<em>Travel Fatigue so far: ${j.travelFatigue}. It lands on you when you arrive.</em>`, 'aside');
+  playSay(`${ok ? 'You make good time' : 'The going is hard and slow'}: ${gained} stretch${gained === 1 ? '' : 'es'} in ${dayWord}. ${_pillText('Travel', r.total, sk.tn, ok)}`);
   if (j.currentHex >= (j.totalHexes || 1)) {
     playSay('<strong>The place you were making for is in sight.</strong>');
   }
@@ -4608,10 +4712,11 @@ async function playEvent() {
   const ev = (char.journey.events || [])[before];
   // Through _playPlainText, like everything else Play narrates: a bare tag-strip welded the
   // event's clauses into one run-on sentence, in the feed AND in the Chronicle.
-  if (ev) playSay(escapeHtml(_playPlainText(ev.text)));
+  // One card — what happens, what is at stake, what to roll. The roll itself is the first choice
+  // below, so the feed no longer repeats "it asks something of you".
+  if (ev) playSay(journeyEventCard(ev), 'event', journeyEventPlain(ev));
   const pend = char.journey.pendingEventRoll;
-  if (pend && pend.skill) playSay(`<em>It asks something of you: ${_anWord(pend.skill)} <strong>roll</strong>.</em>`, 'aside');
-  else playSay('<em>Nothing to roll for this one — say what it looks like, and travel on.</em>', 'aside');
+  if (!(pend && pend.skill)) playSay('<em>Nothing to roll for this one — say what it looks like, and travel on.</em>', 'aside');
   renderPlay();
 }
 
@@ -4623,7 +4728,11 @@ async function playEventRoll() {
   await rollJourneyEvent();
   const line = (j.events || [])[(j.events || []).length - 1];
   if (line && (j.events || []).length > before) {
-    playSay(String(line.text).replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim());
+    const v = line.res;
+    if (v) {
+      const what = v.applied ? _sentence(_tidyApplied(v.applied)) : (!v.ok && v.noPenalty ? 'You simply miss the benefit.' : '');
+      playSay(`${v.ok ? 'You manage it.' : 'It goes against you.'} ${escapeHtml(what)} ${_pillText(v.skill, v.total, v.tn, v.ok)}`.replace(/\s+/g, ' ').trim());
+    } else playSay(String(line.text).replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim());
   }
   renderPlay();
 }
@@ -4832,9 +4941,7 @@ async function playPeril() {
   const origAlert = window.alert; window.alert = () => {};
   try { resolveJourneyEvent(true); } finally { window.alert = origAlert; }
   const ev = (j.events || [])[before];
-  if (ev) playSay(escapeHtml(_playPlainText(ev.text)));
-  const pend = j.pendingEventRoll;
-  if (pend && pend.skill) playSay(`<em>It asks something of you: ${_anWord(pend.skill)} <strong>roll</strong>.</em>`, 'aside');
+  if (ev) playSay(journeyEventCard(ev), 'event', journeyEventPlain(ev));
   renderPlay();
 }
 
@@ -5239,8 +5346,13 @@ function renderPlayAside() {
 
 /* "(Travel roll 6 vs 15 — failure.)" in the story becomes a small dice pill. */
 function _rollPills(html) {
-  return String(html).replace(/\((\w[\w ]*?) roll (\d+) vs (\d+) — (success|failure)\.\)/g,
-    (m, sk, a, b, o) => `<span class="roll-pill ${o === 'success' ? 'ok' : 'fail'}" title="${sk} roll ${a} against ${b}: ${o}"><svg class="ic"><use href="#i-dice"/></svg>${sk} ${a}<small>/${b}</small></span>`);
+  return String(html).replace(/\((\w[\w ]*?) roll (\d+|ᚱ) vs (\d+) — (success|failure)\.\)/g,
+    (m, sk, a, b, o) => rollPillHtml(sk, a, b, o === 'success'));
+}
+/** The dice pill every result line shares: label, total, /TN, coloured by how it went for YOU. */
+function rollPillHtml(label, total, tn, good, title) {
+  const t = (total === null || total === undefined) ? 'ᚱ' : total;
+  return `<span class="roll-pill ${good ? 'ok' : 'fail'}" title="${escapeHtml(title || `${label} roll ${t} against ${tn}: ${good ? 'success' : 'failure'}`)}"><svg class="ic"><use href="#i-dice"/></svg>${escapeHtml(String(label))} ${t}<small>/${tn}</small></span>`;
 }
 /* The journey as a road: a stone per stretch, the hero's marker, the next event flagged. */
 function _roadStrip(cur, total, nextEvent) {
@@ -5286,7 +5398,7 @@ function renderPlay() {
   const sit = char.retired ? _playRetiredSituation() : _playSituation();
   const choices = _playChoices();
   const feed = _playFeed.length
-    ? _playFeed.slice(-8).map(f => `<p class="${f.kind === 'aside' ? 'aside' : ''}">${_rollPills(f.text)}</p>`).join('')
+    ? _playFeed.slice(-8).map(f => f.kind === 'event' ? f.text : `<p class="${f.kind === 'aside' ? 'aside' : ''}">${_rollPills(f.text)}</p>`).join('')
     : '';
   const split = lbl => {
     const m = String(lbl).match(/^(\p{Extended_Pictographic}\uFE0F?|[▶↩✔✖🏁])\s*/u);

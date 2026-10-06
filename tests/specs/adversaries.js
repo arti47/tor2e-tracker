@@ -48,12 +48,13 @@ module.exports = {
       const id = 'tnfoe';
       enc().foes.push({ id, name: 'Test Orc', source: 'Test', endMax: 10, endCur: 10, might: 1, hateMax: 2, hateCur: 2, parry: 1, armour: 0, atkTN: 14, attacks: [{ name: 'Blade', dice: 2, dmg: 3, inj: 0, special: '' }], engaged: true, wounded: false, slain: false });
       await foeAttackHero(id, 0);
-      const txt = document.getElementById('encounter-card').innerText;
+      // The foe card shows a pill and a sentence; the TN arithmetic lives in the log line.
+      const txt = document.getElementById('encounter-card').innerText + ' ' + (_encResults[id] || '');
       char.encounter = JSON.parse(JSON.stringify(DEFAULT_CHARACTER.encounter)); char.stance = ''; saveCharacter();
       return txt;
     });
     checks.push({ ok: /your Parry 17\b/.test(tnLine) && !/vs TN 31/.test(tnLine), msg: 'foe attack TN = hero Parry+shield (17), not atkTN+parry' });
-    checks.push({ ok: /Forward \+1d/.test(tnLine), msg: 'hero Forward stance adds +1d to the foe’s attack (stance = ±success die)' });
+    checks.push({ ok: /Forward stance: \+1d/.test(tnLine), msg: 'hero Forward stance adds +1d to the foe’s attack (stance = ±success die)' });
 
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length})` });
     await context.close();

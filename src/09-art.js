@@ -242,7 +242,7 @@ function routeMap(cur, total, nextEvent, from, to, terrain, opts) {
       <text x="${x0}" y="${H - 4}" class="rm-place">${lab(from) || 'Setting out'}</text>
       <text x="${x1}" y="${H - 4}" class="rm-place" text-anchor="end">${lab(to) || 'Journey’s end'}</text>
     </svg>
-    <div class="route-count">${cur} of ${total} stretches${opts.days ? ` · day ${opts.days}` : ''}${seen.size ? ` · ${[...seen].filter(k => k.startsWith('camp')).length} camps` : ''}</div></div>`;
+    <div class="route-count">${cur} of ${total} stretches${opts.days ? ` · day ${opts.days}` : ''}${(() => { const n = [...seen].filter(k => k.startsWith('camp')).length; return n ? ` · ${n} camp${n === 1 ? '' : 's'}` : ''; })()}</div></div>`;
 }
 
 /* ---------- Culture silhouettes ----------

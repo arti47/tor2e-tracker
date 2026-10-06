@@ -1131,7 +1131,8 @@ function _tellingResult(q, chance) {
   else { answer = r.value >= threshold ? 'YES' : 'NO'; }
   const chanceLabel = chance.charAt(0).toUpperCase() + chance.slice(1);
   const jtext = `Q: ${q || '(unstated)'} · Telling Table (${chanceLabel}) → ${answer}${twist}`;
-  logOracleRoll(`Telling (${chance}): "${(q || '').substring(0,30)}${(q || '').length>30?'…':''}"`, `${answer}${twist}`, jtext);
+  // No question typed: no empty quotes in the history.
+  logOracleRoll(`Telling (${chance})${q ? `: "${q.substring(0,30)}${q.length>30?'…':''}"` : ''}`, `${answer}${twist}`, jtext);
   return { answer, twist, r, threshold };
 }
 function rollTellingTable() {
@@ -1463,11 +1464,9 @@ function rollChamber() {
   const c = genChamber();
   const el = document.getElementById('chamber-result');
   el.style.display = 'block';
-  el.innerHTML = `<strong style="color:var(--gold)">${c.appr} ${c.type}</strong><br>`
-    + `<small style="color:var(--text-muted)">Type:</small> ${c.type}<br>`
-    + `<small style="color:var(--text-muted)">Appearance:</small> ${c.appr}<br>`
-    + `<small style="color:var(--text-muted)">Condition:</small> ${c.cond}<br>`
-    + `<small style="color:var(--text-muted)">Challenge:</small> ${c.chal}`;
+  // Name once, then one sentence — it used to print the name and then each of its parts again.
+  el.innerHTML = `<strong style="color:var(--gold)">${escapeHtml(c.appr)} ${escapeHtml(c.type)}</strong><br>`
+    + `<span>${escapeHtml(typeof chamberLine === 'function' ? chamberLine(c) : `${c.cond} · ${c.chal}`)}</span>`;
   logOracleRoll('Chamber', `${c.appr} ${c.type} — ${c.cond} — ${c.chal}`);
 }
 function rollOrcBand() {

@@ -1742,13 +1742,14 @@ module.exports = {
       window._doInlineRoll = realInlineE;
       const evText = _playFeed.map(f => f.text).join(' ');
       const raw = (char.journey.events || [])[0] || { text: '' };
-      // Every <br> boundary in the event must be whitespace in the narration — a bare tag-strip
-      // welded the clauses together — and no HTML entity may survive into the feed.
-      const segs = String(raw.text).split(/<br\s*\/?>/i)
-        .map(t => t.replace(/<[^>]+>/g, '').replace(/&[a-z#0-9]+;/gi, '').trim())
-        .filter(t => t.length > 8);
-      out.eventProse = evText.indexOf('&#') === -1 && segs.length > 1
-        && segs.every(t => new RegExp('\\s' + t.slice(0, 12).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).test(' ' + evText));
+      // The event reaches the feed as ONE card with its parts apart (name / what happens / stakes /
+      // what to roll) — not a run-on of rule text, dice and sub-table numbers — and no entity survives.
+      renderPlay();
+      const card = document.querySelector('#play-body .jev');
+      out.eventProse = !!(raw.ev && card) && evText.indexOf('&#') === -1
+        && card.querySelector('.jev-name').textContent.trim().endsWith(raw.ev.name)
+        && !/Sub-event roll|Feat \d|Land\)/.test(card.textContent)
+        && (!raw.ev.detail || !!card.querySelector('.jev-what'));
 
       // 2 — a live journey is visible from the haven and never silently overwritten.
       hero();
@@ -1930,7 +1931,7 @@ module.exports = {
     });
     checks.push({ ok: pt4.eventsOutbound && pt4.eventsHomeward && pt4.homeEndsJourney,
                   msg: 'BOTH legs of a journey stop for a Journey Event, and reaching home ends the journey' });
-    checks.push({ ok: pt4.eventProse, msg: 'a journey event reaches the Play feed as prose, not a run-on' });
+    checks.push({ ok: pt4.eventProse, msg: 'a journey event reaches the Play feed as one tidy card (name, what happens, stakes, roll), not a run-on' });
     checks.push({ ok: pt4.havenSeesJourney && pt4.setOutAsksFirst,
                   msg: 'Play sees a journey started elsewhere and never overwrites one silently' });
     checks.push({ ok: pt4.rewardSurvivesCancel && pt4.rewardClaimVisible,

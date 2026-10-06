@@ -1041,6 +1041,7 @@ function rollWoundSeverity() {
 
 /* ---------- COMBAT-TAB ENCOUNTER TRACKER ---------- */
 let _encResults = {};  // transient inline roll results, keyed by foe id (not persisted)
+let _encShows = {};    // the same results as the foe card shows them (a pill and a sentence)
 // P5: in a cloud campaign the encounter is SHARED (Sync mirror of campaigns/{cid}/encounter);
 // otherwise it's this hero's local char.encounter, exactly as before.
 function encShared() { return typeof Sync !== 'undefined' && Sync.sharedEncActive && Sync.sharedEncActive(); }
@@ -1101,7 +1102,7 @@ async function endEncounter() {
   if (encShared()) { const m = Sync.sharedEnc(); m.active = false; m.round = 1; m.foes = []; }
   else char.encounter = JSON.parse(JSON.stringify(DEFAULT_CHARACTER.encounter));
   char.engagedFoes = 0;
-  _encResults = {};
+  _encResults = {}; _encShows = {};
   saveCharacter(); render(); renderEncounter();
   if (typeof renderChronicle === 'function') renderChronicle();
 }
@@ -1159,7 +1160,7 @@ function addCustomFoe() {
   if (window._playFightPending) { window._playFightPending = false; if (typeof _goTab === 'function') _goTab('combat'); }
   _encRoundFellPrompt(enc().round || 1);
 }
-function removeFoe(id) { const e = enc(); e.foes = e.foes.filter(f => f.id !== id); delete _encResults[id]; encDeriveEngaged(); saveCharacter(); renderEncounter(); }
+function removeFoe(id) { const e = enc(); e.foes = e.foes.filter(f => f.id !== id); delete _encResults[id]; delete _encShows[id]; encDeriveEngaged(); saveCharacter(); renderEncounter(); }
 function adjFoe(id, field, delta) {
   const f = getFoe(id); if (!f) return;
   const max = field === 'endCur' ? f.endMax : (field === 'hateCur' ? f.hateMax : 999);
@@ -1253,9 +1254,10 @@ function encLogRoll(plain) {
 /** Per-foe Pierce offer from the last attack: { feat, icons, bonus, prof, weaponIdx }. */
 let _encPierceState = {};
 
-function _encStash(foeId, lineHtml, note) {
+function _encStash(foeId, lineHtml, note, show) {
   const noteStr = note && note.length ? ` <span style="color:var(--text-faint)">[${note.join(' · ')}]</span>` : '';
-  _encResults[foeId] = lineHtml + noteStr;
+  _encResults[foeId] = lineHtml + noteStr;          // the log line (history, Chronicle, table feed)
+  _encShows[foeId] = show || null;                  // what the foe card shows: a pill and a sentence
 }
 
 // ----- foe Protection roll (Feat + foe Armour dice vs weapon Injury) -----
@@ -1312,13 +1314,18 @@ async function heroAttackFoe(foeId) {
   if (hopeSpent) char.hopeCur = Math.max(0, (parseInt(char.hopeCur) || 0) - 1);
   const score = roll.featSpecial === 'rune' ? '★' : (roll.featSpecial === 'eye' ? '✗' : roll.total);
   let line = `<strong>You</strong> · ${escapeHtml(w.name)} at ${escapeHtml(f.name)} · ${score} vs TN ${tn} (${char.strTN} Str + Parry ${f.parry}) → ${roll.outcome}${roll.icons ? ` (${roll.icons}✦)` : ''}`;
+  let said;
   if (hit) {
     const dmg = parseInt(w.dmg) || 0;
     f.endCur = Math.max(0, (parseInt(f.endCur) || 0) - dmg);
     line += ` · −${dmg} End → ${f.endCur}/${f.endMax}`;
-    if (f.endCur === 0) { f.slain = true; f.engaged = false; line += ` · ⚔ <strong>${escapeHtml(f.name)} slain!</strong>`; }
-  } else { line += ` · miss`; }
-  if (piercing && !f.slain) line += _encPiercingBlow(f, w);
+    said = `Hit — the ${escapeHtml(f.name)} loses ${dmg} Endurance (${f.endCur} left).`;
+    if (f.endCur === 0) { f.slain = true; f.engaged = false; line += ` · ⚔ <strong>${escapeHtml(f.name)} slain!</strong>`; said = `Hit — <strong>the ${escapeHtml(f.name)} falls.</strong>`; }
+  } else { line += ` · miss`; said = 'Miss.'; }
+  if (piercing && !f.slain) { const pb = _encPiercingBlow(f, w); line += pb; said += ' ' + _encPierceSaid(pb, f); }
+  const show = `${rollPillHtml(w.name, roll.featSpecial === 'rune' ? null : (roll.featSpecial === 'eye' ? 0 : roll.total), tn, hit,
+    `${w.name}: ${score} against ${tn} (your Strength TN ${char.strTN} + its Parry ${f.parry})`)} ${said}` +
+    (note.length ? `<small class="foe-note">${escapeHtml(note.join(' · '))}</small>` : '');
   // Pierce (Core Rules p.99): spend a remaining ✦ to push the Feat die toward the Piercing
   // window. It was injected only by the Dice tab's rollDice(), so the surface the app tells you
   // to fight on could not use a combat option the app implements.
@@ -1329,11 +1336,18 @@ async function heroAttackFoe(foeId) {
     _encPierceState[foeId] = { feat: roll.featValue, icons: roll.icons, bonus: pierceBonus, prof, weaponIdx: e.weaponIdx || 0 };
   }
   a.hope = false;
-  _encStash(foeId, line, note);
+  _encStash(foeId, line, note, show);
   encDeriveEngaged(); saveCharacter(); encLogRoll(line);
   render(); renderEncounter();
 }
 
+/** The Piercing-Blow log tail as a sentence for the foe card. */
+function _encPierceSaid(pb, f) {
+  if (!pb) return '';
+  if (/SLAIN/.test(pb)) return `Piercing Blow — already wounded, <strong>the ${escapeHtml(f.name)} falls.</strong>`;
+  if (/WOUNDED/.test(pb)) return `Piercing Blow — <strong>it is Wounded.</strong>`;
+  return 'Piercing Blow — its armour holds.';
+}
 /** The Piercing-Blow chain against a foe: its Protection vs your weapon's Injury. */
 function _encPiercingBlow(f, w) {
   if (!w.inj || w.inj === '—') return '';
@@ -1360,13 +1374,16 @@ function encPierce(foeId) {
   st.feat = Math.min(10, st.feat + st.bonus);
   let line = (_encResults[foeId] || '').replace(/ <span style="color:var\(--text-faint\)">\[.*?\]<\/span>$/, '');
   line += ` · 🗡️ Pierce (${st.prof} +${st.bonus}): Feat ${before}→${st.feat}`;
+  let said = `Pierce: the Feat die goes ${before} → ${st.feat}.`;
   if (st.feat >= 10) {
-    line += _encPiercingBlow(f, w);
+    const pb = _encPiercingBlow(f, w);
+    line += pb; said += ' ' + _encPierceSaid(pb, f);
     delete _encPierceState[foeId];
   } else if (st.icons <= 0) {
     delete _encPierceState[foeId];
   }
   _encResults[foeId] = line;
+  if (_encShows[foeId]) _encShows[foeId] += `<br>${said}`;
   encDeriveEngaged(); saveCharacter(); encLogRoll(line);
   render(); renderEncounter();
 }
@@ -1398,24 +1415,29 @@ async function foeAttackHero(foeId, attackIdx) {
   const piercing = hit && (roll.featSpecial === 'rune' || roll.featValue === 10);
   const score = roll.featSpecial === 'rune' ? '★' : (roll.featSpecial === 'eye' ? '✗' : roll.total);
   let line = `<strong>${escapeHtml(f.name)}</strong> · ${escapeHtml(atk.name)} · ${score} vs your Parry ${tn}${stanceNote} → `;
+  let said;
   if (hit) {
     const dmg = parseInt(atk.dmg) || 0;
     char.endCur = Math.max(0, (parseInt(char.endCur) || 0) - dmg);
     line += `HIT · −${dmg} End → ${char.endCur}/${char.endMax}`;
-    if (char.endCur === 0) line += ' · ⚠ you are Dying';
+    said = `It hits — you lose ${dmg} Endurance (${char.endCur} left).`;
+    if (char.endCur === 0) { line += ' · ⚠ you are Dying'; said += ' <strong>You are Dying.</strong>'; }
     saveCharacter();
-  } else { line += `miss`; }
+  } else { line += `miss`; said = 'It misses you.'; }
   if (piercing && atk.inj && atk.inj !== '—' && parseInt(atk.inj) > 0) {
     const injTN = parseInt(atk.inj) || 14;
     if (await confirmStyled(`🗡️ <strong>Piercing Blow!</strong> ${escapeHtml(f.name)}'s ${escapeHtml(atk.name)} finds a gap.<br><br>Roll your Protection vs Injury <strong>${injTN}</strong>?`, 'Piercing Blow', {yes:'Roll Protection', no:'Take the blow'})) {
       const protDice = (parseInt(char.armourProt) || 0) + (parseInt(char.helmProt) || 0);
       const P = _protectionRoll(injTN, protDice);
       const pScore = P.isAutoSuccess ? '★' : (P.isAutoFail ? '✗' : P.total);
-      if (P.outcome.startsWith('SUCCESS')) line += ` · Piercing Blow — Protection ${pScore} vs ${injTN} → resisted`;
-      else { line += ` · Piercing Blow — Protection ${pScore} vs ${injTN} → WOUNDED`; const wr = await _applyWoundFromFail(); line += ` (${wr.label})`; }
-    } else line += ` · Piercing Blow (resolve manually)`;
+      if (P.outcome.startsWith('SUCCESS')) { line += ` · Piercing Blow — Protection ${pScore} vs ${injTN} → resisted`; said += ' Piercing Blow — your armour holds.'; }
+      else { line += ` · Piercing Blow — Protection ${pScore} vs ${injTN} → WOUNDED`; const wr = await _applyWoundFromFail(); line += ` (${wr.label})`; said += ` Piercing Blow — <strong>you are Wounded</strong> (${escapeHtml(wr.label)}).`; }
+    } else { line += ` · Piercing Blow (resolve manually)`; said += ' Piercing Blow — resolve it by hand.'; }
   }
-  _encStash(foeId, line, []);
+  const show = `${rollPillHtml(atk.name, roll.featSpecial === 'rune' ? null : (roll.featSpecial === 'eye' ? 0 : roll.total), tn, !hit,
+    `${f.name}'s ${atk.name}: ${score} against your Parry ${tn}`)} ${said}` +
+    (stanceNote ? `<small class="foe-note">${escapeHtml(stanceNote.replace(/^ · /, '').replace(/🏹 /, '').replace(/you Forward \+1d/, 'your Forward stance: +1d to its attack').replace(/you Defensive −1d/, 'your Defensive stance: −1d to its attack'))}</small>` : '');
+  _encStash(foeId, line, [], show);
   saveCharacter(); encLogRoll(line);
   render(); renderEncounter();
 }
@@ -1510,7 +1532,7 @@ function _renderFoeCard(f, canGm = true, lead = true) {
       ${(f.attacks || []).length ? `<div class="foe-them"><span>When ${escapeHtml(f.name)} attacks you:</span>
         ${(f.attacks || []).map((atk, i) => `<button onclick="foeAttackHero('${f.id}',${i})" class="btn btn-secondary">${escapeHtml(atk.name)} · ${atk.dice}d</button>`).join('')}</div>` : ''}`;
   }
-  if (_encResults[f.id]) h += `<div style="font-size:var(--fs-xs);margin-top:6px;padding:6px;background:var(--bg-deep);border-radius:var(--r-sm);line-height:1.45">${_encResults[f.id]}</div>`;
+  if (_encResults[f.id]) h += `<div class="foe-said">${_encShows[f.id] || _encResults[f.id]}</div>`;
   const ps = _encPierceState[f.id];
   if (ps && !f.slain) {
     const next = Math.min(10, ps.feat + ps.bonus);
