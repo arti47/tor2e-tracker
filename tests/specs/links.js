@@ -220,6 +220,100 @@ module.exports = {
     checks.push({ ok: !misc.err && !misc.quotes && !misc.chamberTyped,
       msg: `no empty "" in Oracle history for an unasked question; a chamber reads as one sentence (${JSON.stringify(misc)})` });
 
+    // ---- 2026-10-06 report: healing, noteworthy, arrival, combat turns, scroll, first tap ----
+    const heal = await safe(`
+      openNavGroup('play');
+      const keep = _doInlineRoll;
+      Object.assign(char, { wounded: true, injury: 'Severe Injury — 2 days', injuryDays: 2, injuryKind: 'severe', firstAidUsed: false });
+      window._doInlineRoll = () => ({ total: 20, outcome: 'SUCCESS', icons: 1, featSpecial: null, featValue: 10 });
+      try { await playFirstAid(); } finally { window._doInlineRoll = keep; }
+      const afterAid = char.wounded;
+      Object.assign(char, { wounded: true, injuryDays: 1, injuryKind: 'severe', firstAidUsed: false });
+      advanceDays(1);
+      return { afterAid, afterDays: char.wounded };`);
+    checks.push({ ok: !heal.err && heal.afterAid === false && heal.afterDays === false,
+      msg: `a successful First Aid (or the days running out) mends a Severe Injury and clears Wounded (${JSON.stringify(heal)})` });
+
+    const nw = await safe(`
+      openNavGroup('play');
+      char.striderMode = true; char.moriaMode = false;
+      char.saga = Object.assign({}, char.saga, { started: true, step: 'journey', premise: 'x' });
+      char.journey = Object.assign(JSON.parse(JSON.stringify(DEFAULT_CHARACTER.journey)), { active: true, origin: 'Bree', destination: 'Rivendell', totalHexes: 9, currentHex: 3, nextEventHex: 3, region: 'wild', season: 'spring', events: [] });
+      const all = Object.values(SOLO_EVENT_DETAILS).flat(); const nwRec = all.find(d => d.outcome === 'Noteworthy Encounter');
+      const saved = {}; Object.keys(SOLO_EVENT_DETAILS).forEach(k => { saved[k] = SOLO_EVENT_DETAILS[k]; SOLO_EVENT_DETAILS[k] = Array(6).fill(nwRec); });
+      try { await playEvent(); } finally { Object.assign(SOLO_EVENT_DETAILS, saved); }
+      const j = char.journey;
+      const labels = _playChoices().map(c => c.label);
+      const card = [...document.querySelectorAll('#play-body .play-feed .jev')].pop();
+      const out = { scene: !!j.pendingScene, roll: !!j.pendingEventRoll, labels, fails: !!(card && /If it fails/.test(card.textContent)) };
+      meetScene('pass'); out.cleared = !char.journey.pendingScene;
+      return out;`);
+    checks.push({ ok: !nw.err && nw.scene && !nw.roll && !nw.fails && nw.labels.some(l => /Fight it out/.test(l)) && nw.labels.some(l => /Talk your way/.test(l)) && nw.cleared,
+      msg: `a Noteworthy Encounter offers how to meet it (fight / talk / overcome) instead of an "If it fails" with nothing to roll (${JSON.stringify(nw)})` });
+
+    const arr = await safe(`
+      char.journey.currentHex = char.journey.totalHexes; char.journey.nextEventHex = null; char.journey.pendingEventRoll = null;
+      char.saga.step = 'journey'; saveCharacter();
+      const labels = _playChoices().map(c => c.label);
+      char.saga.step = 'home'; const home = _playChoices().map(c => c.label);
+      char.journey.active = false; char.saga.step = 'haven'; saveCharacter(); render();
+      return { first: labels[0], onward: labels.some(l => /Travel onward/.test(l)), homeOnward: home.some(l => /Travel onward/.test(l)) };`);
+    checks.push({ ok: !arr.err && /arrived/.test(arr.first) && !arr.onward && !arr.homeOnward,
+      msg: `at the end of the road Play leads with arriving, not "Travel onward" (${JSON.stringify(arr)})` });
+
+    const turn = await safe(`
+      openNavGroup('adventure'); document.querySelector('.tab[data-tab="combat"]').click();
+      char.encounter = JSON.parse(JSON.stringify(DEFAULT_CHARACTER.encounter)); char.stance = 'open';
+      addFoeFromBestiary(0);
+      const keep = _doInlineRoll;
+      window._doInlineRoll = () => ({ total: 9, outcome: 'FAIL', icons: 0, featSpecial: 'eye', featValue: 0, featLabel: '👁' });
+      const out = {};
+      try {
+        const e = enc();
+        out.r1 = e.round; out.t0 = e.turn || 'hero';
+        out.heroOn = !!document.querySelector('.hero-fight-card.turn-on button[onclick^="heroAttackFoe"]');
+        const fid = e.foes[0].id;
+        await heroAttackFoe(fid);
+        out.t1 = enc().turn;
+        out.pill = (document.querySelector('.foe-card .foe-said .roll-pill') || {}).textContent || '';
+        out.heroOff = !!document.querySelector('.hero-fight-card.turn-off') && !document.querySelector('.hero-fight-card button[onclick^="heroAttackFoe"]');
+        out.foeOn = !!document.querySelector('.foe-card.turn-on button[onclick^="foeAttackHero"]');
+        out.head = !!document.querySelector('.foe-card .foe-said .fs-head b');
+        await foeAttackHero(fid, 0);
+        out.r2 = enc().round; out.t2 = enc().turn;
+      } finally { window._doInlineRoll = keep; }
+      document.querySelectorAll('.menu-overlay.show').forEach(o => o.classList.remove('show'));
+      char.encounter = JSON.parse(JSON.stringify(DEFAULT_CHARACTER.encounter)); saveCharacter(); render();
+      return out;`);
+    checks.push({ ok: !turn.err && turn.t0 === 'hero' && turn.heroOn && turn.t1 === 'foes' && turn.heroOff && turn.foeOn && turn.r2 === turn.r1 + 1 && turn.t2 === 'hero',
+      msg: `a fight runs in turns: your card is live on your turn, the foe's on its turn, and the round advances by itself (${JSON.stringify(turn)})` });
+    checks.push({ ok: !turn.err && /9/.test(turn.pill) && !/\b0\b/.test(turn.pill) && turn.head,
+      msg: `an Eye on your attack shows the real total, not 0, under a bold one-word result (${JSON.stringify(turn.pill)})` });
+
+    const scr = await safe(`
+      openNavGroup('play'); playClearFeed();
+      char.saga.step = 'haven';
+      for (let i = 0; i < 14; i++) playSay('Line ' + i + ' of the story, long enough to take some room on a phone screen.');
+      renderPlay(); await new Promise(r => setTimeout(r, 60));
+      window.scrollTo(0, 300); await new Promise(r => setTimeout(r, 60));
+      const y0 = window.scrollY;
+      playSay('The newest line.'); renderPlay(); await new Promise(r => setTimeout(r, 60));
+      const fd = document.querySelector('#play-body .play-feed');
+      const last = fd && fd.lastElementChild; const rc = last && last.getBoundingClientRect(); const fr = fd.getBoundingClientRect();
+      const visible = !!rc && rc.bottom <= Math.min(window.innerHeight, fr.bottom) + 2 && rc.top >= Math.max(0, fr.top) - 2;
+      return { y0, y1: window.scrollY, visible, text: last && last.textContent };`);
+    checks.push({ ok: !scr.err && scr.y0 > 0 && scr.y1 > 0 && scr.visible && /newest/.test(scr.text),
+      msg: `a new line on Play keeps your place on the page and is scrolled into view (${JSON.stringify(scr)})` });
+
+    const tap = await safe(`
+      openNavGroup('play'); document.body.classList.add('hdr-slim');
+      document.querySelector('.bn-item[data-group="roll"]').click();
+      await new Promise(r => setTimeout(r, 450));
+      const g = document.querySelector('.panel.active').id; openNavGroup('play');
+      return { panel: g, slim: document.body.classList.contains('hdr-slim') };`);
+    checks.push({ ok: !tap.err && tap.panel !== 'panel-play' && !tap.slim,
+      msg: `one tap on a nav button works while the header is folded (it used to only unfold it) (${JSON.stringify(tap)})` });
+
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length}${errors.length ? ': ' + errors[0] : ''})` });
     await context.close();
     return { checks };

@@ -153,6 +153,30 @@ function applyPierce() {
   }
 }
 
+/** A Severe Injury mends when its day-count runs out — the Wound is gone, not just "minor". */
+function mendWound() {
+  char.wounded = false;
+  char.injury = '';
+  char.injuryDays = 0;
+  char.injuryKind = '';
+  char.injuryRested = false;
+  char.firstAidUsed = false;
+  if (typeof logTimeline === 'function') logTimeline('status', 'The wound mended');
+}
+/** One First Aid rule for the Dice tab and ▶ Play: a success takes 1 + ✦ days off a Severe
+    Injury; at 0 days the Wound is mended. Returns {before, after, mended}. */
+function applyFirstAidResult(ok, icons) {
+  char.firstAidUsed = true;   // success or fail, the attempt is spent
+  const before = parseInt(char.injuryDays) || 0;
+  if (!ok) { saveCharacter(); return { before, after: before, mended: false }; }
+  const after = Math.max(0, before - Math.max(1, 1 + (icons || 0)));
+  if (after <= 0) { mendWound(); saveCharacter(); return { before, after: 0, mended: true }; }
+  char.injuryDays = after;
+  char.injury = `Severe Injury — ${after} day${after > 1 ? 's' : ''} to mend (First Aid: ${before}→${after})`;
+  saveCharacter();
+  return { before, after, mended: false };
+}
+
 function rollFirstAid() {
   if (!char.wounded) return requireStep('First Aid treats a <strong>Wound</strong>, and your hero doesn\'t have one.<br><br>Wounds are set by the <strong>Wounded</strong> toggle in the Conditions card (a failed Protection roll sets it for you).', 'character', null, '⚠️ Not Wounded');
   const days = parseInt(char.injuryDays) || 0;
@@ -1064,9 +1088,44 @@ function _weaponProf(w) { if (w && w.prof) return w.prof; const wp = WEAPONS.fin
 async function nextRound() {
   const e = enc();
   e.round = (parseInt(e.round) || 1) + 1;
+  e.turn = 'hero'; (e.foes || []).forEach(f => { f.acted = false; });
   saveCharacter(); renderEncounter();
   await _encRoundFellPrompt(e.round);
 }
+
+/* ---------- Turns (solo / local encounter) ----------
+   You act first; then every foe still standing attacks once; then the next round begins on its
+   own. The round counter used to sit at "Round 1" for a whole fight unless the player found the
+   small "Next round" button. A shared campaign encounter keeps its Loremaster-driven flow. */
+function encTurnsOn() { return !encShared(); }
+function encTurn() { const e = enc(); return encTurnsOn() ? (e.turn || 'hero') : null; }
+function _encFoesToAct() { return (enc().foes || []).filter(f => !f.slain && f.engaged !== false && !f.acted); }
+/** After you act: the foes' turn, if any of them are still standing. */
+function _encHeroDone() {
+  if (!encTurnsOn()) return;
+  const e = enc();
+  (e.foes || []).forEach(f => { f.acted = false; });
+  e.turn = (e.foes || []).some(f => !f.slain && f.engaged !== false) ? 'foes' : 'hero';
+}
+/** After a foe acts: when the last one has, a new round starts with your turn. */
+async function _encFoeDone(foeId) {
+  if (!encTurnsOn()) return;
+  const f = getFoe(foeId); if (f) f.acted = true;
+  if (_encFoesToAct().length) return;
+  await _encNewRound();
+}
+async function _encNewRound() {
+  const e = enc();
+  e.round = (parseInt(e.round) || 1) + 1;
+  e.turn = 'hero'; (e.foes || []).forEach(f => { f.acted = false; });
+  saveCharacter(); render(); renderEncounter();
+  if (typeof showToast === 'function') showToast(`Round ${e.round} — your turn`);
+  await _encRoundFellPrompt(e.round);
+}
+/** "I do something else" — a turn spent on anything but an attack (a combat task, a rally…). */
+function encHeroPass() { _encHeroDone(); saveCharacter(); renderEncounter(); }
+/** The foes' turn can be cut short — they hold back, or the fight moved on. */
+async function encFoesHold() { await _encNewRound(); }
 
 /** Fell abilities are free text and cannot be automated, but they were not even surfaced: a foe
     whose ability reads "Start of round 1: all heroes gain 3 Shadow" simply never came up in an app
@@ -1319,13 +1378,13 @@ async function heroAttackFoe(foeId) {
     const dmg = parseInt(w.dmg) || 0;
     f.endCur = Math.max(0, (parseInt(f.endCur) || 0) - dmg);
     line += ` · −${dmg} End → ${f.endCur}/${f.endMax}`;
-    said = `Hit — the ${escapeHtml(f.name)} loses ${dmg} Endurance (${f.endCur} left).`;
-    if (f.endCur === 0) { f.slain = true; f.engaged = false; line += ` · ⚔ <strong>${escapeHtml(f.name)} slain!</strong>`; said = `Hit — <strong>the ${escapeHtml(f.name)} falls.</strong>`; }
-  } else { line += ` · miss`; said = 'Miss.'; }
-  if (piercing && !f.slain) { const pb = _encPiercingBlow(f, w); line += pb; said += ' ' + _encPierceSaid(pb, f); }
-  const show = `${rollPillHtml(w.name, roll.featSpecial === 'rune' ? null : (roll.featSpecial === 'eye' ? 0 : roll.total), tn, hit,
-    `${w.name}: ${score} against ${tn} (your Strength TN ${char.strTN} + its Parry ${f.parry})`)} ${said}` +
-    (note.length ? `<small class="foe-note">${escapeHtml(note.join(' · '))}</small>` : '');
+    said = [`The ${escapeHtml(f.name)} loses ${dmg} Endurance — ${f.endCur} left.`];
+    if (f.endCur === 0) { f.slain = true; f.engaged = false; line += ` · ⚔ <strong>${escapeHtml(f.name)} slain!</strong>`; said = [`The ${escapeHtml(f.name)} falls.`]; }
+  } else { line += ` · miss`; said = []; }
+  if (piercing && !f.slain) { const pb = _encPiercingBlow(f, w); line += pb; if (pb) said.push(_encPierceSaid(pb, f)); }
+  const show = _fightSaid(rollPillHtml(w.name, roll.total, tn, hit,
+    `${w.name}: ${score} against ${tn} (your Strength TN ${char.strTN} + its Parry ${f.parry})`),
+    hit ? (f.slain ? 'Slain!' : 'Hit') : 'Miss', said, note.join(' · '), hit);
   // Pierce (Core Rules p.99): spend a remaining ✦ to push the Feat die toward the Piercing
   // window. It was injected only by the Dice tab's rollDice(), so the surface the app tells you
   // to fight on could not use a combat option the app implements.
@@ -1337,8 +1396,16 @@ async function heroAttackFoe(foeId) {
   }
   a.hope = false;
   _encStash(foeId, line, note, show);
+  _encHeroDone();
   encDeriveEngaged(); saveCharacter(); encLogRoll(line);
   render(); renderEncounter();
+}
+
+/** A fight result, laid out: the dice pill and one bold word, then a sentence per line. */
+function _fightSaid(pill, head, lines, note, good) {
+  return `<div class="fs-head">${pill}<b class="${good ? 'ok' : 'bad'}">${head}</b></div>` +
+    (lines || []).filter(Boolean).map(l => `<div class="fs-line">${l}</div>`).join('') +
+    (note ? `<small class="foe-note">${escapeHtml(note)}</small>` : '');
 }
 
 /** The Piercing-Blow log tail as a sentence for the foe card. */
@@ -1383,7 +1450,7 @@ function encPierce(foeId) {
     delete _encPierceState[foeId];
   }
   _encResults[foeId] = line;
-  if (_encShows[foeId]) _encShows[foeId] += `<br>${said}`;
+  if (_encShows[foeId]) _encShows[foeId] += `<div class="fs-line">${said}</div>`;
   encDeriveEngaged(); saveCharacter(); encLogRoll(line);
   render(); renderEncounter();
 }
@@ -1420,29 +1487,31 @@ async function foeAttackHero(foeId, attackIdx) {
     const dmg = parseInt(atk.dmg) || 0;
     char.endCur = Math.max(0, (parseInt(char.endCur) || 0) - dmg);
     line += `HIT · −${dmg} End → ${char.endCur}/${char.endMax}`;
-    said = `It hits — you lose ${dmg} Endurance (${char.endCur} left).`;
-    if (char.endCur === 0) { line += ' · ⚠ you are Dying'; said += ' <strong>You are Dying.</strong>'; }
+    said = [`You lose ${dmg} Endurance — ${char.endCur} left.`];
+    if (char.endCur === 0) { line += ' · ⚠ you are Dying'; said.push('<strong>You are Dying.</strong>'); }
     saveCharacter();
-  } else { line += `miss`; said = 'It misses you.'; }
+  } else { line += `miss`; said = []; }
   if (piercing && atk.inj && atk.inj !== '—' && parseInt(atk.inj) > 0) {
     const injTN = parseInt(atk.inj) || 14;
     if (await confirmStyled(`🗡️ <strong>Piercing Blow!</strong> ${escapeHtml(f.name)}'s ${escapeHtml(atk.name)} finds a gap.<br><br>Roll your Protection vs Injury <strong>${injTN}</strong>?`, 'Piercing Blow', {yes:'Roll Protection', no:'Take the blow'})) {
       const protDice = (parseInt(char.armourProt) || 0) + (parseInt(char.helmProt) || 0);
       const P = _protectionRoll(injTN, protDice);
       const pScore = P.isAutoSuccess ? '★' : (P.isAutoFail ? '✗' : P.total);
-      if (P.outcome.startsWith('SUCCESS')) { line += ` · Piercing Blow — Protection ${pScore} vs ${injTN} → resisted`; said += ' Piercing Blow — your armour holds.'; }
-      else { line += ` · Piercing Blow — Protection ${pScore} vs ${injTN} → WOUNDED`; const wr = await _applyWoundFromFail(); line += ` (${wr.label})`; said += ` Piercing Blow — <strong>you are Wounded</strong> (${escapeHtml(wr.label)}).`; }
-    } else { line += ` · Piercing Blow (resolve manually)`; said += ' Piercing Blow — resolve it by hand.'; }
+      if (P.outcome.startsWith('SUCCESS')) { line += ` · Piercing Blow — Protection ${pScore} vs ${injTN} → resisted`; said.push('Piercing Blow — your armour holds.'); }
+      else { line += ` · Piercing Blow — Protection ${pScore} vs ${injTN} → WOUNDED`; const wr = await _applyWoundFromFail(); line += ` (${wr.label})`; said.push(`Piercing Blow — <strong>you are Wounded</strong> (${escapeHtml(wr.label)}).`); }
+    } else { line += ` · Piercing Blow (resolve manually)`; said.push('Piercing Blow — resolve it by hand.'); }
   }
-  const show = `${rollPillHtml(atk.name, roll.featSpecial === 'rune' ? null : (roll.featSpecial === 'eye' ? 0 : roll.total), tn, !hit,
-    `${f.name}'s ${atk.name}: ${score} against your Parry ${tn}`)} ${said}` +
-    (stanceNote ? `<small class="foe-note">${escapeHtml(stanceNote.replace(/^ · /, '').replace(/🏹 /, '').replace(/you Forward \+1d/, 'your Forward stance: +1d to its attack').replace(/you Defensive −1d/, 'your Defensive stance: −1d to its attack'))}</small>` : '');
+  const show = _fightSaid(rollPillHtml(atk.name, roll.total, tn, !hit,
+    `${f.name}'s ${atk.name}: ${score} against your Parry ${tn}`),
+    hit ? 'It hits you' : 'It misses you', said,
+    stanceNote ? stanceNote.replace(/^ · /, '').replace(/🏹 /, '').replace(/you Forward \+1d/, 'Forward stance: +1d to its attack').replace(/you Defensive −1d/, 'Defensive stance: −1d to its attack') : '', !hit);
   _encStash(foeId, line, [], show);
   saveCharacter(); encLogRoll(line);
   render(); renderEncounter();
+  await _encFoeDone(foeId);
 }
 async function allFoesAttack() {
-  const foes = encEngagedFoes();
+  const foes = encTurnsOn() ? _encFoesToAct() : encEngagedFoes();
   if (!foes.length) { alert('No engaged foes.'); return; }
   for (const f of foes) { await foeAttackHero(f.id, 0); }
 }
@@ -1470,19 +1539,17 @@ function renderEncounter() {
   const wpns = _equippedWeapons();
   const wIdx = Math.min(e.weaponIdx || 0, Math.max(0, wpns.length - 1));
   const a = e.adv;
-  let html = sharedBanner + `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:8px">
-      <span class="round-banner"><svg viewBox="0 0 120 30" aria-hidden="true"><path d="M8 4h104l-8 11 8 11H8l8-11z"/></svg><strong>Round ${e.round}</strong></span>
-      ${canGm ? `<button onclick="nextRound()" class="add-row-btn" style="font-size:var(--fs-xs);padding:3px 8px;background:var(--btn-secondary-bg);color:white">Next round ▸</button>` : ''}
-    </div>
-    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:var(--fs-xs);margin-bottom:6px">
+  const turnsOn = encTurnsOn(), turn = encTurn();
+  const weaponRow = `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:var(--fs-xs);margin-bottom:6px">
       <span>Attack with:</span>
       <select id="enc-weapon-pick" onchange="setEncWeapon(this.value)" style="flex:1;min-width:130px;padding:4px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--bg-deep);color:var(--ink)">
         ${wpns.length ? wpns.map((w, i) => `<option value="${i}" ${i === wIdx ? 'selected' : ''}>${escapeHtml(w.name)} (${w.dmg}/${w.inj}, ${w.prof || 'Brawling'})</option>`).join('') : '<option>— no weapon equipped —</option>'}
       </select>
       <button onclick="toggleEncAdv()" class="add-row-btn" style="font-size:var(--fs-xs);padding:3px 8px;background:${a.open ? 'var(--gold)' : 'var(--btn-secondary-bg)'};color:${a.open ? 'var(--ink)' : 'white'}">⚙ Advanced</button>
     </div>`;
+  let advRow = '';
   if (a.open) {
-    html += `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:var(--fs-xs);margin:0 0 8px;padding:6px;background:var(--bg-deep);border-radius:var(--r-sm)">
+    advRow = `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:var(--fs-xs);margin:0 0 8px;padding:6px;background:var(--bg-deep);border-radius:var(--r-sm)">
         <label><input type="checkbox" ${a.hope ? 'checked' : ''} onchange="setEncAdv('hope')"> Spend Hope (+1d)</label>
         <label>Roll <select onchange="setEncAdv('fav',this.value)" style="padding:2px 4px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--bg);color:var(--ink)">
           <option value="normal" ${a.fav === 'normal' ? 'selected' : ''}>Normal</option>
@@ -1493,23 +1560,36 @@ function renderEncounter() {
         <label><input type="checkbox" ${a.keen ? 'checked' : ''} onchange="setEncAdv('keen')"> Keen (PB 9+)</label>
       </div>`;
   }
+  const turnLine = !turnsOn ? '' : (turn === 'hero' ? '<span class="turn-chip you">Your turn</span>' : '<span class="turn-chip foes">The foes’ turn</span>');
+  let html = sharedBanner + `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+      <span class="round-banner"><svg viewBox="0 0 120 30" aria-hidden="true"><path d="M8 4h104l-8 11 8 11H8l8-11z"/></svg><strong>Round ${e.round}</strong></span>
+      ${turnLine}
+      ${canGm && !turnsOn ? `<button onclick="nextRound()" class="add-row-btn" style="font-size:var(--fs-xs);padding:3px 8px;background:var(--btn-secondary-bg);color:white">Next round ▸</button>` : ''}
+    </div>`;
+  if (turnsOn) html += _renderHeroCard(e, turn === 'hero', weaponRow + advRow);
+  else html += weaponRow + advRow;
   // Sequence: bring foes in, fight them, then close the encounter.
   // One primary per screen: bringing foes in leads only while nobody is standing — once a foe
   // is up, "You attack" is the action and "Add Adversary" steps down.
   const _alive = (e.foes || []).some(f => !f.slain);
   if (canGm) html += `<button onclick="openBestiary()" class="add-row-btn${_alive ? '' : ' primary'}" style="width:100%;margin-bottom:8px">+ Add Adversary</button>`;
-  if (encEngagedFoes().length > 1) html += `<button onclick="allFoesAttack()" class="btn btn-secondary btn-block" style="margin:0 0 8px">Every engaged foe attacks you</button>`;
+  if (turnsOn) {
+    if (turn === 'foes' && _encFoesToAct().length) html += `<div class="foes-turn-bar">
+        ${_encFoesToAct().length > 1 ? '<button onclick="allFoesAttack()" class="btn btn-block">Every foe attacks you</button>' : ''}
+        <button onclick="encFoesHold()" class="btn btn-quiet btn-block">They hold back — next round</button></div>`;
+  } else if (encEngagedFoes().length > 1) html += `<button onclick="allFoesAttack()" class="btn btn-secondary btn-block" style="margin:0 0 8px">Every engaged foe attacks you</button>`;
   // One primary on screen: the first foe still standing carries it; the others step down (round 4)
-  const _lead = (e.foes || []).find(f => !f.slain);
-  (e.foes || []).forEach(f => { html += _renderFoeCard(f, canGm, f === _lead); });
+  const _lead = turnsOn ? (turn === 'foes' ? _encFoesToAct()[0] : null) : (e.foes || []).find(f => !f.slain);
+  (e.foes || []).forEach(f => { html += _renderFoeCard(f, canGm, f === _lead, turnsOn ? turn : null); });
   if (canGm) html += `<button onclick="endEncounter()" class="btn btn-quiet btn-block" style="margin-top:10px">End encounter</button>`;
   card.innerHTML = html;
 }
-function _renderFoeCard(f, canGm = true, lead = true) {
+function _renderFoeCard(f, canGm = true, lead = true, turn = null) {
   const slain = f.slain;
   const step = (field, d, lbl) => canGm ? `<button class="foe-step" onclick="adjFoe('${f.id}','${field}',${d})" aria-label="${d < 0 ? 'Lower' : 'Raise'} ${field === 'endCur' ? 'Endurance' : 'Hate'} of ${escapeHtml(f.name)}">${lbl}</button>` : '';
   const pct = (c, m) => Math.max(0, Math.min(100, (parseInt(c) || 0) / Math.max(1, parseInt(m) || 1) * 100));
-  let h = `<div class="foe-card${slain ? ' slain' : ''}">${typeof foeSilhouette === 'function' ? foeSilhouette(f) : ''}
+  const off = turn && !slain && (turn === 'hero' || f.acted);
+  let h = `<div class="foe-card${slain ? ' slain' : ''}${off ? ' turn-off' : ''}${turn === 'foes' && !slain && !f.acted ? ' turn-on' : ''}">${typeof foeSilhouette === 'function' ? foeSilhouette(f) : ''}
     <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
       ${typeof foeSilhouette === 'function' ? `<span class="foe-medal" aria-hidden="true">${foeSilhouette(f, 'foe-medal-sil')}</span>` : ''}
       <strong style="font-size:var(--fs-md)">${escapeHtml(f.name)}</strong>
@@ -1525,7 +1605,13 @@ function _renderFoeCard(f, canGm = true, lead = true) {
     </div>
     <div class="foe-stats">Parry ${f.parry} · Armour ${f.armour}${f.might ? ` · Might ${f.might}` : ''}</div>
     ${f.fell ? `<div style="font-size:var(--fs-xs);color:var(--text-muted);margin-top:3px">⚜ ${escapeHtml(f.fell)}</div>` : ''}`;
-  if (!slain) {
+  if (!slain && turn) {
+    // Turns on: your attacks live on your card; a foe's attacks show on its turn only.
+    if (turn === 'foes' && !f.acted) h += `${(f.attacks || []).length ? `<div class="foe-them"><span>${escapeHtml(f.name)} attacks you with:</span>
+        ${(f.attacks || []).map((atk, i) => `<button onclick="foeAttackHero('${f.id}',${i})" class="btn${lead && i === 0 ? '' : ' btn-secondary'}">${escapeHtml(atk.name)} · ${atk.dice}d</button>`).join('')}</div>`
+        : `<button onclick="_encFoeDone('${f.id}').then(renderEncounter)" class="btn btn-secondary btn-block">It has no attack — pass</button>`}`;
+    else h += `<div class="foe-wait">${f.acted ? 'Has attacked this round.' : 'Waits — your turn first.'}</div>`;
+  } else if (!slain) {
     // Two turns, two looks: YOUR attack is the one primary button; the foe's attacks sit under
     // "…attacks you" as secondary buttons. They used to be identical red buttons side by side.
     h += `<button onclick="heroAttackFoe('${f.id}')" class="btn btn-block foe-you${lead ? '' : ' btn-secondary'}">⚔ You attack ${escapeHtml(f.name)}</button>
@@ -1540,6 +1626,31 @@ function _renderFoeCard(f, canGm = true, lead = true) {
       + `🗡️ Pierce: spend 1 ✦ (${ps.prof} +${ps.bonus}) → Feat ${ps.feat}→${next}${next === 10 ? ' = <strong>Piercing Blow!</strong>' : ''} · ${ps.icons} ✦ left</button>`;
   }
   if (f._edit && canGm) h += _renderFoeEdit(f);
+  return h + `</div>`;
+}
+/** Your card in a fight: who you are, how you stand, and — on your turn — the attacks you can make. */
+function _renderHeroCard(e, myTurn, gearHtml) {
+  const standing = (e.foes || []).filter(f => !f.slain);
+  const end = parseInt(char.endCur) || 0, endMax = parseInt(char.endMax) || 0;
+  const hope = parseInt(char.hopeCur) || 0, hopeMax = parseInt(char.hopeMax) || 0;
+  const st = char.stance || 'open';
+  const stName = ({ forward: 'Forward', open: 'Open', defensive: 'Defensive', rearward: 'Rearward', skirmish: 'Skirmish' })[st] || st;
+  const glyph = typeof STANCE_GLYPH !== 'undefined' && STANCE_GLYPH[st] ? `<svg class="ic" aria-hidden="true"><use href="#${STANCE_GLYPH[st]}"/></svg>` : '';
+  const parry = (parseInt(char.parry) || 0) + (parseInt(char.shieldTotal) || 0);
+  const bar = (c, m, cls, l) => typeof notchBar === 'function' ? notchBar(c, m, cls, l) : '';
+  let h = `<div class="hero-fight-card${myTurn ? ' turn-on' : ' turn-off'}">
+    <div class="hfc-head">${typeof cultureCrest === 'function' ? cultureCrest(char.culture, 34, char.name) : ''}
+      <strong>${escapeHtml(typeof heroLabel === 'function' ? heroLabel(char) : (char.name || 'Your hero'))}</strong>
+      <span class="hfc-stance">${glyph}${stName}</span><span class="hfc-parry">Parry ${parry}</span></div>
+    <div class="foe-bars">
+      <div class="foe-bar"><span>Endurance <strong>${end}/${endMax}</strong></span>${bar(end, endMax, 'nb-end', 'Endurance')}</div>
+      <div class="foe-bar"><span>Hope <strong>${hope}/${hopeMax}</strong></span>${bar(hope, hopeMax, 'nb-hope', 'Hope')}</div>
+    </div>`;
+  if (myTurn) {
+    h += gearHtml;
+    standing.forEach((f, i) => { h += `<button onclick="heroAttackFoe('${f.id}')" class="btn btn-block foe-you${i ? ' btn-secondary' : ''}">⚔ Attack ${escapeHtml(f.name)}</button>`; });
+    h += `<button onclick="encHeroPass()" class="btn btn-quiet btn-block">I do something else this turn</button>`;
+  } else h += `<div class="foe-wait">${standing.length ? 'The foes are attacking — answer each one below.' : 'No foe stands against you.'}</div>`;
   return h + `</div>`;
 }
 function _renderFoeEdit(f) {

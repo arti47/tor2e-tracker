@@ -1696,6 +1696,12 @@ function renderJourneyEventRoll() {
   if (!row) return;
   const j = char.journey || {};
   const pend = j.pendingEventRoll;
+  if (j.active && j.pendingScene) {
+    row.style.display = 'block';
+    row.innerHTML = `<div style="font-size:var(--fs-xs);font-weight:600;color:var(--red-dark);margin-bottom:4px">▶ ${escapeHtml(j.pendingScene.detail || j.pendingScene.name)}</div>` +
+      `<p class="hint" style="text-align:left;margin:0 0 6px;font-size:var(--fs-xs)">A noteworthy encounter — how do you meet it?</p>` + _sceneButtons();
+    return;
+  }
   if (!j.active || !pend || !pend.skill) { row.style.display = 'none'; row.innerHTML = ''; return; }
   const sk = _heroSkill(pend.skill);
   const effect = JOURNEY_EVENT_ROLL_EFFECT[pend.eventKey];
@@ -3038,9 +3044,10 @@ function journeyEventCard(e) {
   return `<div class="jev${v.peril ? ' peril' : ''}">
     <div class="jev-name">${v.peril ? '<span class="jev-tag">Perilous area</span>' : ''}${escapeHtml(v.name)}</div>
     ${v.detail ? `<div class="jev-what">${escapeHtml(_sentence(v.detail))}</div>` : ''}
-    ${v.chamber ? `<div class="jev-find">${escapeHtml(chamberLine(v.chamber))}</div>` : ''}
-    ${(st.fail || st.ok) ? `<ul class="jev-stakes">${st.ok ? `<li class="ok"><b>If it goes well</b> ${escapeHtml(st.ok)}</li>` : ''}${st.fail ? `<li class="bad"><b>If it fails</b> ${escapeHtml(st.fail)}</li>` : ''}</ul>` : ''}
     ${chips.length ? `<div class="jev-chips">${chips.join('')}</div>` : ''}
+    ${v.noteworthy ? '<div class="jev-scene">No single roll decides this. Meet it as a scene: fight, talk, or overcome it — choose below.</div>'
+      : (st.fail || st.ok) ? `<ul class="jev-stakes">${st.ok ? `<li class="ok"><b>If it goes well</b><span>${escapeHtml(_sentence(st.ok))}</span></li>` : ''}${st.fail ? `<li class="bad"><b>If it fails</b><span>${escapeHtml(_sentence(st.fail))}</span></li>` : ''}</ul>` : ''}
+    ${v.chamber ? `<div class="jev-find"><b>Further on</b> ${escapeHtml(chamberLine(v.chamber))}</div>` : ''}
   </div>`;
 }
 /** A Moria chamber as one sentence: "You come to an ancient storeroom, goblin-gnawed. It will test your Battle." */
@@ -3069,7 +3076,7 @@ function _tidyApplied(s) {
 }
 /** A roll's result as the dice pill the feeds share: "(Craft roll 8 vs 15 — failure.)" */
 function _pillText(skill, total, tn, ok) {
-  return `(${skill} roll ${total === null || total === undefined ? 'ᚱ' : total} vs ${tn} — ${ok ? 'success' : 'failure'}.)`;
+  return `(${skill} roll ${total === null || total === undefined ? 'Rune' : total} vs ${tn} — ${ok ? 'success' : 'failure'}.)`;
 }
 /** A Marching Test as one line: the pill, then how far and how long. */
 function journeyMarchLine(e) {
@@ -3225,9 +3232,12 @@ function resolveJourneyEvent(isPeril) {
   // every other subsystem in the app (Council, Endeavour, Battle, Encounter) rolls its own
   // skill in place, and the journey log was the one place that asked and then offered nothing.
   const mine = solo || !!(j.roles && j.roles[roleKey]);
-  j.pendingEventRoll = (targetSkill && mine)
+  j.pendingEventRoll = (targetSkill && mine && !noteworthy)
     ? { skill: targetSkill, eventKey: event.key, eventName: event.name, hard: j.hardTerrainHexes > 0 }
     : null;
+  // A Noteworthy Encounter is played out as a scene — fight, council or endeavour. It used to arm
+  // nothing and print the parent event's "If it fails", with no roll anywhere to fail.
+  j.pendingScene = (noteworthy && mine) ? { name: String(event.name).replace(/\s*[👁ᚱ]\s*$/u, ''), detail: detailRec.event } : null;
   saveCharacter();
   renderJourney();
   if (typeof journalAuto === 'function') journalAuto('ojc', 'oracle', `${isPeril ? '[Peril] ' : ''}Journey event — ${event.name}${event.effect ? ' (' + event.effect.replace(/<[^>]+>/g, '') + ')' : ''}`);
@@ -4502,6 +4512,7 @@ function _playRoadChoices(C, homeward) {
     C('⚠️ Something happens on the road', 'playEvent()', 'Resolve it before you travel on.'),
     camp
   ];
+  if (jc.pendingScene) return SCENE_WAYS.map(([k, l, h]) => C(l, `meetScene('${k}')`, h));
   if (jc.pendingEventRoll && jc.pendingEventRoll.skill) return [
     C(`🎲 Roll ${jc.pendingEventRoll.skill}`, 'playEventRoll()', 'The road is asking something of you.'),
     C('↷ Let it happen', 'playEventSkip()', 'Skip the roll and take what comes.')
@@ -4510,6 +4521,10 @@ function _playRoadChoices(C, homeward) {
   const peril = parseInt(jc.perilEventsRemaining) || 0;
   const perilC = peril > 0 ? [C(`⚠️ Face the perilous area (${peril} left)`, 'playPeril()', 'A Perilous Area brings extra Journey Events.')] : [];
   const attack = C('⚔️ Something attacks!', 'playFight()', 'Fights can break out on the road too.');
+  // At the end of the road there is no "onward": arriving leads.
+  if ((parseInt(jc.currentHex) || 0) >= (parseInt(jc.totalHexes) || 1)) return homeward
+    ? [C('🏠 We are safe again', 'playArriveHome()', 'You are home.'), ...perilC, camp, attack]
+    : [C('🏁 We have arrived', 'playArrive()', 'The place you were making for is in sight.'), ...perilC, camp, attack];
   return homeward
     ? [
       C('🥾 Travel onward', 'playTravel()', 'Cover ground on the way back.'),
@@ -4716,7 +4731,8 @@ async function playEvent() {
   // below, so the feed no longer repeats "it asks something of you".
   if (ev) playSay(journeyEventCard(ev), 'event', journeyEventPlain(ev));
   const pend = char.journey.pendingEventRoll;
-  if (!(pend && pend.skill)) playSay('<em>Nothing to roll for this one — say what it looks like, and travel on.</em>', 'aside');
+  if (char.journey.pendingScene) playSay('<em>A noteworthy encounter — choose how you meet it below.</em>', 'aside');
+  else if (!(pend && pend.skill)) playSay('<em>Nothing to roll for this one — say what it looks like, and travel on.</em>', 'aside');
   renderPlay();
 }
 
@@ -4890,14 +4906,23 @@ async function playSetOutHome() {
 /** A HEALING roll against the current injury, run from the Play tab. */
 async function playFirstAid() {
   if (!char.wounded) { playSay('You are not Wounded — there is nothing to treat.', 'aside'); return renderPlay(); }
-  if (typeof rollFirstAid === 'function') {
-    const origAlert = window.alert; const said = [];
-    window.alert = (m) => said.push(String(m));
-    try { await rollFirstAid(); } finally { window.alert = origAlert; }
-    playSay(said.length ? escapeHtml(said.join(' ')) : 'You tend the wound as best you can.');
-  } else {
-    playSay('Treat the wound on the Character tab — the First Aid row sits under the Injury field.', 'aside');
+  const days = parseInt(char.injuryDays) || 0;
+  if (days <= 0 || char.firstAidUsed) {
+    // Nothing to roll: name the way out instead of a dialog.
+    const kind = char.injuryKind || '';
+    playSay(days <= 0
+      ? (kind === 'moderate' ? 'This wound closes with a night\'s rest — choose <strong>Rest</strong>.'
+        : 'There is no mending time to shorten. Rest under care, then mark the wound as passed from the vitals bar.')
+      : 'You have already tended this wound today. Let a day pass, then try again.', 'aside');
+    return renderPlay();
   }
+  const sk = _heroSkill('Healing');
+  const r = _doInlineRoll(sk.rating, sk.favoured ? 'fav' : 'normal', sk.tn, 'Healing · First Aid');
+  const ok = String(r.outcome).startsWith('SUCCESS');
+  const fa = applyFirstAidResult(ok, r.icons);
+  playSay((fa.mended ? '<strong>The wound is mended.</strong> You are no longer Wounded.'
+    : ok ? `You tend the wound: ${fa.before} → ${fa.after} days to mend.`
+    : 'Your care does not help today. Try again tomorrow.') + ' ' + _pillText('Healing', r.total, sk.tn, ok));
   renderPlay();
 }
 
@@ -4933,6 +4958,26 @@ function playCouncil(kind) {
                              : 'You set your hand to a long, hard task. <em>Set it up and roll it on the Council tab.</em>', 'aside');
   playGoTab('council');
   if (typeof pickCouncilKind === 'function') pickCouncilKind(kind);
+}
+/** How the hero meets a Noteworthy Encounter: each answer opens the subsystem that runs it. */
+const SCENE_WAYS = [
+  ['fight', '⚔️ Fight it out', 'A fight on the Combat tab.'],
+  ['council', '🗣️ Talk your way through', 'A Council — win them over.'],
+  ['endeavour', '💪 Overcome it', 'A Skill Endeavour — a long, hard task.'],
+  ['pass', '↷ It passes', 'Say how it ends, and travel on.']
+];
+function _sceneButtons() {
+  return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">${SCENE_WAYS.map(([k, l]) =>
+    `<button class="add-row-btn${k === 'fight' ? ' primary' : ''}" style="font-size:var(--fs-xs)" onclick="meetScene('${k}')">${l}</button>`).join('')}</div>`;
+}
+function meetScene(way) {
+  const j = char.journey; if (!j || !j.pendingScene) return;
+  const sc = j.pendingScene; j.pendingScene = null; saveCharacter();
+  if (typeof renderJourney === 'function') renderJourney();
+  if (way === 'fight') return playFight();
+  if (way === 'council' || way === 'endeavour') return playCouncil(way);
+  playSay(`You come through ${escapeHtml(sc.detail || sc.name)} — say how it ends, and travel on.`, 'aside');
+  renderPlay();
 }
 /** One event from the Perilous Area, narrated like any other. */
 async function playPeril() {
@@ -5033,7 +5078,8 @@ function advanceDays(n) {
   if (char.wounded && (parseInt(char.injuryDays) || 0) > 0) {
     const before = parseInt(char.injuryDays) || 0;
     char.injuryDays = Math.max(0, before - days);
-    if (char.injuryDays < before) char.firstAidUsed = false;   // a new day allows another attempt
+    if (char.injuryDays <= 0) mendWound();                      // the mending time has run out
+    else if (char.injuryDays < before) char.firstAidUsed = false;   // a new day allows another attempt
   }
 }
 
@@ -5346,12 +5392,12 @@ function renderPlayAside() {
 
 /* "(Travel roll 6 vs 15 — failure.)" in the story becomes a small dice pill. */
 function _rollPills(html) {
-  return String(html).replace(/\((\w[\w ]*?) roll (\d+|ᚱ) vs (\d+) — (success|failure)\.\)/g,
+  return String(html).replace(/\((\w[\w ]*?) roll (\d+|ᚱ|Rune) vs (\d+) — (success|failure)\.\)/g,
     (m, sk, a, b, o) => rollPillHtml(sk, a, b, o === 'success'));
 }
 /** The dice pill every result line shares: label, total, /TN, coloured by how it went for YOU. */
 function rollPillHtml(label, total, tn, good, title) {
-  const t = (total === null || total === undefined) ? 'ᚱ' : total;
+  const t = (total === null || total === undefined || total === 'ᚱ') ? 'Rune' : total;
   return `<span class="roll-pill ${good ? 'ok' : 'fail'}" title="${escapeHtml(title || `${label} roll ${t} against ${tn}: ${good ? 'success' : 'failure'}`)}"><svg class="ic"><use href="#i-dice"/></svg>${escapeHtml(String(label))} ${t}<small>/${tn}</small></span>`;
 }
 /* The journey as a road: a stone per stretch, the hero's marker, the next event flagged. */
@@ -5373,7 +5419,22 @@ function renderPlay() {
   const atTable = typeof tableActive === 'function' && tableActive();
   if (pp) pp.classList.toggle('table-mode', atTable);
   if (atTable) return renderTablePlay(host);
-
+  // Re-rendering replaced the whole page, so every roll threw the view back to the top. Keep the
+  // reader where they were, and bring the newest line of the story into view when one was added.
+  const keepY = window.scrollY, seenFeed = window._playFeedSeen || 0;
+  try { _renderPlayBody(host, s, pp); }
+  finally {
+    const fd = host.querySelector('.play-feed'); if (fd) fd.scrollTop = fd.scrollHeight;   // newest at the bottom, in view
+    if (pp && pp.classList.contains('active')) {
+      if (Math.abs(window.scrollY - keepY) > 2) window.scrollTo(0, keepY);
+      const fresh = _playFeed.length > seenFeed;
+      const last = fresh && host.querySelector('.play-feed > :last-child');
+      if (last) last.scrollIntoView({ block: 'nearest', behavior: 'auto' });
+    }
+    window._playFeedSeen = _playFeed.length;
+  }
+}
+function _renderPlayBody(host, s, pp) {
   if (!char.culture) {
     host.innerHTML = '<div class="card play-empty"><div class="eyebrow">Welcome</div><h3 class="card-title">First, a hero</h3>' +
       '<p>You need someone to play. A ready-made hero takes one tap; making your own takes a few minutes.</p>' +

@@ -339,15 +339,19 @@ module.exports = {
     const foe = await page.evaluate(() => {
       openNavGroup('adventure'); document.querySelector('.tab[data-tab="combat"]').click();
       addFoeFromBestiary(0);
+      // Turns (2026-10-06): your attacks are on YOUR card on your turn; the foe's are on its card on its turn.
+      const hero = document.querySelector('.hero-fight-card');
+      const you = hero && hero.querySelector('button[onclick^="heroAttackFoe"]');
+      const r = { you: you && you.textContent.trim(), youPrimary: you && !you.classList.contains('btn-secondary') };
+      encHeroPass();
       const card = document.querySelector('.foe-card');
-      const you = card && card.querySelector('button[onclick^="heroAttackFoe"]');
       const them = card && card.querySelector('button[onclick^="foeAttackHero"]');
-      const r = { you: you && you.textContent.trim(), youPrimary: you && !you.classList.contains('btn-secondary'), themSecondary: them && them.classList.contains('btn-secondary'),
-                  label: card && /attacks you/i.test(card.innerText) };
+      r.themSecondary = !!them && !document.querySelector('.hero-fight-card button[onclick^="heroAttackFoe"]');
+      r.label = !!card && /attacks you/i.test(card.innerText);
       endEncounter && (char.encounter = JSON.parse(JSON.stringify(DEFAULT_CHARACTER.encounter))); saveCharacter(); render();
       return r;
     });
-    checks.push({ ok: /^(⚔ )?You attack/.test(foe.you || '') && foe.youPrimary && foe.themSecondary && foe.label, msg: `"You attack X" is primary; the foe's attacks sit under "attacks you" (${foe.you})` });
+    checks.push({ ok: /^(⚔ )?Attack /.test(foe.you || '') && foe.youPrimary && foe.themSecondary && foe.label, msg: `"Attack X" is primary on your card; the foe's attacks come on its turn, under "attacks you" (${foe.you})` });
 
     // ---- Play: road strip + roll pills ----
     const road = await page.evaluate(() => {

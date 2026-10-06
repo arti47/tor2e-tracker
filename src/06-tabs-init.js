@@ -1090,20 +1090,11 @@ function rollDice(skillLabel) {
     </div>`;
   }
   if (diceState.firstAid) {
-    char.firstAidUsed = true;  // success or fail, the attempt is spent
-    if (outcome.startsWith('SUCCESS') && !isAutoFail) {
-      const reduction = Math.max(1, 1 + icons);
-      const before = parseInt(char.injuryDays) || 0;
-      const after = Math.max(0, before - reduction);
-      char.injuryDays = after;
-      char.injury = after > 0
-        ? `Severe Injury — ${after} day${after>1?'s':''} to mend (First Aid: ${before}→${after})`
-        : `Healing applied — injury minor; recovers naturally`;
-      summary += `<br><span class="result-tag" style="background:var(--success-text);color:white">⛑️ First Aid: reduced injury by ${reduction} day${reduction!==1?'s':''} (${before}→${after})</span>`;
-    } else {
-      summary += `<br><span class="result-tag" style="background:var(--error-text);color:white">⛑️ First Aid failed — retry only after 1 day passes</span>`;
-    }
-    saveCharacter();
+    const fa = applyFirstAidResult(outcome.startsWith('SUCCESS') && !isAutoFail, icons);
+    summary += fa.after < fa.before || fa.mended
+      ? `<br><span class="result-tag" style="background:var(--success-text);color:white">⛑️ First Aid: ${fa.mended ? 'the wound is mended — no longer Wounded' : `${fa.before} → ${fa.after} days to mend`}</span>`
+      : `<br><span class="result-tag" style="background:var(--error-text);color:white">⛑️ First Aid failed — try again after a day has passed</span>`;
+    render();
   }
   document.getElementById('result-summary').innerHTML = summary;
 
@@ -1860,6 +1851,8 @@ function initSlimHeader() {
   const hdr = document.querySelector('.header');
   if (hdr) hdr.addEventListener('click', e => {
     if (!document.body.classList.contains('hdr-slim')) return;
+    const ctl = e.target.closest && e.target.closest('button, a, .tab, .bn-item, [onclick], input, select');
+    if (ctl) { setSlimHeader(false); return; }   // a control acts on the first tap
     e.preventDefault(); e.stopPropagation(); setSlimHeader(false);
   }, true);
 }

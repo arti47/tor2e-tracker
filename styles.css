@@ -2882,8 +2882,11 @@ button.xp-token:hover, button.xp-token:focus-visible { background: color-mix(in 
 .jev-what { font-style: italic; color: var(--ink-soft, var(--ink)); margin-top: 2px; }
 .jev-find { margin-top: 4px; color: var(--ink); }
 .jev-stakes { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 2px; }
-.jev-stakes li { font-size: var(--fs-xs); color: var(--text-muted); }
-.jev-stakes b { display: inline-block; min-width: 92px; font-weight: 700; }
+.jev-stakes li { font-size: var(--fs-xs); color: var(--text-muted); display: grid; grid-template-columns: auto 1fr; gap: 8px; align-items: baseline; }
+.jev-stakes b { font-weight: 700; white-space: nowrap; }
+.jev-find b, .jev-scene { font-weight: 700; }
+.jev-find b { font-size: var(--fs-xs); color: var(--text-muted); margin-right: 4px; }
+.jev-scene { margin-top: 6px; font-size: var(--fs-xs); color: var(--red-dark); }
 .jev-stakes li.bad b { color: var(--error-text); }
 .jev-stakes li.ok b { color: var(--success-text); }
 .jev-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
@@ -2910,3 +2913,22 @@ button.xp-token:hover, button.xp-token:focus-visible { background: color-mix(in 
 .blk-more { flex: 0 0 auto; background: none; border: none; color: var(--text-faint); cursor: pointer; font-size: var(--fs-md); line-height: 1; padding: 0 4px; min-width: 28px; }
 @media (hover: hover) { .ch-row:hover .blk-tools, .ch-row:focus-within .blk-tools { display: inline-flex; } }
 .foe-note { display: block; color: var(--text-muted); font-size: var(--fs-xs); margin-top: 2px; }
+
+/* Fight turns (2026-10-06): your card lights on your turn, the foes' on theirs. */
+.hero-fight-card { border: 2px solid var(--gold); border-radius: var(--r-md); padding: var(--sp-3); margin-bottom: var(--sp-3); background: var(--bg); transition: opacity .25s, filter .25s; }
+.hero-fight-card .hfc-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+.hero-fight-card .hfc-head strong { font-family: var(--font-display, serif); font-size: var(--fs-md); }
+.hfc-stance, .hfc-parry { font-size: var(--fs-xs); color: var(--text-muted); display: inline-flex; align-items: center; gap: 3px; }
+.hfc-stance { margin-left: auto; }
+.hero-fight-card .btn, .hero-fight-card .foe-you { margin-top: 6px; }
+.turn-off > :not(.foe-said):not(button[onclick^="encPierce"]):not(.foe-sil) { opacity: .5; filter: grayscale(.6); transition: opacity .25s; }
+.foe-card.turn-on, .hero-fight-card.turn-on { box-shadow: 0 0 0 2px var(--red), 0 4px 14px rgba(120, 20, 20, .18); }
+.turn-chip { font-size: var(--fs-xs); font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+.turn-chip.you { background: var(--success-text); color: white; }
+.turn-chip.foes { background: var(--btn-alert-bg); color: white; }
+.foe-wait { font-size: var(--fs-xs); color: var(--text-muted); margin-top: 6px; font-style: italic; }
+.foes-turn-bar { display: grid; gap: 6px; margin: 0 0 8px; }
+.fs-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.fs-head b { font-size: var(--fs-md); }
+.fs-head b.ok { color: var(--success-text); } .fs-head b.bad { color: var(--error-text); }
+.fs-line { margin-top: 3px; }
