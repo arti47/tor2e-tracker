@@ -471,6 +471,7 @@
 <section class="panel active" id="panel-play">
   <div class="card tab-intro"><p class="hint" style="text-align:left;line-height:1.55;margin:0"><strong>This is the game.</strong> It tells you what is happening and gives you a few things you can do. Tap one — the app rolls whatever needs rolling, tells you how it went, and writes it down for you. You never need the other tabs to play a whole session.</p></div>
   <div class="play-layout">
+    <div id="play-fight" class="play-fight" hidden></div>
     <div id="play-body"></div>
     <aside id="play-aside" class="play-aside" aria-label="Your hero at a glance"></aside>
   </div>
@@ -929,7 +930,7 @@
 
   <div class="card tab-intro"><p class="hint" style="text-align:left;line-height:1.55;margin:0"><strong>Everything for a fight.</strong> Pick a <strong>Stance</strong> — it trades safety for aggression — then add foes under <strong>Encounter</strong> and run the whole fight here: your attacks, their attacks, wounds. Your weapons and armour come from <strong>Hero → Gear</strong>.</p></div>
 
-  <div class="card">
+  <div class="card" id="stance-card">
     <h3 class="card-title" data-hint="Stance">Stance</h3>
     <div class="conditions stance-grid">
       <button class="cond-btn stance-btn" data-stance="forward"><svg class="ic st-ic" aria-hidden="true"><use href="#i-st-forward"/></svg><strong>Forward</strong><small>hit harder, get hit more</small></button>

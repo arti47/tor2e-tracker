@@ -2190,8 +2190,8 @@ function _battleAddArchfoeToEncounter(harried) {
   if (typeof encDeriveEngaged === 'function') encDeriveEngaged();
   saveCharacter();
   if (typeof renderEncounter === 'function') renderEncounter();
-  document.querySelector('.tab[data-tab=combat]')?.click();
-  alert(`The Archfoe is in the Encounter on the Combat tab${harried > 0 ? `, and your Harrying is applied as +${harried}d on your attack rolls` : ''}.\n\nIts stat line is a starting point — tap ✎ on the foe to set it to the adversary your story calls for. Fight three rounds, then return to the Battle tab for the Clash roll.`);
+  if (typeof _playFightable === 'function' && _playFightable()) _goTab('play'); else document.querySelector('.tab[data-tab=combat]')?.click();
+  alert(`The Archfoe is in the Encounter${typeof _playFightable === 'function' && _playFightable() ? ' on ▶ Play' : ' on the Combat tab'}${harried > 0 ? `, and your Harrying is applied as +${harried}d on your attack rolls` : ''}.\n\nIts stat line is a starting point — tap ✎ on the foe to set it to the adversary your story calls for. Fight three rounds, then go on with the Clash.`);
 }
 
 /* ---- Advantages / Complications / End ---- */
@@ -2232,6 +2232,7 @@ async function endBattle() {
 }
 
 function renderBattle() {
+  if (window._playFightPlaced && typeof _playFightOn === 'function' && !_playFightOn() && typeof renderPlay === 'function') setTimeout(renderPlay, 0);
   if (!document.getElementById('panel-battle')) return;
   const b = char.battle;
   document.getElementById('battle-setup-card').style.display = b.active ? 'none' : 'block';
@@ -4537,7 +4538,7 @@ function _playChoices() {
   // task you started (it used to carry on as if nothing were happening).
   if (!char.retired) {
     const standing = _playFoesStanding();
-    if (standing) lead.unshift(C('⚔️ Back to the fight', "playGoTab('combat')", `${standing} foe${standing === 1 ? '' : 's'} still standing.`));
+    if (standing && !_playFightable()) lead.unshift(C('⚔️ Back to the fight', "playGoTab('combat')", `${standing} foe${standing === 1 ? '' : 's'} still standing.`));
     if (char.council && char.council.active) lead.push(C('🗣 Back to the council', "playGoTab('council')", char.council.topic || 'The council is still in session.'));
     if (char.skillEndeavour && char.skillEndeavour.active) lead.push(C('🛠 Back to the task', "playGoTab('council')", char.skillEndeavour.task || 'The task is not done yet.'));
   }
@@ -4571,7 +4572,36 @@ function playRollNote(label, total, tn, outcome, icons) {
     (ok ? '<strong style="color:var(--success-text)">success</strong>' : '<strong style="color:var(--error-text)">failure</strong>') + (icons ? ` (${icons} ✦)` : '') + '.');
   if (typeof renderPlay === 'function') renderPlay();
 }
-function playGoTab(t) { if (typeof _goTab === 'function') _goTab(t); }
+function playGoTab(t) { if ((t === 'combat' || t === 'battle') && _playFightable()) t = 'play'; if (typeof _goTab === 'function') _goTab(t); }
+/* ---------- Fights and Battles on ▶ Play ----------
+   A fight (or a Moria Battle) is run inside Play: the Stance, the Encounter and the Battle cards are
+   moved into Play while one is under way and moved back home when it ends or the Combat / Battle tab
+   is opened. One set of cards, so every control, guard and renderer is the same as on its own tab. */
+function _playFightable() {
+  if (!(char.saga && char.saga.started) || char.saga.ended) return false;
+  if (typeof tableActive === 'function' && tableActive()) return false;
+  if (typeof encShared === 'function' && encShared()) return false;
+  return true;
+}
+function _playFightOn() { return _playFightable() && !char.retired && (_playFoesStanding() > 0 || !!(char.battle && char.battle.active)); }
+const _fightHomes = {};
+function _placeFight() {
+  const slot = document.getElementById('play-fight'); if (!slot) return false;
+  const act = document.querySelector('.tab.active');
+  const on = _playFightOn() && (!act || act.dataset.tab === 'play');
+  const want = { 'battle-active-card': !!(char.battle && char.battle.active), 'stance-card': _playFoesStanding() > 0, 'encounter-card-wrap': _playFoesStanding() > 0 };
+  Object.keys(want).forEach(id => {
+    const el = document.getElementById(id); if (!el) return;
+    // a marker stays where the card lives, so it always goes back to exactly that place
+    if (!_fightHomes[id] && el.parentNode !== slot) { const m = document.createComment('home:' + id); el.parentNode.insertBefore(m, el); _fightHomes[id] = m; }
+    if (on && want[id]) { if (el.parentNode !== slot) slot.appendChild(el); }
+    else if (el.parentNode === slot && _fightHomes[id]) _fightHomes[id].parentNode.insertBefore(el, _fightHomes[id]);
+  });
+  slot.hidden = !on;
+  const pp = document.getElementById('panel-play'); if (pp) pp.classList.toggle('in-fight', on);
+  window._playFightPlaced = on;
+  return on;
+}
 /** Something that finished on another tab is told in the Play story too. */
 function playNote(text) {
   if (typeof _playFeed === 'undefined' || !(char.saga && char.saga.started)) return;
@@ -5766,6 +5796,16 @@ function _renderPlayBody(host, s, pp) {
     return;
   }
 
+  if (_placeFight()) {
+    const e = enc(), b = char.battle || {};
+    const feedF = _playFeed.slice(-8).map(f => f.kind === 'event' ? f.text : `<p class="${f.kind === 'aside' ? 'aside' : ''}">${_rollPills(f.text)}</p>`).join('');
+    host.innerHTML = _playConditionBanner() +
+      `<div class="card play-fight-log"><div class="eyebrow">${b.active ? 'A battle' : 'A fight'}${_playFoesStanding() ? ` — round ${parseInt(e.round) || 1}` : ''}</div>
+        <p class="hint" style="text-align:left;margin:0 0 6px">${b.active && !_playFoesStanding() ? 'Lead the Band through the Clash here. When the foe is broken, the story goes on.' : 'Fight it out here. When the last foe falls or you get away, the story goes on.'}</p>
+        ${feedF ? `<div class="play-feed" aria-live="polite">${feedF}</div>` : ''}</div>
+      ${playTrayHtml()}`;
+    return;
+  }
   const sit = char.retired ? _playRetiredSituation() : _playSituation();
   const choices = _playChoices();
   const feed = _playFeed.length

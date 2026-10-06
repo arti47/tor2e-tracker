@@ -13,6 +13,7 @@ function bindTabs() {
         toggleEditMode();
       }
       if (t.dataset.tab !== 'character' && typeof adjustMode !== 'undefined' && adjustMode) toggleAdjustMode(false);
+      if (typeof _placeFight === 'function') _placeFight();   // a fight on Play goes home when its own tab opens
       if (t.dataset.tab === 'play' && typeof renderPlay === 'function') renderPlay();
       if (t.dataset.tab === 'chronicle') renderChronicle();
       if (t.dataset.tab === 'reference') renderReference();

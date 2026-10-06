@@ -1339,7 +1339,7 @@ function fightSuggested() {
   document.getElementById('bestiary-overlay').classList.remove('show');
   if (fromPlay) {
     if (typeof playNote === 'function') playNote(`<strong>${escapeHtml(_foeSugCount(sg))}</strong> attack${sg.minions.length ? '' : 's'}.`);
-    if (typeof _goTab === 'function') _goTab('combat');
+    if (typeof _goTab === 'function') _goTab(typeof _playFightable === 'function' && _playFightable() ? 'play' : 'combat');
   }
   _encRoundFellPrompt(enc().round || 1);
 }
@@ -1371,7 +1371,7 @@ function addFoeFromBestiary(idx) {
   if (window._playFightPending) {
     window._playFightPending = false;
     if (typeof playNote === 'function') playNote(`A <strong>${escapeHtml(b.name)}</strong> attacks.`);
-    if (typeof _goTab === 'function') _goTab('combat');
+    if (typeof _goTab === 'function') _goTab(typeof _playFightable === 'function' && _playFightable() ? 'play' : 'combat');
   }
   _encRoundFellPrompt(enc().round || 1);
 }
@@ -1381,7 +1381,7 @@ function addCustomFoe() {
   enc().foes.push(f);
   encDeriveEngaged(); saveCharacter(); renderEncounter();
   document.getElementById('bestiary-overlay').classList.remove('show');
-  if (window._playFightPending) { window._playFightPending = false; if (typeof _goTab === 'function') _goTab('combat'); }
+  if (window._playFightPending) { window._playFightPending = false; if (typeof _goTab === 'function') _goTab(typeof _playFightable === 'function' && _playFightable() ? 'play' : 'combat'); }
   _encRoundFellPrompt(enc().round || 1);
 }
 function removeFoe(id) { const e = enc(); e.foes = e.foes.filter(f => f.id !== id); delete _encResults[id]; delete _encShows[id]; encDeriveEngaged(); saveCharacter(); renderEncounter(); }
@@ -1686,6 +1686,8 @@ async function allFoesAttack() {
 function renderEncounter() {
   const card = document.getElementById('encounter-card');
   if (!card) return;
+  // A fight shown on ▶ Play goes home (and the story comes back) the moment it is over.
+  if (window._playFightPlaced && typeof _playFightOn === 'function' && !_playFightOn() && typeof renderPlay === 'function') setTimeout(renderPlay, 0);
   const e = enc();
   // The manual Engaged/Foe-Parry counters only matter when no Encounter is running — the
   // Encounter derives both from the foes it holds, so showing them too just invites mistakes.

@@ -3082,3 +3082,14 @@ body[data-group="play"] .toast-strip { bottom: calc(var(--nav-h) + var(--safe-bo
   background: var(--gold-soft); color: var(--ink); font-size: var(--fs-xs); white-space: nowrap; }
 .band-pill .ic { width: 14px; height: 14px; }
 .band-pill[hidden] { display: none; }
+
+/* A fight or a Battle run inside ▶ Play */
+.play-fight[hidden] { display: none; }
+.play-fight > .card { margin-bottom: var(--sp-3); }
+#panel-play.in-fight > .tab-intro, #panel-play.in-fight .campaign-box { display: none; }
+.play-fight-log .play-feed { max-height: 220px; }
+@media (min-width: 900px), (min-width: 640px) and (max-height: 540px) and (orientation: landscape) {
+  .play-layout > .play-fight { grid-column: 1; grid-row: 1 / span 6; }
+  #panel-play.in-fight #play-body > .play-fight-log, #panel-play.in-fight #play-body > .play-tray { grid-column: 2; }
+  #panel-play.in-fight .play-aside { display: none; }
+}

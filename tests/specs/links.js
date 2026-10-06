@@ -53,16 +53,20 @@ module.exports = {
     // ---- Play leads with whatever is running elsewhere: a fight, a Peril, owed rewards ----
     const lead = await safe(`
       char.encounter = { active: true, round: 1, foes: [{ id: 'f1', name: 'Orc', endCur: 8, endMax: 8, slain: false, attacks: [] }], weaponIdx: 0, adv: {} };
-      const fight = _playChoices().map(c => c.fn);
-      char.encounter = { active: false, round: 1, foes: [], weaponIdx: 0, adv: {} };
+      const wasStarted = char.saga.started; char.saga.started = true;
+      openNavGroup('play'); renderPlay();
+      const fight = !!document.querySelector('#play-fight #encounter-card-wrap') && !!document.querySelector('#play-fight #stance-card') && !document.getElementById('play-fight').hidden;
+      char.encounter = { active: false, round: 1, foes: [], weaponIdx: 0, adv: {} }; renderPlay();
+      const home = !!document.querySelector('#panel-combat #encounter-card-wrap') && document.getElementById('play-fight').hidden;
+      char.saga.started = wasStarted;
       char.journey = { active: true, totalHexes: 9, currentHex: 2, events: [], roles: {}, perilEventsRemaining: 1 }; char.saga.step = 'journey';
       const road = _playChoices().map(c => c.fn);
       char.journey = { active: false }; char.saga.step = 'haven';
       char.pendingRewards = 1; char.pendingVirtues = 1; char.boutDue = true;
       const owed = _playChoices().map(c => c.fn);
       char.pendingRewards = 0; char.pendingVirtues = 0; char.boutDue = false; saveCharacter();
-      return { fight: fight[0], peril: road.includes('playPeril()'), owed: owed.slice(0, 3) };`);
-    checks.push({ ok: !lead.err && lead.fight === "playGoTab('combat')", msg: `with a foe standing, ▶ Play leads with "Back to the fight" (${JSON.stringify(lead)})` });
+      return { fight, home, peril: road.includes('playPeril()'), owed: owed.slice(0, 3) };`);
+    checks.push({ ok: !lead.err && lead.fight && lead.home, msg: `with a foe standing, the fight (Stance + Encounter) is run inside ▶ Play, and goes back to the Combat tab when it ends (${JSON.stringify(lead)})` });
     checks.push({ ok: !lead.err && lead.peril, msg: `a perilous area on the road is offered on ▶ Play (${JSON.stringify(lead)})` });
     checks.push({ ok: !lead.err && ['triggerBoutNow()', 'openNewReward()', 'openNewVirtue()'].every(f => (lead.owed || []).includes(f)), msg: `an owed Bout, Reward and Virtue lead ▶ Play (${JSON.stringify(lead)})` });
 
@@ -86,10 +90,10 @@ module.exports = {
       openNavGroup(navGroupOf('play').id); document.querySelector('.tab[data-tab="play"]').click();
       await playFight(); addFoeFromBestiary(0);
       await new Promise(r => setTimeout(r, 300));
-      const on = document.getElementById('panel-combat').classList.contains('active');
+      const on = document.getElementById('panel-play').classList.contains('active') && !!document.querySelector('#play-fight #encounter-card-wrap');
       document.querySelectorAll('.menu-overlay.show').forEach(o => o.classList.remove('show'));
       char.encounter = { active: false, round: 1, foes: [], weaponIdx: 0, adv: {} }; saveCharacter(); render(); return { on };`);
-    checks.push({ ok: !hand.err && hand.on, msg: `a foe picked from ▶ Play's "Something attacks" opens the Combat tab (${JSON.stringify(hand)})` });
+    checks.push({ ok: !hand.err && hand.on, msg: `a foe picked from ▶ Play's "Something attacks" starts the fight right there on ▶ Play (${JSON.stringify(hand)})` });
 
     // ---- Every roll on every tab reaches the Dice history ----
     const hist = await safe(`
@@ -345,8 +349,8 @@ module.exports = {
         closed: !document.getElementById('bestiary-overlay').classList.contains('show') };
       char.encounter = JSON.parse(JSON.stringify(DEFAULT_CHARACTER.encounter)); saveCharacter(); render();
       return out;`);
-    checks.push({ ok: !fui.err && fui.shown && fui.btn && fui.want > 1 && fui.got === fui.want && fui.panel === 'panel-combat' && fui.closed,
-      msg: `"Something attacks!" opens with a suggested foe at the top; one tap on Fight brings it into the fight on the Combat tab (${JSON.stringify(fui)})` });
+    checks.push({ ok: !fui.err && fui.shown && fui.btn && fui.want > 1 && fui.got === fui.want && fui.panel === 'panel-play' && fui.closed,
+      msg: `"Something attacks!" opens with a suggested foe at the top; one tap on Fight brings it into the fight on ▶ Play (${JSON.stringify(fui)})` });
 
     const ob = await safe(`
       const keepAlert = window.alert; window.alert = () => {};
@@ -521,6 +525,8 @@ module.exports = {
       out.said = /Orc-band/.test(document.getElementById('panel-play').textContent);
       btn('playChamberFight()').click();
       out.foes = enc().foes.length;
+      out.fightOnPlay = !!document.querySelector('#play-fight #encounter-card-wrap');
+      char.encounter = JSON.parse(JSON.stringify(DEFAULT_CHARACTER.encounter)); saveCharacter();
       openNavGroup('play'); renderPlay();
       genChamber = () => ({ appr: 'Ancient', type: 'Stairs', cond: 'Blocked', chal: 'Athletics' });
       btn('playExploreChamber()').click();
@@ -530,7 +536,7 @@ module.exports = {
       genChamber = real;
       char.encounter = JSON.parse(JSON.stringify(DEFAULT_CHARACTER.encounter)); char.moriaMode = was; delete sagaState().chamber; saveCharacter(); render();
       return out;`);
-    checks.push({ ok: !mch.err && mch.explore && mch.band && mch.fightBtn && mch.said && mch.foes >= 2 && mch.meet && mch.met,
+    checks.push({ ok: !mch.err && mch.explore && mch.band && mch.fightBtn && mch.said && mch.foes >= 2 && mch.fightOnPlay && mch.meet && mch.met,
       msg: `in Moria, ▶ Play explores a location chamber by chamber; a Combat chamber rolls an Orc-band that can be fought, a skill chamber is rolled in place (${JSON.stringify(mch)})` });
 
     // A chamber reads as a sentence: no "test your Token of hope", no stray capitals mid-name.
@@ -687,6 +693,25 @@ module.exports = {
       return out;`);
     checks.push({ ok: !pk.err && pk.hero && pk.stillPlay && pk.pill && pk.closed && pk.rolledIntoPlay && pk.drawerShut && pk.band && pk.pillGone,
       msg: `the header name opens the hero sheet over Play (a skill tapped there rolls into the story), and in Moria a Band chip opens the Band (${JSON.stringify(pk)})` });
+
+    // A Moria Battle is led from ▶ Play too, and its card goes home when the battle is over.
+    const bat = await safe(`
+      const save = JSON.stringify({ moria: char.moriaMode, battle: char.battle, saga: char.saga });
+      const out = {};
+      char.moriaMode = true; char.saga = Object.assign({}, char.saga || {}, { started: true, ended: false });
+      char.battle = Object.assign({}, char.battle || {}, { active: true, foeResistance: 9, foeResMax: 9, foeMight: 2, round: 1, log: [], advantages: [], complications: [] });
+      saveCharacter(); render(); openNavGroup('play'); renderPlay();
+      out.onPlay = !!document.querySelector('#play-fight #battle-active-card') && /A battle/.test(document.querySelector('#play-body').textContent);
+      document.querySelector('.tab[data-tab="battle"]') && (document.querySelector('.tab[data-tab="battle"]').style.display = '');
+      document.querySelector('.tab[data-tab="battle"]').click();
+      out.homeOnTab = !!document.querySelector('#panel-battle #battle-active-card');
+      openNavGroup('play'); renderPlay();
+      char.battle.active = false; renderBattle(); await new Promise(r => setTimeout(r, 30));
+      out.backToStory = !document.querySelector('#play-fight #battle-active-card') && !!document.querySelector('#play-body .play-scene');
+      const o = JSON.parse(save); char.moriaMode = o.moria; char.battle = o.battle; char.saga = o.saga; saveCharacter(); render();
+      return out;`);
+    checks.push({ ok: !bat.err && bat.onPlay && bat.homeOnTab && bat.backToStory,
+      msg: `a Moria Battle is led from ▶ Play; the Battle tab still has it when opened, and the story comes back when it ends (${JSON.stringify(bat)})` });
 
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length}${errors.length ? ': ' + errors[0] : ''})` });
     await context.close();
