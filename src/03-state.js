@@ -1431,6 +1431,28 @@ async function renameScene(id) {
   if (t === null) return;
   sc.title = t.trim() || sc.title; saveJournal(); renderChronicle();
 }
+/** Clear the whole Chronicle — every scene and entry — keeping the calendar and settings.
+    Download first if you want a copy; Undo puts it all back. */
+async function clearChronicle() {
+  const n = (journal.entries || []).length, sc = (journal.scenes || []).length;
+  if (!n && !sc) { showToast('The Chronicle is already empty.'); return; }
+  const ok = await confirmStyled(`This removes all ${sc} scene${sc === 1 ? '' : 's'} and ${n} entr${n === 1 ? 'y' : 'ies'} from ${escapeHtml(typeof heroLabel === 'function' ? heroLabel(char) : (char.name || 'this hero'))}'s Chronicle. The date (Tale of Years) is kept.<br><br>Tap <strong>⬇ Story</strong> first if you want a copy. You can undo straight after.`,
+    'Clear the Chronicle', { yes: 'Clear the Chronicle', no: 'Keep it' });
+  if (!ok) return;
+  const before = JSON.stringify(journal);
+  const fresh = defaultJournal();
+  fresh.clock = { ...journal.clock }; fresh.settings = { ...journal.settings };
+  journal = fresh;
+  saveJournal();
+  if (typeof playClearFeed === 'function') playClearFeed();
+  if (typeof Sync !== 'undefined' && Sync.queuePush) try { Sync.queuePush(activeCharId); } catch (e) {}
+  renderChronicle();
+  if (typeof render === 'function') render();
+  showToast('The Chronicle is cleared.', { label: 'Undo', fn: () => {
+    try { journal = JSON.parse(before); } catch (e) { return; }
+    saveJournal(); renderChronicle(); if (typeof render === 'function') render();
+  } });
+}
 async function deleteScene(id) {
   if (!await confirmStyled('Delete this whole scene and all its entries?', 'Delete Scene', {yes:'Delete scene', no:'Keep scene'})) return;
   journal.scenes = journal.scenes.filter(s => s.id !== id);
@@ -1565,6 +1587,8 @@ function setChronicleToggles() {
 
 /* ----- render ----- */
 function renderChronicle() {
+  const _clr = document.getElementById('ch-clear-btn');
+  if (_clr) _clr.hidden = !(journal.entries || []).length && !(journal.scenes || []).length;
   renderChronicleClock();
   // "Writing in" label above the compose box
   const lbl = document.getElementById('ch-active-scene');

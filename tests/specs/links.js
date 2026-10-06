@@ -458,6 +458,28 @@ module.exports = {
     checks.push({ ok: !tv.err && tv.over && tv.fresh && tv.old && tv.queued.length === 1 && /Round 5/.test(tv.queued[0]),
       msg: `after your turn the hero card says the foes attack now, last round's results are marked "Last round", and a stale "Round 3" toast never waits behind "Round 5" (${JSON.stringify(tv)})` });
 
+    // The Chronicle can be cleared as a whole, keeps its date, and Undo brings it back.
+    const cc = await safe(`
+      setStriderMode && !isSolo() && setStriderMode(true);
+      pushBlock('prose', 'note', 'We reached the ford at dusk.', 'manual');
+      const before = journal.entries.length, clock = JSON.stringify(journal.clock);
+      openNavGroup(navGroupOf('chronicle').id); document.querySelector('.tab[data-tab="chronicle"]').click(); renderChronicle();
+      const btn = document.getElementById('ch-clear-btn');
+      const out = { before, shown: !!btn && btn.checkVisibility() };
+      btn.click(); await new Promise(r => setTimeout(r, 150));
+      const yes = [...document.querySelectorAll('.menu-overlay.show button')].find(b => /Clear the Chronicle/.test(b.textContent));
+      yes && yes.click(); await new Promise(r => setTimeout(r, 150));
+      out.after = journal.entries.length; out.scenes = journal.scenes.length;
+      out.clock = JSON.stringify(journal.clock) === clock;
+      out.stored = JSON.parse(localStorage.getItem(journalKey())).entries.length;
+      out.hidden = document.getElementById('ch-clear-btn').hidden;
+      const undo = [...document.querySelectorAll('#toast-wrap .toast-action')].find(b => b.textContent === 'Undo');
+      undo && undo.click();
+      out.undone = journal.entries.length === before;
+      return out;`);
+    checks.push({ ok: !cc.err && cc.before > 0 && cc.shown && cc.after === 0 && cc.scenes === 0 && cc.stored === 0 && cc.clock && cc.hidden && cc.undone,
+      msg: `"Clear the Chronicle" empties the journal (and its saved copy), keeps the date, hides itself when empty, and Undo restores it (${JSON.stringify(cc)})` });
+
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length}${errors.length ? ': ' + errors[0] : ''})` });
     await context.close();
     return { checks };
