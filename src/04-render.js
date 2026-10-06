@@ -4427,8 +4427,12 @@ function _playSituation() {
               : 'You are ready to travel, but have not set out yet.') };
     case 'location':
       const j2 = char.journey || {};
+      const chm = _playChamberHere();
       return { title: 'At ' + escapeHtml(j2.destination || 'the place you came to'),
-        text: 'You have arrived. This is where the thing you came for is — or is not.' };
+        text: (typeof isMoria === 'function' && isMoria())
+          ? (chm ? escapeHtml(chamberLine(chm)) + (chm.band && !chm.met ? ' <strong>An Orc-band holds it.</strong>' : '')
+                 : 'You have come into the deep places. In Moria you explore <strong>chamber by chamber</strong> — tap <strong>Go on to the next chamber</strong> to see what lies ahead.')
+          : 'You have arrived. This is where the thing you came for is — or is not.' };
     case 'home': {
       const jh2 = char.journey || {};
       return { title: 'The road home',
@@ -4604,6 +4608,7 @@ function _playStepChoices() {
       ];
     }
     case 'location': return [
+      ..._playMoriaChamberChoices(C),
       C('👀 Look around', 'playLookAround()', 'What is here? The Oracle answers.'),
       C('🎯 Try something', 'playAttempt()', 'Search, climb, persuade, sneak — anything that could fail.'),
       C('🔮 Ask a yes/no question', 'playAsk()', 'When you need the world to decide something.'),
@@ -5030,6 +5035,85 @@ async function playRest() {
   playSay(`You rest through the night. Endurance ${before} → ${char.endCur}.` +
     (fatBefore > fatNow ? ` Fatigue ${fatBefore} → ${fatNow}.` : fatBefore > 0 ? ' <em>Your Fatigue stays — it lifts only in a Safe Haven.</em>' : ''));
   renderPlay();
+}
+
+/* ---------- Moria: explore chamber by chamber; orcs come as an Orc-band ----------
+   The Moria Loremaster chapter builds the deep places one chamber at a time (the Random Chamber
+   Generator) and its orcs as a Random Orc-Band. Both lived only on the Oracle tab, so a whole
+   session on ▶ Play never rolled either. Play now runs them where the story needs them. */
+function _playChamberHere() {
+  const ch = char.saga && char.saga.chamber;
+  const here = (char.journey && char.journey.destination) || '';
+  return ch && ch.at === here ? ch : null;
+}
+function _playMoriaChamberChoices(C) {
+  if (typeof isMoria !== 'function' || !isMoria()) return [];
+  const ch = _playChamberHere();
+  if (ch && !ch.met) {
+    if (ch.band) return [
+      C('⚔️ Fight the orc-band', 'playChamberFight()', _orcBandSummary(ch.band) + ' — the fight runs on the Combat tab.'),
+      C('🤫 Try to slip past them', 'playChamberSlip()', 'A Stealth roll. If it fails, they find you.')
+    ];
+    if (ch.skill) return [C(`🎯 Meet it: ${ch.skill}`, 'playChamberChallenge()', 'The chamber tests you — the app rolls it.')];
+  }
+  return [C('⛏️ Go on to the next chamber', 'playExploreChamber()', 'The Chamber table says what lies ahead.')];
+}
+function playExploreChamber() {
+  const c = genChamber();
+  const chal = String(c.chal || '');
+  const ch = { ...c, at: (char.journey && char.journey.destination) || '', met: false };
+  if (/^Combat$/i.test(chal)) ch.band = rollOrcBandData();
+  else if (!/^None|hope/i.test(chal)) ch.skill = chal;
+  else ch.met = true;
+  sagaState().chamber = ch;
+  logOracleRoll('Chamber', `${c.appr} ${c.type} — ${c.cond} — ${c.chal}`);
+  playSay(escapeHtml(chamberLine(c)));
+  if (ch.band) {
+    logOracleRoll('Orc-Band', `${ch.band.leader} — ${_orcBandSummary(ch.band)}`);
+    playSay(`<strong>Orcs!</strong> An Orc-band is here: ${escapeHtml(_orcBandSummary(ch.band))}.` +
+      (ch.band.surprise ? ' They have not seen you yet.' : ''));
+  } else if (/hope/i.test(chal)) {
+    playSay('Something here lifts your heart: <strong>a token of hope</strong>.');
+    playSay('<em>Say what you find — a sign that Durin\'s folk were here, a carving, a light. It is the story\'s reward for pressing on.</em>', 'aside');
+  }
+  saveCharacter(); renderPlay();
+}
+function playChamberChallenge() {
+  const ch = _playChamberHere(); if (!ch || !ch.skill) return;
+  const sk = _heroSkill(ch.skill);
+  const r = _doInlineRoll(sk.rating, sk.favoured ? 'fav' : 'normal', sk.tn, `${ch.skill} · ${ch.appr} ${ch.type}`);
+  const ok = String(r.outcome).startsWith('SUCCESS');
+  ch.met = true; saveCharacter();
+  const said = (typeof rollMeaning === 'function' && rollMeaning(ch.skill, ok)) || (ok ? 'You succeed.' : 'You fail.');
+  playSay(`<strong>The ${escapeHtml(String(ch.type).toLowerCase())} tests your ${escapeHtml(ch.skill)}:</strong> ` +
+    `<strong style="color:var(${ok ? '--success-text' : '--error-text'})">${escapeHtml(said)}</strong> ${_pillText(ch.skill, r.total, sk.tn, ok)}`);
+  playSay(ok ? '<em>Say how you get through, then go on.</em>' : '<em>Say what it costs you — time, a hurt, a lost trail, noise that carries.</em>', 'aside');
+  renderPlay();
+}
+function playChamberFight() {
+  const ch = _playChamberHere(); if (!ch || !ch.band) return;
+  addOrcBandFoes(ch.band);
+  if (typeof encDeriveEngaged === 'function') encDeriveEngaged();
+  if (typeof _encEnsureGroup === 'function') _encEnsureGroup();
+  ch.met = true; saveCharacter();
+  if (typeof renderEncounter === 'function') renderEncounter();
+  playSay(`<strong>You fall on the orc-band.</strong>${ch.band.surprise ? ' They are caught off guard.' : ''}`);
+  playGoTab('combat');
+  if (typeof _encRoundFellPrompt === 'function') _encRoundFellPrompt(enc().round || 1);
+}
+function playChamberSlip() {
+  const ch = _playChamberHere(); if (!ch || !ch.band) return;
+  const sk = _heroSkill('Stealth');
+  const r = _doInlineRoll(sk.rating, sk.favoured ? 'fav' : 'normal', sk.tn, 'Stealth · past the orc-band');
+  const ok = String(r.outcome).startsWith('SUCCESS');
+  if (ok) {
+    ch.met = true; saveCharacter();
+    playSay(`<strong>You slip past the orc-band unseen.</strong> ${_pillText('Stealth', r.total, sk.tn, true)}`);
+    return renderPlay();
+  }
+  playSay(`<strong style="color:var(--error-text)">They see you.</strong> ${_pillText('Stealth', r.total, sk.tn, false)}`);
+  ch.band.surprise = false;
+  playChamberFight();
 }
 
 async function playFight() {

@@ -503,6 +503,36 @@ module.exports = {
     checks.push({ ok: !mb.err && mb.askedBand && mb.allies === 6 && mb.askedPlan && mb.planned && mb.started,
       msg: `in Moria, setting out first gathers the Band and plans the mission, then the journey starts without asking again (${JSON.stringify(mb)})` });
 
+    // Moria on ▶ Play: a location is explored chamber by chamber, and orcs come as an Orc-band.
+    const mch = await safe(`
+      const was = char.moriaMode; char.moriaMode = true;
+      if (!char.saga.started) { char.saga.started = true; char.saga.premise = 'Reclaim the halls'; }
+      char.journey.destination = 'the Twenty-first Hall'; char.journey.active = false;
+      sagaState().step = 'location'; delete sagaState().chamber;
+      char.encounter = JSON.parse(JSON.stringify(DEFAULT_CHARACTER.encounter)); saveCharacter();
+      openNavGroup('play'); renderPlay();
+      const btn = q => document.querySelector('#panel-play button[onclick="' + q + '"]');
+      const out = { explore: !!btn('playExploreChamber()') };
+      const real = genChamber;
+      genChamber = () => ({ appr: 'Shunned', type: 'Orc-nest', cond: 'Held by foes', chal: 'Combat' });
+      btn('playExploreChamber()').click();
+      out.band = !!(sagaState().chamber && sagaState().chamber.band);
+      out.fightBtn = !!btn('playChamberFight()');
+      out.said = /Orc-band/.test(document.getElementById('panel-play').textContent);
+      btn('playChamberFight()').click();
+      out.foes = enc().foes.length;
+      openNavGroup('play'); renderPlay();
+      genChamber = () => ({ appr: 'Ancient', type: 'Stairs', cond: 'Blocked', chal: 'Athletics' });
+      btn('playExploreChamber()').click();
+      out.meet = !!btn('playChamberChallenge()');
+      btn('playChamberChallenge()').click();
+      out.met = !!sagaState().chamber.met && !!btn('playExploreChamber()');
+      genChamber = real;
+      char.encounter = JSON.parse(JSON.stringify(DEFAULT_CHARACTER.encounter)); char.moriaMode = was; delete sagaState().chamber; saveCharacter(); render();
+      return out;`);
+    checks.push({ ok: !mch.err && mch.explore && mch.band && mch.fightBtn && mch.said && mch.foes >= 2 && mch.meet && mch.met,
+      msg: `in Moria, ▶ Play explores a location chamber by chamber; a Combat chamber rolls an Orc-band that can be fought, a skill chamber is rolled in place (${JSON.stringify(mch)})` });
+
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length}${errors.length ? ': ' + errors[0] : ''})` });
     await context.close();
     return { checks };
