@@ -771,7 +771,9 @@ module.exports = {
       char.encounter = { active: true, round: 1, turn: 'hero', foes: [foe], weaponIdx: 0, adv: {} };
       char.endCur = 0; char.wounded = false; char.dying = false; saveCharacter(); render();
       const out = {};
+      window._doInlineRoll = () => ({ total: 30, outcome: 'SUCCESS', icons: 0, featValue: 9, featSpecial: null });   // any attack made would land
       await heroAttackFoe('k1');
+      window._doInlineRoll = realRoll;
       out.noAttack = enc().foes[0].endCur === 12;
       const before = char.flyPending;
       await flyYouFools(); out.noFlee = (char.encounter.foes || []).length === 1;
