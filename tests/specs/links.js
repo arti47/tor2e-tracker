@@ -627,6 +627,37 @@ module.exports = {
     checks.push({ ok: !mi.err && mi.before && mi.band && mi.sheet && mi.play && mi.ended,
       msg: `a planned Moria mission shows once applied — objective, party and Band on the Band tab, the hero sheet and Play — and ending it records the outcome for the next plan (${JSON.stringify(mi)})` });
 
+    // ▶ Play is the one screen: the tray rolls a skill or a Band Disposition in place, asks only about Hope / a Gift,
+    // and tells the result in the story — the drawer stays shut until Details.
+    const tr = await safe(`
+      const save = JSON.stringify({ moria: char.moriaMode, band: char.band, saga: char.saga, hope: char.hopeCur });
+      const realModal = window.showModal;
+      const out = {};
+      char.saga = Object.assign({}, char.saga || {}, { started: true, ended: false, step: 'haven' });
+      char.hopeCur = 3; playClearFeed(); closeRollDrawer();
+      document.querySelector('.bn-item[data-group="play"]').click(); renderPlay();
+      out.tray = !!document.getElementById('play-tray') && document.querySelectorAll('#play-tray .pt-cols .pt-roll').length === 18;
+      window.showModal = async (o) => { const b = document.getElementById('styled-modal-body'); b.innerHTML = o.message || ''; const h = document.getElementById('rp-hope'); if (h) h.checked = true; return true; };
+      await playTrayRoll('Awareness');
+      out.hopeSpent = char.hopeCur === 2;
+      const feed = document.querySelector('#panel-play .play-feed');
+      out.inFeed = !!feed && /Awareness/.test(feed.textContent) && !!feed.querySelector('.roll-pill') && !!feed.querySelector('.pt-details');
+      out.drawerShut = !document.getElementById('roll-drawer').classList.contains('open');
+      char.moriaMode = true; char.band.allies = [{ id: 'z1', name: 'Grór', gift: 'Stout' }]; char.band.dispositions = { expertise: 2, manoeuvre: 2, rally: 2, vigilance: 2, war: 3 };
+      renderPlay(); setTraySide('band');
+      out.bandSide = document.querySelectorAll('#play-tray .pt-disp').length === 5;
+      await playBandRoll('war');
+      out.bandFeed = /Band War/.test(document.querySelector('#panel-play .play-feed').textContent);
+      window.showModal = async () => 'painful';
+      await playBandTest('endurance');
+      out.endFeed = /Endurance test/.test(document.querySelector('#panel-play .play-feed').textContent);
+      window.showModal = realModal;
+      const o = JSON.parse(save); char.moriaMode = o.moria; char.band = o.band; char.saga = o.saga; char.hopeCur = o.hope;
+      _traySide = 'hero'; saveCharacter(); render();
+      return out;`);
+    checks.push({ ok: !tr.err && tr.tray && tr.hopeSpent && tr.inFeed && tr.drawerShut && tr.bandSide && tr.bandFeed && tr.endFeed,
+      msg: `▶ Play's roll tray rolls a skill (with an optional Hope spend) and the Band's Dispositions and tests in place, and tells each result in the story (${JSON.stringify(tr)})` });
+
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length}${errors.length ? ': ' + errors[0] : ''})` });
     await context.close();
     return { checks };

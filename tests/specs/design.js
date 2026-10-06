@@ -520,10 +520,10 @@ module.exports = {
     const qr = await page.evaluate(() => {
       char.saga = Object.assign(char.saga || {}, { started: true, premise: 'x', step: 'haven' }); saveCharacter();
       openNavGroup('play'); renderPlay();
-      const chips = [...document.querySelectorAll('#play-body .qchip')].map(c => c.querySelector('strong').textContent);
-      return chips;
+      const again = document.querySelector('#play-tray .pt-again');
+      return { again: again ? again.textContent : '', skills: document.querySelectorAll('#play-tray .pt-cols .pt-roll').length };
     });
-    checks.push({ ok: qr.length >= 2 && /^Again: /.test(qr[0]), msg: `Play pins quick rolls, led by "Again" for the last roll (${qr.join(', ')})` });
+    checks.push({ ok: /^Again: /.test(qr.again) && qr.skills === 18, msg: `Play's roll tray holds every skill and "Again" for the last roll (${JSON.stringify(qr)})` });
 
     // ---- Spend XP buttons say what they buy; FP phase type is a ticked choice ----
     const xp = await page.evaluate(() => {

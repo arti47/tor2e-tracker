@@ -2546,6 +2546,7 @@ function rollDisposition(key) {
   const dm = DISP_MEANING[key];
   if (dm) document.getElementById('band-roll-summary').innerHTML += `<br><strong>${dm[r.outcome.startsWith('SUCCESS') ? 0 : 1]}</strong>`;
   renderBand();
+  return r;
 }
 
 function _selectedThreat() {
@@ -2669,9 +2670,9 @@ function _worsenFatigue(a) {
   return a.fatigue;
 }
 
-async function enduranceTest() {
+async function enduranceTest(threatArg) {
   if (!(char.band.allies || []).length) return requireStep('An Endurance Test asks which ally takes the hit — your Band is still empty.<br><br>Roll up a Band on the <strong>Band</strong> tab first (card <strong>1 · Allies</strong>).', 'band', 'band-allies-card', '⚠️ No Band yet');
-  const threat = _selectedThreat();
+  const threat = (threatArg && DAMAGE_THREAT[threatArg] !== undefined) ? threatArg : _selectedThreat();
   const tn = bandTN() + (DAMAGE_THREAT[threat] || 0);
   const r = bandRoll(parseInt(char.band.dispositions.rally) || 0, 'normal', tn);
   let extra = '';
@@ -2680,11 +2681,12 @@ async function enduranceTest() {
   _renderBandRoll(r, tn, 'Endurance Test (Rally, ' + threat + ')', 'band-test-dice', 'band-test-total', 'band-test-summary', 'band-test-result');
   document.getElementById('band-test-summary').innerHTML += extra;
   renderBand();
+  return { r, tn, extra };
 }
 
-async function fatigueTest() {
+async function fatigueTest(ptsArg) {
   if (!(char.band.allies || []).length) return requireStep('A Fatigue Test wears down an ally — your Band is still empty.<br><br>Roll up a Band on the <strong>Band</strong> tab first (card <strong>1 · Allies</strong>).', 'band', 'band-allies-card', '⚠️ No Band yet');
-  const pts = parseInt(document.getElementById('band-fatigue-pts').value) || 0;
+  const pts = (typeof ptsArg === 'number') ? ptsArg : (parseInt(document.getElementById('band-fatigue-pts').value) || 0);
   const tn = bandTN() + pts;
   const burdenMod = BURDEN_DICE[char.band.burden] || 0;  // +1 light, −1 heavy, −2 over
   let rating = (parseInt(char.band.dispositions.rally) || 0) + Math.max(0, burdenMod);
@@ -2713,6 +2715,7 @@ async function fatigueTest() {
   _renderBandRoll(r, tn, 'Fatigue Test (Rally +' + pts + burdenNote + ')', 'band-test-dice', 'band-test-total', 'band-test-summary', 'band-test-result');
   document.getElementById('band-test-summary').innerHTML += extra;
   renderBand();
+  return { r, tn, extra };
 }
 
 /* ---- Ally generation & roster ---- */
@@ -5743,7 +5746,7 @@ function _renderPlayBody(host, s, pp) {
             <svg class="ic c-chev" aria-hidden="true"><use href="#i-chev"/></svg>
           </button>`; }).join('')}
      </div>
-     ${_playQuickRolls()}
+     ${playTrayHtml()}
      ${isSolo() ? '<p class="play-foot">Everything that happens here is written into your Chronicle for you.</p>' : ''}
      ${typeof playFooterArt === 'function' ? playFooterArt() : ''}`;
   // Round 8: when the story moves (home → road → place), the scene cross-fades and its heading writes in
@@ -5800,19 +5803,126 @@ function _playStoryCard(onRoad) {
 }
 /** Pinned quick rolls on Play (round 3): the hero's three strongest skills, plus "Again" for
     the last roll made anywhere — so the common rolls never need a trip to the Roll tab. */
-function _playQuickRolls() {
+/* ---------- ▶ PLAY ROLL TRAY ----------
+   Play is the one screen: every roll a player makes in play — any skill, Valour, Wisdom, a weapon,
+   and in Moria the Band's Dispositions and its Endurance and Fatigue tests — sits in one tray pinned
+   above the nav on a phone (open beside the choices on a tablet). The result lands in the story feed
+   as a dice pill and what it means; "Details" opens the full dice in the drawer. */
+let _trayOpen = false, _traySide = 'hero';
+function _trayHasBand() { return typeof isMoria === 'function' && isMoria() && ((char.band && char.band.allies) || []).length > 0; }
+function togglePlayTray(on) { _trayOpen = on === undefined ? !_trayOpen : !!on; const t = document.getElementById('play-tray'); if (t) t.classList.toggle('open', _trayOpen); }
+function setTraySide(side) { _traySide = side; _trayOpen = true; const t = document.getElementById('play-tray'); if (t) t.outerHTML = playTrayHtml(); }
+function playTrayHtml() {
   if (!char.culture) return '';
-  const best = Object.entries(char.skills || {})
-    .map(([n, v]) => ({ n, r: parseInt(v && v.rating) || 0, f: v && v.favoured ? 1 : 0 }))
-    .filter(x => x.r > 0).sort((a, b) => (b.r + b.f * .5) - (a.r + a.f * .5)).slice(0, 3);
+  const band = _trayHasBand();
+  const side = band ? _traySide : 'hero';
+  const n = v => parseInt(v) || 0;
+  const pips = k => k > 0 ? `<span class="pt-pips">${Array.from({ length: Math.min(k, 6) }, () => '<i></i>').join('')}</span>` : '<span class="pt-pips none">–</span>';
+  const gl = a => (typeof ATTR_GLYPH !== 'undefined' && ATTR_GLYPH[a]) ? `<svg class="ic" aria-hidden="true"><use href="#${ATTR_GLYPH[a]}"/></svg>` : '';
+  const btn = (name, rating, fav, cls) => `<button type="button" class="pt-roll${rating ? '' : ' zero'}${fav ? ' fav' : ''}${cls ? ' ' + cls : ''}" onclick="playTrayRoll('${name.replace(/'/g, "\\'")}')"><span>${fav ? '<b class="fav" aria-label="Favoured">★</b>' : ''}${escapeHtml(name)}</span>${pips(rating)}</button>`;
+  let body;
+  if (side === 'hero') {
+    const col = (a, title) => `<div class="pt-col"><div class="pt-h">${gl(a)}${title}<small>TN ${n(char[a + 'TN'])}</small></div>${SKILLS[a].map(sk => { const d = (char.skills || {})[sk] || {}; return btn(sk, n(d.rating), !!d.favoured); }).join('')}</div>`;
+    const profs = COMBAT_PROFS.filter(p => n((char.profs || {})[p]) > 0).map(p => btn(p, n(char.profs[p]), false, 'wpn')).join('');
+    const brawl = typeof getBrawlingRating === 'function' && getBrawlingRating() > 0 ? btn('Brawling', getBrawlingRating(), false, 'wpn') : '';
+    body = `<div class="pt-cols">${col('str', 'Strength')}${col('hrt', 'Heart')}${col('wit', 'Wits')}</div>
+      <div class="pt-meta">${btn('Valour', n(char.valour) || 1, (char.culture === 'Bardings'), 'pt-wide')}${btn('Wisdom', n(char.wisdom) || 1, (char.culture === 'Hobbits of the Shire'), 'pt-wide')}${profs}${brawl}</div>`;
+  } else {
+    const b = char.band;
+    body = `<div class="pt-h pt-bandh">Your Band<small>Readiness ${n(b.readiness)} · TN ${bandTN()}${bandWeary() ? ' · Weary' : ''}</small></div>
+      <div class="pt-disps">${DISPOSITIONS.map(d => `<button type="button" class="pt-roll pt-disp${b.dispositionFocus === d.key ? ' fav' : ''}" onclick="playBandRoll('${d.key}')">${typeof DISP_GLYPH !== 'undefined' && DISP_GLYPH[d.key] ? `<svg class="ic" aria-hidden="true"><use href="#${DISP_GLYPH[d.key]}"/></svg>` : ''}<span>${b.dispositionFocus === d.key ? '<b class="fav" aria-label="Disposition Focus">★</b>' : ''}${d.name}</span>${pips(n(b.dispositions[d.key]))}</button>`).join('')}</div>
+      <div class="pt-meta"><button type="button" class="pt-roll pt-wide" onclick="playBandTest('endurance')"><span>Endurance test</span><small>Rally · after a blow</small></button><button type="button" class="pt-roll pt-wide" onclick="playBandTest('fatigue')"><span>Fatigue test</span><small>Rally · after hardship</small></button></div>`;
+  }
   const last = window._lastQuick;
-  const gl = a => (typeof ATTR_GLYPH !== 'undefined' && ATTR_GLYPH[a]) ? `<svg class="ic qc-ic" aria-hidden="true"><use href="#${ATTR_GLYPH[a]}"/></svg>` : '';
-  const pips = n => `<span class="qs-pips">${Array.from({ length: Math.min(n, 6) }, () => '<i></i>').join('')}</span>`;
-  const chip = (lab, sub, fn, a, n, fav) => `<button type="button" class="qchip${fav ? ' fav' : ''}" onclick="${fn}">${gl(a)}<strong>${escapeHtml(lab)}</strong><small>${n ? pips(n) : ''}${escapeHtml(sub)}${fav ? '<span class="sr-only"> · Favoured</span>' : ''}</small></button>`;
-  const aOf = n => (typeof attrOfSkill === 'function' ? attrOfSkill(n) : '');
-  const chips = (last ? chip('Again: ' + last.item.name, 'repeat last roll', 'rollAgain()', last.item.attr, 0) : '') +
-    best.map(x => { const a = aOf(x.n), tn = parseInt(char[a + 'TN']); return chip(x.n, tn ? 'TN ' + tn : x.r + 'd', `rollFromSheet('${x.n}')`, a, x.r, x.f); }).join('');
-  if (!chips) return '';
-  return `<div class="play-quick"><div class="eyebrow">Quick rolls</div><div class="qchips">${chips}</div></div>`;
+  return `<div class="play-tray${_trayOpen ? ' open' : ''}" id="play-tray" data-side="${side}">
+    <div class="pt-bar">
+      <button type="button" class="pt-toggle" onclick="togglePlayTray()" aria-expanded="${_trayOpen}"><svg class="ic" aria-hidden="true"><use href="#i-dice"/></svg>Roll<svg class="ic pt-chev" aria-hidden="true"><use href="#i-chev"/></svg></button>
+      ${band ? `<div class="pt-tabs" role="tablist"><button type="button" role="tab" aria-selected="${side === 'hero'}" class="${side === 'hero' ? 'on' : ''}" onclick="setTraySide('hero')">Hero</button><button type="button" role="tab" aria-selected="${side === 'band'}" class="${side === 'band' ? 'on' : ''}" onclick="setTraySide('band')">Band</button></div>` : ''}
+      ${last && last.item ? `<button type="button" class="pt-again" onclick="playTrayRoll('${String(last.item.name).replace(/'/g, "\\'")}')">Again: ${escapeHtml(last.item.name)}</button>` : ''}
+    </div>
+    <div class="pt-body">${body}</div>
+  </div>`;
+}
+/** The one question asked before the dice: the real choices (spend Hope, use an ally's Gift).
+    Everything the rules apply by themselves is applied and named in the result. Nothing to choose → no question. */
+async function _rollPrompt(title, line, opts) {
+  if (!opts.length) return { go: true, picks: {} };
+  const go = await showModal({
+    title, message: `<p style="margin:0 0 10px">${line}</p>` + opts.map(o =>
+      `<label class="rp-opt"><input type="${o.radio ? 'radio' : 'checkbox'}" name="${o.radio || o.id}" id="rp-${o.id}" value="${o.id}"${o.checked ? ' checked' : ''}><span>${o.label}</span></label>`).join(''),
+    buttons: [{ label: 'Roll', value: true }, { label: 'Not now', value: false, cancel: true }]
+  });
+  const picks = {};
+  opts.forEach(o => { const el = document.getElementById('rp-' + o.id); picks[o.id] = !!(el && el.checked); });
+  return { go: !!go, picks };
+}
+/** A dice result as one line of the story: the pill, a word, what it means, and the full dice one tap away. */
+function _playRollSaid(label, total, tn, ok, icons, meaning, extra) {
+  const word = !ok ? 'Failure' : icons >= 2 ? 'Extraordinary success' : icons === 1 ? 'Great success' : 'Success';
+  return `${rollPillHtml(label, total, tn, ok)} <strong>${word}</strong>${meaning ? ' — ' + escapeHtml(meaning) : ''}${extra ? ' ' + extra : ''} <button type="button" class="pt-details" onclick="openRollDrawer()">Details</button>`;
+}
+function _playAfterRoll() {
+  if (typeof renderPlay === 'function') renderPlay();
+}
+async function playTrayRoll(name) {
+  const r = _rollables().find(x => x.item.name === name); if (!r) return;
+  const hope = parseInt(char.hopeCur) || 0;
+  const tn = parseInt(char[r.item.attr + 'TN']) || 0;
+  const fav = r.s.favoured || r.blessingFav;
+  const opts = [];
+  if (hope > 0) opts.push({ id: 'hope', label: `Spend 1 Hope for +${diceState.inspired ? 2 : 1} ${diceState.inspired ? 'dice (Inspired)' : 'die'} <small>(${hope} Hope left)</small>` });
+  const p = await _rollPrompt(`Roll ${name}`, `${parseInt(r.s.rating) || 0} ${parseInt(r.s.rating) === 1 ? 'die' : 'dice'} against TN ${tn}${fav ? ' · Favoured' : ''}`, opts);
+  if (!p.go) return;
+  diceState.hopeSpend = !!p.picks.hope;
+  const before = history.length ? history[0] : null;
+  window._inlineToPlay = true;
+  try { quickRoll(r.item, r.s); } finally { window._inlineToPlay = false; }
+  const h = history[0];
+  if (!h || h === before) return;
+  const ok = String(h.outcome).startsWith('SUCCESS');
+  const meaning = typeof rollMeaning === 'function' ? rollMeaning(name, ok, !!r.item.isProf) : '';
+  playNote(_playRollSaid(name, h.total, h.tn, ok, ok ? (parseInt(h.icons) || 0) : 0, meaning));
+  _playAfterRoll();
+}
+async function playBandRoll(key) {
+  const d = DISPOSITIONS.find(x => x.key === key); if (!d) return;
+  const hope = parseInt(char.hopeCur) || 0, focus = char.band.dispositionFocus === key;
+  const gifts = [];
+  missionAllies().filter(a => !a.outOfAction).forEach(a => {
+    if (!a.giftWasted && a.gift) gifts.push({ id: 'g_' + a.id, val: a.id, label: `${escapeHtml(a.name)}'s Gift — ${escapeHtml(a.gift)} (+1 die)` });
+    if (a.kinglyGift) gifts.push({ id: 'k_' + a.id, val: a.id + '|kingly', label: `${escapeHtml(a.name)}'s Kingly Gift — ${escapeHtml(a.kinglyGift.name)} (+1 die, re-rolls an Eye)` });
+  });
+  const opts = [];
+  if (hope > 0) opts.push({ id: 'hope', label: `Spend 1 Hope for +${focus ? '2 dice (your Disposition Focus)' : '1 die'} <small>(${hope} Hope left)</small>` });
+  gifts.forEach(g => opts.push({ id: g.id, radio: 'gift', label: g.label }));
+  const p = await _rollPrompt(`Band: ${d.name}`, `${parseInt(char.band.dispositions[key]) || 0} dice against TN ${bandTN()}${bandWeary() ? ' · the Band is Weary' : ''}`, opts);
+  if (!p.go) return;
+  const gEl = document.getElementById('band-gift-pick'), hEl = document.getElementById('band-hope-spend');
+  const g = gifts.find(x => p.picks[x.id]);
+  if (gEl) { gEl.innerHTML = _giftOptionsHTML('band'); gEl.value = g ? g.val : ''; }
+  if (hEl) hEl.checked = !!p.picks.hope;
+  const r = rollDisposition(key);
+  if (!r) return;
+  const ok = String(r.outcome).startsWith('SUCCESS');
+  const sum = document.getElementById('band-roll-summary');
+  const extras = sum ? _playPlainText(sum.innerHTML.split('<br>').slice(1).join(' · ')) : '';
+  playNote(_playRollSaid('Band ' + d.name, r.total, bandTN(), ok, ok ? r.icons : 0, '', extras ? `<small>${escapeHtml(extras)}</small>` : ''));
+  _playAfterRoll();
+}
+async function playBandTest(kind) {
+  if (kind === 'endurance') {
+    const t = await showModal({ title: 'Band Endurance test', message: 'How bad was the blow? (the Damage Threat)', buttons: [
+      ...Object.keys(DAMAGE_THREAT).map(k => ({ label: `${k[0].toUpperCase() + k.slice(1)} (TN ${bandTN() + DAMAGE_THREAT[k]})`, value: k })),
+      { label: 'Not now', value: null, cancel: true }] });
+    if (!t) return;
+    const out = await enduranceTest(t); if (!out) return;
+    playNote(_playRollSaid('Endurance test', out.r.total, out.tn, out.r.outcome.startsWith('SUCCESS'), 0, '', `<small>${escapeHtml(_playPlainText(out.extra))}</small>`));
+  } else {
+    const v = await showModal({ title: 'Band Fatigue test', message: 'How many Fatigue points does the hardship carry?', input: true, inputValue: '2', buttons: [{ label: 'Roll', value: true }, { label: 'Not now', value: null, cancel: true }] });
+    if (v === null || v === undefined) return;
+    const out = await fatigueTest(Math.max(0, parseInt(v) || 0)); if (!out) return;
+    playNote(_playRollSaid('Fatigue test', out.r.total, out.tn, out.r.outcome.startsWith('SUCCESS'), 0, '', `<small>${escapeHtml(_playPlainText(out.extra))}</small>`));
+  }
+  _playAfterRoll();
 }
 function rollAgain() { const l = window._lastQuick; if (l) quickRoll(l.item, l.s); }

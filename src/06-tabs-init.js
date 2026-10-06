@@ -154,6 +154,7 @@ function initRollDrawer() {
 }
 function openRollDrawer() {
   const d = document.getElementById('roll-drawer'); if (!d) return;
+  if (window._inlineToPlay) { if (typeof sfx === 'function') sfx('dice'); return; }   // a roll from ▶ Play is told in the story; Details opens this
   d.classList.add('open'); document.body.classList.add('drawer-open');
   if (typeof sfx === 'function') sfx('dice');
   const b = d.querySelector('.rd-body'); if (b) b.scrollTop = 0;
