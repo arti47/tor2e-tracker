@@ -433,6 +433,8 @@ function openFPWizard(forceNew) {
   char.fpModeActive = true;
   char.fpWizardState = Object.assign({}, fpState, { inProgress: true });
   saveCharacter();
+  // Opened from ▶ Play: the phase is a scene on Play, not a pop-up over it.
+  if (window._fpInPlay && typeof playOpenScene === 'function') { window._fpInPlay = false; playOpenScene('fp'); fpRenderStep(); return; }
   document.getElementById('fp-wizard-overlay').classList.add('show');
   fpRenderStep();
 }
@@ -455,6 +457,7 @@ function fpClose() {
   // Exit FP spend mode but keep the spend tracker visible for the player's reference.
   char.fpModeActive = false;
   saveCharacter();
+  if (char.saga && char.saga.scene === 'fp') { char.saga.scene = null; saveCharacter(); if (typeof renderPlay === 'function') renderPlay(); }
 }
 
 function fpSetPhaseType(t) {
@@ -953,6 +956,7 @@ function _councilLayout() {
 }
 
 function renderSkillEndeavour() {
+  if (window._playSceneKind === 'endeavour' && typeof renderPlay === 'function' && !window._inRenderPlay) setTimeout(renderPlay, 0);
   const setup = document.getElementById('se-setup-card');
   const active = document.getElementById('se-active-card');
   const log = document.getElementById('se-log-card');
@@ -1234,6 +1238,7 @@ async function cancelCouncil() {
 }
 
 function renderCouncil() {
+  if (window._playSceneKind === 'council' && typeof renderPlay === 'function' && !window._inRenderPlay) setTimeout(renderPlay, 0);
   const setup = document.getElementById('council-setup-card');
   const active = document.getElementById('council-active-card');
   const log = document.getElementById('council-log-card');
@@ -2008,7 +2013,7 @@ async function resolveLeaderFocus() {
       title: '⚔️ Duel the Archfoe',
       message: 'A Duel is three close-quarters rounds against the Archfoe, fought with the ordinary combat rules — then you come back here and make the Clash roll.' +
         (harried ? `<br><br>You have harried them: <strong>+${harried}d</strong> on your attacks in this duel.` : '<br><br>You have not harried them — spend Clash successes on <strong>☠ Harry Archfoe</strong> first to gain dice here.') +
-        '<br><br>Put the Archfoe into the Encounter on the Combat tab?',
+        '<br><br>Put the Archfoe into the Encounter?',
       buttons: [
         { label: '⚔️ Add the Archfoe and go', value: 'go' },
         { label: 'Just note it — I will run it myself', value: 'note' },
@@ -4539,10 +4544,13 @@ function _playChoices() {
   if (!char.retired) {
     const standing = _playFoesStanding();
     if (standing && !_playFightable()) lead.unshift(C('⚔️ Back to the fight', "playGoTab('combat')", `${standing} foe${standing === 1 ? '' : 's'} still standing.`));
-    if (char.council && char.council.active) lead.push(C('🗣 Back to the council', "playGoTab('council')", char.council.topic || 'The council is still in session.'));
-    if (char.skillEndeavour && char.skillEndeavour.active) lead.push(C('🛠 Back to the task', "playGoTab('council')", char.skillEndeavour.task || 'The task is not done yet.'));
+    if (char.council && char.council.active) lead.push(C('🗣 Back to the council', "playOpenScene('council')", char.council.topic || 'The council is still in session.'));
+    if (char.skillEndeavour && char.skillEndeavour.active) lead.push(C('🛠 Back to the task', "playOpenScene('endeavour')", char.skillEndeavour.task || 'The task is not done yet.'));
   }
-  return lead.concat(_playStepChoices());
+  const all = lead.concat(_playStepChoices());
+  // The Oracle is always one tap away on Play: a yes/no question, with the odds you choose.
+  if (!char.retired && !all.some(c => c.fn === 'playAsk()')) all.push(C('🔮 Ask the Oracle', 'playAsk()', 'A yes/no question for the world — you choose the odds.'));
+  return all;
 }
 /** What the rules owe the hero right now — a Bout of Madness, a Revelation Episode, a Reward or
     Virtue from a rank already paid for. One list, shown on ▶ Play and on the hero sheet. */
@@ -4584,22 +4592,59 @@ function _playFightable() {
   return true;
 }
 function _playFightOn() { return _playFightable() && !char.retired && (_playFoesStanding() > 0 || !!(char.battle && char.battle.active)); }
+/* Councils, Skill Endeavours and the Fellowship Phase are scenes on ▶ Play in the same way: their
+   cards are moved in while the scene is open (saga.scene) and home again when it closes. */
+const PLAY_SCENES = {
+  council:   { label: 'A council', ids: ['council-setup-card', 'council-active-card', 'council-log-card'], done: () => !!(char.council && !char.council.active && char.council.outcome) },
+  endeavour: { label: 'A long, hard task', ids: ['se-setup-card', 'se-active-card', 'se-log-card'], done: () => !!(char.skillEndeavour && !char.skillEndeavour.active && char.skillEndeavour.outcome) },
+  fp:        { label: 'The Fellowship Phase', ids: ['fp-wizard-box'], done: () => false },
+  mfp:       { label: 'The Fellowship Phase', ids: ['band-fp-card'], done: () => false }
+};
+const FIGHT_IDS = ['battle-active-card', 'stance-card', 'encounter-card-wrap'];
+function _playSceneNow() {
+  if (!_playFightable()) return null;
+  if (_playFightOn()) return 'fight';
+  const k = sagaState().scene;
+  return PLAY_SCENES[k] ? k : null;
+}
+function playOpenScene(kind) {
+  if (!_playFightable()) return playGoTab(kind === 'endeavour' ? 'council' : kind === 'mfp' ? 'band' : kind);
+  sagaState().scene = kind; saveCharacter();
+  if (kind === 'council' || kind === 'endeavour') {
+    const running = kind === 'council' ? (char.council && (char.council.active || char.council.outcome)) : (char.skillEndeavour && (char.skillEndeavour.active || char.skillEndeavour.outcome));
+    if (!running && typeof pickCouncilKind === 'function') pickCouncilKind(kind);
+  }
+  _goTab('play'); renderPlay();
+  window.scrollTo(0, 0);
+}
+function playEndScene() {
+  const k = sagaState().scene;
+  if (k === 'fp' && document.getElementById('fp-wizard-box') && typeof fpState !== 'undefined' && fpState) { fpClose(); return; }
+  sagaState().scene = null; saveCharacter(); renderPlay();
+}
 const _fightHomes = {};
 function _placeFight() {
   const slot = document.getElementById('play-fight'); if (!slot) return false;
   const act = document.querySelector('.tab.active');
-  const on = _playFightOn() && (!act || act.dataset.tab === 'play');
-  const want = { 'battle-active-card': !!(char.battle && char.battle.active), 'stance-card': _playFoesStanding() > 0, 'encounter-card-wrap': _playFoesStanding() > 0 };
+  const kind = (!act || act.dataset.tab === 'play') ? _playSceneNow() : null;
+  const want = {};
+  FIGHT_IDS.forEach(id => { want[id] = false; });
+  Object.values(PLAY_SCENES).forEach(sc => sc.ids.forEach(id => { want[id] = false; }));
+  if (kind === 'fight') { want['battle-active-card'] = !!(char.battle && char.battle.active); want['stance-card'] = want['encounter-card-wrap'] = _playFoesStanding() > 0; }
+  else if (kind) PLAY_SCENES[kind].ids.forEach(id => { want[id] = true; });
   Object.keys(want).forEach(id => {
     const el = document.getElementById(id); if (!el) return;
     // a marker stays where the card lives, so it always goes back to exactly that place
     if (!_fightHomes[id] && el.parentNode !== slot) { const m = document.createComment('home:' + id); el.parentNode.insertBefore(m, el); _fightHomes[id] = m; }
-    if (on && want[id]) { if (el.parentNode !== slot) slot.appendChild(el); }
+    if (want[id]) { if (el.parentNode !== slot) slot.appendChild(el); }
     else if (el.parentNode === slot && _fightHomes[id]) _fightHomes[id].parentNode.insertBefore(el, _fightHomes[id]);
   });
+  const on = !!kind;
   slot.hidden = !on;
-  const pp = document.getElementById('panel-play'); if (pp) pp.classList.toggle('in-fight', on);
+  const pp = document.getElementById('panel-play');
+  if (pp) { pp.classList.toggle('in-fight', on); pp.dataset.scene = kind || ''; }
   window._playFightPlaced = on;
+  window._playSceneKind = kind;
   return on;
 }
 /** Something that finished on another tab is told in the Play story too. */
@@ -4703,7 +4748,7 @@ function _playStepChoices() {
       C('🔮 Ask a yes/no question', 'playAsk()', 'When you need the world to decide something.'),
       C('🗣 Win someone over', "playCouncil('council')", 'A Council — when the stakes are social.'),
       C('🛠 A long, hard task', "playCouncil('endeavour')", 'A Skill Endeavour — search, build, mend over several tries.'),
-      C('⚔️ Something attacks!', 'playFight()', 'Pick the foe; the fight runs on the Combat tab.'),
+      C('⚔️ Something attacks!', 'playFight()', 'Pick the foe; the fight is fought right here.'),
       C('✅ Our business here is done', "playGoStep('home')", '')
     ];
     case 'home': return (char.journey && char.journey.active)
@@ -5141,7 +5186,7 @@ function _playMoriaChamberChoices(C) {
   const ch = _playChamberHere();
   if (ch && !ch.met) {
     if (ch.band) return [
-      C('⚔️ Fight the orc-band', 'playChamberFight()', _orcBandSummary(ch.band) + ' — the fight runs on the Combat tab.'),
+      C('⚔️ Fight the orc-band', 'playChamberFight()', _orcBandSummary(ch.band) + ' — fought right here.'),
       C('🤫 Try to slip past them', 'playChamberSlip()', 'A Stealth roll. If it fails, they find you.')
     ];
     if (ch.skill) return [C(`🎯 Meet it: ${ch.skill}`, 'playChamberChallenge()', 'The chamber tests you — the app rolls it.')];
@@ -5208,13 +5253,18 @@ function playChamberSlip() {
 
 async function playFight() {
   playSay('<strong>Something comes at you out of the dark.</strong>');
-  playSay('The app suggests a foe from where you are and what just happened — take it, ask for something else, or pick your own. The fight runs on the Combat tab; when it is over, come back here and carry on.', 'aside');
+  playSay('The app suggests a foe from where you are and what just happened — take it, ask for something else, or pick your own. The fight is fought right here; when it is over, the story carries on.', 'aside');
   window._playFightPending = true;      // the first foe picked takes you to the fight
   openBestiary();
   renderPlay();
 }
 /** Council or Skill Endeavour, set up on the Council tab — Play opens it at the right card. */
 function playCouncil(kind) {
+  if (_playFightable()) {
+    playSay(kind === 'council' ? 'You set out to win someone over. <em>Say who, and what you ask — then roll it here.</em>'
+                               : 'You set your hand to a long, hard task. <em>Say what it is — then roll it here.</em>', 'aside');
+    return playOpenScene(kind);
+  }
   playSay(kind === 'council' ? 'You set out to win someone over. <em>Set up the Council and roll it on the Council tab.</em>'
                              : 'You set your hand to a long, hard task. <em>Set it up and roll it on the Council tab.</em>', 'aside');
   playGoTab('council');
@@ -5222,7 +5272,7 @@ function playCouncil(kind) {
 }
 /** How the hero meets a Noteworthy Encounter: each answer opens the subsystem that runs it. */
 const SCENE_WAYS = [
-  ['fight', '⚔️ Fight it out', 'A fight on the Combat tab.'],
+  ['fight', '⚔️ Fight it out', 'A fight, fought here.'],
   ['council', '🗣️ Talk your way through', 'A Council — win them over.'],
   ['endeavour', '💪 Overcome it', 'A Skill Endeavour — a long, hard task.'],
   ['pass', '↷ It passes', 'Say how it ends, and travel on.']
@@ -5253,10 +5303,12 @@ async function playPeril() {
 
 async function playFellowship() {
   if (typeof isMoria === 'function' && isMoria()) {
+    if (_playFightable()) return playOpenScene('mfp');
     playSay('Moria rests are on the Band tab — pick how long you rest there.', 'aside');
     document.querySelector('.tab[data-tab=band]').click();
     return;
   }
+  if (_playFightable()) window._fpInPlay = true;
   openFPWizard();
 }
 
@@ -5796,7 +5848,18 @@ function _renderPlayBody(host, s, pp) {
     return;
   }
 
-  if (_placeFight()) {
+  if (_placeFight() && window._playSceneKind !== 'fight') {
+    const k = window._playSceneKind, sc = PLAY_SCENES[k];
+    const feedS = _playFeed.slice(-6).map(f => f.kind === 'event' ? f.text : `<p class="${f.kind === 'aside' ? 'aside' : ''}">${_rollPills(f.text)}</p>`).join('');
+    const done = sc.done();
+    host.innerHTML = _playConditionBanner() +
+      `<div class="card play-fight-log"><div class="eyebrow">${escapeHtml(sc.label)}</div>
+        ${feedS ? `<div class="play-feed" aria-live="polite">${feedS}</div>` : ''}
+        <button type="button" class="btn ${done ? '' : 'btn-secondary '}btn-block" onclick="playEndScene()">${done ? 'Back to the story' : 'Leave this for now — back to the story'}</button></div>
+      ${k === 'fp' || k === 'mfp' ? '' : playTrayHtml()}`;
+    return;
+  }
+  if (window._playFightPlaced) {
     const e = enc(), b = char.battle || {};
     const feedF = _playFeed.slice(-8).map(f => f.kind === 'event' ? f.text : `<p class="${f.kind === 'aside' ? 'aside' : ''}">${_rollPills(f.text)}</p>`).join('');
     host.innerHTML = _playConditionBanner() +

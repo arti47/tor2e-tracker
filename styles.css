@@ -3093,3 +3093,8 @@ body[data-group="play"] .toast-strip { bottom: calc(var(--nav-h) + var(--safe-bo
   #panel-play.in-fight #play-body > .play-fight-log, #panel-play.in-fight #play-body > .play-tray { grid-column: 2; }
   #panel-play.in-fight .play-aside { display: none; }
 }
+/* the Fellowship Phase wizard as a scene on Play */
+.play-fight > .menu { position: static; width: auto !important; max-width: none !important; max-height: none !important; overflow: visible !important;
+  border: 1px solid var(--line); border-radius: var(--r-md); box-shadow: var(--elev-1, none); animation: none; margin-bottom: var(--sp-3); padding: var(--sp-4); }
+.play-fight > .menu::before { display: none; }
+.play-fight-log .btn-block { margin-top: 8px; }

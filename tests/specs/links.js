@@ -713,6 +713,33 @@ module.exports = {
     checks.push({ ok: !bat.err && bat.onPlay && bat.homeOnTab && bat.backToStory,
       msg: `a Moria Battle is led from ▶ Play; the Battle tab still has it when opened, and the story comes back when it ends (${JSON.stringify(bat)})` });
 
+    // Councils, Skill Endeavours and the Fellowship Phase are scenes on ▶ Play: set up, rolled and finished there.
+    const scn = await safe(`
+      const save = JSON.stringify({ council: char.council, se: char.skillEndeavour, saga: char.saga, moria: char.moriaMode, fpw: char.fpWizardState });
+      const out = {};
+      char.saga = Object.assign({}, char.saga || {}, { started: true, ended: false, step: 'location', scene: null });
+      char.council = JSON.parse(JSON.stringify(DEFAULT_CHARACTER.council)); saveCharacter(); render();
+      openNavGroup('play'); renderPlay();
+      playCouncil('council');
+      out.setupOnPlay = document.querySelector('.tab.active').dataset.tab === 'play' && !!document.querySelector('#play-fight #council-setup-card') && document.getElementById('council-setup-card').style.display !== 'none';
+      document.getElementById('c-topic').value = 'Ask the warden for a guide';
+      startCouncil(); renderPlay();
+      out.activeOnPlay = !!document.querySelector('#play-fight #council-active-card') && document.getElementById('council-active-card').style.display !== 'none';
+      finalizeCouncil('success'); renderPlay(); await new Promise(r => setTimeout(r, 20));
+      const back = [...document.querySelectorAll('#play-body button')].find(b => /^Back to the story$/.test(b.textContent.trim()));
+      out.back = !!back; back && back.click();
+      out.home = !!document.querySelector('#panel-council #council-active-card') && !!document.querySelector('#play-body .play-scene');
+      // the Fellowship Phase opens on Play, not as a pop-up
+      char.moriaMode = false; char.fpWizardState = null; saveCharacter();
+      await playFellowship();
+      out.fpOnPlay = !!document.querySelector('#play-fight #fp-wizard-box') && !document.getElementById('fp-wizard-overlay').classList.contains('show');
+      fpClose(); renderPlay();
+      out.fpHome = !!document.querySelector('#fp-wizard-overlay #fp-wizard-box') && !(char.saga.scene);
+      const o = JSON.parse(save); char.council = o.council; char.skillEndeavour = o.se; char.saga = o.saga; char.moriaMode = o.moria; char.fpWizardState = o.fpw; saveCharacter(); render();
+      return out;`);
+    checks.push({ ok: !scn.err && scn.setupOnPlay && scn.activeOnPlay && scn.back && scn.home && scn.fpOnPlay && scn.fpHome,
+      msg: `a Council is set up, rolled and finished on ▶ Play and then the story comes back; the Fellowship Phase opens on Play, not as a pop-up (${JSON.stringify(scn)})` });
+
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length}${errors.length ? ': ' + errors[0] : ''})` });
     await context.close();
     return { checks };
