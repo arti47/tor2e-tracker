@@ -664,7 +664,7 @@ module.exports = {
       const save = JSON.stringify({ moria: char.moriaMode, band: char.band, saga: char.saga, hope: char.hopeCur });
       const out = {};
       char.saga = Object.assign({}, char.saga || {}, { started: true, ended: false, step: 'haven' });
-      char.hopeCur = 0; playClearFeed();
+      char.hopeCur = 0; playClearFeed(); closeRollDrawer();
       char.moriaMode = true; char.band.allies = [{ id: 'q1', name: 'Bofri', gift: 'Stout' }]; saveCharacter(); render();
       document.querySelector('.bn-item[data-group="play"]').click(); renderPlay();
       window.scrollTo(0, 0); if (typeof setSlimHeader === 'function') setSlimHeader(false);
@@ -678,13 +678,14 @@ module.exports = {
       await new Promise(r => setTimeout(r, 50));
       out.closed = !ov.classList.contains('show');
       out.rolledIntoPlay = /Awareness/.test((document.querySelector('#panel-play .play-feed') || {}).textContent || '');
+      out.drawerShut = !document.getElementById('roll-drawer').classList.contains('open');
       pill.click();
       out.band = ov.classList.contains('show') && /Bofri/.test(document.getElementById('peek-body').textContent);
       closePeek();
       const o = JSON.parse(save); char.moriaMode = o.moria; char.band = o.band; char.saga = o.saga; char.hopeCur = o.hope; saveCharacter(); render();
       out.pillGone = document.getElementById('band-pill').hidden === !(o.moria && (o.band.allies || []).length);
       return out;`);
-    checks.push({ ok: !pk.err && pk.hero && pk.stillPlay && pk.pill && pk.closed && pk.rolledIntoPlay && pk.band && pk.pillGone,
+    checks.push({ ok: !pk.err && pk.hero && pk.stillPlay && pk.pill && pk.closed && pk.rolledIntoPlay && pk.drawerShut && pk.band && pk.pillGone,
       msg: `the header name opens the hero sheet over Play (a skill tapped there rolls into the story), and in Moria a Band chip opens the Band (${JSON.stringify(pk)})` });
 
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length}${errors.length ? ': ' + errors[0] : ''})` });
