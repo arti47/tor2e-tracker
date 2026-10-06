@@ -4,16 +4,16 @@ An HTML5 character sheet + play tracker for **The One Ring 2nd Edition** RPG —
 
 ---
 
-## ⭐ STATUS DASHBOARD — read this first (updated 2026-09-28, table play)
+## ⭐ STATUS DASHBOARD — read this first (updated 2026-10-06, linkage + rules pass)
 
 > **This section is the single source of truth for "where are we and what's next."**
 > Everything below it is reference detail and per-phase history. Keep this dashboard
 > current whenever work lands (and prune it — it must stay one screen).
 
 ### Current state
-- **All roadmap phases COMPLETE (incl. the full loremaster port):** P0 adversaries · P1 test harness (`npm test`, **555/555 green**, 13 specs) · P2 module split (`src/01…08` + `styles.css`) · P3 cloud-owned heroes · P4 live campaigns/party · P5 shared GM-driven encounter · P6 Loremaster screen (role-gated GM tab, peek, broadcast) · P7 security rules (**deployed + live-verified 2026-07-02**) · P8 accessibility. Plus the full UX batch (U3, U4, U5/6/7/8, U9–U15 — all shipped; "group rolls" deliberately skipped).
+- **All roadmap phases COMPLETE (incl. the full loremaster port):** P0 adversaries · P1 test harness (`npm test`, **571/571 green**, 14 specs) · P2 module split (`src/01…08` + `styles.css`) · P3 cloud-owned heroes · P4 live campaigns/party · P5 shared GM-driven encounter · P6 Loremaster screen (role-gated GM tab, peek, broadcast) · P7 security rules (**deployed + live-verified 2026-07-02**) · P8 accessibility. Plus the full UX batch (U3, U4, U5/6/7/8, U9–U15 — all shipped; "group rolls" deliberately skipped).
 - **Cloud is LIVE**: real Firebase config committed (`FIREBASE_ENABLED=true`); rules deployed; broadcast / in-campaign push / peek all verified against the real project 2026-07-02.
-- **SW cache `tor2e-v152`** · git repo (origin = github.com/arti47/tor2e-tracker, branch main) · shells (`character-tracker.html` = `index.html`) in sync.
+- **SW cache `tor2e-v153`** · git repo (origin = github.com/arti47/tor2e-tracker, branch main) · shells (`character-tracker.html` = `index.html`) in sync.
 - **Dice-tab QoL (2026-07-02):** quick-roll grid moved to sit directly above the 🎲 Roll button (result renders right below → tap-to-result with no hunting) + the result `scrollIntoView`s on every roll (`behavior:'auto'` on purpose — `'smooth'` never completes in some headless/older-Safari engines); roll history gets a per-row **×** delete (`deleteRollAt`, index via `history.indexOf`) and a **🗑 Clear** button (`clearRollHistory`, confirmed). +2 ux-spec checks.
 - **Dice/Oracle QoL 2 (2026-07-02, SW v101, harness 104/104):** the roll-result summary now **leads with the skill/prof name** (quick rolls pass it as `rollDice(skillLabel)`; e.g. "Valour · vs TN 15 — SUCCESS"); **Oracle History** gets per-row **×** (`deleteOracleRollAt` — direct index, newest-first) + **🗑 Clear** (`clearOracleHistory`, confirmed; device-global history). +2 ux-spec checks. *(Preview-verification note: the local `http.server` + SW combo can poison the HTTP cache so even a new SW precaches stale JS — when the preview serves old code, switch the preview port = fresh origin.)*
 
@@ -422,6 +422,15 @@ An HTML5 character sheet + play tracker for **The One Ring 2nd Edition** RPG —
   - **Finishes:** tool-card titles carry a small matching mark (`RUBRIC_ICON`, `addCardRubrics` in the render pass); the Play scene cross-fades and its heading writes in when the story moves (`window._playSceneKey`); parchment skeletons for the campaign roster and the loading map; phone bottom sheets have a deckled top edge (a mask, so scrolling never clips it).
   - **New `tests/specs/folio.js` (27 checks); all 31 revert probes red.** Four needed fixing first: the Oracle-seal check measured the seal's box, not its drawing (the bug was a 356px drawing in a 28px box); the ledger check accepted a missing seal because `null <= 26` is true; the Loremaster-title check used a name that fit either way; the rubric check read before the render pass had run. Two existing checks were updated because what they encoded changed: the dead-hint guard accepts a (?) beside its button, and the header-name check starts from the full header (a folded header answers a tap by unfolding, by design).
 
+- **LINKAGE + RULES PASS — the tabs are one game (2026-10-06, SW v153, harness 571/571):** the owner: *"Play doesn't seem to link to the Journey tab… info on Play not reflected in Journey… and other tabs."* Audit of every surface pair; fixes are routes and shared state, no table changed.
+  - **One calendar.** `advanceDays(n)` is the only way days pass: it moves the hero's day-count, the Chronicle's Tale of Years (`advanceChronicleDay`, month/year rollover) and the journey's season (`_syncJourneySeason` → `calendarSeason()`) together; negative steps back (Short Cut). Before: a march never moved the Chronicle, a rest wrote "31 Astron", arrival added the days a second time, Play's journey was always Spring. Tale of Years "+1 Day" → `passDayByHand()`.
+  - **Play ↔ Journey.** Play's journeys start from `homePlaceName()` in the calendar's season; *Plan it in full* hands off to the Journey tab with destination/origin filled. A journey begun **on the Journey tab** moves Play onto the road (`saga.step` → `journey`, or `home` from the place you went), and arriving there moves it to the location / Fellowship Phase. Solo roles read "all of them — you travel alone".
+  - **Play ↔ everything else.** Play leads with what is running elsewhere: *Back to the fight* (foes standing), *Back to the council / task*; offers *Face the perilous area* (`playPeril`) and *Something attacks* (picking a foe opens Combat; ending the encounter notes it on Play); a location offers *Win someone over* / *A long, hard task* (`playCouncil`). Council/Endeavour outcomes and Dice-tab quick rolls made on Play are noted in Play's story. **Owed items** (Bout of Madness, Revelation at the Hunt, an unchosen Reward/Virtue) lived only inside the hidden Edit form; `owedChoices()` now leads Play and heads the hero sheet.
+  - **Every roll in one history.** `_doInlineRoll(…, label)` writes Journey, Play, Council, Endeavour, arrival and Greed rolls into the Dice history (they left no trace).
+  - **Rules fixes (inline rolls now match the Dice tab):** an **Eye counts 0** and fails outright only a **Miserable** hero (it auto-failed every Play/Journey/Council roll); **Weary** zeroes Success dice of 1–3 (`heroIsWeary()` — the toggle *or* Endurance ≤ Load + Fatigue); **gear dice** (Useful Item +1d, Blessing +2d) count via `_heroSkill`; a **foe's dice ignore the hero's Despair and Weary** (`{foe:true}`); **camping on the road no longer clears lingering Fatigue** — only a Safe Haven does (`takeProlongedRest({safeHaven})`).
+  - **Flagged, not changed (needs the rulebook page, GOTCHA 2):** the Encounter treats a foe's Feat-die Eye as a failure and Rune/10 as its Piercing Blow; TOR2E reverses the Feat die for adversaries (Eye = their best result, Rune = 0). If confirmed, `foeAttackHero` needs the reversed reading.
+  - **New `tests/specs/links.js` (16 checks), all 14 fix-probes red on revert.** Two existing checks updated: the Journey-tab arrival now moves Play to the location (stronger than offering "We have arrived"), and the small-phone first-choice check clears the Play feed first (roll notes are now part of it).
+
 ### The dev workflow (every change)
 1. Edit **`src/*.js`** (JS) or **`character-tracker.html`** (markup) or `styles.css`.
 2. If the HTML changed: `cp character-tracker.html index.html`.
@@ -451,6 +460,8 @@ An HTML5 character sheet + play tracker for **The One Ring 2nd Edition** RPG —
 | 12 | **Redeploy `database.rules.json`** (table play) | S | Stages 2 and 5 added `table`, `calls`, `feed`, `handouts` and `pool` under `campaigns/{cid}`. Until the owner redeploys, those writes are `PERMISSION_DENIED` on the real project (the harness's fake Firebase does not enforce rules — GOTCHA 46). Then verify live with two devices (item 2). |
 
 | 11 | **Playtest run 4** (and a look-and-feel pass on a real phone/iPad) | M | Never ran (rate limit). Should now include **a table session**: a Loremaster and two players on separate devices through a journey, a fight and a Fellowship Phase, and one hero switched to solo and back. Now also covers all three 2026-09-27 redesign rounds: navigation, vitals bar, Build wizard, hand-edit mode, hero sheet + Edit, result drawer, Skills-on-the-sheet, equipment on Gear, pick sheets/steppers, Oracle Ask box, Band accordion; and round 4: Edit sections, gear item cards, Council chooser, guided Journey setup, slim header, result banner. |
+
+**Rules question open:** adversary Feat-die reading (Eye best / Rune 0) — verify on the Core Rules page before changing `foeAttackHero`.
 
 **Recommended order: 12 (redeploy rules) → 11 (playtest) → 1 (deploy) → 2 (table test). 5 and 7 only if a real need emerges. Items 3, 4, 6 ✅ done 2026-07-02; items 8, 9, 10 ✅ done 2026-09-12 / 09-13 / 09-14.** Every playtest backlog is closed. **Play it once more before deploying** (GOTCHA 16): runs 2 and 3 each found what the previous round's fixes broke or half-reached, and this round changed the session loop, the wound rules, combat and the share format. If run 4 finds only cosmetics, ship it.
 
@@ -554,6 +565,10 @@ An HTML5 character sheet + play tracker for **The One Ring 2nd Edition** RPG —
 58. **A button never holds a button.** `data-hint` on a `<button>` puts its (?) beside it in `.hint-wrap`; a check that looks for `.hint-q` inside the element must also look beside it. On a label the (?) rides with the last word in `.hint-tail`. *(→ UX/UI redesign round 8)*
 59. **One call to action per empty list.** Mark a card's own button that repeats its empty state's action with `data-empty-dup`; CSS hides it while `.empty-state` is in the card. `null <= n` is `true` in JavaScript — a size check must require the thing to exist. *(→ round 8)*
 
+60. **Days pass through `advanceDays(n)` only.** It moves `char.dayCount`, the Chronicle clock and the journey's season together. Never write `journal.clock.day += …` or `dayCount++` at a new site. *(→ Linkage pass)*
+61. **Every roll outside the Dice tab goes through `_doInlineRoll(dice, fav, tn, label, opts)`** — pass a label so it reaches the history, and `{foe:true}` for an adversary so the hero's Despair/Weary/Eye hooks stay off. Skill dice come from `_heroSkill(name).rating`, which includes gear. *(→ Linkage pass)*
+62. **Nothing a player must act on may live only inside `#char-edit`.** The form is hidden in normal use; owed choices go through `owedChoices()` (Play + sheet). A new "you are owed X" state joins that list. *(→ Linkage pass)*
+
 ---
 
 ## Project Overview
@@ -580,8 +595,8 @@ npm install && npm test                     # harness must be green (npm install
 
 As of last verification:
 - **Layout (since P2, 2026-06-29)**: thin `character-tracker.html` shell (mirrored to `index.html`) loading `styles.css` + `src/vendor-qrcode.js` + `src/01-core.js`…`src/08-gm.js` in order — **classic scripts, no build step, still works over `file://`**. `firebase-config.js` (real keys, `FIREBASE_ENABLED=true`) + Firebase compat CDN scripts power the optional-but-live cloud layer (`src/07-sync.js`); the app degrades gracefully to fully-local when offline.
-- **`sw.js` `CACHE_VERSION`**: `tor2e-v152` (bump on every deploy). `PRECACHE` lists all 8 `src/*.js` + `vendor-qrcode.js` + `styles.css` + `firebase-config.js` + shells + PWA assets — **add any new file there**. SW strategy: HTML/navigations **and code (.js/.css/.json)** network-first; images/fonts cache-first; precache bypasses the HTTP cache (`cache:'reload'`); auto-activate.
-- **Test harness**: `npm test` → 13 specs / **555 checks** (smoke 23, adversaries 11, ux 208, spillage 20, a11y 7, gm 25, reachability 7, design 96, table 47, polish 32, art 30, atmos 22, **folio 27**). A fresh clone needs `npm install` first (`playwright-core` is the only devDependency; `tests/browser.js` glob-resolves a cached Chromium, `CHROMIUM_BIN` overrides). Cloud paths are no-ops in tests (SDK blocked) — verify live features via preview against the real project.
+- **`sw.js` `CACHE_VERSION`**: `tor2e-v153` (bump on every deploy). `PRECACHE` lists all 8 `src/*.js` + `vendor-qrcode.js` + `styles.css` + `firebase-config.js` + shells + PWA assets — **add any new file there**. SW strategy: HTML/navigations **and code (.js/.css/.json)** network-first; images/fonts cache-first; precache bypasses the HTTP cache (`cache:'reload'`); auto-activate.
+- **Test harness**: `npm test` → 14 specs / **571 checks** (smoke 23, adversaries 11, ux 208, spillage 20, a11y 7, gm 25, reachability 7, design 96, table 47, polish 32, art 30, atmos 22, folio 27, **links 16**). A fresh clone needs `npm install` first (`playwright-core` is the only devDependency; `tests/browser.js` glob-resolves a cached Chromium, `CHROMIUM_BIN` overrides). Cloud paths are no-ops in tests (SDK blocked) — verify live features via preview against the real project.
 - **Cloud (P3–P7)**: heroes mirror to `characters/{id}` (owner-only, rules-enforced); campaigns at `campaigns/{cid}` (join codes, live vitals party, presence, shared encounter, loremaster broadcast). `database.rules.json` **deployed + live-verified 2026-07-02**.
 - **Solo modes**: Strider + Moria complete (see their sections below).
 - **localStorage keys**: a **multi-character roster** (added 2026-05-31):
@@ -1581,7 +1596,7 @@ tor2e-tracker/
 ├── tests/
 │   ├── run.js · serve.js · browser.js
 │   ├── fakefb.js               # in-memory Firebase RTDB stand-in: several browser contexts share one campaign
-│   └── specs/{smoke,adversaries,ux,spillage,a11y,gm,reachability,design,table,polish,art,atmos,folio}.js
+│   └── specs/{smoke,adversaries,ux,spillage,a11y,gm,reachability,design,table,polish,art,atmos,folio,links}.js
 ├── fonts/                      # EB Garamond woff2 (latin 500/600/700 + 500 italic), precached
 ├── licenses/                   # eb-garamond-OFL.txt, lucide-ISC.txt (inline icon sprite in the shell)
 ├── package.json                # dev-only: `npm test`, playwright-core (node_modules gitignored)
