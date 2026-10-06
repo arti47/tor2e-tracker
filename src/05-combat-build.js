@@ -1158,23 +1158,24 @@ async function _encRoundFellPrompt(round) {
     (late ? '<br><br><em>One of these fires at the start of round 1. If that round has already passed, apply it now or decide it was missed — the app does not track it for you.</em>' : ''),
     '⚜ Fell abilities');
 }
-async function endEncounter() {
+async function endEncounter(opts) {
+  opts = opts || {};
   const e = enc();
-  if (e.foes.length && !await confirmStyled('End the encounter and clear all adversaries?', 'End Encounter', {yes:'End encounter', no:'Keep fighting'})) return;
+  if (e.foes.length && !opts.fled && !await confirmStyled('End the encounter and clear all adversaries?', 'End Encounter', {yes:'End encounter', no:'Keep fighting'})) return;
   // A whole fight used to leave no mark on the Campaign Timeline; record it before it is cleared.
   if (typeof logTimeline === 'function' && e.foes.length) {
     const slain = e.foes.filter(f => f.slain).length;
     const names = e.foes.map(f => f.name).filter(Boolean).join(', ');
-    logTimeline('combat', `Fight ended after ${e.round || 1} round${(e.round || 1) === 1 ? '' : 's'} — ${names}${slain ? ` (${slain} slain)` : ''}.`);
+    logTimeline('combat', `${opts.fled ? 'Fled the fight' : 'Fight ended'} after ${e.round || 1} round${(e.round || 1) === 1 ? '' : 's'} — ${names}${slain ? ` (${slain} slain)` : ''}.`);
   }
   if (typeof playNote === 'function' && e.foes.length) {
     const slainN = e.foes.filter(f => f.slain).length;
-    playNote(`<strong>The fight is over</strong> after ${e.round || 1} round${(e.round || 1) === 1 ? '' : 's'}${slainN ? ` — ${slainN} foe${slainN === 1 ? '' : 's'} slain` : ''}. Endurance ${parseInt(char.endCur) || 0}/${parseInt(char.endMax) || 0}.`);
+    playNote(`<strong>${opts.fled ? 'You got away — the fight is over' : 'The fight is over'}</strong> after ${e.round || 1} round${(e.round || 1) === 1 ? '' : 's'}${slainN ? ` — ${slainN} foe${slainN === 1 ? '' : 's'} slain` : ''}. Endurance ${parseInt(char.endCur) || 0}/${parseInt(char.endMax) || 0}.`);
   }
   _encFinishGroup();  // finalise the Chronicle combat group (summary) BEFORE clearing the encounter
   if (encShared()) { const m = Sync.sharedEnc(); m.active = false; m.round = 1; m.foes = []; }
   else char.encounter = JSON.parse(JSON.stringify(DEFAULT_CHARACTER.encounter));
-  char.engagedFoes = 0;
+  char.engagedFoes = 0; char.flyPending = false;
   _encResults = {}; _encShows = {};
   saveCharacter(); render(); renderEncounter();
   if (typeof renderChronicle === 'function') renderChronicle();

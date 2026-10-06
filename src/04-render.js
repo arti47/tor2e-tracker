@@ -3937,8 +3937,9 @@ async function flyYouFools() {
     if (typeof encDeriveEngaged === 'function') encDeriveEngaged();
     saveCharacter();
     if (typeof encLogRoll === 'function') encLogRoll(`<strong>You</strong> · 🏃 slipped away from the fight — no roll needed (Rearward)`);
-    render(); renderEncounter();
-    alert(`🏃 Away.\n\nYou break off and leave the fight — ${n} foe${n === 1 ? '' : 's'} no longer engaged with you. Tap 🏁 End encounter when the scene is over.`);
+    // Away is away: the fight is over for you, so the encounter ends with it.
+    await endEncounter({ fled: true });
+    alert(`🏃 You get away.\n\nYou break off from ${n === 1 ? 'your foe' : 'all ' + n + ' foes'} and leave the fight behind. The encounter is over.`);
     return;
   }
   if (choice !== 'defensive') return;   // Cancel, Escape, or a stray dismissal: say nothing, change nothing
@@ -3978,9 +3979,16 @@ async function _flyEscapeRoll(foe) {
   encDeriveEngaged();
   saveCharacter();
   encLogRoll(line);
+  // Clear of every foe → the fight is over and the encounter ends. Another foe still on you → it goes on.
+  const stillOn = encEngagedFoes().filter(f => f !== foe);
+  if (escaped && !stillOn.length) {
+    await endEncounter({ fled: true });
+    alert(`🏃 You get away!\n\n${score} vs TN ${tn} — you fight clear of ${foe.name} and deal no damage. The encounter is over.`);
+    return;
+  }
   render(); renderEncounter();
   alert(escaped
-    ? `🏃 Away!\n\n${score} vs TN ${tn} — you fight clear of ${foe.name} and deal no damage. You are no longer engaged.`
+    ? `🏃 Clear of ${foe.name}.\n\n${score} vs TN ${tn} — but ${stillOn.map(f => f.name).join(', ')} ${stillOn.length === 1 ? 'is' : 'are'} still on you. Try again on your next turn.`
     : `You are still engaged.\n\n${score} vs TN ${tn} — ${foe.name} keeps you pinned. You may try again on your next turn.`);
 }
 

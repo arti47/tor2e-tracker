@@ -539,6 +539,26 @@ module.exports = {
     checks.push({ ok: !cl.err && /guard post or armoury/.test(cl.hope) && !/test your Token/i.test(cl.hope) && /token of hope/.test(cl.hope) && /great hall/.test(cl.skill) && /test your Lore/.test(cl.skill),
       msg: `a chamber reads as a sentence — a token of hope is not a test, and the room type is lower case (${JSON.stringify(cl)})` });
 
+    // Fleeing: getting clear of every foe ends the encounter; clear of one of two does not.
+    const fl = await safe(`
+      const foe = (id, n) => ({ id, name: n, endMax: 12, endCur: 12, parry: 3, armour: 1, might: 0, hateMax: 2, hateCur: 2, atkTN: 14,
+        attacks: [{ name: 'sword', dice: 2, dmg: 4, inj: 14 }], fell: '', engaged: true, wounded: false, slain: false });
+      const realRoll = window._doInlineRoll, realModal = window.showModal, realAlert = window.alert;
+      window._doInlineRoll = () => ({ total: 20, outcome: 'SUCCESS', icons: 0, featValue: 10, featSpecial: null });
+      window.showModal = async () => 'defensive'; window.alert = () => {};
+      const out = {};
+      char.encounter = JSON.parse(JSON.stringify(DEFAULT_CHARACTER.encounter)); char.encounter.active = true;
+      char.encounter.foes = [foe('a', 'Orc'), foe('b', 'Goblin')]; saveCharacter();
+      await flyYouFools();
+      out.twoLeft = char.encounter.foes.length === 2 && char.encounter.active === true;
+      char.encounter.foes = [foe('c', 'Orc')]; saveCharacter();
+      await flyYouFools();
+      out.oneEnded = !(char.encounter.foes || []).length;
+      window._doInlineRoll = realRoll; window.showModal = realModal; window.alert = realAlert;
+      return out;`);
+    checks.push({ ok: !fl.err && fl.twoLeft && fl.oneEnded,
+      msg: `a successful escape from every foe ends the encounter; getting clear of one while another is still on you does not (${JSON.stringify(fl)})` });
+
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length}${errors.length ? ': ' + errors[0] : ''})` });
     await context.close();
     return { checks };

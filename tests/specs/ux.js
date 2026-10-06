@@ -1843,7 +1843,7 @@ module.exports = {
         return 'slip';
       };
       await flyYouFools();
-      out.rearwardEscapes = slipOffered && char.encounter.foes[0].engaged === false;
+      out.rearwardEscapes = slipOffered && !(char.encounter.foes || []).length && !char.flyPending;   // away = the encounter is over
 
       // 9 — Opening Volley changes the ranged TN it prints.
       hero();
