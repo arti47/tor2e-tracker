@@ -405,7 +405,6 @@ module.exports = {
 
     // A foe card shows its abilities as names; the rule text opens one at a time on a tap.
     const fc = await safe(`
-      endEncounter && (char.encounter = { active: false, round: 1, foes: [] });
       const all = allBestiary(); const i = all.findIndex(x => x.name === 'Great Orc Bodyguard');
       addFoeFromBestiary(i); document.querySelectorAll('.menu-overlay.show').forEach(o => o.classList.remove('show'));
       renderEncounter();
