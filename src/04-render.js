@@ -1067,7 +1067,7 @@ function _skillLogRow(r, num) {
     const tl = (d.match(/Time Limit set to (\d+)/) || [])[1];
     said = r.success ? `A good opening — <strong>${tl || '?'} attempts</strong> to win them over.` : `A poor opening — only <strong>${tl || 3} attempts</strong>.`;
   } else if (r.contributed > 0) said = `<strong>+${r.contributed}</strong> toward the goal.`;
-  else said = 'No progress.';
+  else said = 'It fails — no progress toward the goal.';
   const extra = [];
   if (r.bonus) extra.push(`roleplay +${r.bonus}d`);
   if (/Support \+1d/.test(d)) extra.push('support +1d');
@@ -4609,7 +4609,7 @@ function _playStepChoices() {
 async function playAskAround() {
   const row = _randomLoreRow();
   const words = `${row.action} · ${row.aspect} · ${row.focus}`;
-  playSay(`You listen at the fire and in the doorways. What you hear turns on three things: <strong>${escapeHtml(words)}</strong>.`);
+  playSay(`You listen at the fire and in the doorways. The Oracle gives three words for the news you hear: <strong>${escapeHtml(words)}</strong>.`);
   playSay(`<em>Read those as a rumour. If they mean nothing to you, tap again — that is allowed.</em>`, 'aside');
   renderPlay();
 }
@@ -4640,22 +4640,24 @@ async function playAsk() {
 
 async function playLookAround() {
   const row = _randomLoreRow();
-  playSay(`You take the place in. What stands out: <strong>${escapeHtml(row.action)} · ${escapeHtml(row.aspect)} · ${escapeHtml(row.focus)}</strong>.`);
-  playSay('<em>Decide what that is in the fiction, then act on it.</em>', 'aside');
+  playSay(`You take the place in. The Oracle gives three words for what stands out here: <strong>${escapeHtml(row.action)} · ${escapeHtml(row.aspect)} · ${escapeHtml(row.focus)}</strong>.`);
+  playSay('<em>They are a prompt, not a rule: decide what they describe in this place, then act on it.</em>', 'aside');
   renderPlay();
 }
 
 /* Plain-language actions mapped to skills, so the player never picks a "skill" —
    they pick a thing a person would do. */
+/* Each attempt says what success and failure MEAN for that attempt. "Move unseen — it doesn't"
+   left the player asking whether they moved, or were seen, or neither. */
 const PLAY_ATTEMPTS = [
-  { label: '🔍 Search the place',        skill: 'Scan' },
-  { label: '👁 Watch for danger',        skill: 'Awareness' },
-  { label: '🧗 Climb, force or heave',   skill: 'Athletics' },
-  { label: '🤫 Move unseen',             skill: 'Stealth' },
-  { label: '🗣 Talk them round',         skill: 'Persuade' },
-  { label: '📜 Remember a tale of this', skill: 'Lore' },
-  { label: '🧭 Find the way',            skill: 'Explore' },
-  { label: '🩹 Tend a wound',            skill: 'Healing' }
+  { label: '🔍 Search the place',        skill: 'Scan',      ok: 'You find what is here to be found.',        fail: 'You find nothing — or miss what matters.' },
+  { label: '👁 Watch for danger',        skill: 'Awareness', ok: 'You spot the danger before it spots you.',  fail: 'You miss the signs. Trouble may catch you unawares.' },
+  { label: '🧗 Climb, force or heave',   skill: 'Athletics', ok: 'You manage it — up, through or aside.',     fail: 'It is too much for you, or you slip.' },
+  { label: '🤫 Move unseen',             skill: 'Stealth',   ok: 'You slip by unseen. No one notices you.',  fail: 'You are noticed — someone sees or hears you.' },
+  { label: '🗣 Talk them round',         skill: 'Persuade',  ok: 'They come round to your view.',             fail: 'They are not convinced.' },
+  { label: '📜 Remember a tale of this', skill: 'Lore',      ok: 'You remember something useful about it.',   fail: 'Nothing useful comes to mind.' },
+  { label: '🧭 Find the way',            skill: 'Explore',   ok: 'You find the way.',                          fail: 'You lose your way.' },
+  { label: '🩹 Tend a wound',            skill: 'Healing',   ok: 'Your care helps.',                           fail: 'Your care does not help this time.' }
 ];
 
 async function playAttempt() {
@@ -4671,10 +4673,11 @@ async function playAttempt() {
   const r = _doInlineRoll(sk.rating, sk.favoured ? 'fav' : 'normal', sk.tn, `${pick} · ${(PLAY_ATTEMPTS.find(a => a.skill === pick) || {}).label || pick}`);
   const ok = String(r.outcome).startsWith('SUCCESS');
   const entry = PLAY_ATTEMPTS.find(a => a.skill === pick) || { label: pick };
-  const score = (r.total === null) ? 'a Gandalf rune — automatic success' : `${r.total} vs ${sk.tn}`;
-  playSay(`<strong>${escapeHtml(entry.label)}</strong> — ${pick} roll ${score}: ` +
-    (ok ? `<strong style="color:var(--success-text)">it works.</strong>` : `<strong style="color:var(--error-text)">it doesn't.</strong>`) +
-    (r.icons ? ` (${r.icons} ✦)` : ''));
+  // What happened, in words about this attempt; the dice as a pill after it.
+  const said = ok ? (entry.ok || 'You succeed.') : (entry.fail || 'You fail.');
+  const great = ok && r.icons ? ` ${r.icons >= 2 ? 'An extraordinary success' : 'A great success'} (${r.icons} ✦).` : '';
+  playSay(`<strong>${escapeHtml(entry.label.replace(/^\S+\s/u, ''))}:</strong> ` +
+    `<strong style="color:var(${ok ? '--success-text' : '--error-text'})">${escapeHtml(said)}</strong>${great} ${_pillText(pick, r.total, sk.tn, ok)}`);
   playSay(ok
     ? '<em>Say what success looks like, then keep going.</em>'
     : '<em>Say what goes wrong. A failure should cost something or change the situation — it is not just "nothing happens".</em>', 'aside');
@@ -4747,7 +4750,8 @@ async function playEventRoll() {
     const v = line.res;
     if (v) {
       const what = v.applied ? _sentence(_tidyApplied(v.applied)) : (!v.ok && v.noPenalty ? 'You simply miss the benefit.' : '');
-      playSay(`${v.ok ? 'You manage it.' : 'It goes against you.'} ${escapeHtml(what)} ${_pillText(v.skill, v.total, v.tn, v.ok)}`.replace(/\s+/g, ' ').trim());
+      const evName = String(v.eventName || 'event').replace(/\s*[👁ᚱ]\s*$/u, '');
+      playSay(`${v.ok ? `Your ${escapeHtml(v.skill)} roll succeeds — the ${escapeHtml(evName)} goes your way.` : `Your ${escapeHtml(v.skill)} roll fails — the ${escapeHtml(evName)} goes against you.`} ${escapeHtml(what)} ${_pillText(v.skill, v.total, v.tn, v.ok)}`.replace(/\s+/g, ' ').trim());
     } else playSay(String(line.text).replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim());
   }
   renderPlay();

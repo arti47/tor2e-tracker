@@ -368,6 +368,25 @@ module.exports = {
     checks.push({ ok: !ob.err && ob.moria && ob.moria.band && /Orc-Band table/.test(ob.moria.why) && ob.moria.n >= 2,
       msg: `in Moria, a suggested Orc or goblin fight is rolled on the Moria Orc-Band table (${JSON.stringify(ob.moria)})` });
 
+    const words = await safe(`
+      openNavGroup('play'); playClearFeed();
+      char.saga = Object.assign({}, char.saga, { started: true, step: 'location' });
+      const keepRoll = _doInlineRoll, keepModal = showModal;
+      const out = {};
+      try {
+        window.showModal = async () => 'Stealth';
+        window._doInlineRoll = () => ({ total: 5, outcome: 'FAIL', icons: 0, featSpecial: null, featValue: 3 });
+        await playAttempt();
+        out.fail = [...document.querySelectorAll('#play-body .play-feed p')].map(p => p.textContent).filter(t => /Move unseen/.test(t)).pop() || '';
+        window._doInlineRoll = () => ({ total: 18, outcome: 'SUCCESS', icons: 1, featSpecial: null, featValue: 9 });
+        await playAttempt();
+        out.ok = [...document.querySelectorAll('#play-body .play-feed p')].map(p => p.textContent).filter(t => /Move unseen/.test(t)).pop() || '';
+      } finally { window._doInlineRoll = keepRoll; window.showModal = keepModal; }
+      out.noVague = !/it works|it doesn.t/i.test(out.fail + out.ok);
+      return out;`);
+    checks.push({ ok: !words.err && /You are noticed/.test(words.fail) && /slip by unseen/.test(words.ok) && /great success/i.test(words.ok) && words.noVague,
+      msg: `a Play attempt says what happened to THAT attempt ("You are noticed…" / "You slip by unseen…"), not "it works" / "it doesn't" (${JSON.stringify(words)})` });
+
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length}${errors.length ? ': ' + errors[0] : ''})` });
     await context.close();
     return { checks };

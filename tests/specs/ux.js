@@ -1217,7 +1217,7 @@ module.exports = {
       out.arrivalClosesJourney = char.journey.active === false;
       await playAttempt();
       const feed = document.getElementById('play-body').innerText;
-      out.attemptNarrates = /Search the place/.test(feed) && /(it works|it doesn)/.test(feed);
+      out.attemptNarrates = /Search the place:/.test(feed) && /(You find what is here to be found|You find nothing)/.test(feed);
       out.noEmDashScore = !/roll — vs/.test(feed);       // a Rune must read as a rune, not "—"
       const before = char.saga.adventures;
       playGoStep('home'); playGoStep('fellowship'); await playNextAdventure();
