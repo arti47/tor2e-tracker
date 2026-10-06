@@ -4333,6 +4333,9 @@ function _playChoices() {
   } else if (char.wounded) {
     lead.push(C('🩹 Tend the wound', 'playFirstAid()', 'A HEALING roll — a Wound will not rest off.'));
   }
+  // Things the rules owe the hero lead too: they lived only inside the Character tab's Edit
+  // form, so a player who never opened Edit never saw them.
+  lead.unshift(...owedChoices(C));
   // Whatever is running on another tab leads here, so Play never forgets a fight, a council or a
   // task you started (it used to carry on as if nothing were happening).
   if (!char.retired) {
@@ -4342,6 +4345,22 @@ function _playChoices() {
     if (char.skillEndeavour && char.skillEndeavour.active) lead.push(C('🛠 Back to the task', "playGoTab('council')", char.skillEndeavour.task || 'The task is not done yet.'));
   }
   return lead.concat(_playStepChoices());
+}
+/** What the rules owe the hero right now — a Bout of Madness, a Revelation Episode, a Reward or
+    Virtue from a rank already paid for. One list, shown on ▶ Play and on the hero sheet. */
+function owedChoices(C) {
+  C = C || ((label, fn, hint) => ({ label, fn, hint }));
+  if (char.retired) return [];
+  const out = [];
+  if (char.boutDue) out.push(C('🌑 Face the Bout of Madness', 'triggerBoutNow()', 'Your Shadow has filled your Hope — take a Flaw, and the Shadow clears.'));
+  if (typeof isSolo === 'function' && isSolo() && typeof huntThreshold === 'function') {
+    const hunt = huntThreshold(char), ea = parseInt(char.eyeAwareness) || 0;
+    if (hunt > 0 && ea >= hunt) out.push(C('👁 The Eye finds you', 'rollRevelationEpisode()', `Eye Awareness ${ea} has reached the Hunt (${hunt}) — a Revelation Episode.`));
+  }
+  const r = parseInt(char.pendingRewards) || 0, v = parseInt(char.pendingVirtues) || 0;
+  if (r) out.push(C(`🎁 Choose your Reward${r > 1 ? ` (${r})` : ''}`, 'openNewReward()', 'A rank of Valour you have already earned.'));
+  if (v) out.push(C(`✨ Choose your Virtue${v > 1 ? ` (${v})` : ''}`, 'openNewVirtue()', 'A rank of Wisdom you have already earned.'));
+  return out;
 }
 function _playFoesStanding() {
   try { const e = typeof enc === 'function' ? enc() : char.encounter; return ((e && e.foes) || []).filter(f => !f.slain).length; } catch (e) { return 0; }
@@ -4996,7 +5015,10 @@ function renderHeroSheet() {
     ['Distinctive Features', _chips(char.features)], ['Flaws', _chips(char.flaws, 'flaw')],
     ['Rewards', _chips(char.rewards, 'reward')], ['Virtues', _chips(char.virtues, 'virtue')]
   ].filter(([, h]) => h).map(([t, h]) => `<div class="s-h">${t}</div><div class="traits">${h}</div>`).join('');
-  host.innerHTML = `
+  const owed = owedChoices();
+  const owedHtml = owed.length ? `<div class="card owed-card"><h3 class="card-title">Waiting for you</h3>${owed.map(o =>
+    `<button type="button" class="btn${o.label.startsWith('🌑') || o.label.startsWith('👁') ? '' : ' btn-secondary'} owed-btn" onclick="${o.fn}">${escapeHtml(o.label)}</button><p class="hint" style="margin:2px 0 8px">${escapeHtml(o.hint)}</p>`).join('')}</div>` : '';
+  host.innerHTML = owedHtml + `
   <div class="card ornate sheet-head">
     ${typeof cultureSilhouette === 'function' ? cultureSilhouette(char.culture) : ''}
     <div class="sh-crest">${cultureCrest(char.culture, 76, char.name)}</div>
