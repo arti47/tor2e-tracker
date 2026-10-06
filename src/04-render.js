@@ -1574,7 +1574,7 @@ function _soloFortuneOffer(r) {
   }, 300);
 }
 
-function startJourney() {
+async function startJourney() {
   if (typeof newcomerNeedsHelp === 'function' && newcomerNeedsHelp()) {
     alertStyled('Build a hero first — pick a <strong>Culture</strong> and <strong>Calling</strong> on the <strong>Build</strong> tab (or load a ready-made hero from ☰ Menu → ✨ Pre-generated Heroes). Until then this subsystem has no skills or attributes to roll against.', '⚠️ No hero built yet');
     return;
@@ -1582,6 +1582,8 @@ function startJourney() {
 
   const total = parseInt(document.getElementById('j-totalHexes').value) || 0;
   if (total <= 0) { alert('Total Hexes must be greater than 0.'); return; }
+  // Only Moria asks first; elsewhere the journey starts in this same tick (nothing is awaited).
+  if (typeof isMoria === 'function' && isMoria() && !await moriaReadyToTravel()) return;
   char.journey = {
     active: true,
     origin: document.getElementById('j-origin').value,
@@ -2843,7 +2845,7 @@ function renderMissionPreview() {
     + `Eye Awareness: <strong>${p.ea}</strong> · Hunt Threshold: <strong>${p.hunt}</strong> <small>(${HUNT_THRESHOLDS[char.huntRegion] || HUNT_THRESHOLDS.dark} ${p.huntMod >= 0 ? '+' : ''}${p.huntMod})</small>`;
 }
 
-function applyMissionSetup() {
+function applyMissionSetup(quiet) {
   const p = _compPreview();
   char.band.dispositions = { ...p.base };
   char.band.burden = p.burden;
@@ -2853,6 +2855,7 @@ function applyMissionSetup() {
   char.huntMod = p.huntMod;
   char.mission.active = true;
   saveCharacter(); render();
+  if (quiet) return p;
   alert(`🗺️ Mission setup applied.\n\nReadiness ${p.readiness} (TN ${20 - p.readiness}) · Burden ${p.burden}\nDispositions — Exp ${p.base.expertise}, Man ${p.base.manoeuvre}, Rally ${p.base.rally}, Vig ${p.base.vigilance}, War ${p.base.war}\nEye Awareness ${p.ea} · Hunt Threshold ${p.hunt}`);
 }
 
@@ -4406,6 +4409,11 @@ function _playSituation() {
               'Tap <strong>Back to the road</strong> to carry on with it.' };
       return { title: 'At ' + escapeHtml(where),
         text: 'You are somewhere safe. Nothing is trying to kill you yet.<br><br>' +
+              (typeof isMoria === 'function' && isMoria()
+                ? (moriaBandReady()
+                    ? `Your Band: <strong>${(char.band.allies || []).filter(a => !a.outOfAction).length}</strong> dwarves ready${char.mission && char.mission.active ? ', the mission planned' : ' — the mission is not planned yet'}.<br><br>`
+                    : 'You have no Band yet. In Moria nobody goes into the dark alone.<br><br>')
+                : '') +
               (s.premise ? 'Why you are about to leave: <em>' + escapeHtml(s.premise) + '</em>' : 'You have no errand yet — ask around, and one will find you.') };
     }
     case 'journey':
@@ -4564,6 +4572,12 @@ function _playStepChoices() {
       const jh = char.journey || {};
       if (jh.active) return [
         C('🥾 Back to the road', "playGoStep('journey')", `Your journey to ${jh.destination || 'somewhere'} is under way — ${parseInt(jh.currentHex) || 0}/${parseInt(jh.totalHexes) || 0} hexes.`),
+        C('👂 Ask around for news', 'playAskAround()', 'The world tells you something you did not know.'),
+        C('🌙 Rest here a while', 'playRest()', 'Recover Endurance and Hope before you go.')
+      ];
+      if (typeof isMoria === 'function' && isMoria() && (!moriaBandReady() || !(char.mission && char.mission.active))) return [
+        C(moriaBandReady() ? '🗺️ Plan the mission' : '⛏️ Gather your Band', 'playSetOut()',
+          moriaBandReady() ? 'How many go, how armed — it sets the Band\'s Dispositions and the Eye.' : 'In Moria you never go alone: roll the dwarves who travel with you.'),
         C('👂 Ask around for news', 'playAskAround()', 'The world tells you something you did not know.'),
         C('🌙 Rest here a while', 'playRest()', 'Recover Endurance and Hope before you go.')
       ];
@@ -4775,6 +4789,64 @@ function playEventSkip() {
   renderPlay();
 }
 
+/* ---------- Moria: the Band and the mission come before the road ----------
+   In Moria a hero never sets out alone: the Band of dwarves goes too, and a mission is planned
+   first (it sets the Band's Dispositions, its Readiness and how aware the Eye starts). Every way of
+   starting a journey asks for both, and can do them on the spot. */
+function moriaBandReady() { return ((char.band && char.band.allies) || []).some(a => !a.outOfAction); }
+async function moriaReadyToTravel() {
+  if (typeof isMoria !== 'function' || !isMoria()) return true;
+  if (!moriaBandReady()) {
+    const go = await showModal({
+      title: 'Your Band comes first',
+      message: 'In Moria you never go into the dark alone. Before any journey you gather your <strong>Band</strong> — dwarves of Balin\'s company who travel and fight beside you, and who suffer the road with you.<br><br>Roll a Band of six now? You can rename them and see their Gifts on the Band tab.',
+      buttons: [
+        { label: 'Roll my Band of six', value: 'roll' },
+        { label: 'Take me to the Band tab', value: 'band' },
+        { label: 'Not now', value: null, cancel: true }
+      ]
+    });
+    if (go === 'band') { requireStepGo('band', 'band-allies-card'); return false; }
+    if (go !== 'roll') return false;
+    addStartingBand();
+    const names = (char.band.allies || []).map(a => a.name).filter(Boolean);
+    if (typeof playSay === 'function' && char.saga && char.saga.started)
+      playSay(`Your Band gathers: <strong>${names.map(escapeHtml).join(', ')}</strong>.`);
+    showToast('Your Band of ' + names.length + ' is gathered.');
+  }
+  if (!char.mission || !char.mission.active) {
+    const go = await showModal({
+      title: 'Plan the mission',
+      message: 'Before a Moria journey you plan the mission: how many go, how heavily armed, and what they are best at. That sets your Band\'s five <strong>Dispositions</strong>, its <strong>Readiness</strong>, and how aware the <strong>Eye</strong> is of you from the start.<br><br>A standard plan is a medium-sized, prepared party with no speciality.',
+      buttons: [
+        { label: 'Use a standard plan', value: 'std' },
+        { label: 'Plan it myself (Band tab)', value: 'band' },
+        { label: 'Cancel', value: null, cancel: true }
+      ]
+    });
+    if (go === 'band') { requireStepGo('band', 'band-mission-card'); return false; }
+    if (go !== 'std') return false;
+    const m = char.mission || (char.mission = {});
+    if (!m.size) m.size = 'medium';
+    if (!m.warGear) m.warGear = 'prepared';
+    if (m.specialisation == null) m.specialisation = '';
+    const pv = applyMissionSetup(true);
+    showToast(`Mission planned — Readiness ${pv.readiness} (TN ${20 - pv.readiness}), Eye ${pv.ea}.`);
+  }
+  return true;
+}
+/** Go straight to a card on a tab (the "Take me there" half of requireStep, without asking again). */
+function requireStepGo(tabId, cardId) {
+  if (typeof openNavGroup === 'function' && typeof navGroupOf === 'function') { const g = navGroupOf(tabId); if (g) openNavGroup(g.id); }
+  const t = document.querySelector('.tab[data-tab=' + tabId + ']'); if (t) t.click();
+  setTimeout(() => {
+    const c = document.getElementById(cardId); if (!c) return;
+    const card = c.closest('.card');
+    if (card && typeof openCard === 'function' && card.classList.contains('collapsed')) openCard(card);
+    c.scrollIntoView({ block: 'center' });
+  }, 80);
+}
+
 async function playSetOut() {
   // A journey begun on the Journey tab leaves saga.step on 'haven', so Play used to say "you are
   // somewhere safe" during a live march and then overwrite the whole thing — destination, hexes,
@@ -4797,6 +4869,7 @@ async function playSetOut() {
       return;
     }
   }
+  if (!await moriaReadyToTravel()) return;
   const dest = await promptStyled('Where are you going?', '', '🥾 Set out', 'e.g. the ruined watchtower');
   if (dest === null) return;
   const far = await showModal({

@@ -480,6 +480,29 @@ module.exports = {
     checks.push({ ok: !cc.err && cc.before > 0 && cc.shown && cc.after === 0 && cc.scenes === 0 && cc.stored === 0 && cc.clock && cc.hidden && cc.undone,
       msg: `"Clear the Chronicle" empties the journal (and its saved copy), keeps the date, hides itself when empty, and Undo restores it (${JSON.stringify(cc)})` });
 
+    // Moria: setting out asks for the Band and the mission first, and can do both on the spot.
+    const mb = await safe(`
+      const was = char.moriaMode; char.moriaMode = true;
+      char.band.allies = []; char.mission.active = false; saveCharacter();
+      const press = async re => { await new Promise(r => setTimeout(r, 120)); const b = [...document.querySelectorAll('.menu-overlay.show button')].find(x => re.test(x.textContent)); if (b) b.click(); return !!b; };
+      const out = {};
+      out.choice = (_playStepChoices ? '' : '');
+      playSetOut();
+      out.askedBand = await press(/Roll my Band of six/);
+      out.allies = char.band.allies.length;
+      out.askedPlan = await press(/Use a standard plan/);
+      out.planned = !!char.mission.active;
+      out.toWhere = await press(/Cancel/);
+      // Ready now: the Journey tab starts without asking again.
+      char.journey.active = false; document.getElementById('j-totalHexes').value = 4;
+      await startJourney();
+      out.started = !!char.journey.active;
+      document.querySelectorAll('.menu-overlay.show').forEach(o => o.classList.remove('show'));
+      char.journey.active = false; char.moriaMode = was; saveCharacter(); render();
+      return out;`);
+    checks.push({ ok: !mb.err && mb.askedBand && mb.allies === 6 && mb.askedPlan && mb.planned && mb.started,
+      msg: `in Moria, setting out first gathers the Band and plans the mission, then the journey starts without asking again (${JSON.stringify(mb)})` });
+
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length}${errors.length ? ': ' + errors[0] : ''})` });
     await context.close();
     return { checks };
