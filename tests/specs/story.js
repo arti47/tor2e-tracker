@@ -173,6 +173,51 @@ module.exports = {
     checks.push({ ok: !band.err && band.heads === 6 && band.out === 1 && band.hurt === 1 && /5 of 6/.test(band.label || ''),
       msg: `in Moria the Band is a row of dwarf faces — dimmed when hurt, struck out when lost (${JSON.stringify(band)})` });
 
+    // ---- Stage 4: the hero as four pages you swipe; a dot turns to its page ----
+    const hp = await safe(`
+      setCharEditing(false); openNavGroup('hero'); document.querySelector('.tab[data-tab="character"]').click(); renderHeroSheet();
+      await new Promise(r => setTimeout(r, 450));
+      const root = document.querySelector('#hero-sheet .hero-pages'); if (!root) return { err: 'no pages' };
+      const keys = [...root.querySelectorAll('.hp-page')].map(p => p.dataset.page);
+      const t = root.querySelector('.hp-track'), dots = root.querySelectorAll('.hp-dot');
+      dots[2].click(); await new Promise(r => setTimeout(r, 80));
+      const g = root.querySelector('.hp-page[data-page="gear"]').getBoundingClientRect(), tr = t.getBoundingClientRect();
+      const onGear = Math.abs(g.left - tr.left) < 4 && dots[2].classList.contains('on') && !dots[0].classList.contains('on');
+      const you = root.querySelector('.hp-page[data-page="you"]');
+      const portrait = !!you.querySelector('.hp-portrait .portrait-svg') && !!you.querySelector('.hp-vit');
+      dots[1].click(); await new Promise(r => setTimeout(r, 80));
+      const n = history.length; const sk = root.querySelector('.hp-page[data-page="skills"] [onclick^="rollFromSheet"]'); if (sk) sk.click();
+      const rolled = history.length > n; closeRollDrawer(); dots[0].click();
+      return { keys, onGear, portrait, rolled };`);
+    checks.push({ ok: !hp.err && hp.keys.join() === 'you,skills,gear,traits' && hp.onGear && hp.portrait && hp.rolled,
+      msg: `the hero is four pages — You (portrait and vitals), Skills (tap to roll), Gear, Traits — and a dot turns to its page (${JSON.stringify(hp)})` });
+
+    // ---- the peek copy of the hero keeps its portrait clipped (ids are stripped there) ----
+    const pc = await safe(`openPeek('hero'); const c = document.querySelector('#peek-body .hp-portrait clipPath'); const g = document.querySelector('#peek-body .hp-portrait .pt-fig');
+      const ok = !!c && !!g && g.getAttribute('clip-path') === 'url(#' + c.id + ')'; closePeek(); return { ok };`);
+    checks.push({ ok: !pc.err && pc.ok, msg: `the hero's portrait stays clipped in the peek copy (${JSON.stringify(pc)})` });
+
+    // ---- the Journal is a book: one page per scene, opening on the scene being written ----
+    const bk = await safe(`
+      const save = JSON.stringify(journal);
+      journal.scenes = []; journal.entries = []; journal.activeSceneId = null;
+      ['The road', 'The ford', 'The inn'].forEach((t, i) => { const id = 'sc' + i; journal.scenes.push({ id, title: t, date: Object.assign({}, journal.clock) }); journal.entries.push({ id: 'b' + i, sceneId: id, kind: 'prose', text: t + ' line.' }); });
+      journal.activeSceneId = 'sc1'; saveJournal();
+      openNavGroup('journal'); document.querySelector('.tab[data-tab="chronicle"]').click(); renderChronicle();
+      await new Promise(r => setTimeout(r, 120));
+      const pages = document.querySelectorAll('#ch-timeline .ch-page').length;
+      const folio = document.querySelector('#ch-timeline .ch-folio').textContent;
+      chTurn(1); await new Promise(r => setTimeout(r, 60));
+      const folio2 = document.querySelector('#ch-timeline .ch-folio').textContent;
+      const b = document.querySelector('#ch-timeline .ch-book'), p3 = b.children[2].getBoundingClientRect(), br = b.getBoundingClientRect();
+      const turned = Math.abs(p3.left - br.left) < 4;
+      document.querySelector('#panel-chronicle .ch-quill-fab').click();
+      const quill = document.activeElement && document.activeElement.id === 'ch-compose';
+      Object.assign(journal, JSON.parse(save)); saveJournal(); renderChronicle();
+      return { pages, folio, folio2, turned, quill };`);
+    checks.push({ ok: !bk.err && bk.pages === 3 && bk.folio === 'Page 2 of 3' && bk.folio2 === 'Page 3 of 3' && bk.turned && bk.quill,
+      msg: `the Journal is a book — one page per scene, opening on the scene being written, turned page by page; the quill goes to the writing box (${JSON.stringify(bk)})` });
+
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length}${errors.length ? ': ' + errors[0] : ''})` });
     await context.close();
     return { checks };

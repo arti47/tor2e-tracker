@@ -127,14 +127,27 @@
 
 <!-- ============ CHRONICLE ============ -->
 <section class="panel" id="panel-chronicle">
+  <button type="button" class="ch-quill-fab" onclick="chQuill()" aria-label="Write in the Chronicle"><svg class="ic" aria-hidden="true"><use href="#i-quill"/></svg></button>
 
   <div id="ch-date-top" style="text-align:center;font-size:var(--fs-xs);color:var(--text-muted);margin:0 0 8px;cursor:pointer" onclick="document.getElementById('ch-date-readout').scrollIntoView({block:'center'})" title="Tap to jump to the Tale of Years clock">—</div>
 
   <div class="card tab-intro"><p class="hint" style="text-align:left;line-height:1.55;margin:0"><strong>Your solo journal — the story you’re telling.</strong> Play happens in <em>scenes</em>: open one, write what your hero does in plain prose, and let your dice and oracle results drop in beside it automatically. You are writing a book and playing a game at the same time; the app keeps the dates and the bookkeeping. Export the whole tale as Markdown when you like.</p></div>
 
   <div class="card">
+    <h3 class="card-title" data-hint="Scene">Chronicle <span id="ch-count" style="font-size:var(--fs-xs);color:var(--text-muted);font-weight:400"></span></h3>
+    <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
+      <input id="ch-search" placeholder="Filter entries…" oninput="renderChronicleTimeline()" style="flex:1;min-width:120px;font-size:var(--fs-xs);padding:4px 8px;border:1px solid var(--border);border-radius:var(--r-sm);color:var(--ink)">
+      <button class="add-row-btn" onclick="exportChronicleMarkdown('split')" style="background:var(--btn-secondary-bg);font-size:var(--fs-xs)" title="Prose, then a Rules Bits appendix per scene (polished document)">⬇ Story</button>
+      <button class="add-row-btn" onclick="exportChronicleMarkdown('log')" style="background:var(--btn-secondary-bg);font-size:var(--fs-xs)" title="Results and descriptions interleaved, as on screen (play-log)">⬇ Play-log</button>
+    </div>
+    <button type="button" class="btn btn-quiet" id="ch-clear-btn" onclick="clearChronicle()" style="margin-top:8px">Clear the Chronicle…</button>
+    <div id="ch-timeline" style="font-size:var(--fs-sm);line-height:1.5"></div>
+  </div>
+
+
+  <div class="card">
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-      <h3 style="margin:0;flex:1;color:var(--red);font-size:var(--fs-sm);text-transform:uppercase;letter-spacing:1px">Write</h3>
+      <h3 class="card-title" style="margin:0;flex:1">Write</h3>
       <button class="add-row-btn" onclick="newScene()" style="background:var(--gold);font-size:var(--fs-xs)">+ New Scene</button>
     </div>
     <div id="ch-active-scene" style="font-size:var(--fs-xs);color:var(--red-dark);font-weight:600;margin-bottom:6px"></div>
@@ -178,16 +191,6 @@
   </div>
 
 
-  <div class="card">
-    <h3 class="card-title" data-hint="Scene">Chronicle <span id="ch-count" style="font-size:var(--fs-xs);color:var(--text-muted);font-weight:400"></span></h3>
-    <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
-      <input id="ch-search" placeholder="Filter entries…" oninput="renderChronicleTimeline()" style="flex:1;min-width:120px;font-size:var(--fs-xs);padding:4px 8px;border:1px solid var(--border);border-radius:var(--r-sm);color:var(--ink)">
-      <button class="add-row-btn" onclick="exportChronicleMarkdown('split')" style="background:var(--btn-secondary-bg);font-size:var(--fs-xs)" title="Prose, then a Rules Bits appendix per scene (polished document)">⬇ Story</button>
-      <button class="add-row-btn" onclick="exportChronicleMarkdown('log')" style="background:var(--btn-secondary-bg);font-size:var(--fs-xs)" title="Results and descriptions interleaved, as on screen (play-log)">⬇ Play-log</button>
-    </div>
-    <button type="button" class="btn btn-quiet" id="ch-clear-btn" onclick="clearChronicle()" style="margin-top:8px">Clear the Chronicle…</button>
-    <div id="ch-timeline" style="font-size:var(--fs-sm);line-height:1.5;max-height:460px;overflow-y:auto;-webkit-overflow-scrolling:touch"></div>
-  </div>
 
 
   <div class="card">

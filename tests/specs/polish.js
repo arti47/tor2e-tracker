@@ -205,6 +205,7 @@ module.exports = {
     // ---- Ink ripple on a secondary button ----
     const rip = await safe(`
       const b = [...document.querySelectorAll('.btn-secondary')].find(x => x.checkVisibility()); if (!b) return { err: 'none' };
+      const pg = b.closest('.hp-page'); if (pg) { const i = [...pg.parentNode.children].indexOf(pg); heroPage(pg.closest('.hero-pages').querySelectorAll('.hp-dot')[i], i); }
       b.scrollIntoView({ block: 'center' }); await new Promise(r => setTimeout(r, 500));
       const r = b.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 };`);
     if (!rip.err) {

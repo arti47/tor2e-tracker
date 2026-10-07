@@ -223,7 +223,7 @@ module.exports = {
     await go('character');
     const ed = await safe(`
       setCharEditing(false); renderHeroSheet();
-      const s = document.querySelector('#hero-sheet .sheet-head .silhouette').getBoundingClientRect();
+      const s = document.querySelector('#hero-sheet .sheet-head .hp-portrait').getBoundingClientRect();
       const e = [...document.querySelectorAll('#hero-sheet .sheet-head button')].find(b => /Edit/.test(b.textContent)).getBoundingClientRect();
       return { overlap: !(s.right <= e.left || s.left >= e.right || s.bottom <= e.top || s.top >= e.bottom) };`);
     checks.push({ ok: !ed.err && ed.overlap === false, msg: `on a tablet the culture figure is not under the Edit button (${JSON.stringify(ed)})` });

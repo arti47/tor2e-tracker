@@ -518,14 +518,20 @@ module.exports = {
     });
     checks.push({ ok: ms.hits[0] === 'Roll Stealth' && ms.hidden && ms.rolled && ms.closed, msg: `menu search finds "Roll Stealth" and running it rolls (${ms.hits.join(', ')})` });
 
-    // ---- Play: pinned quick rolls, with "Again" for the last roll ----
-    const qr = await page.evaluate(() => {
+    // ---- Play: no tray — "Roll a skill" opens the hero on the Skills page, every skill there ----
+    const qr = await page.evaluate(async () => {
       char.saga = Object.assign(char.saga || {}, { started: true, premise: 'x', step: 'haven' }); saveCharacter();
       openNavGroup('play'); renderPlay();
-      const again = document.querySelector('#play-tray .pt-again');
-      return { again: again ? again.textContent : '', skills: document.querySelectorAll('#play-tray .pt-cols .pt-roll').length };
+      const btn = [...document.querySelectorAll('#panel-play .play-rollany button')].find(b => /Roll a skill/.test(b.textContent));
+      if (btn) btn.click();
+      await new Promise(r => setTimeout(r, 120));
+      const t = document.querySelector('#peek-body .hp-track'), pg = document.querySelector('#peek-body .hp-page[data-page="skills"]');
+      const onSkills = !!(t && pg) && Math.abs(t.scrollLeft - (pg.offsetLeft - t.offsetLeft)) < 4;
+      const skills = pg ? pg.querySelectorAll('[onclick^="peekRoll"]').length : 0;
+      closePeek();
+      return { tray: !!document.getElementById('play-tray'), btn: !!btn, onSkills, skills };
     });
-    checks.push({ ok: /^Again: /.test(qr.again) && qr.skills === 18, msg: `Play's roll tray holds every skill and "Again" for the last roll (${JSON.stringify(qr)})` });
+    checks.push({ ok: !qr.tray && qr.btn && qr.onSkills && qr.skills >= 22, msg: `Play has no pinned tray; "Roll a skill" opens the hero on the Skills page with every skill and proficiency (${JSON.stringify(qr)})` });
 
     // ---- Spend XP buttons say what they buy; FP phase type is a ticked choice ----
     const xp = await page.evaluate(() => {

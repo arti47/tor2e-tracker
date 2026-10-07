@@ -5672,50 +5672,74 @@ function heroSheetHtml() {
   const owed = owedChoices();
   const owedHtml = owed.length ? `<div class="card owed-card"><h3 class="card-title">Waiting for you</h3>${owed.map(o =>
     `<button type="button" class="btn${o.label.startsWith('🌑') || o.label.startsWith('👁') ? '' : ' btn-secondary'} owed-btn" onclick="${o.fn}">${escapeHtml(o.label)}</button><p class="hint" style="margin:2px 0 8px">${escapeHtml(o.hint)}</p>`).join('')}</div>` : '';
-  return owedHtml + `
-  <div class="card ornate sheet-head">
-    ${typeof cultureSilhouette === 'function' ? cultureSilhouette(char.culture) : ''}
-    <div class="sh-crest">${cultureCrest(char.culture, 76, char.name)}</div>
+  const v = { end: n(char.endCur), endMax: n(char.endMax), hope: n(char.hopeCur), hopeMax: n(char.hopeMax), sh: n(char.shadow) + n(char.scars) };
+  const page = (key, label, body) => `<section class="hp-page" data-page="${key}" aria-label="${label}">${body}</section>`;
+  const dots = [['you', 'You'], ['skills', 'Skills'], ['gear', 'Gear'], ['traits', 'Traits']]
+    .map(([k, l], i) => `<button type="button" class="hp-dot${i ? '' : ' on'}" onclick="heroPage(this,${i})" aria-label="${l}">${l}</button>`).join('');
+  return owedHtml + `<div class="hero-pages">
+  <nav class="hp-dots" aria-label="Hero pages">${dots}</nav>
+  <div class="hp-track" onscroll="heroPageScrolled(this)">
+  ${page('you', 'You', `<div class="card ornate sheet-head hp-you">
+    <div class="hp-portrait">${portraitSvg(v, 132)}</div>
     <div class="sh-id">
       <h2 class="sh-name">${escapeHtml(heroLabel(char))}</h2>
-      <div class="sh-sub">${escapeHtml([char.culture, char.calling].filter(Boolean).join(' · '))}${char.shadowPath ? ` <span class="sh-path">· ${escapeHtml(char.shadowPath)}</span>` : ''}</div>
-      <div class="sh-meta">${meta}</div>
+      <div class="sh-sub"><span class="sh-crest">${cultureCrest(char.culture, 28, char.name)}</span>${escapeHtml([char.culture, char.calling].filter(Boolean).join(' · '))}</div>
+      <div class="hp-vit"><span class="e"><strong>${v.end}</strong>/${v.endMax}<small>Endurance</small></span><span class="h"><strong>${v.hope}</strong>/${v.hopeMax}<small>Hope</small></span>${v.sh ? `<span class="s"><strong>${v.sh}</strong><small>Shadow</small></span>` : ''}</div>
     </div>
-    <button class="btn btn-secondary sh-edit" onclick="setCharEditing(true)">Edit</button>
+    <button class="btn btn-quiet sh-edit" onclick="setCharEditing(true)"><svg class="ic" aria-hidden="true"><use href="#i-pencil"/></svg>Edit</button>
   </div>
   <div class="card">
     <div class="s-attrs">${attr('str', 'Strength', 'body')}${attr('hrt', 'Heart', 'spirit')}${attr('wit', 'Wits', 'mind')}</div>
     <div class="s-stats">${stat('Parry', typeof statBadge === 'function' ? statBadge('shield', n(char.parry) + n(char.shieldTotal)) : n(char.parry) + n(char.shieldTotal))}${stat('Armour', typeof statBadge === 'function' ? statBadge('mail', protection + 'd') : protection + 'd')}${stat('Valour', n(char.valour), 1)}${stat('Wisdom', n(char.wisdom), 1)}${stat('Fellowship', n(char.fellowshipRating))}</div>
-  </div>
-  <div class="card">
+    ${meta ? `<div class="sh-meta">${meta}${char.shadowPath ? `<span class="meta"><small>Shadow path</small>${escapeHtml(char.shadowPath)}</span>` : ''}</div>` : ''}
+  </div>`)}
+  ${page('skills', 'Skills', `<div class="card">
     <h3 class="card-title">Skills</h3>
-    <p class="s-rollhint">Tap any skill to roll it.</p>
+    <p class="s-rollhint">Tap to roll.</p>
     <div class="s-skills">${skillCol('str', 'Strength')}${skillCol('hrt', 'Heart')}${skillCol('wit', 'Wits')}</div>
     <div class="s-h">Combat</div><div class="s-profs">${profs}</div>
-  </div>
-  <div class="card">
+  </div>`)}
+  ${page('gear', 'Gear', `<div class="card">
     <h3 class="card-title">War gear</h3>
     ${weapons}
     <div class="s-armour"><span>Protection <strong>${protection}d</strong></span>${armourBits ? `<span>${armourBits}</span>` : ''}</div>
-  </div>
-  ${bandHtml}
+    <button type="button" class="btn btn-secondary" onclick="openEquipment()">Change gear</button>
+  </div>`)}
+  ${page('traits', 'Traits', `${bandHtml}
   ${traits ? `<div class="card"><h3 class="card-title">Traits</h3>${traits}</div>` : ''}
   <div class="card">
     <h3 class="card-title">Experience &amp; wealth</h3>
     <div class="xp-tokens">${_xpToken('skill', 'Skill points', n(char.skillPts), 'i-quill')}${_xpToken('adv', 'Adventure pts', n(char.advPts), 'i-swords')}${_xpToken('', 'Treasure', n(char.treasure), 'i-coins')}${_xpToken('', 'Fellowship pts', n(char.fellowship), 'i-link')}</div>
     ${_spendOne(n(char.skillPts), n(char.advPts))}
   </div>
-  ${String(char.history || '').trim() ? `<div class="card"><h3 class="card-title">History</h3><p class="s-history">${escapeHtml(char.history)}</p></div>` : ''}`;
+  ${String(char.history || '').trim() ? `<div class="card"><h3 class="card-title">History</h3><p class="s-history">${escapeHtml(char.history)}</p></div>` : ''}`)}
+  </div></div>`;
 }
+/** Hero pages: a dot scrolls its own track (the peek holds a copy without ids). */
+function heroPage(btn, i) {
+  const root = btn.closest('.hero-pages'); if (!root) return;
+  const t = root.querySelector('.hp-track'), pg = t && t.children[i]; if (!pg) return;
+  t.scrollTo({ left: pg.offsetLeft - t.offsetLeft, behavior: 'auto' });
+  _heroDots(root, i);
+}
+function heroPageScrolled(t) {
+  const i = Math.round(t.scrollLeft / Math.max(1, t.clientWidth));
+  _heroDots(t.closest('.hero-pages'), i);
+}
+function _heroDots(root, i) { if (root) root.querySelectorAll('.hp-dot').forEach((d, k) => { d.classList.toggle('on', k === i); d.setAttribute('aria-current', k === i ? 'true' : 'false'); }); }
 
 /* ---------- PEEK: the hero and the Band, over whatever you are doing ----------
    Tap the name in the header (or the Band chip in Moria): the sheet slides up, read-only, and
    tap-to-roll still works. Close it and you are exactly where you were. Edit stays on the Hero tab. */
 let _peekSide = 'hero';
-function openPeek(side) {
+function openPeek(side, pageKey) {
   _peekSide = side === 'band' && _trayHasBand() ? 'band' : 'hero';
   renderPeek();
   document.getElementById('peek-overlay').classList.add('show');
+  if (pageKey) {
+    const body = document.getElementById('peek-body'), pg = body && body.querySelector(`.hp-page[data-page="${pageKey}"]`);
+    if (pg) { const i = [...pg.parentNode.children].indexOf(pg); const dot = body.querySelectorAll('.hp-dot')[i]; if (dot) requestAnimationFrame(() => heroPage(dot, i)); }
+  }
 }
 function closePeek() { const o = document.getElementById('peek-overlay'); if (o) o.classList.remove('show'); }
 function peekRoll(name) {
@@ -5731,6 +5755,14 @@ function peekGo(where) {
   else if (where === 'band') requireStepGo('band', 'band-allies-card');
   else if (where === 'sheet') { openNavGroup('hero'); document.querySelector('.tab[data-tab=character]').click(); }
 }
+/** The Band's rolls, in the Band peek: tap a Disposition or a test. */
+function _peekBandRolls() {
+  const b = char.band, n = v => parseInt(v) || 0;
+  const pips = k => `<span class="pt-pips">${Array.from({ length: Math.min(k, 6) }, () => '<i></i>').join('')}</span>`;
+  return `<div class="card peek-band-rolls"><h3 class="card-title">Roll for the Band <small>TN ${bandTN()}${bandWeary() ? ' · Weary' : ''}</small></h3>
+    <div class="pb-disps">${DISPOSITIONS.map(d => `<button type="button" class="pb-roll${b.dispositionFocus === d.key ? ' fav' : ''}" onclick="closePeek();playBandRoll('${d.key}')">${typeof DISP_GLYPH !== 'undefined' && DISP_GLYPH[d.key] ? `<svg class="ic" aria-hidden="true"><use href="#${DISP_GLYPH[d.key]}"/></svg>` : ''}<span>${b.dispositionFocus === d.key ? '<b class="fav" aria-label="Disposition Focus">★</b>' : ''}${d.name}</span>${pips(n(b.dispositions[d.key]))}</button>`).join('')}</div>
+    <div class="pb-tests"><button type="button" class="btn btn-secondary" onclick="closePeek();playBandTest('endurance')">Endurance test</button><button type="button" class="btn btn-secondary" onclick="closePeek();playBandTest('fatigue')">Fatigue test</button></div></div>`;
+}
 function renderPeek() {
   const body = document.getElementById('peek-body'), tabs = document.getElementById('peek-tabs'), title = document.getElementById('peek-title');
   if (!body) return;
@@ -5742,12 +5774,12 @@ function renderPeek() {
   if (_peekSide === 'band') {
     body.innerHTML = _sheetBandHtml().replace(/ id="(sheet-band|mission-now)"/g, '').replace('<h3 class="card-title">Your Band</h3>', '')
       .replace(`onclick="requireStepGo('band','band-allies-card')">Open the Band tab — rolls and tests`, `onclick="peekGo('band')">Open the Band tab — roster and mission`) +
-      `<p class="hint" style="text-align:left">Roll the Band's Dispositions and tests from the <strong>Roll</strong> tray on ▶ Play.</p>`;
+      _peekBandRolls();
     return;
   }
   // The same sheet as the Hero tab, without its ids (they belong to the tab) and with rolls routed here.
   body.innerHTML = heroSheetHtml()
-    .replace(/ id="[^"]*"/g, '')
+    .replace(/ id="(?!pt-clip)[^"]*"/g, '')
     .replace(/rollFromSheet\(/g, 'peekRoll(')
     .replace(/onclick="setCharEditing\(true\)"/g, `onclick="peekGo('edit')"`) +
     `<div class="peek-actions"><button type="button" class="btn btn-secondary" onclick="peekGo('heroes')">Switch or add a hero</button><button type="button" class="btn btn-quiet" onclick="peekGo('sheet')">Open the Hero tab</button></div>`;
@@ -5877,9 +5909,9 @@ function portraitSvg(v, size) {
   const fig = sil ? sil.replace('<svg class="silhouette"', '<svg class="silhouette" x="16" y="15" width="32" height="38"') : '';
   const crack = char.wounded ? '<path class="pt-crack" d="M24 14 L29 23 L25 30 L31 38 L28 46 M29 23 L35 25 M31 38 L37 41"/>' : '';
   return `<svg class="portrait-svg" width="${px}" height="${px}" viewBox="0 0 64 64" aria-hidden="true">
-    <defs><clipPath id="pt-clip"><circle cx="32" cy="32" r="21"/></clipPath></defs>
+    <defs><clipPath id="pt-clip-${px}"><circle cx="32" cy="32" r="21"/></clipPath></defs>
     <circle cx="32" cy="32" r="21" fill="${field}"/>
-    <g clip-path="url(#pt-clip)" class="pt-fig">${fig}${crack}</g>
+    <g clip-path="url(#pt-clip-${px})" class="pt-fig">${fig}${crack}</g>
     <circle class="pt-track" cx="32" cy="32" r="29.5" fill="none"/>
     ${C(29.5, v.endMax ? v.end / v.endMax : 0, 'pt-end')}
     <circle class="pt-track" cx="32" cy="32" r="24.8" fill="none"/>
@@ -6152,7 +6184,7 @@ function _renderPlayBody(host, s, pp) {
       `<div class="card play-fight-log"><div class="eyebrow">${escapeHtml(sc.label)}</div>
         ${feedS ? `<div class="play-feed" aria-live="polite">${feedS}</div>` : ''}
         <button type="button" class="btn ${done ? '' : 'btn-secondary '}btn-block" onclick="playEndScene()">${done ? 'Back to the story' : 'Leave this for now — back to the story'}</button></div>
-      ${k === 'fp' || k === 'mfp' ? '' : playTrayHtml()}`;
+      ${k === 'fp' || k === 'mfp' ? '' : playRollAnyHtml()}`;
     return;
   }
   if (window._playFightPlaced) {
@@ -6162,7 +6194,7 @@ function _renderPlayBody(host, s, pp) {
       `<div class="card play-fight-log"><div class="eyebrow">${b.active ? 'A battle' : 'A fight'}${_playFoesStanding() ? ` — round ${parseInt(e.round) || 1}` : ''}</div>
         <p class="hint" style="text-align:left;margin:0 0 6px">${b.active && !_playFoesStanding() ? 'Lead the Band through the Clash here. When the foe is broken, the story goes on.' : 'Fight it out here. When the last foe falls or you get away, the story goes on.'}</p>
         ${feedF ? `<div class="play-feed" aria-live="polite">${feedF}</div>` : ''}</div>
-      ${playTrayHtml()}`;
+      ${playRollAnyHtml()}`;
     return;
   }
   const sit = char.retired ? _playRetiredSituation() : _playSituation();
@@ -6203,7 +6235,7 @@ function _renderPlayBody(host, s, pp) {
        ${feed ? `<div class="play-feed story-beat${waiting ? ' waiting' : ''}" aria-live="polite"${waiting ? ' role="button" tabindex="0" onclick="playNextBeat()" onkeydown="if(event.key===\'Enter\'||event.key===\' \')playNextBeat()"' : ''}>${feed}${waiting ? `<span class="beat-next" aria-label="Continue">${beats.waiting} more <svg class="ic" aria-hidden="true"><use href="#i-chev"/></svg></span>` : ''}</div>` : ''}
      </div>${_playStoryCard(!!road)}${typeof heroPlate === 'function' ? heroPlate(!road) : ''}</div>
      ${playChoiceCards(choices)}
-     ${playTrayHtml()}`;
+     ${playRollAnyHtml()}`;
   // Round 8: when the story moves (home → road → place), the scene cross-fades and its heading writes in
   const key = (s.step || '') + '|' + terrain + '|' + (jr.active ? 1 : 0);
   if (window._playSceneKey && window._playSceneKey !== key) { const sc = host.querySelector('.play-scene'); if (sc) sc.classList.add('scene-change'); }
@@ -6263,40 +6295,13 @@ function _playStoryCard(onRoad) {
    and in Moria the Band's Dispositions and its Endurance and Fatigue tests — sits in one tray pinned
    above the nav on a phone (open beside the choices on a tablet). The result lands in the story feed
    as a dice pill and what it means; "Details" opens the full dice in the drawer. */
-let _trayOpen = false, _traySide = 'hero';
 function _trayHasBand() { return typeof isMoria === 'function' && isMoria() && ((char.band && char.band.allies) || []).length > 0; }
-function togglePlayTray(on) { _trayOpen = on === undefined ? !_trayOpen : !!on; const t = document.getElementById('play-tray'); if (t) t.classList.toggle('open', _trayOpen); }
-function setTraySide(side) { _traySide = side; _trayOpen = true; const t = document.getElementById('play-tray'); if (t) t.outerHTML = playTrayHtml(); }
-function playTrayHtml() {
+/** Storybook: no tray. Every skill lives on the hero's Skills page (tap to roll); in Moria the Band's
+    Dispositions on its own page. This is the one way in from a story screen. */
+function playRollAnyHtml() {
   if (!char.culture) return '';
   const band = _trayHasBand();
-  const side = band ? _traySide : 'hero';
-  const n = v => parseInt(v) || 0;
-  const pips = k => k > 0 ? `<span class="pt-pips">${Array.from({ length: Math.min(k, 6) }, () => '<i></i>').join('')}</span>` : '<span class="pt-pips none">–</span>';
-  const gl = a => (typeof ATTR_GLYPH !== 'undefined' && ATTR_GLYPH[a]) ? `<svg class="ic" aria-hidden="true"><use href="#${ATTR_GLYPH[a]}"/></svg>` : '';
-  const btn = (name, rating, fav, cls) => `<button type="button" class="pt-roll${rating ? '' : ' zero'}${fav ? ' fav' : ''}${cls ? ' ' + cls : ''}" onclick="playTrayRoll('${name.replace(/'/g, "\\'")}')"><span>${fav ? '<b class="fav" aria-label="Favoured">★</b>' : ''}${escapeHtml(name)}</span>${pips(rating)}</button>`;
-  let body;
-  if (side === 'hero') {
-    const col = (a, title) => `<div class="pt-col"><div class="pt-h">${gl(a)}${title}<small>TN ${n(char[a + 'TN'])}</small></div>${SKILLS[a].map(sk => { const d = (char.skills || {})[sk] || {}; return btn(sk, n(d.rating), !!d.favoured); }).join('')}</div>`;
-    const profs = COMBAT_PROFS.filter(p => n((char.profs || {})[p]) > 0).map(p => btn(p, n(char.profs[p]), false, 'wpn')).join('');
-    const brawl = typeof getBrawlingRating === 'function' && getBrawlingRating() > 0 ? btn('Brawling', getBrawlingRating(), false, 'wpn') : '';
-    body = `<div class="pt-cols">${col('str', 'Strength')}${col('hrt', 'Heart')}${col('wit', 'Wits')}</div>
-      <div class="pt-meta">${btn('Valour', n(char.valour) || 1, (char.culture === 'Bardings'), 'pt-wide')}${btn('Wisdom', n(char.wisdom) || 1, (char.culture === 'Hobbits of the Shire'), 'pt-wide')}${profs}${brawl}</div>`;
-  } else {
-    const b = char.band;
-    body = `<div class="pt-h pt-bandh">Your Band<small>Readiness ${n(b.readiness)} · TN ${bandTN()}${bandWeary() ? ' · Weary' : ''}</small></div>
-      <div class="pt-disps">${DISPOSITIONS.map(d => `<button type="button" class="pt-roll pt-disp${b.dispositionFocus === d.key ? ' fav' : ''}" onclick="playBandRoll('${d.key}')">${typeof DISP_GLYPH !== 'undefined' && DISP_GLYPH[d.key] ? `<svg class="ic" aria-hidden="true"><use href="#${DISP_GLYPH[d.key]}"/></svg>` : ''}<span>${b.dispositionFocus === d.key ? '<b class="fav" aria-label="Disposition Focus">★</b>' : ''}${d.name}</span>${pips(n(b.dispositions[d.key]))}</button>`).join('')}</div>
-      <div class="pt-meta"><button type="button" class="pt-roll pt-wide" onclick="playBandTest('endurance')"><span>Endurance test</span><small>Rally · after a blow</small></button><button type="button" class="pt-roll pt-wide" onclick="playBandTest('fatigue')"><span>Fatigue test</span><small>Rally · after hardship</small></button></div>`;
-  }
-  const last = window._lastQuick;
-  return `<div class="play-tray${_trayOpen ? ' open' : ''}" id="play-tray" data-side="${side}">
-    <div class="pt-bar">
-      <button type="button" class="pt-toggle" onclick="togglePlayTray()" aria-expanded="${_trayOpen}"><svg class="ic" aria-hidden="true"><use href="#i-dice"/></svg>Roll<svg class="ic pt-chev" aria-hidden="true"><use href="#i-chev"/></svg></button>
-      ${band ? `<div class="pt-tabs" role="tablist"><button type="button" role="tab" aria-selected="${side === 'hero'}" class="${side === 'hero' ? 'on' : ''}" onclick="setTraySide('hero')">Hero</button><button type="button" role="tab" aria-selected="${side === 'band'}" class="${side === 'band' ? 'on' : ''}" onclick="setTraySide('band')">Band</button></div>` : ''}
-      ${last && last.item ? `<button type="button" class="pt-again" onclick="playTrayRoll('${String(last.item.name).replace(/'/g, "\\'")}')">Again: ${escapeHtml(last.item.name)}</button>` : ''}
-    </div>
-    <div class="pt-body">${body}</div>
-  </div>`;
+  return `<div class="play-rollany"><button type="button" class="btn btn-secondary" onclick="openPeek('hero','skills')"><svg class="ic" aria-hidden="true"><use href="#i-dice"/></svg>Roll a skill</button>${band ? `<button type="button" class="btn btn-secondary" onclick="openPeek('band')"><svg class="ic" aria-hidden="true"><use href="#i-users"/></svg>Roll for the Band</button>` : ''}</div>`;
 }
 /** The one question asked before the dice: the real choices (spend Hope, use an ally's Gift).
     Everything the rules apply by themselves is applied and named in the result. Nothing to choose → no question. */

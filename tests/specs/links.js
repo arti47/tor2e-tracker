@@ -643,27 +643,32 @@ module.exports = {
       char.saga = Object.assign({}, char.saga || {}, { started: true, ended: false, step: 'haven' });
       char.hopeCur = 3; playClearFeed(); closeRollDrawer();
       document.querySelector('.bn-item[data-group="play"]').click(); renderPlay();
-      out.tray = !!document.getElementById('play-tray') && document.querySelectorAll('#play-tray .pt-cols .pt-roll').length === 18;
+      out.tray = !document.getElementById('play-tray') && !!document.querySelector('#panel-play .play-rollany button');
       window.showModal = async (o) => { const b = document.getElementById('styled-modal-body'); b.innerHTML = o.message || ''; const h = document.getElementById('rp-hope'); if (h) h.checked = true; return true; };
-      await playTrayRoll('Awareness');
+      document.querySelector('#panel-play .play-rollany button').click();
+      const aw = [...document.querySelectorAll('#peek-body [onclick^="peekRoll"]')].find(b => /Awareness/.test(b.textContent));
+      if (aw) aw.click(); await new Promise(r => setTimeout(r, 60));
       out.hopeSpent = char.hopeCur === 2;
       const feed = document.querySelector('#panel-play .play-feed');
       out.inFeed = !!feed && /Awareness/.test(feed.textContent) && !!feed.querySelector('.roll-pill') && !!feed.querySelector('.pt-details');
       out.drawerShut = !document.getElementById('roll-drawer').classList.contains('open');
       char.moriaMode = true; char.band.allies = [{ id: 'z1', name: 'Grór', gift: 'Stout' }]; char.band.dispositions = { expertise: 2, manoeuvre: 2, rally: 2, vigilance: 2, war: 3 };
-      renderPlay(); setTraySide('band');
-      out.bandSide = document.querySelectorAll('#play-tray .pt-disp').length === 5;
-      await playBandRoll('war');
+      saveCharacter(); renderPlay();
+      const bb = [...document.querySelectorAll('#panel-play .play-rollany button')].find(b => /Band/.test(b.textContent));
+      if (bb) bb.click();
+      out.bandSide = document.querySelectorAll('#peek-body .pb-roll').length === 5;
+      const war = [...document.querySelectorAll('#peek-body .pb-roll')].find(b => /War/.test(b.textContent));
+      if (war) war.click(); await new Promise(r => setTimeout(r, 60));
       out.bandFeed = /Band War/.test(document.querySelector('#panel-play .play-feed').textContent);
       window.showModal = async () => 'painful';
       await playBandTest('endurance');
       out.endFeed = /Endurance test/.test(document.querySelector('#panel-play .play-feed').textContent);
       window.showModal = realModal;
       const o = JSON.parse(save); char.moriaMode = o.moria; char.band = o.band; char.saga = o.saga; char.hopeCur = o.hope;
-      _traySide = 'hero'; saveCharacter(); render();
+      saveCharacter(); render();
       return out;`);
     checks.push({ ok: !tr.err && tr.tray && tr.hopeSpent && tr.inFeed && tr.drawerShut && tr.bandSide && tr.bandFeed && tr.endFeed,
-      msg: `▶ Play's roll tray rolls a skill (with an optional Hope spend) and the Band's Dispositions and tests in place, and tells each result in the story (${JSON.stringify(tr)})` });
+      msg: `▶ Play's "Roll a skill" / "Roll for the Band" open the hero's and the Band's pages, and a skill (with an optional Hope spend), a Disposition and a test roll in place, and tells each result in the story (${JSON.stringify(tr)})` });
 
     // Look things up without leaving Play: the header name opens the hero sheet over the page, the Band chip the Band;
     // a skill tapped there rolls into Play's story.

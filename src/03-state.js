@@ -1372,7 +1372,9 @@ function jumpToScene(id) {
   const sc = journal.scenes.find(s => s.id === id);
   if (sc && sc.collapsed) { sc.collapsed = false; saveJournal(); renderChronicleTimeline(); }
   const el = document.getElementById('ch-scene-' + id);
-  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const pg = el && el.closest('.ch-page'), b = pg && pg.parentNode;
+  if (b) { b.scrollTo({ left: pg.offsetLeft - b.offsetLeft, behavior: 'auto' }); chFolio(); b.scrollIntoView({ block: 'nearest' }); }
+  else if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 // Scene generator (a journaling aid, not a Strider Mode rule). Produces a structured Middle-earth
 // scene frame — Where · Who/What · Happening · Mood — chosen from a context that reads your state:
@@ -1669,8 +1671,10 @@ function renderChronicleTimeline() {
   // now sit behind one quiet "⋯" per line (always shown on a device with a mouse, on hover).
   const blkMore = `<button class="blk-more" type="button" aria-label="Line options" aria-expanded="false" onclick="toggleBlkTools(this)">⋯</button>`;
   const moveBtns = (id) => `<button onclick="moveBlock('${id}',-1)" title="Move up" style="flex:0 0 auto;background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:var(--fs-xs)">▲</button><button onclick="moveBlock('${id}',1)" title="Move down" style="flex:0 0 auto;background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:var(--fs-xs)">▼</button>`;
-  // Newest scene first; blocks within a scene stay in chronological (written) order.
-  journal.scenes.slice().reverse().forEach(sc => {
+  // Storybook: a book — one page per scene, oldest first, opening on the scene being written.
+  const pages = [];
+  journal.scenes.forEach(sc => {
+    const pageStart = html.length;
     const blocks = journal.entries.filter(e => e.sceneId === sc.id);
     const shown = q ? blocks.filter(b => (b.text || '').toLowerCase().includes(q)) : blocks;
     if (q && shown.length === 0 && !sc.title.toLowerCase().includes(q)) return;  // scene filtered out
@@ -1689,7 +1693,7 @@ function renderChronicleTimeline() {
       <button onclick="renameScene('${sc.id}')" title="Rename" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:var(--fs-sm)">✎</button>
       <button onclick="deleteScene('${sc.id}')" title="Delete scene" style="background:none;border:none;cursor:pointer;color:var(--text-faint);font-size:var(--fs-md)">×</button>
     </div>`;
-    if (collapsed) return;
+    if (collapsed) { pages.push({ id: sc.id, title: sc.title, html: html.slice(pageStart) }); html = html.slice(0, pageStart); return; }
     // Interleaved play-log: blocks in written order — a dimmed roll result, then its description.
     if (shown.length === 0 && sceneCombats.length === 0) {
       html += `<div style="padding:6px 10px;font-size:var(--fs-xs);color:var(--text-faint)">${q ? '(no matching lines)' : 'Empty scene — write the first line below, or make a roll on the Oracle/Dice tabs.'}</div>`;
@@ -1757,8 +1761,35 @@ function renderChronicleTimeline() {
       }
     }
     sceneCombats.forEach(c => { html += renderCombatBlock(c); });
+    pages.push({ id: sc.id, title: sc.title, html: html.slice(pageStart) }); html = html.slice(0, pageStart);
   });
-  wrap.innerHTML = html || `<div style="text-align:center;color:var(--text-faint);padding:14px;font-size:var(--fs-xs)">No matching entries.</div>`;
+  if (!pages.length) { wrap.innerHTML = html + `<div style="text-align:center;color:var(--text-faint);padding:14px;font-size:var(--fs-xs)">No matching entries.</div>`; return; }
+  const open = Math.max(0, pages.findIndex(p => p.id === journal.activeSceneId) === -1 ? pages.length - 1 : pages.findIndex(p => p.id === journal.activeSceneId));
+  const keep = wrap.querySelector('.ch-book'); const prevLeft = keep && keep.dataset.n == pages.length ? keep.scrollLeft : null;
+  wrap.innerHTML = html + `<div class="ch-pager"><button type="button" class="ch-turn" onclick="chTurn(-1)" aria-label="Previous page">‹</button><span class="ch-folio" aria-live="polite"></span><button type="button" class="ch-turn" onclick="chTurn(1)" aria-label="Next page">›</button></div>
+    <div class="ch-book" data-n="${pages.length}" onscroll="chFolio()">${pages.map((p, i) => `<section class="ch-page" data-i="${i}" aria-label="Page ${i + 1} — ${escapeHtml(p.title)}">${p.html}<div class="ch-pno">${i + 1}</div></section>`).join('')}</div>`;
+  const book = wrap.querySelector('.ch-book');
+  const go = () => { book.scrollLeft = prevLeft !== null ? prevLeft : book.children[open].offsetLeft - book.offsetLeft; chFolio(); };
+  go(); requestAnimationFrame(go);
+}
+/** The Chronicle book: which page is open, and turning it. */
+function _chPageNow() { const b = document.querySelector('#ch-timeline .ch-book'); return b ? Math.round(b.scrollLeft / Math.max(1, b.clientWidth)) : 0; }
+function chFolio() {
+  const b = document.querySelector('#ch-timeline .ch-book'), f = document.querySelector('#ch-timeline .ch-folio'); if (!b || !f) return;
+  const i = _chPageNow(), n = b.children.length;
+  f.textContent = `Page ${i + 1} of ${n}`;
+  const t = document.querySelectorAll('#ch-timeline .ch-turn'); if (t.length === 2) { t[0].disabled = i <= 0; t[1].disabled = i >= n - 1; }
+}
+function chTurn(d) {
+  const b = document.querySelector('#ch-timeline .ch-book'); if (!b) return;
+  const i = Math.max(0, Math.min(b.children.length - 1, _chPageNow() + d));
+  b.scrollTo({ left: b.children[i].offsetLeft - b.offsetLeft, behavior: 'auto' }); chFolio();
+  if (typeof sfx === 'function') try { sfx('page'); } catch (e) {}
+}
+/** The quill: straight to the page you are writing on. */
+function chQuill() {
+  const box = document.getElementById('ch-compose'); if (!box) return;
+  box.closest('.card').scrollIntoView({ block: 'center' }); box.focus();
 }
 /* ----- combat log ----- */
 function activeCombat() { return (journal.combats || []).find(c => c.active) || null; }
