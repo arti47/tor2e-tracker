@@ -26,9 +26,8 @@ module.exports = {
         out[t] = s && s.checkVisibility() && s.getBoundingClientRect().height > 16 ? [...s.classList].find(c => c.startsWith('gs-')) : null;
       }
       return out;`);
-    checks.push({ ok: !strips.err && strips.character === 'gs-hero' && strips.gear === 'gs-hero' && strips.journey === 'gs-adventure' && strips.combat === 'gs-adventure'
-      && strips.dice === 'gs-roll' && strips.oracle === 'gs-roll' && strips.chronicle === 'gs-journal' && strips.play === null,
-      msg: `each nav group draws its own header strip, and Play keeps its scene instead (${JSON.stringify(strips)})` });
+    checks.push({ ok: !strips.err && Object.values(strips).every(v => v === null),
+      msg: `storybook: no decorative header strips on any tab — the scene and the tool title do that job (${JSON.stringify(strips)})` });
 
     // ---- Quick-roll tiles: attribute glyph, the dice drawn as pips, the TN rolled against ----
     await go('dice');

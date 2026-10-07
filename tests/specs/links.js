@@ -311,7 +311,7 @@ module.exports = {
 
     const tap = await safe(`
       openNavGroup('play'); document.body.classList.add('hdr-slim');
-      document.querySelector('.bn-item[data-group="roll"]').click();
+      document.querySelector('.bn-item[data-group="journal"]').click();
       await new Promise(r => setTimeout(r, 450));
       const g = document.querySelector('.panel.active').id; openNavGroup('play');
       return { panel: g, slim: document.body.classList.contains('hdr-slim') };`);

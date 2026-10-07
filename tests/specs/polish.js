@@ -148,20 +148,20 @@ module.exports = {
       adj('endCur', 3); return { f };`);
     checks.push({ ok: !fx.err && fx.f.some(t => /−3 End/.test(t)), msg: `losing Endurance floats "−3 End" off the meter (${JSON.stringify(fx)})` });
 
-    // ---- Conditions are wax seals ----
+    // ---- Conditions are seals on the hero's portrait ----
     const seal = await safe(`
       char.weary = true; saveCharacter(); render(); await new Promise(r => setTimeout(r, 60));
-      const ic = document.querySelector('#hud-chips .chip.weary .chip-ic');
-      const bg = ic ? getComputedStyle(ic).backgroundImage : ''; const r = ic ? ic.getBoundingClientRect() : {};
-      char.weary = false; saveCharacter(); render(); return { grad: /radial-gradient/.test(bg), w: Math.round(r.width) };`);
-    checks.push({ ok: !seal.err && seal.grad && seal.w >= 20, msg: `a condition wears a round wax seal (${JSON.stringify(seal)})` });
+      const sl = document.querySelector('#hero-portrait .pt-seal');
+      const r = sl ? sl.getBoundingClientRect() : {}; const br = sl ? getComputedStyle(sl).borderRadius : '';
+      char.weary = false; saveCharacter(); render(); return { grad: /50%|999/.test(br), w: Math.round(r.width), title: sl && sl.title };`);
+    checks.push({ ok: !seal.err && seal.grad && seal.w >= 16 && seal.title === 'Weary', msg: `a condition is a round seal on the hero's portrait (${JSON.stringify(seal)})` });
 
-    // ---- Each part of the book has its own paper ----
+    // ---- Storybook: no paper grain or contours behind any part ----
     const paper = await safe(`
       const bg = g => { openNavGroup(g); return getComputedStyle(document.body).backgroundImage; };
       const a = bg('hero'), b = bg('journal'), c = bg('play'); openNavGroup('play');
-      return { distinct: new Set([a, b, c]).size };`);
-    checks.push({ ok: !paper.err && paper.distinct === 3, msg: `Hero, Journal and Play each have their own paper (${JSON.stringify(paper)})` });
+      return { distinct: [a, b, c].every(x => !x.includes('url(')) ? 3 : 0, a };`);
+    checks.push({ ok: !paper.err && paper.distinct === 3, msg: `no paper grain or map contours behind Hero, Journal or Play — the art carries the colour (${JSON.stringify(paper).slice(0, 120)})` });
 
     // ---- The scene takes the season of the story ----
     const mood = await safe(`

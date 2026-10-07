@@ -29,18 +29,19 @@ module.exports = {
       const journalLabel = document.querySelector('.bn-item[data-group="journal"]').innerText.trim();
       return { groups, topTabsOnPlay, heroTabs, heroActive, journalLabel };
     });
-    checks.push({ ok: nav.groups === 5, msg: `bottom bar shows 5 groups, not 14 tabs (got ${nav.groups})` });
+    checks.push({ ok: nav.groups === 3, msg: `bottom bar shows 3 places — Story, Hero, Journal — not 14 tabs (got ${nav.groups})` });
     checks.push({ ok: nav.topTabsOnPlay === 0, msg: `Play shows no sub-tab strip (got ${nav.topTabsOnPlay})` });
     checks.push({ ok: nav.heroActive === 'hero' && nav.heroTabs.join() === 'character,gear,build', msg: `Hero group shows only its own sub-tabs (${nav.heroTabs.join(',')})` });
-    checks.push({ ok: nav.journalLabel === 'Rules', msg: `Journal group reads "Rules" when there is no Chronicle (got "${nav.journalLabel}")` });
+    checks.push({ ok: nav.journalLabel === 'Journal', msg: `the Journal is there for every hero, solo or not (got "${nav.journalLabel}")` });
 
     // ---- Vitals bar: on every tab, true numbers, tap to adjust through adj() ----
     const hud = await page.evaluate(() => {
-      document.querySelector('.bn-item[data-group="roll"]').click();
-      const shown = document.getElementById('hud').offsetHeight > 0;
-      const endTxt = document.getElementById('hud-end').innerText.replace(/\s+/g, ' ');
-      const chips = document.getElementById('hud-chips').innerText;
-      document.querySelector('.hud-main').click();
+      openTool('dice');
+      const pt = document.getElementById('hero-portrait');
+      const shown = pt.offsetHeight > 0;
+      const endTxt = pt.getAttribute('aria-label') || '';
+      const chips = endTxt;
+      pt.click();
       const sheetOpen = document.getElementById('vitals-overlay').classList.contains('show');
       const upBtn = document.querySelector('#vitals-body button[aria-label="Endurance up"]');
       const before = char.endCur; upBtn.click();
@@ -49,14 +50,14 @@ module.exports = {
       closeVitals();
       return { shown, endTxt, chips, sheetOpen, before, after, shownNow };
     });
-    checks.push({ ok: hud.shown && /20\s*\/\s*25/.test(hud.endTxt), msg: `vitals bar shows Endurance 20/25 on the Roll tab (got "${hud.endTxt}")` });
-    checks.push({ ok: /Shadow 2/.test(hud.chips), msg: `vitals bar shows Shadow (got "${hud.chips}")` });
-    checks.push({ ok: hud.sheetOpen && hud.after === hud.before + 1 && /^21/.test(hud.shownNow), msg: `tapping the bar opens a sheet whose + raises Endurance (${hud.before}→${hud.after}, shows ${hud.shownNow})` });
+    checks.push({ ok: hud.shown && /Endurance 20 of 25/.test(hud.endTxt), msg: `the hero portrait is on a tool page too and says Endurance 20 of 25 (got "${hud.endTxt}")` });
+    checks.push({ ok: /Shadow 2/.test(hud.chips), msg: `the portrait carries Shadow (got "${hud.chips}")` });
+    checks.push({ ok: hud.sheetOpen && hud.after === hud.before + 1 && /^21/.test(hud.shownNow), msg: `tapping the portrait opens a sheet whose + raises Endurance (${hud.before}→${hud.after}, shows ${hud.shownNow})` });
     const blankHud = await page.evaluate(() => {
       const keep = char; char = JSON.parse(JSON.stringify(DEFAULT_CHARACTER)); render();
-      const h = document.getElementById('hud').offsetHeight; char = keep; saveCharacter(); render(); return h;
+      const h = document.getElementById('hero-portrait').offsetHeight; char = keep; saveCharacter(); render(); return h;
     });
-    checks.push({ ok: blankHud === 0, msg: 'vitals bar stays hidden until a hero exists' });
+    checks.push({ ok: blankHud === 0, msg: 'the portrait stays hidden until a hero exists' });
 
     // ---- Hand-edit mode: Valour cannot be bumped by accident ----
     const adjm = await page.evaluate(() => {
@@ -130,12 +131,13 @@ module.exports = {
       // Chromium (content-visibility:hidden) yet are not on screen.
       const vis = el => el.checkVisibility ? el.checkVisibility() : !!(el.offsetWidth || el.offsetHeight);
       const topLevel = [...m.querySelectorAll(':scope > button')].filter(vis).length;
-      const visible = [...m.querySelectorAll('button')].filter(vis).length;
+      const visible = [...m.querySelectorAll('button:not(.tool-tile)')].filter(vis).length;
+      const tiles = [...m.querySelectorAll('.tool-tile')].filter(vis).filter(t => t.querySelector('svg use')).length;
       const text = m.innerText;
       toggleMenu();
-      return { topLevel, visible, firebase: /Firebase|file:\/\//.test(text), emoji: /[\u{1F300}-\u{1FAFF}]/u.test(text) };
+      return { topLevel, visible, tiles, firebase: /Firebase|file:\/\//.test(text), emoji: /[\u{1F300}-\u{1FAFF}]/u.test(text) };
     });
-    checks.push({ ok: menu.visible <= 8, msg: `menu opens with ≤ 8 visible buttons (got ${menu.visible})` });
+    checks.push({ ok: menu.visible <= 8 && menu.tiles >= 5, msg: `menu opens with ≤ 8 plain buttons, and the Tools as drawn tiles (got ${menu.visible} buttons, ${menu.tiles} tiles)` });
     checks.push({ ok: !menu.firebase, msg: 'menu shows no developer text (Firebase / file://)' });
     checks.push({ ok: !menu.emoji, msg: 'menu rows carry no emoji' });
 
@@ -590,10 +592,10 @@ module.exports = {
     const acc = await page.evaluate(async () => {
       const wait = () => new Promise(r => setTimeout(r, 450));   // let the colour transition finish
       openNavGroup('hero'); await wait(); const a = getComputedStyle(document.querySelector('.bn-item.active')).color;
-      openNavGroup('adventure'); await wait(); const b = getComputedStyle(document.querySelector('.bn-item.active')).color;
+      const b = getComputedStyle(document.querySelector('.bn-item:not(.active)')).color;
       return { a, b };
     });
-    checks.push({ ok: acc.a !== acc.b, msg: `each nav group has its own accent (${acc.a} vs ${acc.b})` });
+    checks.push({ ok: acc.a !== acc.b, msg: `the place you are in is marked in the one accent colour (${acc.a} vs ${acc.b})` });
 
     // ---- Tablet: Play in two panes ----
     await page.setViewportSize({ width: 1180, height: 820 });
@@ -834,14 +836,14 @@ module.exports = {
       return { turned, back };`);
     checks.push({ ok: !pt.err && pt.turned && pt.back, msg: `moving between groups turns the page forward or back (${JSON.stringify(pt)})` });
 
-    // ---- Old map theme ----
+    // ---- Day theme: warm paper, nothing behind it ----
     const om4 = await safe(`
-      localStorage.setItem('tor2e-theme', 'sepia'); applyTheme();
-      const bg = getComputedStyle(document.body).getPropertyValue('--bg').trim(), label = THEME_LABELS.sepia;
-      const contours = getComputedStyle(document.body).getPropertyValue('--contours');
+      localStorage.setItem('tor2e-theme', 'day'); applyTheme();
+      const bg = getComputedStyle(document.body).getPropertyValue('--bg').trim(), label = THEME_LABELS.day;
+      const img = getComputedStyle(document.body).backgroundImage;
       localStorage.removeItem('tor2e-theme'); applyTheme();
-      return { bg, label, strong: /stroke-opacity=%27\\.2%27/.test(contours) };`);
-    checks.push({ ok: !om4.err && om4.label === 'Old map' && om4.bg === '#d7c095' && om4.strong, msg: `the Old map theme: deep tan paper and strong contours (${JSON.stringify(om4)})` });
+      return { bg, label, plain: !img.includes('url(') };`);
+    checks.push({ ok: !om4.err && om4.label === 'Day' && om4.bg === '#f3ead8' && om4.plain, msg: `the Day look: warm paper and nothing drawn behind it (${JSON.stringify(om4)})` });
     await hero();
 
 

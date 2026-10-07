@@ -10,16 +10,17 @@ module.exports = {
     const themeRun = await page.evaluate(() => {
       localStorage.removeItem('tor2e-theme'); applyTheme();
       const seen = [];
-      for (let i = 0; i < 5; i++) {
-        const pref = localStorage.getItem('tor2e-theme') || 'auto';
-        const cls = document.body.className.split(' ').filter(c => c === 'dark' || c.startsWith('theme-')).join(',') || 'light';
+      for (let i = 0; i < 3; i++) {
+        const pref = currentThemePref();
+        const cls = ['night', 'day', 'theme-hc'].filter(c => document.body.classList.contains(c)).join(',');
         seen.push(pref + ':' + cls);
         cycleTheme();
       }
+      localStorage.setItem('tor2e-theme', 'sepia'); const legacy = currentThemePref();
       localStorage.removeItem('tor2e-theme'); applyTheme();
-      return seen;
+      return { seen, legacy };
     });
-    checks.push({ ok: themeRun.length === 5 && themeRun.some(s => s.startsWith('sepia:theme-sepia')) && themeRun.some(s => s.startsWith('hc:theme-hc')) && themeRun.some(s => s.startsWith('dark:dark')) && themeRun.some(s => s.startsWith('light:light')), msg: `themes cycle Auto/Light/Dark/Sepia/HC (${themeRun.join(' · ')})` });
+    checks.push({ ok: themeRun.seen.join('|') === 'night:night|day:day|hc:theme-hc' && themeRun.legacy === 'day', msg: `three looks: Night (default) → Day → High contrast; an old "Old map" choice opens as Day (${JSON.stringify(themeRun)})` });
 
     // U9 — text size classes.
     const sizeRun = await page.evaluate(() => {

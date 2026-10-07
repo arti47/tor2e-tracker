@@ -23,7 +23,7 @@
    ============================================ */
 
 const STORAGE_KEY = 'tor2e-character-v1';   // legacy single-character key (migrated into the roster)
-const THEME_KEY = 'tor2e-theme';  // 'light' | 'dark' | null (= auto via prefers-color-scheme)
+const THEME_KEY = 'tor2e-theme';  // 'night' (default) | 'day' | 'hc'; older values map via THEME_LEGACY
 // Multi-character roster (added 2026-05-31). The device can hold many heroes:
 //   tor2e-roster-v1   → { activeId, list: [{id, name}] }
 //   tor2e-char-<id>   → that hero's character JSON
@@ -35,26 +35,25 @@ const JOURNAL_PREFIX = 'tor2e-journal-';   // per-hero Chronicle (entries/thread
 let activeCharId = null;
 
 // Apply theme before render so first paint is correct.
-// Themes (U10). Preference in THEME_KEY: 'auto' (default, = unset) | 'light' | 'dark' | 'sepia' | 'hc'.
-// 'auto' follows prefers-color-scheme and is stored as *absent* so the live prefers-color-scheme
-// listener (see init) keeps re-applying it.
-const THEMES = ['auto', 'light', 'dark', 'sepia', 'hc'];
-const THEME_LABELS = { auto: 'Auto', light: 'Light', dark: 'Dark', sepia: 'Old map', hc: 'High Contrast' };
-function currentThemePref() { return localStorage.getItem(THEME_KEY) || 'auto'; }
+// Storybook redesign: three looks. Night (the default — dark, the art carries the colour), Day (the
+// same layout on warm paper) and High contrast. Older stored choices map onto them: auto/dark → Night,
+// light/Old map → Day.
+const THEMES = ['night', 'day', 'hc'];
+const THEME_LABELS = { night: 'Night', day: 'Day', hc: 'High contrast' };
+const THEME_LEGACY = { auto: 'night', dark: 'night', light: 'day', sepia: 'day' };
+function currentThemePref() { const v = localStorage.getItem(THEME_KEY) || 'night'; return THEME_LEGACY[v] || (THEMES.includes(v) ? v : 'night'); }
 function applyTheme() {
-  const pref = currentThemePref();
-  const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-  const eff = pref === 'auto' ? (prefersDark ? 'dark' : 'light') : pref;
+  const eff = currentThemePref();
   const b = document.body; if (!b) return;
-  b.classList.remove('dark', 'theme-sepia', 'theme-hc');
-  if (eff === 'dark') b.classList.add('dark');
-  else if (eff === 'sepia') b.classList.add('theme-sepia');
+  b.classList.remove('dark', 'night', 'theme-sepia', 'theme-hc', 'day');
+  if (eff === 'night') b.classList.add('dark', 'night');
   else if (eff === 'hc') b.classList.add('theme-hc');
-  // (light => no class)
+  else b.classList.add('day');
+  b.classList.add('storybook');
   const tc = document.querySelector('meta[name="theme-color"]');
-  if (tc) tc.setAttribute('content', eff === 'dark' ? '#1b130d' : (eff === 'sepia' ? '#d7c095' : '#f3ead8'));
+  if (tc) tc.setAttribute('content', eff === 'night' ? '#11141b' : (eff === 'hc' ? '#ffffff' : '#f3ead8'));
   const btn = document.getElementById('dark-mode-btn');
-  if (btn) setMenuLabel(btn, 'Theme', THEME_LABELS[pref]);
+  if (btn) setMenuLabel(btn, 'Theme', THEME_LABELS[eff]);
 }
 /* ---------- CULTURE CRESTS ----------
    A heraldic device for each of the 11 heroic cultures, drawn as inline SVG (no images, works
@@ -114,7 +113,7 @@ function setMenuLabel(btn, label, state) {
 }
 function cycleTheme() {
   const next = THEMES[(THEMES.indexOf(currentThemePref()) + 1) % THEMES.length];
-  if (next === 'auto') localStorage.removeItem(THEME_KEY); else localStorage.setItem(THEME_KEY, next);
+  localStorage.setItem(THEME_KEY, next);
   applyTheme();
 }
 
@@ -1395,12 +1394,12 @@ function updateEyePill(ea, threshold) {
   pill.style.display = '';
   const hit = ea >= threshold;
   const open = Math.min(1, ea / Math.max(1, threshold));
-  const ry = (1.5 + open * 6.5).toFixed(1);   // the lid opens as the Enemy's gaze sharpens
+  const ry = (3 + open * 5).toFixed(1);   // the lid opens as the Enemy's gaze sharpens
   // Round 7: a drawn iris that warms from amber to fire as the Eye's gaze sharpens, with a slit pupil
   const mix = (a, b) => Math.round(a + (b - a) * open);
   const iris = `rgb(${mix(200, 214)},${mix(150, 52)},${mix(64, 24)})`;
   pill.innerHTML = `<svg class="eye-gauge" viewBox="0 0 32 20" width="22" height="14" aria-hidden="true"><path d="M1 10 Q16 ${10 - ry * 1.5} 31 10 Q16 ${10 + +ry * 1.5} 1 10 Z" fill="currentColor" fill-opacity=".12" stroke="currentColor" stroke-width="1.6"/><ellipse class="eye-iris" cx="16" cy="10" rx="${(1.6 + open * 3).toFixed(1)}" ry="${ry}" fill="${iris}"/><ellipse class="eye-pupil" cx="16" cy="10" rx=".8" ry="${Math.max(1, ry - 1).toFixed(1)}" fill="#140806"/></svg>` +
-    '<span class="sr-only">Eye </span>' + ea + '/' + threshold + (hit ? ' <span class="sr-only">— </span>Revelation!' : '');
+    '<span class="eye-num"><span class="sr-only">Eye </span>' + ea + '/' + threshold + (hit ? ' <span class="sr-only">— </span>Revelation!' : '') + '</span>';
   pill.title = hit
     ? 'Eye Awareness ' + ea + ' has reached the Hunt threshold ' + threshold + ' — roll a Revelation Episode. Tap to open.'
     : 'Eye Awareness ' + ea + ' of ' + threshold + ' (Hunt threshold). Tap to open.';
@@ -1563,7 +1562,8 @@ function refreshStriderUI() {
   if (oracleTab) oracleTab.style.display = solo ? '' : 'none';
   // Chronicle (journaling) is a SOLO-PLAY feature — visible in either Strider OR Moria solo mode,
   // hidden in normal/group play.
-  const showChronicle = isSolo();
+  // Storybook redesign: the Journal is for every hero, solo or at a table.
+  const showChronicle = true;
   const chronicleTab = document.querySelector('.tab[data-tab="chronicle"]');
   if (chronicleTab) chronicleTab.style.display = showChronicle ? '' : 'none';
   // If we just hid the Chronicle while its panel was open, fall back to the Character tab
@@ -1716,12 +1716,6 @@ function undoLast() {
 (function bootstrapTheme() {
   if (document.body) applyTheme();
   else document.addEventListener('DOMContentLoaded', applyTheme);
-  // React to system-theme changes if user hasn't set a manual override
-  if (window.matchMedia) {
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-      if (!localStorage.getItem(THEME_KEY)) applyTheme();
-    });
-  }
 })();
 
 const SKILLS = {

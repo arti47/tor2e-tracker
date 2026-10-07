@@ -21,7 +21,9 @@ module.exports = {
 
       const visibleTabs = await page.$$eval('.tab', els => els.filter(e => e.style.display !== 'none').map(e => e.dataset.tab));
       for (const t of visibleTabs) {
-        await page.click(`.bn-item[data-group="${await page.evaluate(t => navGroupOf(t).id, t)}"]`);   // a player reaches a tab through its group
+        { const g = await page.evaluate(t => navGroupOf(t).id, t);   // a player reaches a tab through its group — or, for a tool, through Menu → Tools
+          if (g === 'tools') { await page.evaluate(() => { document.querySelectorAll('.menu-overlay.show').forEach(o => o.classList.remove('show')); toggleMenu(); }); await page.click(`.tool-tile[data-tool="${t}"]`); }
+          else await page.click(`.bn-item[data-group="${g}"]`); }
         if (await page.evaluate(t => !document.querySelector(`.tab[data-tab="${t}"]`).classList.contains('active'), t)) await page.click(`.tab[data-tab="${t}"]`);
         const over = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
         checks.push({ ok: over <= 1, msg: `@${width}px tab "${t}": no horizontal overflow (got ${over}px)` });

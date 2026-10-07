@@ -3100,3 +3100,103 @@ body[data-group="play"] .toast-strip { bottom: calc(var(--nav-h) + var(--safe-bo
 .play-fight-log .btn-block { margin-top: 8px; }
 .on-play { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; border-color: var(--gold); background: var(--gold-soft); }
 .on-play .btn { flex: 0 0 auto; margin: 0; }
+
+/* ==========================================================================
+   STORYBOOK REDESIGN — stage 1 (Night / Day / High contrast; portrait; 3-place nav; Tools)
+   The art carries the colour; the chrome steps back. No gilt frames, no paper grain, no
+   contours, no group strips. Night is the default look.
+   ========================================================================== */
+body.night {
+  --bg: #11141b; --bg-deep: #0c0f15; --card-bg: #1a1f29; --pure-white: #1a1f29;
+  --ink: #ece4d4; --ink-soft: #d3c8b2; --text-muted: #aaa08c; --text-faint: #8f8877;
+  --red: #b4432f; --red-dark: #f0a894; --red-light: #f5bcac;
+  --gold: #d9b065; --label: #cfb072;
+  --border: rgba(236, 228, 212, 0.10); --line: rgba(236, 228, 212, 0.07);
+  --shadow: rgba(0, 0, 0, 0.6);
+  --elev-1: 0 1px 2px rgba(0,0,0,.35), 0 8px 24px -10px rgba(0,0,0,.6);
+  --gold-soft: rgba(217, 176, 101, 0.14); --gold-paler: rgba(217, 176, 101, 0.07);
+  --red-soft: rgba(180, 67, 47, 0.20);
+  --btn-secondary-bg: #252b37; --btn-alert-bg: #b4432f;
+  --grp: #d9b065;
+}
+body.storybook, body.night, body.day { background-image: none !important; }
+body.night { background: radial-gradient(ellipse 120% 60% at 50% -10%, #1d2433 0%, #11141b 60%) fixed, #11141b; }
+body.storybook::before, body.storybook::after { background-image: none !important; }
+.storybook .group-strip { display: none !important; }
+.storybook .card.ornate::before, .storybook .roll-drawer::before { display: none !important; }
+.storybook .card.ornate > .card-title, .storybook .card.ornate > h2 { background: none !important; padding-bottom: 0; }
+.storybook .card { border-radius: 16px; }
+body.night .card { border-color: var(--line); box-shadow: var(--elev-1); }
+body.night .card.ornate { box-shadow: 0 10px 40px -12px rgba(0,0,0,.7); }
+body.night[data-group] { --grp: var(--gold); }
+body.night .bn-item.active, body.night .bn-item.active::before { color: var(--gold); }
+body.night .bn-item.active::before { background: var(--gold); }
+
+/* Header: portrait · name · (eye) · menu */
+.storybook .header { border-bottom: 0; box-shadow: none; background: color-mix(in srgb, var(--bg) 88%, transparent); }
+.storybook #hud { display: none !important; }
+.storybook .header .char-name .monogram { display: none !important; }
+.storybook .header-row { gap: var(--sp-2); }
+.storybook .header-row > .char-name { flex: 1 1 auto; min-width: 0; }
+.hero-portrait { position: relative; flex: 0 0 auto; width: 56px; height: 56px; padding: 0; border: 0; background: none; border-radius: 50%; cursor: pointer; }
+.hero-portrait[hidden] { display: none; }
+.hero-portrait:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.portrait-svg { display: block; }
+.portrait-svg .pt-track { stroke: color-mix(in srgb, var(--ink) 12%, transparent); stroke-width: 3.6; }
+.portrait-svg .pt-end { stroke: #c8432f; stroke-width: 3.6; stroke-linecap: round; transition: stroke-dasharray .45s var(--ease); }
+.portrait-svg .pt-hope { stroke: #e2b45a; stroke-width: 3.6; stroke-linecap: round; transition: stroke-dasharray .45s var(--ease); }
+.portrait-svg .pt-shadow { stroke: #0b0b10; stroke-width: 3.6; stroke-dasharray-transition: .45s; opacity: .92; }
+body.day .portrait-svg .pt-shadow { stroke: #2b2118; }
+.portrait-svg .pt-fig .silhouette { fill: rgba(255, 238, 205, .82); }
+.portrait-svg .pt-fig .silhouette .s-line { fill: none; stroke: rgba(255, 238, 205, .82); stroke-width: 3; stroke-linecap: round; }
+.portrait-svg .pt-fig .silhouette .s-thin { fill: none; stroke: rgba(255, 238, 205, .82); stroke-width: 1; }
+.portrait-svg .pt-fig .silhouette .s-gold { fill: none; stroke: #e2b45a; stroke-width: 2; }
+.portrait-svg .pt-crack { fill: none; stroke: #ff6a52; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; opacity: .9; }
+.hero-portrait.hurt .portrait-svg circle[clip-path], .hero-portrait.hurt .pt-fig { filter: saturate(.7); }
+.hero-portrait.dying .portrait-svg { filter: grayscale(.8) brightness(.8); }
+.hero-portrait.dying::after { content: ''; position: absolute; inset: 4px; border-radius: 50%; box-shadow: 0 0 0 2px #c8432f; animation: pulse 1.4s ease-in-out infinite; }
+.pt-seal { position: absolute; width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--seal); color: #fff; box-shadow: 0 0 0 2px var(--bg);
+  right: calc(-4px + var(--i) * 13px); bottom: -2px; }
+.pt-seal:nth-of-type(1) { right: -3px; bottom: -1px; }
+.pt-seal:nth-of-type(2) { right: 13px; bottom: -6px; }
+.pt-seal:nth-of-type(3) { right: 30px; bottom: -6px; }
+.pt-seal svg { width: 11px; height: 11px; fill: none; stroke: currentColor; stroke-width: 2; }
+.pt-seal.auto { background: transparent; color: var(--seal); box-shadow: inset 0 0 0 1.5px var(--seal), 0 0 0 2px var(--bg); background-color: var(--bg); }
+.pt-delta { position: absolute; left: 58px; top: 18px; white-space: nowrap; font-size: var(--fs-xs); font-weight: 700; padding: 2px 8px; border-radius: var(--r-pill);
+  background: var(--card-bg); color: var(--ink); box-shadow: var(--elev-1); pointer-events: none; z-index: 5;
+  animation: ptDelta 1.6s var(--ease) forwards; }
+.pt-delta.down { color: #ff8f7a; } .pt-delta.up { color: #9fd38a; } .pt-delta.shadowd { color: #b9b1c9; }
+body.day .pt-delta.down { color: #a3271b; } body.day .pt-delta.up { color: #2f6a20; } body.day .pt-delta.shadowd { color: #3a3046; }
+@keyframes ptDelta { 0% { opacity: 0; transform: translateY(6px); } 15% { opacity: 1; transform: none; } 75% { opacity: 1; } 100% { opacity: 0; transform: translateY(-10px); } }
+@media (prefers-reduced-motion: reduce) { .pt-delta { animation: none; } .hero-portrait.dying::after { animation: none; } }
+.storybook .header-row .hud-eye { flex: 0 0 auto; }
+
+/* Tools: a full page with a Back bar; the sub-tab strip is not shown */
+body[data-group="tools"] .tabs { display: none !important; }
+.tool-bar { display: flex; align-items: center; gap: var(--sp-2); padding: 0 0 var(--sp-2); }
+.tool-bar[hidden] { display: none; }
+.tb-back { display: inline-flex; align-items: center; gap: 2px; min-height: 40px; padding: 0 12px 0 6px; border-radius: var(--r-pill);
+  border: 1px solid var(--border); background: var(--card-bg); color: var(--ink); font-weight: 600; font-size: var(--fs-sm); }
+.tb-back .ic { width: 18px; height: 18px; transform: rotate(180deg); }
+.tb-title { flex: 1 1 auto; display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-display); font-size: var(--fs-xl); font-weight: 600; min-width: 0; }
+.tb-title .ic { width: 22px; height: 22px; color: var(--gold); }
+.tb-more { min-height: 40px; padding: 0 12px; border-radius: var(--r-pill); border: 0; background: transparent; color: var(--text-muted); font-weight: 600; font-size: var(--fs-sm); }
+.menu-tools-h { margin: var(--sp-3) 0 var(--sp-2); font-family: var(--font-display); font-variant: small-caps; letter-spacing: .5px; color: var(--label, var(--text-muted)); font-size: var(--fs-md); }
+.menu-tools { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-2); margin-bottom: var(--sp-2); }
+.menu .tool-tile { display: flex !important; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-align: center;
+  min-height: 86px; padding: 10px 4px !important; border-radius: 14px !important; border: 1px solid var(--border) !important; background: var(--bg-deep) !important; color: var(--ink) !important; }
+.menu .tool-tile .ic { width: 26px; height: 26px; color: var(--gold); }
+.menu .tool-tile strong { font-size: var(--fs-sm); font-weight: 700; }
+.menu .tool-tile small { font-size: 11px; color: var(--text-muted); line-height: 1.2; }
+
+/* Three places in the bar */
+.storybook .bn-item { max-width: 140px; }
+/* The Eye in the corner: a drawn eye that opens as it rises; the numbers only when it nears the Hunt. */
+.storybook .header-row .hud-eye { width: 44px; height: 44px; padding: 0; justify-content: center; border-radius: 50%; background: transparent; border-color: transparent; }
+.storybook .header-row .hud-eye .eye-gauge { width: 30px; height: 19px; }
+.storybook .header-row .hud-eye .eye-num { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.storybook .header-row .hud-eye.near, .storybook .header-row .hud-eye.hit { width: auto; padding: 0 10px; border-radius: var(--r-pill); }
+.storybook .header-row .hud-eye.near .eye-num, .storybook .header-row .hud-eye.hit .eye-num { position: static; width: auto; height: auto; clip: auto; }
+/* Night: every text box is the same recessed well. */
+body.night #ch-oracle-q, body.night #ch-search, body.night #history-search, body.night .oracle-ask textarea, body.night .menu-search input { background: var(--bg-deep) !important; }

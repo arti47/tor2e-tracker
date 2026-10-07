@@ -5755,8 +5755,8 @@ function _hudAnimate(now) {
         const mine = pills; clearTimeout(host._fdT); host.querySelectorAll('.fd7-wrap').forEach(w => { if (w !== mine) w.remove(); });
         host._fdT = setTimeout(() => { mine.remove(); host.classList.remove('delta-on'); }, 1500); }
       const f = document.createElement('span'); f.className = 'fdelta fd7 ' + cls; f.textContent = txt; pills.appendChild(f); };
-    if (d) float((d > 0 ? '+' : '−') + Math.abs(d) + ' ' + label, d > 0 ? 'up' : 'down');
-    if (ds) float((ds > 0 ? '+' : '−') + Math.abs(ds) + ' Shadow', ds > 0 ? 'down shadowd' : 'up');
+    if (d) { float((d > 0 ? '+' : '−') + Math.abs(d) + ' ' + label, d > 0 ? 'up' : 'down'); portraitDelta((d > 0 ? '+' : '−') + Math.abs(d) + ' ' + label, d > 0 ? 'up' : 'down'); }
+    if (ds) { float((ds > 0 ? '+' : '−') + Math.abs(ds) + ' Shadow', ds > 0 ? 'down shadowd' : 'up'); portraitDelta((ds > 0 ? '+' : '−') + Math.abs(ds) + ' Shadow', ds > 0 ? 'down shadowd' : 'up'); }
     if (!still && val && d) {
       const t0 = performance.now();
       const step = t => { const k = Math.min(1, (t - t0) / 420); const first = val && [...val.childNodes].find(n => n.nodeType === 3); if (first) first.nodeValue = String(Math.round(from + d * k)); if (k < 1) requestAnimationFrame(step); };
@@ -5793,18 +5793,73 @@ function renderHud() {
     else { nameEl.textContent = full; nameEl.removeAttribute('title'); }
     nameEl.classList.toggle('unnamed', !n);
   }
-  if (!built) return;
+  if (!built) { const pt = document.getElementById('hero-portrait'); if (pt) pt.hidden = true; return; }
   const end = parseInt(char.endCur) || 0, endMax = parseInt(char.endMax) || 0;
   const hope = parseInt(char.hopeCur) || 0, hopeMax = parseInt(char.hopeMax) || 0;
   const sh = (parseInt(char.shadow) || 0) + (parseInt(char.scars) || 0);
   const weary = end <= (parseInt(char.load) || 0) + (parseInt(char.fatigue) || 0);
   document.getElementById('hud-end').innerHTML = _meter('Endurance', end, endMax, weary ? 'end low' : 'end', 0, 'i-heart');
   document.getElementById('hud-hope').innerHTML = _meter('Hope', hope, hopeMax, 'hope', hopeMax ? sh / hopeMax * 100 : 0, 'i-star');
+  renderPortrait({ end, endMax, hope, hopeMax, sh });   // first: it rewrites the portrait, the float goes on top
   _hudAnimate({ id: activeCharId, end, endMax, hope, hopeMax, sh });
   const CIC = { shadow: 'i-moon', weary: 'i-weary', miserable: 'i-rain', wounded: 'i-drop', dying: 'i-skull' };
   const cic = k => `<svg class="chip-ic" aria-hidden="true"><use href="#${CIC[k]}"/></svg>`;
   document.getElementById('hud-chips').innerHTML = (sh ? `<span class="chip shadow" title="Shadow (incl. Scars). When it reaches your Hope you are Miserable.">${cic('shadow')}Shadow ${sh}</span>` : '') + _hudConditions()
     .map(c => `<span class="chip ${c.k}${c.set ? '' : ' auto'}" title="${c.set ? '' : 'The rules say this applies — tap Weary/Miserable on the Character tab to confirm.'}">${cic(c.k)}${c.label}</span>`).join('');
+}
+/* ---------- HERO PORTRAIT (storybook redesign) ----------
+   The hero in a ring: the culture's drawn figure on its field colour; Endurance is the outer red
+   ring, Hope the inner gold ring, and Shadow (with Scars) eats into Hope from the other end — when
+   they meet the hero is Miserable, which the picture now shows. Conditions sit on the rim as seals;
+   a wound cracks the portrait. Tap = the vitals sheet with the numbers and the actions. */
+const PORTRAIT_SEALS = { dying: ['#1a1412', 'i-skull'], wounded: ['#a3271b', 'i-drop'], weary: ['#a8741d', 'i-weary'], miserable: ['#3d5470', 'i-rain'] };
+function portraitSvg(v, size) {
+  const px = size || 56;
+  const C = (r, frac, cls, rev) => {
+    const len = 2 * Math.PI * r, f = Math.max(0, Math.min(1, frac || 0));
+    // starts at the top; rev = drawn anticlockwise (Shadow creeping from the far end of Hope)
+    return `<circle class="${cls}" cx="32" cy="32" r="${r}" fill="none" stroke-dasharray="${(len * f).toFixed(2)} ${len.toFixed(2)}" transform="rotate(-90 32 32)${rev ? ' scale(1 -1) translate(0 -64)' : ''}"/>`;
+  };
+  const field = (typeof CREST_FIELD !== 'undefined' && CREST_FIELD[char.culture]) || '#4a4036';
+  const sil = (typeof cultureSilhouette === 'function' && cultureSilhouette(char.culture)) || '';
+  const fig = sil ? sil.replace('<svg class="silhouette"', '<svg class="silhouette" x="16" y="15" width="32" height="38"') : '';
+  const crack = char.wounded ? '<path class="pt-crack" d="M24 14 L29 23 L25 30 L31 38 L28 46 M29 23 L35 25 M31 38 L37 41"/>' : '';
+  return `<svg class="portrait-svg" width="${px}" height="${px}" viewBox="0 0 64 64" aria-hidden="true">
+    <defs><clipPath id="pt-clip"><circle cx="32" cy="32" r="21"/></clipPath></defs>
+    <circle cx="32" cy="32" r="21" fill="${field}"/>
+    <g clip-path="url(#pt-clip)" class="pt-fig">${fig}${crack}</g>
+    <circle class="pt-track" cx="32" cy="32" r="29.5" fill="none"/>
+    ${C(29.5, v.endMax ? v.end / v.endMax : 0, 'pt-end')}
+    <circle class="pt-track" cx="32" cy="32" r="24.8" fill="none"/>
+    ${C(24.8, v.hopeMax ? v.hope / v.hopeMax : 0, 'pt-hope')}
+    ${v.sh ? C(24.8, v.hopeMax ? v.sh / v.hopeMax : 0, 'pt-shadow', true) : ''}
+  </svg>`;
+}
+function renderPortrait(v) {
+  const el = document.getElementById('hero-portrait'); if (!el) return;
+  const built = !!char.culture;
+  el.hidden = !built;
+  if (!built) return;
+  const conds = _hudConditions();
+  const seals = conds.slice(0, 3).map((c, i) => {
+    const [col, ic] = PORTRAIT_SEALS[c.k] || ['#555', 'i-dot'];
+    return `<span class="pt-seal${c.set ? '' : ' auto'}" style="--seal:${col};--i:${i}" title="${c.label}"><svg aria-hidden="true"><use href="#${ic}"/></svg></span>`;
+  }).join('');
+  const key = JSON.stringify([v, conds.map(c => c.k + c.set), char.culture, char.wounded]);
+  if (el.dataset.key !== key) {
+    el.dataset.key = key;
+    el.innerHTML = portraitSvg(v) + seals;
+  }
+  el.classList.toggle('dying', conds.some(c => c.k === 'dying'));
+  el.classList.toggle('hurt', v.endMax > 0 && v.end / v.endMax <= .34);
+  el.setAttribute('aria-label', `Endurance ${v.end} of ${v.endMax}, Hope ${v.hope} of ${v.hopeMax}` +
+    (v.sh ? `, Shadow ${v.sh}` : '') + (conds.length ? '; ' + conds.map(c => c.label).join(', ') : '') + ' — tap for details');
+}
+/** A change to Endurance, Hope or Shadow floats off the portrait for a moment. */
+function portraitDelta(txt, cls) {
+  const el = document.getElementById('hero-portrait'); if (!el || el.hidden) return;
+  const f = document.createElement('span'); f.className = 'pt-delta ' + (cls || ''); f.textContent = txt; f.setAttribute('aria-hidden', 'true');
+  el.appendChild(f); setTimeout(() => f.remove(), 1700);
 }
 // Conditions + the in-play actions that used to live on the Character tab form.
 function _vitalsConditions() {

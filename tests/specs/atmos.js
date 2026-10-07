@@ -99,8 +99,8 @@ module.exports = {
     checks.push({ ok: !fp.err && fp.n >= 8, msg: `undertakings each have an icon (${JSON.stringify(fp)})` });
 
     // ---- The active nav item gets a small flourish ----
-    const nv = await safe(`const a = document.querySelector('.bn-item.active'); return { bg: a && getComputedStyle(a, '::after').backgroundImage };`);
-    checks.push({ ok: !nv.err && /svg/.test(nv.bg || ''), msg: `the active section is underlined with a flourish (${JSON.stringify(nv).slice(0, 80)})` });
+    const nv = await safe(`openNavGroup('play'); await new Promise(r => setTimeout(r, 400)); const a = document.querySelector('.bn-item.active'), b = document.querySelector('.bn-item:not(.active)'); return { bg: a && getComputedStyle(a, '::after').backgroundImage, on: a && getComputedStyle(a).color, off: b && getComputedStyle(b).color };`);
+    checks.push({ ok: !nv.err && /svg/.test(nv.bg || '') && nv.on !== nv.off, msg: `the active section stands out and is underlined with a flourish (on ${nv.on} · off ${nv.off})` });
 
     // ---- Chronicle: an illuminated first letter; the quill moves while you write ----
     await go('chronicle');

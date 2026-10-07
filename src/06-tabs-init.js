@@ -39,13 +39,28 @@ function bindTabs() {
    are now a sub-navigation inside five groups. Mode gating stays where it was —
    refreshStriderUI / refreshGmUI set .tab style.display — and a group is simply
    hidden when none of its tabs is visible. */
+/* Storybook redesign (stage 1): three places a player goes — Story, Hero, Journal. Everything
+   else is a Tool: still a full page with every control and guard it had, opened from Menu → Tools
+   (or by the story when it needs one) and left with a Back button. Tools has no place in the bar. */
 const NAV_GROUPS = [
   { id: 'play',      tabs: ['play'] },
   { id: 'hero',      tabs: ['character', 'gear', 'build'] },
-  { id: 'adventure', tabs: ['journey', 'council', 'combat', 'band', 'battle', 'gm'] },
-  { id: 'roll',      tabs: ['dice', 'oracle'] },
-  { id: 'journal',   tabs: ['chronicle', 'reference'] },
+  { id: 'journal',   tabs: ['chronicle'] },
+  { id: 'tools',     tabs: ['journey', 'council', 'combat', 'band', 'battle', 'dice', 'oracle', 'reference', 'gm'], tool: true },
 ];
+/** The tools, in the order the menu shows them: label, icon, what it is for (one line). */
+const TOOLS = [
+  { tab: 'journey',   label: 'Journey',  icon: 'i-map',     sub: 'Plan a road' },
+  { tab: 'combat',    label: 'Fight',    icon: 'i-swords',  sub: 'Foes and rounds' },
+  { tab: 'council',   label: 'Council',  icon: 'i-chat',    sub: 'Talk or a long task' },
+  { tab: 'band',      label: 'The Band', icon: 'i-users',   sub: 'Your dwarves' },
+  { tab: 'battle',    label: 'Battle',   icon: 'i-flag',    sub: 'Band against an army' },
+  { tab: 'dice',      label: 'Dice',     icon: 'i-dice',    sub: 'Roll anything' },
+  { tab: 'oracle',    label: 'Oracle',   icon: 'i-eye',     sub: 'Ask the tables' },
+  { tab: 'reference', label: 'Rules',    icon: 'i-book',    sub: 'Every term' },
+  { tab: 'gm',        label: 'Loremaster', icon: 'i-crown', sub: 'Run the table' },
+];
+const NAV_ALIAS = { adventure: 'tools', roll: 'tools', story: 'play' };   // older group names still open
 const _navLast = {};   // group id → last sub-tab opened in it (this session)
 function _tabShown(id) {
   const t = document.querySelector(`.tab[data-tab="${id}"]`);
@@ -53,6 +68,7 @@ function _tabShown(id) {
 }
 function navGroupOf(tabId) { return NAV_GROUPS.find(g => g.tabs.includes(tabId)) || NAV_GROUPS[0]; }
 function openNavGroup(gid) {
+  gid = NAV_ALIAS[gid] || gid;
   const g = NAV_GROUPS.find(x => x.id === gid); if (!g) return;
   const shown = g.tabs.filter(_tabShown);
   const pick = (_navLast[gid] && shown.includes(_navLast[gid])) ? _navLast[gid] : shown[0];
@@ -77,6 +93,21 @@ function openBuild() {
   { const pc = document.getElementById('panel-character'); if (pc && pc.classList.contains('editing') && typeof setCharEditing === 'function') setCharEditing(false); }
   const t = document.querySelector('.tab[data-tab="build"]'); if (t) t.click();
 }
+/** Open one tool as a full page. Back returns to where you were. */
+let _toolBack = 'play';
+function openTool(tab) {
+  const t = document.querySelector(`.tab[data-tab="${tab}"]`); if (!t || t.style.display === 'none') return;
+  const m = document.getElementById('menu-overlay'); if (m && m.classList.contains('show') && typeof toggleMenu === 'function') toggleMenu();
+  const cur = document.body.dataset.group;
+  if (cur && cur !== 'tools') _toolBack = cur;
+  t.click();
+}
+function closeTool() { openNavGroup(_toolBack || 'play'); }
+function renderToolsMenu() {
+  const box = document.getElementById('menu-tools'); if (!box) return;
+  box.innerHTML = TOOLS.filter(x => _tabShown(x.tab)).map(x =>
+    `<button type="button" class="tool-tile" data-tool="${x.tab}" onclick="openTool('${x.tab}')"><svg class="ic" aria-hidden="true"><use href="#${x.icon}"/></svg><strong>${x.label}</strong><small>${x.sub}</small></button>`).join('');
+}
 function refreshNav() {
   refreshBuildTab();
   const active = document.querySelector('.tab.active');
@@ -92,6 +123,13 @@ function refreshNav() {
     if (typeof sfx === 'function') sfx('page');
   }
   document.body.dataset.group = cur.id;   // per-group accent colour (wayfinding)
+  if (cur.id !== 'tools') _toolBack = cur.id;
+  const tb = document.getElementById('tool-bar');
+  if (tb) {
+    const tool = cur.tool && active && TOOLS.find(x => x.tab === active.dataset.tab);
+    tb.hidden = !tool;
+    if (tool) tb.querySelector('.tb-title').innerHTML = `<svg class="ic" aria-hidden="true"><use href="#${tool.icon}"/></svg>${tool.label}`;
+  }
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('nav-out', !cur.tabs.includes(t.dataset.tab)));
   const nav = document.querySelector('.tabs');
   if (nav) nav.classList.toggle('single', cur.tabs.filter(_tabShown).length <= 1);
@@ -305,6 +343,7 @@ function resetTips() {
 function toggleMenu() {
   const ov = document.getElementById('menu-overlay');
   ov.classList.toggle('show');
+  if (ov.classList.contains('show')) renderToolsMenu();
   // P3: refresh the cloud sync status line whenever the menu opens.
   if (ov.classList.contains('show')) {
     const el = document.getElementById('sync-status-line');

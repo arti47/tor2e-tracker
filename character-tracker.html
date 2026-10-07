@@ -60,7 +60,7 @@
 
 <header class="header">
   <div class="header-row">
-    <button class="menu-btn" onclick="toggleMenu()" aria-label="Menu"><svg class="ic"><use href="#i-menu"/></svg></button>
+    <button type="button" class="hero-portrait" id="hero-portrait" onclick="openVitals()" aria-label="Your hero — Endurance and Hope" hidden></button>
     <button type="button" class="char-name" id="char-name" onclick="openPeek('hero')" aria-label="Your hero — look at the sheet">
       <span class="monogram" id="hdr-monogram" aria-hidden="true" style="display:none"></span>
       <span class="hn-text" id="char-name-text">Unnamed hero</span>
@@ -71,6 +71,13 @@
     <span id="retired-pill" style="display:none;background:var(--btn-alert-bg);color:white;padding:3px 10px;border-radius:10px;font-size:var(--fs-xs);font-weight:700;letter-spacing:1px;text-transform:uppercase" title=""></span>
     <button id="campaign-pill" onclick="openCampaign()" style="display:none;background:var(--gold-soft);color:var(--ink);border:1px solid var(--gold);padding:3px 10px;border-radius:10px;font-size:var(--fs-xs);font-weight:700" title="Fellowship campaign" aria-label="Fellowship campaign — open campaign panel"></button>
     <button class="menu-btn" id="undo-btn" onclick="undoLast()" aria-label="Undo" title="Undo last change" style="display:none"><svg class="ic"><use href="#i-undo"/></svg></button>
+    <button id="eye-pill" class="hud-eye" onclick="document.querySelector('.tab[data-tab=character]').click();setTimeout(()=>{const c=document.getElementById('eye-of-mordor-card');if(c)c.scrollIntoView({block:'center'});},60)" style="display:none" title="Eye Awareness vs Hunt threshold" aria-label="Eye of Mordor awareness — open the Eye card"></button>
+    <button class="menu-btn" onclick="toggleMenu()" aria-label="Menu"><svg class="ic"><use href="#i-menu"/></svg></button>
+  </div>
+  <div class="tool-bar" id="tool-bar" hidden>
+    <button type="button" class="tb-back" onclick="closeTool()" aria-label="Back to the story"><svg class="ic" aria-hidden="true"><use href="#i-chev"/></svg>Back</button>
+    <span class="tb-title"></span>
+    <button type="button" class="tb-more" onclick="toggleMenu()" aria-label="Other tools">Tools</button>
   </div>
   <!-- Vitals bar: the numbers you watch in play, visible from every tab. Tap = quick adjust. -->
   <div class="hud" id="hud" style="display:none">
@@ -78,7 +85,6 @@
       <span class="hud-meter" id="hud-end"></span>
       <span class="hud-meter" id="hud-hope"></span>
     </button>
-    <button id="eye-pill" class="hud-eye" onclick="document.querySelector('.tab[data-tab=character]').click();setTimeout(()=>{const c=document.getElementById('eye-of-mordor-card');if(c)c.scrollIntoView({block:'center'});},60)" style="display:none" title="Eye Awareness vs Hunt threshold" aria-label="Eye of Mordor awareness — open the Eye card"></button>
     <span class="hud-chips" id="hud-chips"></span>
   </div>
   <nav class="tabs" aria-label="Section">
@@ -108,14 +114,12 @@
   <div class="sp-title">The One Ring</div>
   <div class="sp-sub">a companion for the road</div>
 </div>
-<!-- Primary navigation: five groups. Bottom bar on phones, side rail on tablets.
+<!-- Primary navigation: Story · Hero · Journal (tools open from the menu). Bottom bar on phones, side rail on tablets.
      Each group owns some of the .tab sub-tabs above; see NAV_GROUPS in src/06-tabs-init.js. -->
 <nav class="bottom-nav" id="bottom-nav" aria-label="Main sections">
-  <button class="bn-item" data-group="play"><svg class="ic"><use href="#i-play"/></svg><span>Play</span></button>
+  <button class="bn-item" data-group="play"><svg class="ic"><use href="#i-play"/></svg><span>Story</span></button>
   <button class="bn-item" data-group="hero"><svg class="ic"><use href="#i-hero"/></svg><span>Hero</span></button>
-  <button class="bn-item" data-group="adventure"><svg class="ic"><use href="#i-map"/></svg><span>Adventure</span></button>
-  <button class="bn-item" data-group="roll"><svg class="ic"><use href="#i-dice"/></svg><span>Roll</span></button>
-  <button class="bn-item" data-group="journal"><svg class="ic"><use href="#i-book"/></svg><span data-alt="Rules">Journal</span></button>
+  <button class="bn-item" data-group="journal"><svg class="ic"><use href="#i-book"/></svg><span>Journal</span></button>
 </nav>
 
 <!-- print-only character title (hidden on screen, shown by @media print) -->
@@ -2147,6 +2151,9 @@
     <button onclick="openCampaign()" id="table-menu-btn"><span>Play at a table</span></button>
     <button onclick="openWhereAmI()" id="where-btn"><span>Where am I playing?</span></button>
     <button onclick="openReferenceTab()"><span>Rules reference</span></button>
+
+    <div class="menu-tools-h">Tools</div>
+    <div class="menu-tools" id="menu-tools"></div>
 
     <details class="menu-sec" open>
       <summary class="menu-group"><svg class="ic mg-ic" aria-hidden="true"><use href="#i-compass"/></svg>Play on your own</summary>
