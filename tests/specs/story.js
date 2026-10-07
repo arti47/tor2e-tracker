@@ -250,8 +250,10 @@ module.exports = {
     const qh = await safe(`
       // a Fortune/Ill-Fortune offer from an earlier random roll can still be waiting to open: let it, then decline it
       for (let i = 0; i < 16; i++) { const ov = document.getElementById('styled-modal-overlay'); if (ov.classList.contains('show')) [...document.querySelectorAll('#styled-modal-buttons button')].pop().click(); await new Promise(r => setTimeout(r, 150)); }
+      localStorage.removeItem('tor2e-tips'); localStorage.removeItem('tor2e-tipson'); sessionStorage.removeItem('tor2e-tip-session');
       openTool('combat'); initHintButtons(); await new Promise(r => setTimeout(r, 100));
       const q = document.querySelector('#panel-combat [data-hint="Protection"] .hint-q');
+      initTips();
       const hidden = !!q && q.getBoundingClientRect().width <= 1;
       const intro = document.querySelector('#panel-combat .tab-intro');
       const introHidden = !intro || getComputedStyle(intro).display === 'none';
