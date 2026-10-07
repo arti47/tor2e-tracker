@@ -116,6 +116,26 @@ module.exports = {
     const drawerShut = await pl.page.evaluate(() => !document.getElementById('roll-drawer').classList.contains('open') && document.querySelector('.tab.active').dataset.tab === 'play');
     checks.push({ ok: drawerShut, msg: 'a roll from the table sheet is told in the table feed — no drawer pops up over the sheet' });
 
+    // Each player keeps their own journal at the table: a feather on your own roll writes a line after it,
+    // and a new phase from the Loremaster opens a chapter of its own.
+    await until(pl.page, () => !!document.querySelector('#panel-play .tbl-frow.me .beat-quill'));
+    const tq = await pl.page.evaluate(async () => {
+      const q = document.querySelector('#panel-play .tbl-frow.me .beat-quill'); if (!q) return { noQuill: true };
+      q.click();
+      const ta = document.getElementById('tbl-quill-ta'); if (!ta) return { noBox: true };
+      ta.value = 'I vaulted the fallen pine.'; ta.dispatchEvent(new Event('input'));
+      [...document.querySelectorAll('#panel-play .quill-box button')].find(b => /Save/.test(b.textContent)).click();
+      const i = journal.entries.findIndex(e => e.text === 'I vaulted the fallen pine.');
+      return { written: i >= 0, afterRoll: i > 0 && /Athletics|Awareness/.test(journal.entries[i - 1].text || ''),
+               shown: [...document.querySelectorAll('#panel-play .beat-note')].some(n => /vaulted/.test(n.textContent)) };
+    });
+    await gm.page.evaluate(() => tableSetPhase('combat'));
+    const chapter = await until(pl.page, () => journal.scenes.some(s => s.title === 'At the table — Combat'));
+    await gm.page.evaluate(() => tableSetPhase('story'));
+    await until(pl.page, () => Table.state.phase === 'story');
+    checks.push({ ok: tq.written && tq.afterRoll && tq.shown && chapter,
+      msg: `at a table a player writes about their own roll into their Journal, and each phase opens a chapter (${JSON.stringify(tq)} / ${chapter})` });
+
     // Hand-outs land on the hero's own phone through the normal rules, exactly once.
     const end0 = await pl.page.evaluate(() => parseInt(char.endCur));
     await gm.page.evaluate(() => { const u = Object.keys(Table.party).find(k => Table.party[k].role === 'player'); document.getElementById('tbl-ho-who').value = u; document.getElementById('tbl-ho-kind').value = 'damage'; document.getElementById('tbl-ho-amt').value = '3'; });

@@ -271,6 +271,66 @@ module.exports = {
     checks.push({ ok: !qh.err && qh.hidden && qh.introHidden && lp.shown && key.shown && key.back,
       msg: `no (?) or tab tip on screen; a long press or the ? key explains a term; tips come back on request (${JSON.stringify({ qh, lp, key })})` });
 
+    // ---- the Journal is woven into play: a quill on each beat writes straight after it ----
+    const qu = await safe(`
+      char.striderMode = false; char.saga.started = true; char.saga.ended = false; saveCharacter(); refreshStriderUI();
+      openNavGroup('play'); _goTab('play'); playClearFeed(); window._beatSeen = 1e9;
+      const before = journal.entries.length;
+      playSay('The road climbs into the hills for two days.');
+      const logged = journal.entries.length === before + 1;            // every hero, not only solo
+      playSay('At dusk a wind rises from the north.');                 // a later line: the words must go between
+      window._beatSeen = 0; renderPlay();
+      const q = document.querySelector('#play-body .play-feed .beat-cur .beat-quill');
+      if (!q) return { logged, noQuill: true };
+      q.click();
+      const ta = document.getElementById('play-quill-ta');
+      const prompt = ta ? ta.placeholder : '';
+      ta.value = 'Mist lay in every hollow.'; ta.dispatchEvent(new Event('input'));
+      const save = [...document.querySelectorAll('#play-body .quill-box button')].find(b => /Save/.test(b.textContent)); save.click();
+      const i = journal.entries.findIndex(e => e.text === 'Mist lay in every hollow.');
+      const after = i > 0 && /road climbs/.test(journal.entries[i - 1].text) && journal.entries[i].kind === 'prose';
+      const shown = [...document.querySelectorAll('#play-body .play-feed .beat-note')].some(n => /Mist lay/.test(n.textContent) && n.checkVisibility());
+      return { logged, prompt, after, shown, boxGone: !document.getElementById('play-quill-ta') };`);
+    checks.push({ ok: !qu.err && qu.logged && /road/.test(qu.prompt) && qu.after && qu.shown && qu.boxGone,
+      msg: `a quill on the beat writes your line into the Journal right after it, and it shows in the story (${JSON.stringify(qu)})` });
+
+    // ---- the Journal opens chapters by itself: a fight, and the story after it ----
+    const ch = await safe(`
+      const e = enc(); e.foes = []; e.active = false; char.saga.jKind = null; saveCharacter();
+      _pushFoe(allBestiary().find(b => /Orc/.test(b.name))); renderPlay();
+      const fightTitle = journalActiveScene() && journalActiveScene().title;
+      enc().foes.forEach(f => { f.slain = true; f.endCur = 0; }); saveCharacter(); renderPlay();
+      const afterTitle = journalActiveScene() && journalActiveScene().title;
+      enc().foes = []; enc().active = false; saveCharacter(); renderPlay();
+      return { fightTitle, afterTitle };`);
+    checks.push({ ok: !ch.err && /^A fight with .*Orc/.test(ch.fightTitle || '') && /afterwards$/.test(ch.afterTitle || ''),
+      msg: `a fight opens its own Journal chapter, and the story after it another (${JSON.stringify(ch)})` });
+
+    // ---- the story so far, read without leaving Play ----
+    const sf = await safe(`
+      renderPlay();
+      const btn = [...document.querySelectorAll('#play-body .play-sofar button')].find(b => /story so far/i.test(b.textContent));
+      if (!btn) return { noBtn: true };
+      btn.click();
+      const ov = document.getElementById('story-sheet-overlay');
+      const open = ov.classList.contains('show') && !!ov.querySelector('#ch-timeline .ch-page');
+      const playStill = document.getElementById('panel-play').classList.contains('active');
+      ov.querySelector('button.close').click();
+      const home = !!document.querySelector('#panel-chronicle #ch-timeline') && !ov.classList.contains('show');
+      return { open, playStill, home };`);
+    checks.push({ ok: !sf.err && sf.open && sf.playStill && sf.home,
+      msg: `"The story so far" opens the Journal book over Play and puts it back on close (${JSON.stringify(sf)})` });
+
+    // ---- ending a session asks for one closing line, read back as "Last time…" ----
+    const cl = await safe(`
+      const oc = window.confirmStyled, oa = window.alertStyled, op = window.promptStyled; let said = '';
+      window.confirmStyled = async () => true; window.alertStyled = async (m) => { said += m; };
+      window.promptStyled = async (m) => /closing|close the chapter/i.test(m) ? 'We wait at the ford for dawn.' : '';
+      try { await sagaEndSession(); said = ''; await sagaStartSession(); } finally { window.confirmStyled = oc; window.alertStyled = oa; window.promptStyled = op; }
+      return { kept: char.saga.lastLine, written: journal.entries.some(e => e.kind === 'prose' && e.text === 'We wait at the ford for dawn.'), recap: /Last time: <em>We wait at the ford/.test(said) };`);
+    checks.push({ ok: !cl.err && cl.kept === 'We wait at the ford for dawn.' && cl.written && cl.recap,
+      msg: `ending a session asks for one closing line; it is written down and read back next time (${JSON.stringify(cl)})` });
+
     // ---- a returning player goes straight back into the scene, with a recap ----
     await safe(`char.saga.started = true; char.saga.ended = false; saveCharacter(); openNavGroup('hero'); try { localStorage.setItem('tor2e-lasttab', 'character'); } catch (e) {} return 1;`);
     await page.reload(); await page.waitForTimeout(900);
