@@ -65,9 +65,9 @@ module.exports = {
     const scene = async (region, ea) => { await safe(`
       Object.assign(char.journey, { active: true, origin: 'Bree', destination: 'the ruined watchtower on Weathertop', totalHexes: 9, currentHex: 2, region: '${region}', route: null, routeLands: null });
       char.saga.step = 'journey'; char.eyeAwareness = ${ea}; saveCharacter(); render(); return 1;`); await go('play');
-      return safe(`const a = document.querySelector('#panel-play .scene-art'); if (!a) return null;
-        const f = a.querySelector('.f');
-        return { t: [...a.classList].find(c => c.startsWith('t-')), road: !!a.querySelector('.rd'), mist: !!a.querySelector('.scene-mist'), eye: !!a.querySelector('.scene-eye'),
+      return safe(`const a = document.querySelector('#panel-play .pscene'); if (!a) return null;
+        const f = a.querySelector('.ps-svg path[fill]');
+        return { t: [...a.classList].find(c => c.startsWith('t-')), road: !!a.querySelector('.ps-road'), mist: !!a.querySelector('.scene-mist'), eye: !!a.querySelector('.scene-eye'),
           fill: f ? getComputedStyle(f).fill : null };`); };
     const wild = await scene('Wild', 0);
     checks.push({ ok: wild && wild.t === 't-forest' && wild.road, msg: `on the road through the Wild the scene shows the forest with the road in it, not the ruined tower ahead (${JSON.stringify(wild)})` });
@@ -148,8 +148,8 @@ module.exports = {
       return { n: s.map(x => x.textContent), after: s.map(x => getComputedStyle(x, '::after').content) };`);
     checks.push({ ok: !cs.err && JSON.stringify(cs.n) === '["3","1"]' && cs.after.every(c => c === 'none' || c === 'normal'),
       msg: `the campaign line shows sessions and adventures as seals (${JSON.stringify(cs)})` });
-    const foot = await safe(`const f = document.querySelector('#panel-play .play-footart'); return !!f && f.checkVisibility() && f.getBoundingClientRect().height > 30;`);
-    checks.push({ ok: foot === true, msg: `the Play tab ends on a drawn horizon on a phone (${JSON.stringify(foot)})` });
+    const foot = await safe(`return { footArt: !!document.querySelector('#panel-play .play-footart'), footText: !!document.querySelector('#panel-play .play-foot') };`);
+    checks.push({ ok: !foot.err && !foot.footArt && !foot.footText, msg: `storybook: the story screen ends on its choices — no footer art or footnote under them (${JSON.stringify(foot)})` });
 
     // ---- Gear: each weapon and item drawn as what it is ----
     await go('gear');

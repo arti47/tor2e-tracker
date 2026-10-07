@@ -194,7 +194,7 @@ function initRollDrawer() {
 }
 function openRollDrawer() {
   const d = document.getElementById('roll-drawer'); if (!d) return;
-  if (window._inlineToPlay) { if (typeof sfx === 'function') sfx('dice'); return; }   // a roll from ▶ Play is told in the story; Details opens this
+  if (window._inlineToPlay) { if (typeof sfx === 'function') sfx('dice'); if (typeof showRollMoment === 'function' && typeof history !== 'undefined') showRollMoment(history[0]); return; }   // a roll from ▶ Play is told in the story; Details opens this
   // A player's roll at the table is told in the table feed on their sheet, not in a drawer over it.
   if (typeof tableActive === 'function' && tableActive() && typeof tableIsGm === 'function' && !tableIsGm() && !window._drawerForce &&
       document.querySelector('.tab.active') && document.querySelector('.tab.active').dataset.tab === 'play') { if (typeof sfx === 'function') sfx('dice'); return; }

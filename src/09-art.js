@@ -769,3 +769,87 @@ function addCardRubrics(root) {
   });
 }
 document.addEventListener('DOMContentLoaded', () => setTimeout(() => addCardRubrics(document), 60));
+
+/* ---------- PAINTED SCENES (storybook redesign, stage 2) ----------
+   Layered flat-colour landscapes — far ridge, middle ridge, near land, foreground — under a sky
+   that follows the hour and the season, so the picture itself carries the mood. All SVG, no images.
+   paintedScene(terrain, { time, season, road, mist, eye, weather, hope }) */
+const PS_SKY = {
+  day:   ['#8fb7d0', '#d9e4df', '#f2e6c8'],
+  dusk:  ['#2f3b5e', '#a86a6a', '#eaa66a'],
+  night: ['#070b16', '#16223c', '#2b3a5a'],
+  dawn:  ['#5d6f95', '#d8a49a', '#f3d1a0']
+};
+const PS_LAND = {            // far, mid, near, ground
+  road:      ['#9aa8a0', '#7c8a5c', '#5e6b3b', '#3f4a26'],
+  forest:    ['#7f9a92', '#466152', '#2c4433', '#1b2b20'],
+  hills:     ['#a3ae9a', '#7f8f5a', '#5c6c3a', '#3c4a25'],
+  mountains: ['#9aa6b8', '#6a7690', '#4a556c', '#2c3344'],
+  river:     ['#93ada8', '#5f8077', '#3e5f58', '#26403b'],
+  ruins:     ['#9b978b', '#6f6a5c', '#4d4a40', '#302e28'],
+  haven:     ['#a9b39a', '#86925f', '#626f3f', '#434d2a'],
+  moria:     ['#2a2622', '#1f1c19', '#171513', '#0e0d0c']
+};
+const PS_SEASON = { winter: ['#dfe6ea', '#c8d2d8', '#aeb9c2', '#8995a1'], autumn: null, spring: null, summer: null };
+function _psRidge(y, amp, f1, f2, seed, top) {
+  let d = `M0 ${top || 240} L0 ${y}`;
+  for (let x = 0; x <= 400; x += 10) {
+    const v = y - amp * (Math.sin(x * f1 + seed) * .6 + Math.sin(x * f2 + seed * 2.3) * .4);
+    d += ` L${x} ${v.toFixed(1)}`;
+  }
+  return d + ` L400 ${top || 240} Z`;
+}
+function _psPeaks(y, n, h, seed) {
+  let d = `M0 240 L0 ${y}`; const w = 400 / n;
+  for (let i = 0; i < n; i++) {
+    const px = i * w + w * (.35 + .3 * Math.abs(Math.sin(i * 1.7 + seed)));
+    const ph = h * (.6 + .4 * Math.abs(Math.sin(i * 2.9 + seed)));
+    d += ` L${px.toFixed(1)} ${(y - ph).toFixed(1)} L${((i + 1) * w).toFixed(1)} ${(y - ph * .25).toFixed(1)}`;
+  }
+  return d + ' L400 240 Z';
+}
+function _psTrees(n, y, s, seed, col) {
+  let o = '';
+  for (let i = 0; i < n; i++) {
+    const x = (i + .5) * (400 / n) + 14 * Math.sin(i * 3.1 + seed), k = s * (.75 + .35 * Math.abs(Math.sin(i * 1.9 + seed)));
+    o += `<path d="M${x.toFixed(1)} ${(y - 3.2 * k).toFixed(1)} L${(x - k).toFixed(1)} ${y} L${(x + k).toFixed(1)} ${y} Z" fill="${col}"/>`;
+  }
+  return o;
+}
+const PS_NEAR = {
+  road: c => `<path d="${_psRidge(196, 6, .02, .05, 1.1)}" fill="${c[2]}"/>` + _psTrees(5, 198, 9, 2, c[3]),
+  forest: c => _psTrees(16, 182, 16, .4, c[1]) + _psTrees(11, 214, 24, 1.3, c[2]),
+  hills: c => `<path d="${_psRidge(190, 14, .012, .03, 2.2)}" fill="${c[2]}"/>` + _psTrees(4, 194, 8, 5, c[3]),
+  mountains: c => `<path d="${_psPeaks(196, 5, 50, 4.4)}" fill="${c[2]}"/>`,
+  river: c => `<path d="${_psRidge(186, 6, .015, .04, .8)}" fill="${c[2]}"/><path d="M0 205 C90 196 160 214 240 206 S350 198 400 204 L400 222 C330 216 260 228 190 220 S60 214 0 222 Z" fill="#7fa6b0" opacity=".75"/>`,
+  ruins: c => `<path d="${_psRidge(200, 5, .02, .06, 3.3)}" fill="${c[2]}"/><path d="M250 200 V128 l8 -8 8 10 8 -14 8 12 V200 Z M296 200 V160 h22 v-10 h12 v50 Z M190 200 V172 h14 v-8 h10 v36 Z" fill="${c[3]}"/>`,
+  haven: c => `<path d="${_psRidge(196, 8, .015, .04, 1.7)}" fill="${c[2]}"/><path d="M150 198 V160 H240 V198 Z" fill="${c[3]}"/><path d="M140 162 L195 128 L250 162 Z" fill="${c[3]}"/><rect x="164" y="170" width="12" height="11" fill="#f2c46b" opacity=".85"/><rect x="214" y="170" width="12" height="11" fill="#f2c46b" opacity=".85"/><path d="M226 140 v-18 h9 v24" fill="${c[3]}"/><circle cx="300" cy="170" r="22" fill="${c[3]}"/><path d="M298 192 v8 h4 v-8" fill="${c[3]}"/>`,
+  moria: c => [40, 120, 280, 360].map(x => `<path d="M${x - 9} 240 V70 h18 V240 Z M${x - 15} 70 h30 l-5 -9 h-20 Z" fill="${c[1]}"/>`).join('') +
+    `<circle class="ps-glow" cx="200" cy="96" r="90" fill="#ffb347" opacity=".12"/><path d="M150 240 V128 Q200 72 250 128 V240 Z" fill="${c[2]}"/><path d="M200 0 v54" stroke="${c[1]}" stroke-width="2"/><path d="M193 54 h14 l-3 14 h-8 Z" fill="${c[1]}"/><circle class="ps-flame" cx="200" cy="62" r="4" fill="#ffb347"/>`
+};
+function paintedScene(key, opts) {
+  opts = opts || {};
+  const k = PS_LAND[key] ? key : 'road';
+  const time = opts.time === 'night' || opts.time === 'dusk' || opts.time === 'dawn' ? opts.time : 'day';
+  const sky = k === 'moria' ? ['#0d0b0a', '#1a1612', '#231d17'] : PS_SKY[time];
+  let land = PS_LAND[k].slice();
+  if (opts.season === 'winter' && k !== 'moria') land = PS_SEASON.winter.map((w, i) => i < 2 ? w : land[i]);
+  if (opts.season === 'autumn' && (k === 'forest' || k === 'hills' || k === 'road' || k === 'haven')) land = [land[0], '#9a6b3a', '#7a4a2a', land[3]];
+  const body = sky => `<defs><linearGradient id="ps-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${sky[0]}"/><stop offset=".6" stop-color="${sky[1]}"/><stop offset="1" stop-color="${sky[2]}"/></linearGradient>` +
+    `<linearGradient id="ps-fade" x1="0" y1="0" x2="0" y2="1"><stop offset=".55" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".55"/></linearGradient></defs>` +
+    `<rect width="400" height="240" fill="url(#ps-sky)"/>`;
+  const orb = k === 'moria' ? '' : time === 'night'
+    ? `<circle cx="318" cy="52" r="14" fill="#e9e3cf" opacity=".9"/><circle cx="324" cy="47" r="12" fill="${sky[0]}"/>`
+    : `<circle cx="${time === 'day' ? 300 : 90}" cy="${time === 'day' ? 50 : 132}" r="${time === 'day' ? 16 : 22}" fill="${time === 'day' ? '#fff3d2' : '#ffcf8a'}" opacity=".85"/>`;
+  const far = k === 'moria' ? '' : k === 'mountains' ? `<path d="${_psPeaks(150, 6, 80, 1.3)}" fill="${land[0]}"/>` : `<path d="${_psRidge(140, 18, .011, .027, .5)}" fill="${land[0]}"/>`;
+  const mid = k === 'moria' ? '' : k === 'mountains' ? `<path d="${_psPeaks(176, 7, 60, 2.6)}" fill="${land[1]}"/>` : `<path d="${_psRidge(168, 14, .014, .033, 1.9)}" fill="${land[1]}"/>`;
+  const near = (PS_NEAR[k] || PS_NEAR.road)(land);
+  const ground = `<path d="${_psRidge(220, 4, .02, .05, 2.8)}" fill="${land[3]}"/>`;
+  const road = opts.road && k !== 'moria' ? `<path class="ps-road" d="M120 240 C170 226 200 214 222 204 S246 196 252 192 L258 192 C252 198 240 210 232 222 S226 236 228 240 Z" fill="#c9b38a" opacity=".55"/>` : '';
+  const mist = opts.mist ? '<div class="scene-mist"></div>' : '';
+  const eye = opts.eye > 0 ? `<svg class="scene-eye" viewBox="0 0 60 30" style="opacity:${Math.min(.6, .14 + opts.eye * .46).toFixed(2)}"><path d="M2 15 Q30 -6 58 15 Q30 36 2 15z"/><ellipse cx="30" cy="15" rx="3.5" ry="10"/></svg>` : '';
+  const weather = opts.weather ? `<div class="scene-weather w-${opts.weather}"></div>` : '';
+  const hope = opts.hope == null ? 1 : Math.max(0, Math.min(1, opts.hope));
+  return `<div class="pscene t-${k}" style="--desat:${(1 - hope).toFixed(2)};--eye:${(opts.eye || 0).toFixed(2)}" aria-hidden="true">` +
+    `<svg class="ps-svg" viewBox="0 0 400 240" preserveAspectRatio="xMidYMid slice">${body(sky)}${orb}${far}${mid}${near}${road}${ground}<rect width="400" height="240" fill="url(#ps-fade)"/></svg>${weather}${mist}${eye}</div>`;
+}

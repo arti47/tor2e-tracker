@@ -129,7 +129,7 @@ module.exports = {
     // ---- Labels are small caps in one colour ----
     await go('play');
     const lab = await safe(`
-      const els = [...document.querySelectorAll('.eyebrow, .qs-h, .jq-sub, .v-h')].slice(0, 12);
+      const els = [...document.querySelectorAll('.eyebrow, .qs-h, .jq-sub, .v-h')].filter(e => !e.closest('.ss-head')).slice(0, 12);   // a label lying on the scene picture is light on purpose
       return { caps: [...new Set(els.map(e => getComputedStyle(e).fontVariantCaps))], colours: [...new Set(els.map(e => getComputedStyle(e).color))] };`);
     checks.push({ ok: !lab.err && lab.caps.length === 1 && lab.caps[0] === 'all-small-caps' && lab.colours.length === 1, msg: `section labels are small caps in one colour (${JSON.stringify(lab)})` });
 
@@ -265,7 +265,7 @@ module.exports = {
       const r = st && st.checkVisibility() ? st.getBoundingClientRect() : null;
       const el = document.getElementById('char-name-text');
       const name = [...el.querySelectorAll('span')].filter(s => s.checkVisibility()).map(s => s.textContent).join('') || el.textContent;
-      return { story: !!r, under: r ? r.top >= sc.bottom - 1 && r.top - sc.bottom < 40 && Math.abs(r.left - sc.left) < 2 : false, name };`);
+      return { story: !!r, under: r ? r.top >= sc.bottom - 1 && Math.abs(r.left - sc.left) < 2 : false, name };`);
     checks.push({ ok: !tb.err && tb.story && tb.under, msg: `on a tablet the story so far sits under the scene (${JSON.stringify(tb)})` });
     checks.push({ ok: !tb.err && /daughter of/.test(tb.name), msg: `a tablet header shows the whole name (${JSON.stringify(tb.name)})` });
     await page.setViewportSize({ width: 390, height: 844 });

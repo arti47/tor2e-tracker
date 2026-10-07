@@ -553,7 +553,7 @@ module.exports = {
     // ---- Scene art: a vignette that fits the place; the silhouette on the sheet ----
     const art = await page.evaluate(() => {
       const s = sagaState(); s.step = 'haven'; saveCharacter(); openNavGroup('play'); renderPlay();
-      const cls = () => (document.querySelector('#play-body .scene-art') || {}).className || 'none';
+      const cls = () => { const a = document.querySelector('#play-body .pscene, #play-body .scene-art'); return a ? a.getAttribute('class') : 'none'; };
       const haven = cls();
       s.step = 'journey'; char.journey = Object.assign(char.journey || {}, { active: true, totalHexes: 6, currentHex: 1, destination: 'the eaves of Mirkwood', region: 'wild' });
       saveCharacter(); renderPlay();

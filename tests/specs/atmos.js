@@ -78,8 +78,9 @@ module.exports = {
     // ---- Moria: pillars and a lantern, not dimmed by the gloom filter ----
     const mo = await safe(`
       char.moriaMode = true; saveCharacter(); refreshStriderUI(); render(); openNavGroup('play'); renderPlay(); await new Promise(r => setTimeout(r, 100));
-      const a = document.querySelector('#panel-play .scene-art.t-moria');
-      const r = { art: !!a, flame: !!(a && a.querySelector('.flame')), glow: !!(a && a.querySelector('.glow')), filter: a && getComputedStyle(a).filter, weather: !!document.querySelector('#panel-play .scene-weather') };
+      const a = document.querySelector('#panel-play .pscene.t-moria');
+      const f = a ? getComputedStyle(a).filter : 'x';
+      const r = { art: !!a, flame: !!(a && a.querySelector('.ps-flame')), glow: !!(a && a.querySelector('.ps-glow')), filter: (f.includes('grayscale') || (f.indexOf('saturate(') >= 0 && parseFloat(f.slice(f.indexOf('saturate(') + 9)) < .95)) ? f : 'none', weather: !!document.querySelector('#panel-play .scene-weather') };
       return r;`);
     checks.push({ ok: !mo.err && mo.art && mo.flame && mo.glow && mo.filter === 'none' && !mo.weather, msg: `Moria is lit by a lantern and not greyed out (${JSON.stringify(mo)})` });
 

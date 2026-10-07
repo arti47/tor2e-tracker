@@ -299,6 +299,7 @@ module.exports = {
       char.saga.step = 'haven';
       for (let i = 0; i < 14; i++) playSay('Line ' + i + ' of the story, long enough to take some room on a phone screen.');
       renderPlay(); await new Promise(r => setTimeout(r, 60));
+      while (document.querySelector('#play-body .story-beat.waiting')) { playNextBeat(); await new Promise(r => setTimeout(r, 5)); }   // a reader taps through the beats
       window.scrollTo(0, 300); await new Promise(r => setTimeout(r, 60));
       const y0 = window.scrollY;
       playSay('The newest line.'); renderPlay(); await new Promise(r => setTimeout(r, 60));

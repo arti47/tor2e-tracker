@@ -1530,8 +1530,49 @@ function _doInlineRoll(successDice, fav, tn, label, opts) {
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) });
     if (history.length > 30) history.length = 30;
     try { saveHistory(); if (typeof renderHistory === 'function') renderHistory(); } catch (e) {}
+    if (!foe) showRollMoment(history[0]);
   }
   return res;
+}
+
+/* ---------- The roll moment (storybook stage 2) ----------
+   A roll made in the story takes the whole screen for a breath: the dice land large, one word says
+   how it went, one line says what was rolled. A tap (or two and a half seconds) returns to the
+   story, where the next beat says what it meant. Only on ▶ Play, only for the hero's own rolls.
+   Deliberately NOT a .menu-overlay: the Fortune offer waits for those (GOTCHA 25). */
+function showRollMoment(h) {
+  if (!h) return;
+  const pp = document.getElementById('panel-play');
+  if (!pp || !pp.classList.contains('active')) return;
+  if (typeof tableActive === 'function' && tableActive()) return;
+  let el = document.getElementById('roll-moment');
+  if (!el) {
+    el = document.createElement('div'); el.id = 'roll-moment'; el.className = 'roll-moment';
+    el.setAttribute('role', 'status'); el.setAttribute('aria-live', 'polite');
+    el.addEventListener('click', closeRollMoment);
+    document.body.appendChild(el);
+  }
+  const ok = String(h.outcome || '').startsWith('SUCCESS');
+  const icons = parseInt(h.icons) || 0;
+  const word = !ok ? 'Failure' : icons >= 2 ? 'Extraordinary success' : icons === 1 ? 'Great success' : 'Success';
+  const feat = h.feat === 'eye' ? `<span class="rm-die rm-feat eye">${DIE_GLYPH.eye}</span>`
+    : h.feat === 'rune' ? `<span class="rm-die rm-feat rune">${DIE_GLYPH.rune}</span>`
+    : `<span class="rm-die rm-feat">${escapeHtml(String(h.feat == null ? '?' : h.feat))}</span>`;
+  const dice = (h.dice || []).map((v, i) => `<span class="rm-die rm-succ${v === 6 ? ' icon' : ''}" style="--d:${(i + 1) * 90}ms">${v}${v === 6 ? '<i>✦</i>' : ''}</span>`).join('');
+  const score = h.total === '★' || h.total == null ? 'the Rune' : `${h.total} vs ${h.tn}`;
+  el.innerHTML = `<div class="rm-card ${ok ? 'ok' : 'bad'}${icons ? ' great' : ''}">
+      <div class="rm-dice">${feat}${dice}</div>
+      <div class="rm-word">${word}</div>
+      <div class="rm-sub">${escapeHtml(String(h.label || '').replace(/\s*·.*$/, ''))} · ${escapeHtml(score)}</div>
+      <div class="rm-tap">Tap to continue</div></div>`;
+  el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
+  document.body.classList.add('moment-open');
+  if (navigator.vibrate) { try { navigator.vibrate(ok ? 18 : [30, 40, 30]); } catch (e) {} }
+  clearTimeout(el._t); el._t = setTimeout(closeRollMoment, 2600);
+}
+function closeRollMoment() {
+  const el = document.getElementById('roll-moment'); if (!el) return;
+  el.classList.remove('show'); document.body.classList.remove('moment-open'); clearTimeout(el._t);
 }
 
 /* The Eye card states the rule plainly: "Raise by 1 for any Eye icon outside combat." That hook
@@ -4454,8 +4495,9 @@ function renderAdventureLoop() {
 let _playFeed = [];           // narration lines, newest last
 let _playBusy = false;
 
+let _playFeedN = 0;           // every line gets a number, so the story can be told one beat at a time
 function playSay(text, kind, plain) {
-  _playFeed.push({ text, kind: kind || 'story' });
+  _playFeed.push({ text, kind: kind || 'story', n: ++_playFeedN });
   if (_playFeed.length > 40) _playFeed.shift();
   // Asides are the app talking to the player ("Read those as a rumour…"), not events in the
   // hero's life. They stay on screen and out of the journal.
@@ -6001,6 +6043,75 @@ function renderPlay() {
     window._playFeedSeen = _playFeed.length;
   }
 }
+/* ---------- Beats (storybook stage 2) ----------
+   What just happened is told one beat at a time: a line of the story, with the app's asides beside
+   it. When several land at once (a march, then an event, then its roll), the first shows with
+   "2 more ▸"; a tap moves on, and the choices wait until the last one has been read. A single new
+   beat is shown at once and the choices with it. */
+function _playBeats() {
+  const items = _playFeed.slice(-8);
+  const groups = [];
+  items.forEach(f => { if (f.kind === 'aside' && groups.length) groups[groups.length - 1].push(f); else groups.push([f]); });
+  const seen = window._beatSeen || 0;
+  const unseen = groups.filter(g => g[g.length - 1].n > seen);
+  if (!unseen.length) return { cur: groups.length ? groups[groups.length - 1] : [], waiting: 0 };
+  const cur = unseen[0];
+  if (unseen.length === 1) window._beatSeen = cur[cur.length - 1].n;   // shown now; the next render may move on
+  return { cur, waiting: unseen.length - 1 };
+}
+function playNextBeat() {
+  const b = _playBeats();
+  if (b.cur.length) window._beatSeen = b.cur[b.cur.length - 1].n;
+  if (typeof sfx === 'function') sfx('page');
+  renderPlay();
+}
+/* ---------- Choice cards (storybook stage 2) ----------
+   Two to four big picture cards with a few words each; anything beyond goes behind "More". The
+   full wording stays in the button for screen readers and on hover; the card says it short. */
+const CHOICE_SHORT = [
+  [/^Go back to the haven/, 'Back to haven'], [/^Begin the next adventure/, 'Next adventure'], [/^Back to the fight/, 'Back to the fight'],
+  [/^Fight the orc-band/, 'Fight them'], [/^Something attacks/, 'Attacked!'], [/^Something happens on the road/, 'Something happens'],
+  [/^Go on to the next chamber/, 'Next chamber'], [/^Our business here is done/, 'Head home'], [/^They do not survive/, 'They fall'],
+  [/^Face the Bout of Madness/, 'Face madness'], [/^Rest here a while/, 'Rest'], [/^Take a Fellowship Phase/, 'Fellowship'],
+  [/^We have arrived/, 'Arrive'], [/^We are safe again/, 'Home safe'], [/^The Eye finds you/, 'The Eye'], [/^Ask around for news/, 'Ask around'],
+  [/^Play someone else/, 'Switch hero'], [/^Read the ending/, 'The ending'], [/^Make camp/, 'Camp'], [/^Ask (?:a yes\/no question|the Oracle)/, 'Ask'],
+  [/^Back to the council/, 'The council'], [/^Win someone over/, 'Persuade'], [/^A long, hard task/, 'Hard task'], [/^Back to the task/, 'The task'],
+  [/^Try to slip past them/, 'Slip past'], [/^Back to the road/, 'The road'], [/^Set out for home/, 'Head home'], [/^Set out on the road/, 'Set out'],
+  [/^Set out somewhere else/, 'Elsewhere'], [/^Travel onward/, 'Travel on'], [/^Save your life/, 'Save yourself'], [/^Tend the wound/, 'Tend wound'],
+  [/^Face the perilous area \((\d+) left\)/, 'Peril ($1)'], [/^Choose your Virtue/, 'Virtue'], [/^Choose your Reward/, 'Reward'],
+  [/^Meet (?:it|the chamber): (.+)$/, '$1'], [/^Look around/, 'Look around'], [/^Try something/, 'Try something'], [/^Let it happen/, 'Let it happen'],
+  [/^Pass it by/, 'Pass it by'], [/^Come round/, 'Come round']
+];
+function choiceShort(txt) {
+  const t = String(txt).trim();
+  for (const [re, out] of CHOICE_SHORT) { const m = t.match(re); if (m) return out.replace(/\$(\d)/g, (_, i) => m[+i] || ''); }
+  const w = t.replace(/[—–:(].*$/, '').trim().split(/\s+/);
+  return w.length <= 3 ? w.join(' ') : w.slice(0, 3).join(' ');
+}
+function playChoiceCards(choices) {
+  const split = lbl => {
+    const m = String(lbl).match(/^(\p{Extended_Pictographic}️?|[▶↩✔✖🏁↷⏳✝])\s*/u);
+    return m ? [m[1], lbl.slice(m[0].length)] : ['', lbl];
+  };
+  const card = (c, i, extra) => {
+    const [ico, txt] = split(c.label);
+    const icId = (typeof EMOJI_ICON !== 'undefined') && EMOJI_ICON[String(ico).replace('️', '')];
+    const short = choiceShort(txt);
+    const full = txt + (c.hint ? ' — ' + c.hint : '');
+    return `<button type="button" class="choice ccard${i === 0 ? ' primary' : ''}${extra || ''}" onclick="${c.fn}" title="${escapeHtml(full)}" aria-label="${escapeHtml(full)}">
+        <span class="c-ico" aria-hidden="true">${icId ? `<svg class="ic"><use href="#${icId}"/></svg>` : (ico || '•')}</span>
+        <strong class="c-short" aria-hidden="true">${escapeHtml(short)}</strong>
+        <span class="c-txt sr-only"><strong>${escapeHtml(txt)}</strong>${c.hint ? `<small>${escapeHtml(c.hint)}</small>` : ''}</span>
+      </button>`;
+  };
+  const main = choices.length > 4 ? choices.slice(0, 3) : choices;
+  const rest = choices.length > 4 ? choices.slice(3) : [];
+  return `<div class="play-choices ccards" role="group" aria-label="What do you do?">
+      ${main.map((c, i) => card(c, i)).join('')}
+      ${rest.length ? `<button type="button" class="choice ccard ccard-more" onclick="this.parentNode.classList.toggle('show-more')" aria-label="More choices"><span class="c-ico" aria-hidden="true"><svg class="ic"><use href="#i-dot"/></svg></span><strong class="c-short">More</strong></button>` : ''}
+      ${rest.map((c, i) => card(c, i + 3, ' ccard-extra')).join('')}
+    </div>`;
+}
 function _renderPlayBody(host, s, pp) {
   if (!char.culture) {
     host.innerHTML = '<div class="card play-empty"><div class="eyebrow">Welcome</div><h3 class="card-title">First, a hero</h3>' +
@@ -6046,14 +6157,11 @@ function _renderPlayBody(host, s, pp) {
   }
   const sit = char.retired ? _playRetiredSituation() : _playSituation();
   const choices = _playChoices();
+  const beats = _playBeats();
   const feed = _playFeed.length
-    ? _playFeed.slice(-8).map(f => f.kind === 'event' ? f.text : `<p class="${f.kind === 'aside' ? 'aside' : ''}">${_rollPills(f.text)}</p>`).join('')
+    ? _playFeed.slice(-8).map(f => { const cls = (f.kind === 'aside' ? 'aside ' : '') + (beats.cur.includes(f) ? 'beat-cur' : 'beat-old');
+        return f.kind === 'event' ? `<div class="${cls}">${f.text}</div>` : `<p class="${cls}">${_rollPills(f.text)}</p>`; }).join('')
     : '';
-  const split = lbl => {
-    const m = String(lbl).match(/^(\p{Extended_Pictographic}\uFE0F?|[▶↩✔✖🏁])\s*/u);
-    return m ? [m[1], lbl.slice(m[0].length)] : ['', lbl];
-  };
-
   const jr = char.journey || {};
   const terrain = typeof sceneTerrain === 'function' ? sceneTerrain() : 'road';
   // A journey planned on the map shows the real map, with you on it; others keep the drawn strip.
@@ -6062,28 +6170,27 @@ function _renderPlayBody(host, s, pp) {
     : (typeof routeMap === 'function'
         ? routeMap(parseInt(jr.currentHex) || 0, parseInt(jr.totalHexes), jr.nextEventHex, jr.origin || char.safeHaven, jr.destination, terrain, { log: jr.events, days: parseInt(jr.daysElapsed) || 0 })
         : _roadStrip(parseInt(jr.currentHex) || 0, parseInt(jr.totalHexes), jr.nextEventHex)) : '';
+  const opts = _sceneArtOpts(s), mood = _sceneMood(s);
+  opts.time = (mood.match(/data-time="([a-z]+)"/) || [])[1]; opts.season = (mood.match(/data-season="([a-z]+)"/) || [])[1];
+  opts.hope = char.hopeMax > 0 ? Math.max(0, (parseInt(char.hopeCur) || 0) - (parseInt(char.shadow) || 0) - (parseInt(char.scars) || 0)) / char.hopeMax : 1;
+  const art = typeof paintedScene === 'function' ? paintedScene(terrain, opts) : (typeof terrainVignette === 'function' ? terrainVignette(terrain, opts) : '');
+  const waiting = beats.waiting > 0;
+  host.classList.toggle('beats-waiting', waiting);
   host.innerHTML =
     _playConditionBanner() +
-    `<div class="play-left"><div class="card ornate play-scene${['journey', 'home'].includes(s.step) && (char.journey || {}).active ? ' on-road' : ''}" ${_sceneMood(s)}>
-       ${typeof terrainVignette === 'function' ? terrainVignette(terrain, _sceneArtOpts(s)) : ''}
-       <div class="eyebrow">Where you are</div>
-       <h3 class="card-title">${escapeHtml(sit.title)}</h3>
-       <div class="play-sit">${sit.text}</div>
+    `<div class="play-left"><div class="card ornate play-scene story-scene${['journey', 'home'].includes(s.step) && (char.journey || {}).active ? ' on-road' : ''}" ${mood}>
+       ${art}
+       <div class="ss-head"><div class="eyebrow">Where you are</div>
+       <h3 class="card-title">${escapeHtml(sit.title)}</h3></div>
+     </div>
+     <div class="story-body">
+       <details class="play-sit-wrap"${_playFeed.length ? '' : ' open'}><summary class="play-sit">${sit.text}</summary></details>
        ${missionActive() && char.mission.objective && s.step !== 'haven' ? `<p class="play-mission"><small>Mission</small> ${escapeHtml(char.mission.objective)}</p>` : ''}
        ${road}
-       ${feed ? `<div class="play-feed" aria-live="polite">${feed}</div>` : ''}
+       ${feed ? `<div class="play-feed story-beat${waiting ? ' waiting' : ''}" aria-live="polite"${waiting ? ' role="button" tabindex="0" onclick="playNextBeat()" onkeydown="if(event.key===\'Enter\'||event.key===\' \')playNextBeat()"' : ''}>${feed}${waiting ? `<span class="beat-next" aria-label="Continue">${beats.waiting} more <svg class="ic" aria-hidden="true"><use href="#i-chev"/></svg></span>` : ''}</div>` : ''}
      </div>${_playStoryCard(!!road)}${typeof heroPlate === 'function' ? heroPlate(!road) : ''}</div>
-     <div class="play-choices" role="group" aria-label="What do you do?">
-       <div class="eyebrow">What do you do?</div>
-       ${choices.map((c, i) => { const [ico, txt] = split(c.label); const icId = (typeof EMOJI_ICON !== 'undefined') && EMOJI_ICON[String(ico).replace('\uFE0F', '')]; return `<button class="choice${i === 0 ? ' primary' : ''}" onclick="${c.fn}">
-            <span class="c-ico" aria-hidden="true">${icId ? `<svg class="ic"><use href="#${icId}"/></svg>` : (ico || '•')}</span>
-            <span class="c-txt"><strong>${escapeHtml(txt)}</strong>${c.hint ? `<small>${escapeHtml(c.hint)}</small>` : ''}</span>
-            <svg class="ic c-chev" aria-hidden="true"><use href="#i-chev"/></svg>
-          </button>`; }).join('')}
-     </div>
-     ${playTrayHtml()}
-     ${isSolo() ? '<p class="play-foot">Everything that happens here is written into your Chronicle for you.</p>' : ''}
-     ${typeof playFooterArt === 'function' ? playFooterArt() : ''}`;
+     ${playChoiceCards(choices)}
+     ${playTrayHtml()}`;
   // Round 8: when the story moves (home → road → place), the scene cross-fades and its heading writes in
   const key = (s.step || '') + '|' + terrain + '|' + (jr.active ? 1 : 0);
   if (window._playSceneKey && window._playSceneKey !== key) { const sc = host.querySelector('.play-scene'); if (sc) sc.classList.add('scene-change'); }
