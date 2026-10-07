@@ -135,13 +135,16 @@
 
   <div class="card">
     <h3 class="card-title" data-hint="Scene">Chronicle <span id="ch-count" style="font-size:var(--fs-xs);color:var(--text-muted);font-weight:400"></span></h3>
-    <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
-      <input id="ch-search" placeholder="Filter entries…" oninput="renderChronicleTimeline()" style="flex:1;min-width:120px;font-size:var(--fs-xs);padding:4px 8px;border:1px solid var(--border);border-radius:var(--r-sm);color:var(--ink)">
-      <button class="add-row-btn" onclick="exportChronicleMarkdown('split')" style="background:var(--btn-secondary-bg);font-size:var(--fs-xs)" title="Prose, then a Rules Bits appendix per scene (polished document)">⬇ Story</button>
-      <button class="add-row-btn" onclick="exportChronicleMarkdown('log')" style="background:var(--btn-secondary-bg);font-size:var(--fs-xs)" title="Results and descriptions interleaved, as on screen (play-log)">⬇ Play-log</button>
-    </div>
-    <button type="button" class="btn btn-quiet" id="ch-clear-btn" onclick="clearChronicle()" style="margin-top:8px">Clear the Chronicle…</button>
     <div id="ch-timeline" style="font-size:var(--fs-sm);line-height:1.5"></div>
+    <details class="ch-tools">
+      <summary>Search, save a copy, clear</summary>
+      <div style="display:flex;gap:6px;margin:8px 0;flex-wrap:wrap">
+        <input id="ch-search" placeholder="Find a word…" oninput="renderChronicleTimeline()" style="flex:1;min-width:120px;font-size:var(--fs-xs);padding:4px 8px;border:1px solid var(--border);border-radius:var(--r-sm);color:var(--ink)">
+        <button class="add-row-btn" onclick="exportChronicleMarkdown('split')" style="background:var(--btn-secondary-bg);font-size:var(--fs-xs)" title="Prose, then a Rules Bits appendix per scene (polished document)">⬇ Story</button>
+        <button class="add-row-btn" onclick="exportChronicleMarkdown('log')" style="background:var(--btn-secondary-bg);font-size:var(--fs-xs)" title="Results and descriptions interleaved, as on screen (play-log)">⬇ Play-log</button>
+      </div>
+      <button type="button" class="btn btn-quiet" id="ch-clear-btn" onclick="clearChronicle()">Clear the Chronicle…</button>
+    </details>
   </div>
 
 

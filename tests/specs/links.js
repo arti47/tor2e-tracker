@@ -469,7 +469,7 @@ module.exports = {
       pushBlock('prose', 'note', 'We reached the ford at dusk.', 'manual');
       const before = journal.entries.length, clock = JSON.stringify(journal.clock);
       openNavGroup(navGroupOf('chronicle').id); document.querySelector('.tab[data-tab="chronicle"]').click(); renderChronicle();
-      const btn = document.getElementById('ch-clear-btn');
+      const btn = document.getElementById('ch-clear-btn'); const tools = btn.closest('details'); if (tools) tools.open = true;
       const out = { before, shown: !!btn && btn.checkVisibility() };
       btn.click(); await new Promise(r => setTimeout(r, 150));
       const yes = [...document.querySelectorAll('.menu-overlay.show button')].find(b => /Clear the Chronicle/.test(b.textContent));

@@ -3379,3 +3379,6 @@ body.day .sboard { background: radial-gradient(ellipse 120% 80% at 50% 0%, #5a54
 }
 @media (min-width: 900px), (min-width: 640px) and (max-height: 540px) and (orientation: landscape) { .ch-quill-fab { bottom: 24px; } }
 @media print { .ch-quill-fab, .ch-pager { display: none !important; } #ch-timeline .ch-book { display: block; overflow: visible; } }
+.ch-tools { margin-top: var(--sp-3); }
+.ch-tools > summary { cursor: pointer; font-size: var(--fs-xs); color: var(--text-muted); font-variant: small-caps; letter-spacing: .05em; }
+.hp-portrait .silhouette { width: 32px !important; height: 38px !important; opacity: 1 !important; }
