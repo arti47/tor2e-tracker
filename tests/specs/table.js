@@ -84,6 +84,10 @@ module.exports = {
     // Round 6: the phase card carries its own drawing; the console's phase tiles are icons + whole words
     const phArt = await until(pl.page, () => { const a = document.querySelector('#panel-play .tbl-phase .phase-art.ph-combat'); return !!a && a.checkVisibility() && a.getBoundingClientRect().height > 30; });
     checks.push({ ok: phArt, msg: "the player's phase card shows the fight's drawing when the Loremaster calls combat" });
+    // Storybook: players see the Loremaster's scene as a painted picture; so does the console
+    const pic = await until(pl.page, () => { const p = document.querySelector('#panel-play .tbl-phase .tbl-pic .pscene'); return !!p && p.getBoundingClientRect().height > 80; });
+    const gmPic = await gm.page.evaluate(() => { const p = document.querySelector('#tbl-gm-pic .pscene'); return !!p && document.getElementById('tbl-gm-pic').dataset.k === 'combat'; });
+    checks.push({ ok: pic && gmPic, msg: `the table's phase is a painted scene on the players' phones and the Loremaster's console (${JSON.stringify({ pic, gmPic })})` });
     const tiles = await gm.page.evaluate(() => {
       const bs = [...document.querySelectorAll('#tbl-phases [data-phase]')];
       const split = bs.filter(b => { const t = b.querySelector('span') || b; const w = document.createTreeWalker(t, NodeFilter.SHOW_TEXT); let n, bad = false;

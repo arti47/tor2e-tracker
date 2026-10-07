@@ -244,6 +244,7 @@ function renderJumpBars() { JUMP_PANELS.forEach(renderJumpBar); }
 const TIPS_KEY = 'tor2e-tips';
 function _tipsSeen() { try { return JSON.parse(localStorage.getItem(TIPS_KEY)) || {}; } catch (e) { return {}; } }
 function initTips() {
+  applyTipsOn();
   const seen = _tipsSeen();
   document.querySelectorAll('.panel .tab-intro').forEach(el => {
     const panel = el.closest('.panel'); const id = panel ? panel.id : '';
@@ -333,8 +334,11 @@ function applyPlainGlosses() {
     const s = document.createElement('span'); s.className = 'gloss'; s.textContent = g; el.appendChild(s);
   });
 }
+/* Storybook: tab tips are off unless the player asks for them (body.tips-on, tor2e-tipson). */
+function applyTipsOn() { let on = false; try { on = localStorage.getItem('tor2e-tipson') === '1'; } catch (e) {} document.body.classList.toggle('tips-on', on); }
 function resetTips() {
-  try { localStorage.removeItem(TIPS_KEY); sessionStorage.setItem(TIP_SESSION_KEY, '*'); } catch (e) {}
+  try { localStorage.removeItem(TIPS_KEY); sessionStorage.setItem(TIP_SESSION_KEY, '*'); localStorage.setItem('tor2e-tipson', '1'); } catch (e) {}
+  applyTipsOn();
   initTips();
   if (typeof showToast === 'function') showToast('Tips are back on every tab.');
 }
@@ -2250,6 +2254,8 @@ document.addEventListener('DOMContentLoaded', () => {
   importFromHash();   // offer to import a character if the URL carries a shared payload
   if (typeof joinFromHash === 'function') joinFromHash();   // a table's invite link / QR code
   _tutRecoverSandbox();   // unwind a tutorial the app was closed during (before offering a new one)
+  if (typeof playWelcomeBack === 'function' && !window._tutSandbox) playWelcomeBack();   // storybook: straight back into the scene
+  initQuietHelp();          // storybook: explanations by long-press, hover and the ? key
   maybeBackupNudge();       // U14: gentle export reminder (14-day threshold, 3-day throttle)
 
   // Prevent iOS double-tap zoom
@@ -2621,3 +2627,54 @@ function menuSearch(q) {
     setTimeout(() => box.remove(), 650);
   }, { passive: true, capture: true });
 })();
+
+
+/* ---------- QUIET HELP (storybook stage 5) ----------
+   No (?) circles on screen. Anything with a data-hint explains itself on a long press, shows its
+   first sentence on hover, and answers the ? key when focused or pointed at. The (?) buttons
+   stay in the document for keyboards and screen readers (GOTCHA 14), visually hidden. */
+let _hintHover = null;
+function _hintTermOf(el) {
+  const h = el && el.closest && el.closest('[data-hint]');
+  if (h) return h.dataset.hint;
+  const t = el && el.closest && el.closest('.title-term, .hint-wrap, .hint-tail');
+  const q = t && t.querySelector('.hint-q');
+  return q ? (q.getAttribute('aria-label') || '').replace(/^What is |\?$/g, '') : null;
+}
+function initQuietHelp() {
+  if (window._quietHelp) return; window._quietHelp = true;
+  // hover: a short title on each hinted element
+  const titles = () => document.querySelectorAll('[data-hint]').forEach(el => {
+    if (el.title || el.dataset.qh) return; const r = typeof hintRow === 'function' && hintRow(el.dataset.hint); if (!r) return;
+    el.dataset.qh = '1'; const first = String(r[1]).replace(/<[^>]+>/g, '').split(/(?<=[.!?])\s/)[0];
+    el.title = first.length > 140 ? first.slice(0, 137) + '…' : first;
+  });
+  titles(); setInterval(titles, 3000);
+  document.addEventListener('pointerover', e => { _hintHover = _hintTermOf(e.target); }, { passive: true });
+  // long press
+  let timer = null, sx = 0, sy = 0;
+  document.addEventListener('pointerdown', e => {
+    const term = _hintTermOf(e.target); if (!term) return;
+    if (e.target.closest('[onclick*="rollFromSheet"], [onclick*="quickRoll"], [onclick*="peekRoll"]')) return;   // those preview the roll instead
+    sx = e.clientX; sy = e.clientY;
+    timer = setTimeout(() => { timer = null; window._swallowClick = Date.now(); hintFor(term); }, 550);
+  }, { passive: true });
+  const cancel = e => { if (timer && (!e || e.type !== 'pointermove' || Math.hypot(e.clientX - sx, e.clientY - sy) > 10)) { clearTimeout(timer); timer = null; } };
+  ['pointerup', 'pointercancel', 'pointermove'].forEach(t => document.addEventListener(t, cancel, { passive: true }));
+  document.addEventListener('click', e => { if (window._swallowClick && Date.now() - window._swallowClick < 700) { window._swallowClick = 0; e.stopPropagation(); e.preventDefault(); } }, true);
+  // the ? key
+  document.addEventListener('keydown', e => {
+    if (e.key !== '?' || e.ctrlKey || e.metaKey || e.altKey) return;
+    const a = document.activeElement; if (a && (a.matches('input, textarea, select') || a.isContentEditable)) return;
+    const term = _hintTermOf(a) || _hintHover;
+    e.preventDefault();
+    if (term) hintFor(term);
+    else if (typeof openTool === 'function') openTool('reference');
+  });
+}
+
+/* ---------- FEEL: a light tap under the finger (storybook stage 5) ---------- */
+document.addEventListener('click', e => {
+  if (!e.target.closest || !e.target.closest('.ccard, .story-beat, .fr-hero, .bb-foe, .sb-skill, .hp-dot, .ch-turn')) return;
+  try { if (navigator.vibrate) navigator.vibrate(8); } catch (err) {}
+}, { passive: true });

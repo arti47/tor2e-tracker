@@ -218,6 +218,63 @@ module.exports = {
     checks.push({ ok: !bk.err && bk.pages === 3 && bk.folio === 'Page 2 of 3' && bk.folio2 === 'Page 3 of 3' && bk.turned && bk.quill,
       msg: `the Journal is a book — one page per scene, opening on the scene being written, turned page by page; the quill goes to the writing box (${JSON.stringify(bk)})` });
 
+    // ---- Stage 5: first run is a row of heroes; one tap and the story starts ----
+    const fr = await safe(`
+      const was = JSON.stringify(char), wasId = activeCharId;
+      char = JSON.parse(JSON.stringify(DEFAULT_CHARACTER)); saveCharacter(); render();
+      openNavGroup('play'); renderPlay();
+      const cards = document.querySelectorAll('#play-body .fr-hero').length;
+      const ps = window.promptStyled; window.promptStyled = async (m, v) => v || 'A summons';
+      document.querySelector('#play-body .fr-hero').click(); await new Promise(r => setTimeout(r, 200));
+      window.promptStyled = ps;
+      const started = !!(char.saga && char.saga.started), scene = !!document.querySelector('#play-body .story-scene .pscene');
+      return { cards, started, scene, name: char.name };`);
+    checks.push({ ok: !fr.err && fr.cards >= 5 && fr.started && fr.scene, msg: `first run is a row of ready-made heroes; one tap loads the hero and the story begins (${JSON.stringify(fr)})` });
+
+    // ---- one-time teaching cards: shown once, at the moment they matter ----
+    const tc = await safe(`
+      localStorage.removeItem('tor2e-explained'); playClearFeed(); renderPlay();
+      const first = (document.querySelector('#play-body .teach-card') || {}).dataset;
+      const k1 = first && first.teach;
+      document.querySelector('#play-body .teach-card .tc-ok').click();
+      const k2 = ((document.querySelector('#play-body .teach-card') || {}).dataset || {}).teach || null;
+      char.wounded = true; saveCharacter(); renderPlay();
+      const k3 = ((document.querySelector('#play-body .teach-card') || {}).dataset || {}).teach || null;
+      teachDone('wounded'); char.wounded = false; saveCharacter(); renderPlay();
+      const again = [...document.querySelectorAll('#play-body .teach-card')].map(c => c.dataset.teach);
+      return { k1, k2, k3, again };`);
+    checks.push({ ok: !tc.err && tc.k1 === 'start' && tc.k2 !== 'start' && tc.k3 === 'wounded' && !tc.again.includes('start') && !tc.again.includes('wounded'),
+      msg: `teaching cards show once each, when their moment comes (${JSON.stringify(tc)})` });
+
+    // ---- quiet help: no (?) on screen, tips only on request, long-press and ? explain ----
+    const qh = await safe(`
+      // a Fortune/Ill-Fortune offer from an earlier random roll can still be waiting to open: let it, then decline it
+      for (let i = 0; i < 16; i++) { const ov = document.getElementById('styled-modal-overlay'); if (ov.classList.contains('show')) [...document.querySelectorAll('#styled-modal-buttons button')].pop().click(); await new Promise(r => setTimeout(r, 150)); }
+      openTool('combat'); initHintButtons(); await new Promise(r => setTimeout(r, 100));
+      const q = document.querySelector('#panel-combat [data-hint="Protection"] .hint-q');
+      const hidden = !!q && q.getBoundingClientRect().width <= 1;
+      const intro = document.querySelector('#panel-combat .tab-intro');
+      const introHidden = !intro || getComputedStyle(intro).display === 'none';
+      const el = document.querySelector('#panel-combat [data-hint="Protection"]'); el.scrollIntoView({ block: 'center' });
+      const r = el.getBoundingClientRect(); return { hidden, introHidden, x: r.left + 4, y: r.top + r.height / 2 };`);
+    await page.mouse.move(qh.x, qh.y); await page.mouse.down(); await page.waitForTimeout(750); await page.mouse.up();
+    const lp = await safe(`const o = document.getElementById('styled-modal-overlay'); const shown = o.classList.contains('show') && /Protection/.test(o.textContent);
+      const b = document.querySelector('#styled-modal-buttons button'); if (b) b.click(); await new Promise(r => setTimeout(r, 100));
+      const el = document.querySelector('#panel-combat [data-hint="Protection"]'); el.setAttribute('tabindex', '0'); el.focus(); return { shown };`);
+    await page.keyboard.press('?');
+    const key = await safe(`const o = document.getElementById('styled-modal-overlay'); const shown = o.classList.contains('show') && /Protection/.test(o.textContent);
+      const b = document.querySelector('#styled-modal-buttons button'); if (b) b.click();
+      resetTips(); const intro = document.querySelector('#panel-combat .tab-intro'); const back = !!intro && getComputedStyle(intro).display !== 'none';
+      localStorage.removeItem('tor2e-tipson'); applyTipsOn(); closeTool(); return { shown, back };`);
+    checks.push({ ok: !qh.err && qh.hidden && qh.introHidden && lp.shown && key.shown && key.back,
+      msg: `no (?) or tab tip on screen; a long press or the ? key explains a term; tips come back on request (${JSON.stringify({ qh, lp, key })})` });
+
+    // ---- a returning player goes straight back into the scene, with a recap ----
+    await safe(`char.saga.started = true; char.saga.ended = false; saveCharacter(); openNavGroup('hero'); try { localStorage.setItem('tor2e-lasttab', 'character'); } catch (e) {} return 1;`);
+    await page.reload(); await page.waitForTimeout(900);
+    const wb = await safe(`return { group: document.body.dataset.group, said: [...document.querySelectorAll('#play-body .play-feed > *')].some(x => /Welcome back/.test(x.textContent)) };`);
+    checks.push({ ok: !wb.err && wb.group === 'play' && wb.said, msg: `a returning player lands in the scene with a "Welcome back" recap (${JSON.stringify(wb)})` });
+
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length}${errors.length ? ': ' + errors[0] : ''})` });
     await context.close();
     return { checks };

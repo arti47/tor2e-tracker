@@ -140,11 +140,15 @@ function renderTablePlay(host) {
 function _tblConnHtml() {
   return Table.connected ? '' : '<div class="card callout warn tbl-offline" role="status"><strong>Not connected.</strong> Your phone has lost the table. Rolls and changes are kept and reach the table when the connection is back.</div>';
 }
+const TABLE_SCENE = { story: ['haven', 'day'], journey: ['road', 'day'], combat: ['hills', 'dusk'], council: ['haven', 'dusk'], fellowship: ['haven', 'night'] };
 function _tblPhaseCard() {
   const ph = TABLE_PHASES[_tblPhase()];
   const note = Table.state.note ? `<p class="tbl-note">“${escapeHtml(Table.state.note)}”</p>` : '';
-  return `<div class="card ornate tbl-phase" data-phase="${_tblPhase()}">${typeof phaseArt === 'function' ? phaseArt(_tblPhase()) : ''}<div class="eyebrow">At the table now</div>
-    <h3 class="card-title">${escapeHtml(ph.label)}</h3><p>${escapeHtml(ph.text)}</p>${note}</div>`;
+  // Storybook: the player sees the Loremaster's scene as a painted picture, the phase drawn over it.
+  const k = _tblPhase(), land = TABLE_SCENE[k] || ['haven', 'day'];
+  const pic = typeof paintedScene === 'function' ? paintedScene(land[0], { time: land[1] }) : '';
+  return `<div class="card ornate tbl-phase" data-phase="${k}"><div class="tbl-pic">${pic}${typeof phaseArt === 'function' ? phaseArt(k) : ''}
+    <div class="ss-head"><div class="eyebrow">At the table now</div><h3 class="card-title">${escapeHtml(ph.label)}</h3></div></div><p>${escapeHtml(ph.text)}</p>${note}</div>`;
 }
 
 /* ----- the player's table sheet ----- */
@@ -220,7 +224,7 @@ function _tblConsoleShell() {
   return `<div class="tbl-root tbl-gm">
    <div class="tbl-gm-main">
     <div id="tbl-invite"></div>
-    <div class="card tbl-scene"><h3 class="card-title">What is the table doing?</h3>
+    <div class="card tbl-scene"><div class="tbl-pic tbl-gm-pic" id="tbl-gm-pic" aria-hidden="true"></div><h3 class="card-title">What is the table doing?</h3>
       <div class="tbl-phases" id="tbl-phases" role="group" aria-label="Phase">${Object.keys(TABLE_PHASES).map(k => `<button type="button" class="btn btn-secondary" data-phase="${k}" onclick="tableSetPhase('${k}')">${typeof PHASE_GLYPH !== 'undefined' ? `<svg class="ic ph-ic" aria-hidden="true"><use href="#${PHASE_GLYPH[k]}"/></svg>` : ''}<span>${escapeHtml(TABLE_PHASES[k].label)}</span></button>`).join('')}</div>
       <p class="tbl-gm-hint" id="tbl-gm-hint"></p>
       <div class="tbl-say"><label for="tbl-note" class="sr-only">Tell the table</label><input type="text" id="tbl-note" placeholder="Say something to every phone — e.g. Night falls on the road">
@@ -310,6 +314,8 @@ function _tblSetOptions(id, opts) {
 function _tblConsoleUpdate() {
   _tblInviteUpdate();
   const hint = document.getElementById('tbl-gm-hint'); if (hint) hint.textContent = TABLE_PHASES[_tblPhase()].gm;
+  const pic = document.getElementById('tbl-gm-pic');
+  if (pic && pic.dataset.k !== _tblPhase()) { const land = TABLE_SCENE[_tblPhase()] || ['haven', 'day']; pic.dataset.k = _tblPhase(); pic.innerHTML = typeof paintedScene === 'function' ? paintedScene(land[0], { time: land[1] }) : ''; }
   const ln = document.getElementById('tbl-lastnote'); if (ln) ln.innerHTML = Table.state.note ? `On every phone: <em>“${escapeHtml(Table.state.note)}”</em>` : '';
   tablePickRoll(null, true);
   document.querySelectorAll('#tbl-phases [data-phase]').forEach(b => { const on = b.dataset.phase === _tblPhase(); b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); });

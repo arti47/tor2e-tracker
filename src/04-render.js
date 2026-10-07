@@ -4563,7 +4563,7 @@ function _playSituation() {
         text: `A journey is already under way — <strong>${parseInt(jh.currentHex) || 0}</strong> of <strong>${parseInt(jh.totalHexes) || 0}</strong> stretches covered. ` +
               'Tap <strong>Back to the road</strong> to carry on with it.' };
       return { title: 'At ' + escapeHtml(where),
-        text: 'You are somewhere safe. Nothing is trying to kill you yet.<br><br>' +
+        text: 'Safe, for now.<br><br>' +
               (typeof isMoria === 'function' && isMoria()
                 ? (moriaBandReady()
                     ? `Your Band: <strong>${(char.band.allies || []).filter(a => !a.outOfAction).length}</strong> dwarves ready${char.mission && char.mission.active ? ', the mission planned' : ' — the mission is not planned yet'}.<br><br>`
@@ -4572,7 +4572,7 @@ function _playSituation() {
               (typeof isMoria === 'function' && isMoria()
                 ? ((char.mission && char.mission.objective) ? 'Balin\'s mission for you: <em>' + escapeHtml(char.mission.objective) + '</em>'
                     : 'Balin has no mission for you yet — plan one, and it will be rolled for you.')
-                : (s.premise ? 'Why you are about to leave: <em>' + escapeHtml(s.premise) + '</em>' : 'You have no errand yet — ask around, and one will find you.')) };
+                : (s.premise ? 'Your errand: <em>' + escapeHtml(s.premise) + '</em>' : 'No errand yet. Ask around.')) };
     }
     case 'journey':
       const j = char.journey || {};
@@ -4582,7 +4582,7 @@ function _playSituation() {
             (_playEventDue() ? '<br><strong style="color:var(--error-text)">The road has something waiting for you here.</strong>' : '')
           : (j.destination
               ? 'The road is behind you — you finished this journey on the Journey tab. Tap <strong>We have arrived</strong> to carry on.'
-              : 'You are ready to travel, but have not set out yet.') };
+              : 'Ready to travel.') };
     case 'location':
       const j2 = char.journey || {};
       const chm = _playChamberHere();
@@ -4590,18 +4590,18 @@ function _playSituation() {
         text: (typeof isMoria === 'function' && isMoria())
           ? (chm ? escapeHtml(chamberLine(chm)) + (chm.band && !chm.met ? ' <strong>An Orc-band holds it.</strong>' : '')
                  : 'You have come into the deep places. In Moria you explore <strong>chamber by chamber</strong> — tap <strong>Go on to the next chamber</strong> to see what lies ahead.')
-          : 'You have arrived. This is where the thing you came for is — or is not.' };
+          : 'You have arrived. What you came for is here — or is not.' };
     case 'home': {
       const jh2 = char.journey || {};
       return { title: 'The road home',
         text: jh2.active
           ? _playRoadLine(jh2) +
             (_playEventDue() ? '<br><strong style="color:var(--error-text)">The road has something waiting for you here.</strong>' : '')
-          : 'You turn back the way you came, carrying whatever you found — and whatever found you.' };
+          : 'You turn for home.' };
     }
     case 'fellowship':
       return { title: 'Safe again, at ' + escapeHtml(where),
-        text: 'The adventure is over. Time to rest properly, spend what you have earned, and let the Shadow ebb.' };
+        text: 'The adventure is over. Rest, grow, and let the Shadow ebb.' };
   }
   return { title: 'Somewhere', text: '' };
 }
@@ -6154,15 +6154,96 @@ function playChoiceCards(choices) {
       ${rest.map((c, i) => card(c, i + 3, ' ccard-extra')).join('')}
     </div>`;
 }
+/* ---------- FIRST RUN (storybook stage 5) ----------
+   No form, no dialog: a row of heroes to pick from. One tap loads the hero and asks only the one
+   thing a sheet cannot supply — the reason to set out — and the story begins. */
+function _pregenFace(p, px) {
+  const field = (typeof CREST_FIELD !== 'undefined' && CREST_FIELD[p.culture]) || '#4a4036';
+  const sil = (typeof cultureSilhouette === 'function' && cultureSilhouette(p.culture)) || '';
+  const fig = sil ? sil.replace('<svg class="silhouette"', '<svg class="silhouette" x="12" y="10" width="40" height="48"') : '';
+  return `<svg class="fr-face" width="${px}" height="${px}" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="${field}"/><g class="pt-fig">${fig}</g><circle cx="32" cy="32" r="30" fill="none" class="fr-ring"/></svg>`;
+}
+function firstRunHtml() {
+  const card = (p, i) => `<button type="button" class="fr-hero" onclick="playPickHero(${i})" aria-label="Play ${escapeHtml(p.name)} — ${escapeHtml([p.culture, p.calling].filter(Boolean).join(', '))}">
+      ${_pregenFace(p, 76)}<strong>${escapeHtml(shortHeroName(p.name))}</strong><small>${escapeHtml(String(p.culture || '').replace(/ of .*$/, ''))}</small>${p.calling ? `<small class="fr-call">${escapeHtml(p.calling)}</small>` : ''}</button>`;
+  const first = PREGENS[0] && PREGENS[0].src;
+  const main = [], more = [];
+  PREGENS.forEach((p, i) => (p.src === first ? main : more).push(card(p, i)));
+  const art = typeof paintedScene === 'function' ? paintedScene('haven', { time: 'dusk' }) : '';
+  return `<div class="first-run">
+    <div class="card ornate play-scene story-scene fr-scene">${art}<div class="ss-head"><div class="eyebrow">A tale of Middle-earth</div><h3 class="card-title">Choose your hero</h3></div></div>
+    <p class="fr-sub">Pick a ready-made hero. The story starts at once.</p>
+    <div class="fr-cards">${main.join('')}</div>
+    ${more.length ? `<details class="fr-more"><summary>More heroes</summary><div class="fr-cards">${more.join('')}</div></details>` : ''}
+    <div class="fr-links"><button class="btn btn-secondary" onclick="document.querySelector('.tab[data-tab=build]').click()">I'll make my own</button>
+      <button class="btn btn-quiet" onclick="startTutorialFromWelcome()">${typeof tutorialOffered === 'function' && tutorialOffered() ? 'The tutorial' : 'New? Learn with the tutorial'}</button></div>
+  </div>`;
+}
+async function playPickHero(i) {
+  loadPregen(i);
+  if (typeof sfx === 'function') try { sfx('page'); } catch (e) {}
+  if (!(char.saga && char.saga.started)) await sagaBegin();
+}
+
+/* ---------- TEACHING CARDS (storybook stage 5) ----------
+   The rules are taught once each, in the first adventure, at the moment they first matter —
+   a quiet card above the choices, never a dialog. Seen cards are remembered per hero. */
+const TEACH = {
+  start:   ['i-feather', 'How to play', 'Tap a card to act. The story comes in beats — tap it to read on. Your hero is in the circle at the top: red ring Endurance, gold ring Hope.'],
+  roll:    ['i-dice', 'A roll', 'One big die and a die for each rank of skill. Reach the Target Number to succeed. An Eye on the big die is bad luck; the Rune is the best there is.'],
+  road:    ['i-boot', 'The road', 'Travel a stretch at a time. Each stretch is a Travel roll; things happen on the way. Travel Fatigue lands on you when you arrive.'],
+  fight:   ['i-swords', 'A fight', 'Tap a foe to strike it. Then each foe strikes back. Your stance trades safety for force. At 0 Endurance you fall.'],
+  council: ['i-users', 'A council', 'You are winning someone over. Tap a skill to speak. The candles are your time; the tally is how far you have come.'],
+  shadow:  ['i-rain', 'Shadow', 'Shadow eats into your Hope (the dark part of the gold ring). When they meet you are Miserable. Rest between adventures washes some away.'],
+  wounded: ['i-drop', 'Wounded', 'A Wound takes days to heal and cracks your portrait. A Healing roll helps. A second Wound, or 0 Endurance, and you are Dying.']
+};
+const TEACH_KEY = 'tor2e-explained';
+function _teachSeen() { try { return (JSON.parse(localStorage.getItem(TEACH_KEY)) || {})[activeCharId] || {}; } catch (e) { return {}; } }
+function teachDue(fight) {
+  if (!char.culture || (typeof tableActive === 'function' && tableActive())) return null;
+  const seen = _teachSeen(), s = sagaState(), j = char.journey || {};
+  const order = [
+    ['start', !!s.started],
+    ['fight', !!fight && !(char.battle && char.battle.active)],
+    ['council', window._playSceneKind === 'council'],
+    ['wounded', !!char.wounded],
+    ['shadow', (parseInt(char.shadow) || 0) + (parseInt(char.scars) || 0) > 0],
+    ['road', !!j.active && ['journey', 'home'].includes(s.step)],
+    ['roll', !!(history && history.length)]
+  ];
+  const hit = order.find(([k, on]) => on && !seen['solo_' + k]);
+  return hit ? hit[0] : null;
+}
+function teachCardHtml(fight) {
+  const k = teachDue(fight); if (!k) return '';
+  const [ic, title, text] = TEACH[k];
+  return `<div class="teach-card" role="note" data-teach="${k}"><svg class="ic tc-ic" aria-hidden="true"><use href="#${ic}"/></svg><div><strong>${escapeHtml(title)}</strong><p>${escapeHtml(text)}</p></div><button type="button" class="btn btn-quiet tc-ok" onclick="teachDone('${k}')">Got it</button></div>`;
+}
+function teachDone(k) {
+  let all = {}; try { all = JSON.parse(localStorage.getItem(TEACH_KEY)) || {}; } catch (e) {}
+  all[activeCharId] = Object.assign({}, all[activeCharId], { ['solo_' + k]: 1 });
+  try { localStorage.setItem(TEACH_KEY, JSON.stringify(all)); } catch (e) {}
+  if (typeof renderPlay === 'function') renderPlay();
+}
+
+/* ---------- WELCOME BACK (storybook stage 5) ----------
+   A returning player goes straight into the scene; the first beat says where the story left off. */
+function playWelcomeBack() {
+  const s = sagaState();
+  if (!char.culture || !s.started || s.ended || char.retired) return false;
+  if (typeof tableActive === 'function' && tableActive()) return false;
+  if (_playFeed.length) return false;
+  const lines = ((typeof journal !== 'undefined' && journal && journal.entries) || [])
+    .filter(e => e && e.text && (e.kind === 'prose' || e.source === 'play')).slice(-2).map(e => escapeHtml(String(e.text).slice(0, 220)));
+  const sit = _playSituation();
+  playSay(`<strong>Welcome back.</strong> ${lines.length ? 'Last time: ' + lines.join(' … ') : (s.premise ? 'Your errand: <em>' + escapeHtml(s.premise) + '</em>' : '')}` +
+    ` Now: <em>${sit.title}</em>.`, 'aside');
+  if (typeof openNavGroup === 'function') openNavGroup('play');
+  if (typeof renderPlay === 'function') renderPlay();
+  return true;
+}
 function _renderPlayBody(host, s, pp) {
-  if (!char.culture) {
-    host.innerHTML = '<div class="card play-empty"><div class="eyebrow">Welcome</div><h3 class="card-title">First, a hero</h3>' +
-      '<p>You need someone to play. A ready-made hero takes one tap; making your own takes a few minutes.</p>' +
-      '<button class="btn btn-block" onclick="openPregens()">Give me a ready-made hero</button>' +
-      '<button class="btn btn-secondary btn-block" onclick="document.querySelector(\'.tab[data-tab=build]\').click()">I\'ll make my own</button>' +
-      '<button class="btn btn-quiet btn-block" onclick="startTutorialFromWelcome()">' + (typeof tutorialOffered === 'function' && tutorialOffered() ? 'Take the guided tutorial' : 'New to the game? Take the guided tutorial first') + '</button></div>';
-    return;
-  }
+  if (!char.culture) { host.innerHTML = firstRunHtml(); return; }
   if (!s.started) {
     host.innerHTML = '<div class="card play-empty"><div class="eyebrow">Ready</div><h3 class="card-title">Your story hasn\'t started</h3>' +
       '<p>You have a hero. Now they need a reason to leave home — that is all a campaign needs to begin.</p>' +
@@ -6181,7 +6262,7 @@ function _renderPlayBody(host, s, pp) {
     const feedS = _playFeed.slice(-6).map(f => f.kind === 'event' ? f.text : `<p class="${f.kind === 'aside' ? 'aside' : ''}">${_rollPills(f.text)}</p>`).join('');
     const done = sc.done();
     host.innerHTML = _playConditionBanner() +
-      `<div class="card play-fight-log"><div class="eyebrow">${escapeHtml(sc.label)}</div>
+      teachCardHtml(false) + `<div class="card play-fight-log"><div class="eyebrow">${escapeHtml(sc.label)}</div>
         ${feedS ? `<div class="play-feed" aria-live="polite">${feedS}</div>` : ''}
         <button type="button" class="btn ${done ? '' : 'btn-secondary '}btn-block" onclick="playEndScene()">${done ? 'Back to the story' : 'Leave this for now — back to the story'}</button></div>
       ${k === 'fp' || k === 'mfp' ? '' : playRollAnyHtml()}`;
@@ -6190,7 +6271,7 @@ function _renderPlayBody(host, s, pp) {
   if (window._playFightPlaced) {
     const e = enc(), b = char.battle || {};
     const feedF = _playFeed.slice(-8).map(f => f.kind === 'event' ? f.text : `<p class="${f.kind === 'aside' ? 'aside' : ''}">${_rollPills(f.text)}</p>`).join('');
-    host.innerHTML = _playConditionBanner() +
+    host.innerHTML = _playConditionBanner() + teachCardHtml(true) +
       `<div class="card play-fight-log"><div class="eyebrow">${b.active ? 'A battle' : 'A fight'}${_playFoesStanding() ? ` — round ${parseInt(e.round) || 1}` : ''}</div>
         <p class="hint" style="text-align:left;margin:0 0 6px">${b.active && !_playFoesStanding() ? 'Lead the Band through the Clash here. When the foe is broken, the story goes on.' : 'Fight it out here. When the last foe falls or you get away, the story goes on.'}</p>
         ${feedF ? `<div class="play-feed" aria-live="polite">${feedF}</div>` : ''}</div>
@@ -6234,7 +6315,7 @@ function _renderPlayBody(host, s, pp) {
        ${road}
        ${feed ? `<div class="play-feed story-beat${waiting ? ' waiting' : ''}" aria-live="polite"${waiting ? ' role="button" tabindex="0" onclick="playNextBeat()" onkeydown="if(event.key===\'Enter\'||event.key===\' \')playNextBeat()"' : ''}>${feed}${waiting ? `<span class="beat-next" aria-label="Continue">${beats.waiting} more <svg class="ic" aria-hidden="true"><use href="#i-chev"/></svg></span>` : ''}</div>` : ''}
      </div>${_playStoryCard(!!road)}${typeof heroPlate === 'function' ? heroPlate(!road) : ''}</div>
-     ${playChoiceCards(choices)}
+     ${playChoiceCards(choices)}${teachCardHtml(false)}
      ${playRollAnyHtml()}`;
   // Round 8: when the story moves (home → road → place), the scene cross-fades and its heading writes in
   const key = (s.step || '') + '|' + terrain + '|' + (jr.active ? 1 : 0);

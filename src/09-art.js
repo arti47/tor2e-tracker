@@ -292,7 +292,7 @@ function cultureSilhouette(culture) {
 /* ---------- Optional sound (off by default) ----------
    Synthesised on the fly — a few wooden clicks for dice, a soft rustle for a page. */
 const SOUND_KEY = 'tor2e-sound';
-function soundOn() { try { return localStorage.getItem(SOUND_KEY) === '1'; } catch (e) { return false; } }
+function soundOn() { try { return localStorage.getItem(SOUND_KEY) !== '0'; } catch (e) { return true; } }   // storybook: on unless turned off
 let _ac = null;
 function _audio() {
   if (!_ac) { const C = window.AudioContext || window.webkitAudioContext; if (!C) return null; _ac = new C(); }
@@ -304,6 +304,30 @@ function _noise(ac, dur) {
   for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
   const s = ac.createBufferSource(); s.buffer = b; return s;
 }
+/* Ambient (storybook stage 5): a soft wind under the story while ▶ Play is open and sound is on.
+   It can only start after a tap (browsers forbid sound before one), and stops off Play or out of sight. */
+let _amb = null;
+function ambientSync() {
+  const want = soundOn() && document.visibilityState !== 'hidden' && document.body.dataset.group === 'play'
+    && !(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+  if (want && !_amb && window._userTapped) {
+    const ac = _audio(); if (!ac) return;
+    const len = ac.sampleRate * 4, b = ac.createBuffer(1, len, ac.sampleRate), d = b.getChannelData(0);
+    let last = 0; for (let i = 0; i < len; i++) { last = (last + 0.02 * (Math.random() * 2 - 1)) / 1.02; d[i] = last * 3.5; }
+    const src = ac.createBufferSource(); src.buffer = b; src.loop = true;
+    const f = ac.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 420;
+    const lfo = ac.createOscillator(), lg = ac.createGain(); lfo.frequency.value = 0.07; lg.gain.value = 180; lfo.connect(lg); lg.connect(f.frequency);
+    const g = ac.createGain(); g.gain.setValueAtTime(0.0001, ac.currentTime); g.gain.exponentialRampToValueAtTime(0.05, ac.currentTime + 2.5);
+    src.connect(f); f.connect(g); g.connect(ac.destination); src.start(); lfo.start();
+    _amb = { src, lfo, g, ac };
+  } else if (!want && _amb) {
+    const a = _amb; _amb = null;
+    try { a.g.gain.exponentialRampToValueAtTime(0.0001, a.ac.currentTime + 0.8); setTimeout(() => { try { a.src.stop(); a.lfo.stop(); } catch (e) {} }, 900); } catch (e) {}
+  }
+}
+document.addEventListener('pointerdown', () => { window._userTapped = true; setTimeout(ambientSync, 50); }, { passive: true });
+document.addEventListener('visibilitychange', ambientSync);
+setInterval(ambientSync, 2500);
 function sfx(kind) {
   if (!soundOn()) return;
   const ac = _audio(); if (!ac) return;
@@ -328,6 +352,7 @@ function toggleSound() {
   const on = !soundOn();
   try { localStorage.setItem(SOUND_KEY, on ? '1' : '0'); } catch (e) {}
   refreshSoundLabel();
+  ambientSync();
   if (on) sfx('dice');
 }
 function refreshSoundLabel() {

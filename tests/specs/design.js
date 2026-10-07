@@ -586,13 +586,15 @@ module.exports = {
     });
     checks.push({ ok: ask.shown && /^(Yes|No)$/.test(ask.a) && ask.logged && ask.words >= 3, msg: `Ask the Oracle writes the answer on a slip (${ask.a}; ${ask.words} words) and logs it` });
 
-    // ---- Sound is off unless asked for ----
+    // ---- Storybook: sound is on unless turned off, and the menu says which ----
     const snd = await page.evaluate(() => {
       localStorage.removeItem('tor2e-sound'); refreshSoundLabel();
-      const off = document.getElementById('sound-btn').textContent;
-      return { off: /Off/.test(off), quiet: !soundOn() };
+      const on = /On/.test(document.getElementById('sound-btn').textContent) && soundOn();
+      toggleSound(); const off = /Off/.test(document.getElementById('sound-btn').textContent) && !soundOn();
+      localStorage.removeItem('tor2e-sound'); refreshSoundLabel();
+      return { on, off };
     });
-    checks.push({ ok: snd.off && snd.quiet, msg: 'sound effects are off by default and say so in the menu' });
+    checks.push({ ok: snd.on && snd.off, msg: `sound is on by default and the menu turns it off (${JSON.stringify(snd)})` });
 
     // ---- Wayfinding colour follows the group ----
     const acc = await page.evaluate(async () => {

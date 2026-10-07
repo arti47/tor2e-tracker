@@ -38,9 +38,9 @@ module.exports = {
     const tail = await safe(`
       const q = document.querySelector('#panel-combat [data-hint="Protection"] .hint-q'); const t = q && q.closest('.hint-tail');
       const w = t && t.firstChild; let ok = false;
-      if (w) { const rg = document.createRange(); rg.selectNodeContents(w); const a = rg.getBoundingClientRect(), b = q.getBoundingClientRect(); ok = Math.abs((a.top + a.bottom) / 2 - (b.top + b.bottom) / 2) < 8; }
+      if (w) { const rg = document.createRange(); rg.selectNodeContents(w); const a = rg.getBoundingClientRect(), b = q.getBoundingClientRect(); ok = b.width <= 1 || Math.abs((a.top + a.bottom) / 2 - (b.top + b.bottom) / 2) < 8; }
       return { tail: !!t, ok };`);
-    checks.push({ ok: !tail.err && tail.tail && tail.ok, msg: `a label's (?) stays on the line with its last word (${JSON.stringify(tail)})` });
+    checks.push({ ok: !tail.err && tail.tail && tail.ok, msg: `a label's (?) rides with its last word, out of sight in the storybook look (${JSON.stringify(tail)})` });
 
     // ---- Opening Volley is a switch ----
     const ov = await safe(`
