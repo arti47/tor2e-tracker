@@ -4,16 +4,16 @@ An HTML5 character sheet + play tracker for **The One Ring 2nd Edition** RPG —
 
 ---
 
-## ⭐ STATUS DASHBOARD — read this first (updated 2026-10-07, storybook redesign stage 3)
+## ⭐ STATUS DASHBOARD — read this first (updated 2026-10-07, storybook redesign complete)
 
 > **This section is the single source of truth for "where are we and what's next."**
 > Everything below it is reference detail and per-phase history. Keep this dashboard
 > current whenever work lands (and prune it — it must stay one screen).
 
 ### Current state
-- **All roadmap phases COMPLETE (incl. the full loremaster port):** P0 adversaries · P1 test harness (`npm test`, **635/635 green**, 15 specs) · P2 module split (`src/01…08` + `styles.css`) · P3 cloud-owned heroes · P4 live campaigns/party · P5 shared GM-driven encounter · P6 Loremaster screen (role-gated GM tab, peek, broadcast) · P7 security rules (**deployed + live-verified 2026-07-02**) · P8 accessibility. Plus the full UX batch (U3, U4, U5/6/7/8, U9–U15 — all shipped; "group rolls" deliberately skipped).
+- **All roadmap phases COMPLETE (incl. the full loremaster port):** P0 adversaries · P1 test harness (`npm test`, **640/640 green**, 15 specs) · P2 module split (`src/01…08` + `styles.css`) · P3 cloud-owned heroes · P4 live campaigns/party · P5 shared GM-driven encounter · P6 Loremaster screen (role-gated GM tab, peek, broadcast) · P7 security rules (**deployed + live-verified 2026-07-02**) · P8 accessibility. Plus the full UX batch (U3, U4, U5/6/7/8, U9–U15 — all shipped; "group rolls" deliberately skipped).
 - **Cloud is LIVE**: real Firebase config committed (`FIREBASE_ENABLED=true`); rules deployed; broadcast / in-campaign push / peek all verified against the real project 2026-07-02.
-- **SW cache `tor2e-v178`** · git repo (origin = github.com/arti47/tor2e-tracker, branch main) · shells (`character-tracker.html` = `index.html`) in sync.
+- **SW cache `tor2e-v179`** · git repo (origin = github.com/arti47/tor2e-tracker, branch main) · shells (`character-tracker.html` = `index.html`) in sync.
 - **Dice-tab QoL (2026-07-02):** quick-roll grid moved to sit directly above the 🎲 Roll button (result renders right below → tap-to-result with no hunting) + the result `scrollIntoView`s on every roll (`behavior:'auto'` on purpose — `'smooth'` never completes in some headless/older-Safari engines); roll history gets a per-row **×** delete (`deleteRollAt`, index via `history.indexOf`) and a **🗑 Clear** button (`clearRollHistory`, confirmed). +2 ux-spec checks.
 - **Dice/Oracle QoL 2 (2026-07-02, SW v101, harness 104/104):** the roll-result summary now **leads with the skill/prof name** (quick rolls pass it as `rollDice(skillLabel)`; e.g. "Valour · vs TN 15 — SUCCESS"); **Oracle History** gets per-row **×** (`deleteOracleRollAt` — direct index, newest-first) + **🗑 Clear** (`clearOracleHistory`, confirmed; device-global history). +2 ux-spec checks. *(Preview-verification note: the local `http.server` + SW combo can poison the HTTP cache so even a new SW precaches stale JS — when the preview serves old code, switch the preview port = fresh origin.)*
 
@@ -623,6 +623,17 @@ An HTML5 character sheet + play tracker for **The One Ring 2nd Edition** RPG —
   - **Portrait clip id is per size** (`pt-clip-<px>`), and the peek keeps `pt-clip` ids when it strips the rest, so a second portrait on screen is clipped correctly.
   - **+3 story checks (15 → 18), 8 revert probes, all red:** the dot not turning the page; one shared clip id; stripping the clip id in the peek; `chTurn` not turning; the book opening on page 1; the quill not focusing; no Band rolls in the peek; "Roll a skill" not opening the Skills page. Updated (they encoded the tray): design's quick-roll check, links' tray check, polish's ripple check (a button on another page is off screen until its page is turned), folio's figure-vs-Edit check (the figure lives in the portrait), links' Clear check (the button is in the fold).
 
+- **STORYBOOK STAGE 5 — first run, teaching, quiet help, sound, the table scene (2026-10-07, SW v179, harness 640/640). The five-stage redesign is complete.**
+  - **First run is a row of heroes** (`firstRunHtml`, `_pregenFace`, `playPickHero`). A painted dusk haven with "Choose your hero" over it; the five Player Heroes as cards (culture figure in a ring, short name, culture, calling), the eight Starter Set heroes under *More heroes*. One tap → `loadPregen` → `sagaBegin` (the one question: the reason to set out) → the story. *I'll make my own* and the tutorial stay as small links.
+  - **Teaching cards** (`TEACH`, `teachDue`, `teachCardHtml`, `teachDone`): one short card at a time, under the choices, each shown once per hero when its moment first comes — how to play, a fight, a council, Wounded, Shadow, the road, a roll. Stored in `tor2e-explained` (`solo_<key>`), the same key table play uses. Never at a table (table play has its own lessons).
+  - **Quiet help** (`initQuietHelp` in `06-tabs-init.js`): the (?) circles are visually hidden but stay in the document (keyboard, screen reader, GOTCHA 14 guards). Anything with `data-hint` gets a hover title (the first sentence), explains itself on a **long press** (550 ms; roll buttons keep their roll preview), and answers the **`?` key** when focused or pointed at (no term → the Reference tool). **Tab tips are off** until *Menu → Show tips on every tab* (`tor2e-tipson`, `body.tips-on`, `applyTipsOn`).
+  - **Sound is on by default** (`soundOn()` = not `'0'`) and a quiet **wind ambient** plays under ▶ Play once the player has tapped (`ambientSync`; stops off Play, when hidden, or under reduced motion). **Haptics**: a light tap on choice cards, beats, hero cards, foes, skill cards and page turns.
+  - **The table scene**: the player's phase card is a painted scene by phase (`TABLE_SCENE`: haven/road/hills by day, dusk or night) with the phase drawing over it and the title on the picture; the Loremaster's *What is the table doing?* card carries the same picture (`#tbl-gm-pic`).
+  - **Welcome back** (`playWelcomeBack`, at boot): a hero mid-saga opens on ▶ Play, with a first beat saying where the story left off (the last Chronicle lines) and where you are now.
+  - **Shorter words** on the story screen: *Safe, for now.* · *Your errand: …* · *You turn for home.* · *Ready to travel.*
+  - **Hope after the roll** (Q8) is still waiting on the owner's rules check; the pre-roll Hope question stays.
+  - **+4 story checks (18 → 22), +1 table check; 12 revert probes, all red.** Two first stayed green and their checks were fixed: the tip check read a tab whose tip was already hidden by the old session rule (it now clears the tips state first), and the (?) sabotage only changed `position` while the 1px size still hid it (re-probed by removing the rule). Updated: design's *sound off by default* → *on by default, and the menu turns it off*; folio's *(?) on the line with its word* accepts a visually hidden (?); polish's small-phone and design's tablet two-pane checks pass because the teaching card sits under the choices.
+
 ### The dev workflow (every change)
 1. Edit **`src/*.js`** (JS) or **`character-tracker.html`** (markup) or `styles.css`.
 2. If the HTML changed: `cp character-tracker.html index.html`.
@@ -768,6 +779,8 @@ An HTML5 character sheet + play tracker for **The One Ring 2nd Edition** RPG —
 68. **The hero's numbers live on the portrait.** `#hud` is hidden; Endurance/Hope/Shadow/conditions are drawn by `renderPortrait()`, which rewrites the portrait — anything floated over it (`portraitDelta`) must be added after it renders. *(→ Storybook redesign)*
 69. **The story is told in beats.** Anything Play narrates goes through `playSay` (it numbers the line); never write into `#play-body .play-feed` directly. A spec that reads the newest line must first tap through waiting beats (`playNextBeat()` until `.story-beat.waiting` is gone), as a reader does. *(→ Storybook stage 2)*
 70. **Pages scroll sideways; turn the page before you touch.** The hero sheet (`.hp-track`) and the Chronicle (`.ch-book`) hold their other pages off screen to the side, and `checkVisibility()` still says true there. A spec or driver turns to the page first (`heroPage(dot, i)` / `chTurn(d)`); a renderer that jumps to a control inside one must turn its page too (`jumpToScene` does). *(→ Storybook stage 4)*
+71. **A spec that waits must expect the Fortune offer.** Any solo roll with an Eye or Rune queues a Fortune/Ill-Fortune dialog on a timer (`_soloFortuneOffer`), which opens once no other dialog is up — possibly in the middle of a later check. A check that presses, measures or reads a dialog after earlier rolls must first let that offer open and decline it. *(→ Storybook stage 5)*
+72. **Help is quiet; tips are opt-in.** Do not add a visible (?) or an always-on explanation to a story surface. A term gets `data-hint` (long press, hover, `?` key); a one-time lesson joins `TEACH` and `teachDue`. *(→ Storybook stage 5)*
 
 ---
 
@@ -795,8 +808,8 @@ npm install && npm test                     # harness must be green (npm install
 
 As of last verification:
 - **Layout (since P2, 2026-06-29)**: thin `character-tracker.html` shell (mirrored to `index.html`) loading `styles.css` + `src/vendor-qrcode.js` + `src/01-core.js`…`src/08-gm.js` in order — **classic scripts, no build step, still works over `file://`**. `firebase-config.js` (real keys, `FIREBASE_ENABLED=true`) + Firebase compat CDN scripts power the optional-but-live cloud layer (`src/07-sync.js`); the app degrades gracefully to fully-local when offline.
-- **`sw.js` `CACHE_VERSION`**: `tor2e-v178` (bump on every deploy). `PRECACHE` lists all 8 `src/*.js` + `vendor-qrcode.js` + `styles.css` + `firebase-config.js` + shells + PWA assets — **add any new file there**. SW strategy: HTML/navigations **and code (.js/.css/.json)** network-first; images/fonts cache-first; precache bypasses the HTTP cache (`cache:'reload'`); auto-activate.
-- **Test harness**: `npm test` → 15 specs / **635 checks** (smoke 24, adversaries 11, ux 208, spillage 22, a11y 7, gm 25, reachability 7, design 96, table 48, polish 32, art 30, atmos 22, folio 27, links 58, **story 18**). A fresh clone needs `npm install` first (`playwright-core` is the only devDependency; `tests/browser.js` glob-resolves a cached Chromium, `CHROMIUM_BIN` overrides). Cloud paths are no-ops in tests (SDK blocked) — verify live features via preview against the real project.
+- **`sw.js` `CACHE_VERSION`**: `tor2e-v179` (bump on every deploy). `PRECACHE` lists all 8 `src/*.js` + `vendor-qrcode.js` + `styles.css` + `firebase-config.js` + shells + PWA assets — **add any new file there**. SW strategy: HTML/navigations **and code (.js/.css/.json)** network-first; images/fonts cache-first; precache bypasses the HTTP cache (`cache:'reload'`); auto-activate.
+- **Test harness**: `npm test` → 15 specs / **640 checks** (smoke 24, adversaries 11, ux 208, spillage 22, a11y 7, gm 25, reachability 7, design 96, table 49, polish 32, art 30, atmos 22, folio 27, links 58, **story 22**). A fresh clone needs `npm install` first (`playwright-core` is the only devDependency; `tests/browser.js` glob-resolves a cached Chromium, `CHROMIUM_BIN` overrides). Cloud paths are no-ops in tests (SDK blocked) — verify live features via preview against the real project.
 - **Cloud (P3–P7)**: heroes mirror to `characters/{id}` (owner-only, rules-enforced); campaigns at `campaigns/{cid}` (join codes, live vitals party, presence, shared encounter, loremaster broadcast). `database.rules.json` **deployed + live-verified 2026-07-02**.
 - **Solo modes**: Strider + Moria complete (see their sections below).
 - **localStorage keys**: a **multi-character roster** (added 2026-05-31):
@@ -818,7 +831,8 @@ As of last verification:
   - `tor2e-tut-sandbox` — `{prevActiveId, practiceId}` while the tutorial is open, so closing the app mid-lesson can be unwound on next boot (device-global)
   - `tor2e-tips` — `{ "panel-<tab>": 1 }` tab tips the player dismissed with "Got it" (device-global; cleared by Menu → "Show the tips again")
   - `tor2e-buildall` — `'1'` = Build tab shows every step at once instead of the wizard (device-global)
-  - `tor2e-sound` — `'1'` = sound effects on (device-global; off by default)
+  - `tor2e-sound` — `'0'` = sound off; anything else = on (device-global; **on by default** since storybook stage 5)
+  - `tor2e-tipson` — `'1'` = tab tips shown (device-global; off by default, Menu → Show tips on every tab)
   - `tor2e-explained` — `{ [heroId]: { lessonKey: 1 } }` first-time explanations a hero has dismissed (table play)
   - `tor2e-handouts-done` — ids of Loremaster hand-outs this device already applied (table play; last 200)
   - `tor2e-map-fixes` — `{ "row,col": {land, hard, peril} }` hexes the player corrected on the map (device-global)

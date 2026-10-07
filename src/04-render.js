@@ -4563,7 +4563,7 @@ function _playSituation() {
         text: `A journey is already under way — <strong>${parseInt(jh.currentHex) || 0}</strong> of <strong>${parseInt(jh.totalHexes) || 0}</strong> stretches covered. ` +
               'Tap <strong>Back to the road</strong> to carry on with it.' };
       return { title: 'At ' + escapeHtml(where),
-        text: 'Safe, for now.<br><br>' +
+        text: 'Safe, for now. ' +
               (typeof isMoria === 'function' && isMoria()
                 ? (moriaBandReady()
                     ? `Your Band: <strong>${(char.band.allies || []).filter(a => !a.outOfAction).length}</strong> dwarves ready${char.mission && char.mission.active ? ', the mission planned' : ' — the mission is not planned yet'}.<br><br>`
@@ -6234,10 +6234,10 @@ function playWelcomeBack() {
   if (typeof tableActive === 'function' && tableActive()) return false;
   if (_playFeed.length) return false;
   const lines = ((typeof journal !== 'undefined' && journal && journal.entries) || [])
-    .filter(e => e && e.text && (e.kind === 'prose' || e.source === 'play')).slice(-2).map(e => escapeHtml(String(e.text).slice(0, 220)));
+    .filter(e => e && e.text && (e.kind === 'prose' || e.source === 'play') && String(e.text).trim() !== String(s.premise || '').trim())
+    .slice(-2).map(e => escapeHtml(String(e.text).slice(0, 220)));
   const sit = _playSituation();
-  playSay(`<strong>Welcome back.</strong> ${lines.length ? 'Last time: ' + lines.join(' … ') : (s.premise ? 'Your errand: <em>' + escapeHtml(s.premise) + '</em>' : '')}` +
-    ` Now: <em>${sit.title}</em>.`, 'aside');
+  playSay(`<strong>Welcome back.</strong> ${lines.length ? 'Last time: ' + lines.join(' … ') + ' ' : ''}You are ${sit.title.replace(/^At /, 'at ').replace(/^On /, 'on ').replace(/^The /, 'on the ')}.`, 'aside');
   if (typeof openNavGroup === 'function') openNavGroup('play');
   if (typeof renderPlay === 'function') renderPlay();
   return true;
