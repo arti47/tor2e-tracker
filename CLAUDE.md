@@ -4,6 +4,12 @@ An HTML5 character sheet + play tracker for **The One Ring 2nd Edition** RPG —
 
 ---
 
+## 🗣 HOW THE OWNER WANTS TO BE UPDATED (standing instruction — always follow)
+
+- **Report progress only as percentages: 5%, 10%, 15% … up to 100%.** Do not narrate each step or list everything done.
+- **Always keep the app faithful to the TOR2E rules.** Never change a rule or a number from memory (GOTCHA 2); when unsure, ask.
+- Merge to `main` when work is done, and keep this file up to date.
+
 ## ⭐ STATUS DASHBOARD — read this first (updated 2026-10-07, storybook redesign complete)
 
 > **This section is the single source of truth for "where are we and what's next."**
