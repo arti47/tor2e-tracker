@@ -3289,3 +3289,83 @@ body.day .ccard.primary .c-ico { color: #fff; background: var(--red); }
 @keyframes beatIn { from { opacity: 0; clip-path: inset(0 100% 0 0); } to { opacity: 1; clip-path: inset(0 0 0 0); } }
 @media (max-height: 600px) { .pscene { height: 100px; } .story-body { padding-top: 8px; } .play-sit-wrap { margin-bottom: 8px; } }
 .story-beat .beat-old { display: none !important; }
+
+/* ---------- STORYBOOK stage 3: the battle board ---------- */
+#play-fight.board-on:not(.show-numbers) > #stance-card, #play-fight.board-on:not(.show-numbers) > #encounter-card-wrap { display: none !important; }
+.bboard { border-radius: 20px; padding: 14px 12px 12px; margin: 0 0 var(--sp-3); position: relative; overflow: hidden;
+  background: radial-gradient(ellipse 120% 70% at 50% 0%, #3a2420 0%, #1b1418 55%, #120f14 100%); color: #f6ead6; box-shadow: var(--elev-1); }
+body.day .bboard { background: radial-gradient(ellipse 120% 70% at 50% 0%, #7a4a3a 0%, #3b2a28 60%, #2a2020 100%); }
+.bb-round { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; font-size: var(--fs-sm); color: rgba(246, 234, 214, .7); }
+.bb-round strong { font-family: var(--font-display); font-size: 22px; color: #f3d48a; }
+.bb-foes { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+.bb-foe { flex: 0 1 31%; min-width: 96px; max-width: 150px; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 6px 10px;
+  background: rgba(0, 0, 0, .28); border: 1px solid rgba(255, 255, 255, .08); border-radius: 14px; color: inherit; position: relative; transition: transform .15s var(--ease), box-shadow .2s; }
+.bb-foe:not([disabled]):hover, .bb-foe:not([disabled]):focus-visible { box-shadow: 0 0 0 2px #f3d48a; }
+.bb-foe:not([disabled]):active { transform: scale(.96); }
+.bb-foe[disabled] { cursor: default; }
+.bb-foe.acting { box-shadow: 0 0 0 2px #ff7a5c, 0 0 22px rgba(255, 90, 60, .45); animation: foeAct 1s ease-in-out infinite; }
+@keyframes foeAct { 50% { transform: translateY(-3px); } }
+.bb-foe.slain { opacity: .35; filter: grayscale(1); }
+.bb-sil { width: 64px; height: 70px; display: grid; place-items: center; }
+.bb-sil svg { width: 100%; height: 100%; fill: #d8c6a8; }
+.bb-foe strong { font-size: var(--fs-sm); line-height: 1.15; text-align: center; }
+.bb-foe .notch-bar, .bb-foe svg.nb { width: 100%; }
+.bb-word { position: absolute; top: 6px; right: 6px; font-size: 11px; font-weight: 800; padding: 2px 6px; border-radius: 999px; background: rgba(255,255,255,.12); }
+.bb-word.good { background: #3d6b2c; color: #e9ffd9; } .bb-word.bad { background: #8e2a1c; color: #ffe0d8; }
+.bb-cue { text-align: center; margin: 12px 0 6px; font-size: var(--fs-sm); color: rgba(246, 234, 214, .78); min-height: 1.4em; }
+.bb-weapon { border: 1px solid rgba(243, 212, 138, .5); background: rgba(243, 212, 138, .12); color: #f3d48a; border-radius: 999px; padding: 3px 10px; font-weight: 700; font-size: var(--fs-sm); }
+.bb-hero { display: flex; flex-direction: column; align-items: center; gap: 4px; margin: 6px 0 10px; }
+.bb-hero strong { font-family: var(--font-display); font-size: 18px; }
+.bb-stances { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; background: rgba(0,0,0,.25); padding: 4px; border-radius: 14px; margin-bottom: 10px; }
+.bb-st { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 2px; border: 0; border-radius: 10px; background: transparent; color: rgba(246, 234, 214, .7); }
+.bb-st .ic { width: 22px; height: 22px; }
+.bb-st small { font-size: 11px; font-weight: 600; }
+.bb-st.on { background: #f3d48a; color: #1f160c; }
+.bb-acts { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+.bb-acts .btn { min-height: 42px; font-size: var(--fs-sm); padding: 6px 4px; }
+@media (prefers-reduced-motion: reduce) { .bb-foe.acting { animation: none; } }
+
+/* Scene boards: council, endeavour, fellowship phase */
+#play-fight.sboard-on:not(.show-numbers) > .card, #play-fight.sboard-on:not(.show-numbers) > [id$="-card"] { display: none !important; }
+.sboard { border-radius: 20px; padding: 16px 14px; margin: 0 0 var(--sp-3); background: radial-gradient(ellipse 120% 80% at 50% 0%, #2c2a3a 0%, #191823 70%); color: #f2ead9; box-shadow: var(--elev-1); position: relative; overflow: hidden; }
+.sboard.sb-endeavour { background: radial-gradient(ellipse 120% 80% at 50% 0%, #2d3326 0%, #171b14 70%); }
+.sboard.sb-fp, .sboard.sb-mfp { padding: 0 0 14px; background: #120f14; }
+body.day .sboard { background: radial-gradient(ellipse 120% 80% at 50% 0%, #5a5470 0%, #2f2c3c 75%); }
+.sb-top { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.sb-top.hearth { padding: 0 16px; margin-top: -42px; position: relative; }
+.sb-face { width: 58px; height: 58px; flex: 0 0 58px; border-radius: 50%; display: grid; place-items: center; background: rgba(255,255,255,.08); color: #f3d48a; }
+.sb-face .ic { width: 34px; height: 34px; }
+.sb-face.att-reluctant { color: #ff9a85; } .sb-face.att-friendly { color: #a9e08f; }
+.sb-kicker { font-size: var(--fs-xs); letter-spacing: .6px; text-transform: uppercase; color: rgba(242, 234, 217, .65); }
+.sb-title { font-family: var(--font-display); font-size: 22px; line-height: 1.2; }
+.sb-meters { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+.sb-meters > div { background: rgba(0,0,0,.22); border-radius: 12px; padding: 8px; display: flex; flex-direction: column; gap: 4px; align-items: center; }
+.sb-meters small { font-size: 11px; color: rgba(242, 234, 217, .65); text-transform: uppercase; letter-spacing: .5px; }
+.sb-ask { font-size: var(--fs-sm); color: rgba(242, 234, 217, .8); margin: 4px 0 8px; }
+.sb-skills { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.sb-skill { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 12px 6px; border-radius: 14px; border: 1px solid rgba(255,255,255,.1); background: rgba(255,255,255,.06); color: inherit; min-height: 96px; justify-content: center; }
+.sb-skill:active { transform: scale(.97); }
+.sb-skill .sb-g .ic { width: 26px; height: 26px; color: #f3d48a; }
+.sb-skill strong { font-family: var(--font-display); font-size: 18px; }
+.sb-skill .sb-dots { font-size: 11px; letter-spacing: 1px; color: #e2b45a; }
+.sb-skill.fav { border-color: rgba(243, 212, 138, .55); }
+.sb-more { width: 100%; margin-top: 10px; color: rgba(242, 234, 217, .75) !important; }
+.sb-hearth .pscene { height: 150px; border-radius: 20px 20px 0 0; }
+.sb-steps { list-style: none; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 0 14px; margin: 6px 0 0; counter-reset: st; }
+.sb-steps li { counter-increment: st; background: rgba(255,255,255,.06); border-radius: 12px; padding: 8px 6px; text-align: center; display: flex; flex-direction: column; gap: 2px; }
+.sb-steps li::before { content: counter(st); font-family: var(--font-display); color: #f3d48a; font-size: 18px; }
+.sb-steps strong { font-size: var(--fs-sm); } .sb-steps small { font-size: 11px; color: rgba(242, 234, 217, .65); }
+/* The Band as a row of dwarf faces */
+.storybook .band-pill { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px 2px 4px; border-radius: 999px; background: transparent; border: 1px solid var(--border); }
+.bp-heads { display: inline-flex; }
+.bp-head { width: 20px; height: 20px; border-radius: 50%; background: #3a3f52; overflow: hidden; display: grid; place-items: center; margin-left: -5px; box-shadow: 0 0 0 1.5px var(--bg); position: relative; }
+.bp-head:first-child { margin-left: 0; }
+.bp-head .silhouette { width: 16px; height: 19px; margin-top: 4px; fill: rgba(255, 238, 205, .85); }
+.bp-head .silhouette .s-line, .bp-head .silhouette .s-thin { fill: none; stroke: rgba(255, 238, 205, .85); stroke-width: 3; }
+.bp-head.hurt { opacity: .55; }
+.bp-head.out { opacity: .35; filter: grayscale(1); }
+.bp-head.out::after { content: ''; position: absolute; left: 2px; right: 2px; top: 50%; height: 2px; background: #c8432f; transform: rotate(-35deg); }
+.bp-head.hard { box-shadow: 0 0 0 1.5px #e2b45a; }
+.bp-n { font-size: var(--fs-xs); }
+@media (max-width: 400px) { .bp-n { display: none; } }
+.story-beat div.beat-cur { margin: 0 0 8px; } .story-beat div.beat-cur p { margin: 0 0 4px; }

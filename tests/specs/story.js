@@ -117,6 +117,62 @@ module.exports = {
     checks.push({ ok: !md.err && md.calm && md.calm.sky && md.calm.desat === 0 && md.calm.eye === 0 && md.dark.desat > .6 && md.dark.eye > 0,
       msg: `the painted scene drains of colour as Hope runs out and reddens at the edges as the Eye nears the Hunt (${JSON.stringify(md)})` });
 
+    // ======== Stage 3: fights, councils, tasks, the Band ========
+    const bb = await safe(`
+      document.querySelectorAll('.menu-overlay.show').forEach(o => o.classList.remove('show'));
+      sagaState().step = 'location'; sagaState().scene = null; saveCharacter();
+      const B = allBestiary();
+      addFoeFromBestiary(B.findIndex(x => /Orc Soldier/.test(x.name))); addFoeFromBestiary(B.findIndex(x => /Warg/.test(x.name)));
+      document.querySelectorAll('.menu-overlay.show').forEach(o => o.classList.remove('show'));
+      openNavGroup('play'); renderPlay(); await new Promise(r => setTimeout(r, 50));
+      const real = window._doInlineRoll;
+      window._doInlineRoll = (d, fav, tn, label, opts) => (opts && opts.foe) ? { featValue: 1, featSpecial: null, featLabel: '1', total: 1, icons: 0, outcome: 'FAIL' } : { featValue: 8, featSpecial: null, featLabel: '8', total: 30, icons: 0, outcome: 'SUCCESS' };
+      const r = { tokens: document.querySelectorAll('#battle-board .bb-foe').length, encHidden: !document.getElementById('encounter-card-wrap').checkVisibility(), round0: enc().round };
+      const orc = enc().foes.find(f => /Orc/.test(f.name)); const before = orc.endCur;
+      document.querySelector('#battle-board .bb-foe:not([disabled])').click();
+      for (let i = 0; i < 60 && (enc().round === r.round0); i++) await new Promise(x => setTimeout(x, 100));
+      r.hit = orc.endCur < before; r.round1 = enc().round; r.turn = encTurn();
+      r.said = [...document.querySelectorAll('#play-body .play-feed .beat-cur, #play-body .play-feed .beat-old')].length > 0;
+      document.querySelector('#battle-board .bb-acts .btn-quiet').click(); r.numbers = document.getElementById('encounter-card-wrap').checkVisibility();
+      document.getElementById('play-fight').classList.remove('show-numbers');
+      window._doInlineRoll = real;
+      endEncounter({ fled: true }); renderPlay();
+      return r;`);
+    checks.push({ ok: !bb.err && bb.tokens === 2 && bb.encHidden && bb.hit && bb.round1 === bb.round0 + 1 && bb.turn === 'hero' && bb.numbers,
+      msg: `a fight on ▶ Play is a board: tap a foe to strike it, the foes' turn plays itself, the next round comes back to you, and "All the numbers" opens the full tracker (${JSON.stringify(bb)})` });
+
+    const cb = await safe(`
+      char.council = { active: true, topic: 'A boat', resistance: 6, attitude: 'reluctant', introRolled: false, timeLimit: 0, attemptsUsed: 0, successesScored: 0, rolls: [] };
+      saveCharacter(); playOpenScene('council'); await new Promise(r => setTimeout(r, 50));
+      const names = () => [...document.querySelectorAll('#scene-board .sb-skill strong')].map(x => x.textContent);
+      const r = { intro: names(), face: !!document.querySelector('#scene-board .sb-face.att-reluctant'), formHidden: !document.getElementById('council-active-card').checkVisibility() };
+      Object.assign(char.council, { introRolled: true, timeLimit: 5, attemptsUsed: 2, successesScored: 1 }); saveCharacter(); renderPlay(); await new Promise(x => setTimeout(x, 20));
+      r.talk = names(); r.candles = document.querySelectorAll('#scene-board .candle').length;
+      const real = window._doInlineRoll; window._doInlineRoll = () => ({ featValue: 8, featSpecial: null, featLabel: '8', total: 30, icons: 0, outcome: 'SUCCESS' });
+      const card = [...document.querySelectorAll('#scene-board .sb-skill')].find(b => /Persuade/.test(b.textContent)); await card.onclick();
+      window._doInlineRoll = real;
+      r.attempts = char.council.attemptsUsed; r.succ = char.council.successesScored;
+      char.council.active = false; sagaState().scene = null; saveCharacter(); renderPlay();
+      return r;`);
+    checks.push({ ok: !cb.err && cb.intro.join() === 'Awe,Courtesy,Riddle' && cb.face && cb.formHidden && cb.talk.includes('Persuade') && cb.talk.length === 5 && cb.candles === 5 && cb.attempts === 3 && cb.succ > 1,
+      msg: `a council on ▶ Play is a board — the listener's face, candles for the time, the skills as cards — and a card makes the attempt (${JSON.stringify(cb)})` });
+
+    const eb = await safe(`
+      char.skillEndeavour = { active: true, task: 'Climb the cliff', resistance: 6, timeLimit: 5, riskLevel: 'standard', attemptsUsed: 0, successesScored: 0, rolls: [] };
+      saveCharacter(); playOpenScene('endeavour'); await new Promise(r => setTimeout(r, 50));
+      const r = { cards: document.querySelectorAll('#scene-board .sb-skill').length, other: !!document.querySelector('#scene-board .sb-other') };
+      char.skillEndeavour.active = false; sagaState().scene = null; saveCharacter(); renderPlay(); return r;`);
+    checks.push({ ok: !eb.err && eb.cards === 5 && eb.other, msg: `a long task on ▶ Play offers the hero's four best skills as cards, and "Another skill" for the rest (${JSON.stringify(eb)})` });
+
+    const band = await safe(`
+      const was = char.moriaMode; char.moriaMode = true; char.band.allies = []; addStartingBand();
+      char.band.allies[1].injury = 'severe'; char.band.allies[4].outOfAction = true; saveCharacter(); render();
+      const p = document.getElementById('band-pill');
+      const r = { heads: p.querySelectorAll('.bp-head').length, out: p.querySelectorAll('.bp-head.out').length, hurt: p.querySelectorAll('.bp-head.hurt').length, label: p.getAttribute('aria-label') };
+      char.moriaMode = was; char.band.allies = []; saveCharacter(); refreshStriderUI(); render(); return r;`);
+    checks.push({ ok: !band.err && band.heads === 6 && band.out === 1 && band.hurt === 1 && /5 of 6/.test(band.label || ''),
+      msg: `in Moria the Band is a row of dwarf faces — dimmed when hurt, struck out when lost (${JSON.stringify(band)})` });
+
     checks.push({ ok: errors.length === 0, msg: `0 page errors (got ${errors.length}${errors.length ? ': ' + errors[0] : ''})` });
     await context.close();
     return { checks };

@@ -1805,7 +1805,7 @@ function renderEncounter() {
   const _lead = turnsOn ? (turn === 'foes' ? _encFoesToAct()[0] : null) : (e.foes || []).find(f => !f.slain);
   (e.foes || []).forEach(f => { html += _renderFoeCard(f, canGm, f === _lead, turnsOn ? turn : null); });
   if (canGm) html += `<button onclick="endEncounter()" class="btn btn-quiet btn-block" style="margin-top:10px">End encounter</button>`;
-  card.innerHTML = html;
+  card.innerHTML = html;  if (typeof renderBattleBoard === 'function') renderBattleBoard();
 }
 /** A foe's `fell` line split into its parts: plain features ("Stealthy, Wary") and named
     abilities ("Hideous Toughness: …" or the older "Hatred (Dwarves)."). */
@@ -4082,3 +4082,91 @@ function hideRollPreview() { const p = document.getElementById('roll-preview'); 
   }, true);
   document.addEventListener('contextmenu', e => { if (e.target.closest && e.target.closest(SEL)) e.preventDefault(); }, true);
 })();
+
+/* ---------- BATTLE BOARD (storybook stage 3) ----------
+   A fight on ▶ Play is a picture: the foes stand across the top, each with its Endurance under it;
+   you stand facing them. On your turn you tap a foe to strike it with the weapon shown; then the
+   foes' turn plays itself out, one blow at a time, and the next round begins. Every number and
+   control the Encounter tracker has is still one tap away ("All the numbers"). Only for a local
+   fight — a shared campaign encounter keeps its Loremaster-driven cards. */
+const _bbSleep = ms => new Promise(r => setTimeout(r, ms));
+let _bbBusy = false;
+function battleBoardOn() {
+  return encTurnsOn() && !(char.battle && char.battle.active) && (enc().foes || []).some(f => !f.slain);
+}
+function renderBattleBoard() {
+  const slot = document.getElementById('play-fight'); if (!slot) return;
+  let bb = document.getElementById('battle-board');
+  const on = !slot.hidden && battleBoardOn();
+  slot.classList.toggle('board-on', on);
+  if (!on) { if (bb) bb.remove(); return; }
+  if (!bb) { bb = document.createElement('div'); bb.id = 'battle-board'; bb.className = 'bboard'; slot.insertBefore(bb, slot.firstChild); }
+  const e = enc(), turn = encTurn(), mine = turn === 'hero' && !heroDown() && !_bbBusy;
+  const wpns = _equippedWeapons(); const w = wpns[Math.min(e.weaponIdx || 0, Math.max(0, wpns.length - 1))];
+  const foes = (e.foes || []).map(f => {
+    const said = String(_encShows[f.id] || _encResults[f.id] || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    const word = (said.match(/\b(Slain!|Hit|Miss|It hits you|It misses you|Wounded)\b/) || [])[0] || '';
+    const acting = turn === 'foes' && !f.slain && !f.acted;
+    return `<button type="button" class="bb-foe${f.slain ? ' slain' : ''}${acting ? ' acting' : ''}${f.wounded ? ' wounded' : ''}" ${mine && !f.slain ? `onclick="boardAttack('${f.id}')"` : 'disabled'}
+        aria-label="${f.slain ? escapeHtml(f.name) + ' — slain' : (mine ? 'Attack ' : '') + escapeHtml(f.name) + ` — Endurance ${f.endCur} of ${f.endMax}`}">
+        <span class="bb-sil">${typeof foeSilhouette === 'function' ? foeSilhouette(f, 'bb-fs') : ''}</span>
+        <strong>${escapeHtml(f.name)}</strong>
+        ${typeof notchBar === 'function' ? notchBar(f.endCur, f.endMax, 'nb-end', 'Endurance') : ''}
+        ${word ? `<span class="bb-word ${/Hit|Slain|Wounded/.test(word) && !/you/.test(word) ? 'good' : /you/.test(word) && /hits/.test(word) ? 'bad' : ''}">${word}</span>` : ''}
+      </button>`;
+  }).join('');
+  const st = char.stance || 'open';
+  const stances = ['forward', 'open', 'defensive', 'rearward'].concat(char.striderMode ? ['skirmish'] : []);
+  const stName = { forward: 'Forward', open: 'Open', defensive: 'Defensive', rearward: 'Rearward', skirmish: 'Skirmish' };
+  const end = parseInt(char.endCur) || 0, endMax = parseInt(char.endMax) || 0, hope = parseInt(char.hopeCur) || 0, hopeMax = parseInt(char.hopeMax) || 0;
+  const sh = (parseInt(char.shadow) || 0) + (parseInt(char.scars) || 0);
+  const head = heroDown() ? 'You lie senseless' : turn === 'hero' ? 'Your turn' : 'The foes strike';
+  bb.innerHTML = `
+    <div class="bb-round"><span>Round ${parseInt(e.round) || 1}</span><strong>${head}</strong></div>
+    <div class="bb-foes">${foes}</div>
+    <div class="bb-cue">${mine ? `Tap a foe to strike with <button type="button" class="bb-weapon" onclick="boardWeapon()" aria-label="Weapon: ${escapeHtml(w ? w.name : 'none')} — tap to change">${escapeHtml(w ? w.name : 'bare hands')}</button>` : turn === 'foes' ? 'Their blows fall…' : ''}</div>
+    <div class="bb-hero">${typeof portraitSvg === 'function' ? portraitSvg({ end, endMax, hope, hopeMax, sh }, 76) : ''}<strong>${escapeHtml(typeof heroLabel === 'function' ? heroLabel(char) : (char.name || 'You'))}</strong></div>
+    <div class="bb-stances" role="group" aria-label="Stance">${stances.map(s => `<button type="button" class="bb-st${s === st ? ' on' : ''}" onclick="boardStance('${s}')" aria-pressed="${s === st}" title="${stName[s]}">${typeof STANCE_GLYPH !== 'undefined' && STANCE_GLYPH[s] ? `<svg class="ic" aria-hidden="true"><use href="#${STANCE_GLYPH[s]}"/></svg>` : ''}<small>${stName[s]}</small></button>`).join('')}</div>
+    <div class="bb-acts">
+      <button type="button" class="btn btn-secondary" onclick="boardSkip()"${mine ? '' : ' disabled'}>Skip my attack</button>
+      <button type="button" class="btn btn-secondary" onclick="flyYouFools()">Flee</button>
+      <button type="button" class="btn btn-quiet" onclick="document.getElementById('play-fight').classList.toggle('show-numbers')">All the numbers</button>
+    </div>`;
+}
+async function _boardFoesTurn() {
+  if (encTurn() !== 'foes') { renderBattleBoard(); return; }
+  _bbBusy = true; renderBattleBoard();
+  try {
+    await _bbSleep(650);
+    for (const f of _encFoesToAct()) {
+      if (!battleBoardOn()) break;
+      await foeAttackHero(f.id, 0); _bbSay(f.id);
+      if (typeof renderPlay === 'function') renderPlay();
+      renderBattleBoard(); await _bbSleep(600);
+    }
+  } finally { _bbBusy = false; renderBattleBoard(); }
+}
+/** What a blow did, told in the story as a beat (the board shows the picture; the story the words). */
+function _bbSay(id) { const t = _encShows[id] || _encResults[id]; if (t && typeof playSay === 'function') playSay(t, 'story', String(t).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()); }
+async function boardAttack(id) {
+  if (_bbBusy || encTurn() !== 'hero') return;
+  _bbBusy = true;
+  try { await heroAttackFoe(id); _bbSay(id); } finally { _bbBusy = false; }
+  if (typeof renderPlay === 'function') renderPlay();
+  await _boardFoesTurn();
+}
+async function boardSkip() {
+  if (_bbBusy || encTurn() !== 'hero') return;
+  await encHeroPass();
+  await _boardFoesTurn();
+}
+function boardWeapon() {
+  const n = _equippedWeapons().length; if (n < 2) return;
+  enc().weaponIdx = ((enc().weaponIdx || 0) + 1) % n; saveCharacter(); renderEncounter(); renderBattleBoard();
+}
+function boardStance(s) {
+  char.stance = s; saveCharacter();
+  if (typeof renderStance === 'function') renderStance();
+  if (typeof encDeriveEngaged === 'function') encDeriveEngaged();
+  renderBattleBoard();
+}

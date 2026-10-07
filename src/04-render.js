@@ -4759,6 +4759,9 @@ function _placeFight() {
   if (pp) { pp.classList.toggle('in-fight', on); pp.dataset.scene = kind || ''; }
   window._playFightPlaced = on;
   window._playSceneKind = kind;
+  if (typeof renderBattleBoard === 'function') renderBattleBoard();
+  if (typeof renderSceneBoard === 'function') renderSceneBoard();
+  if (!on) slot.classList.remove('show-numbers');
   return on;
 }
 /** Something that finished on another tab is told in the Play story too. */
@@ -5755,7 +5758,14 @@ function renderBandPill() {
   p.hidden = !on;
   if (!on) return;
   const all = char.band.allies, up = all.filter(a => !a.outOfAction).length;
-  p.innerHTML = `<svg class="ic" aria-hidden="true"><use href="#i-users"/></svg>Band <strong>${up}/${all.length}</strong>`;
+  // Storybook: the Band is a row of small dwarf faces — dimmed when hurt, struck through when out.
+  const sil = typeof cultureSilhouette === 'function' ? cultureSilhouette("Dwarves of Durin's Folk") : '';
+  const heads = all.slice(0, 6).map(a => {
+    const hurt = (a.injury && a.injury !== 'none') || (a.fatigue && a.fatigue !== 'none');
+    return `<span class="bp-head${a.outOfAction ? ' out' : hurt ? ' hurt' : ''}${a.hardened ? ' hard' : ''}" title="${escapeHtml(a.name || 'Ally')}">${sil}</span>`;
+  }).join('');
+  p.innerHTML = `<span class="bp-heads" aria-hidden="true">${heads}</span><span class="bp-n">Band <strong>${up}/${all.length}</strong></span>`;
+  p.setAttribute('aria-label', `Your Band — ${up} of ${all.length} standing. Look at it`);
 }
 
 /* ---------- VITALS BAR (header HUD) ----------
@@ -6160,7 +6170,10 @@ function _renderPlayBody(host, s, pp) {
   const beats = _playBeats();
   const feed = _playFeed.length
     ? _playFeed.slice(-8).map(f => { const cls = (f.kind === 'aside' ? 'aside ' : '') + (beats.cur.includes(f) ? 'beat-cur' : 'beat-old');
-        return f.kind === 'event' ? `<div class="${cls}">${f.text}</div>` : `<p class="${cls}">${_rollPills(f.text)}</p>`; }).join('')
+        // a line that holds its own blocks (a fight result) cannot sit in a <p>: the browser would close the
+        // paragraph early and spill the rest outside the beat, where hiding it does not reach
+        const block = /<(div|p|ul|ol|table)\b/i.test(String(f.text));
+        return f.kind === 'event' || block ? `<div class="${cls}">${f.kind === 'event' ? f.text : _rollPills(f.text)}</div>` : `<p class="${cls}">${_rollPills(f.text)}</p>`; }).join('')
     : '';
   const jr = char.journey || {};
   const terrain = typeof sceneTerrain === 'function' ? sceneTerrain() : 'road';
@@ -6367,4 +6380,66 @@ async function playBandTest(kind) {
     playNote(_playRollSaid('Fatigue test', out.r.total, out.tn, out.r.outcome.startsWith('SUCCESS'), 0, '', `<small>${escapeHtml(_playPlainText(out.extra))}</small>`));
   }
   _playAfterRoll();
+}
+
+/* ---------- SCENE BOARDS (storybook stage 3) ----------
+   A Council, a Skill Endeavour and a Fellowship Phase on ▶ Play each get a drawn board in place of
+   the form: who you face (or what you attempt), candles for the time you have, tally marks toward
+   the goal, and the skills you can try as big cards. The full cards — modifiers, logs, outcome
+   choices — are one tap away ("All the numbers") and take over again when the scene ends. */
+function _skillAttrOf(name) { for (const a of Object.keys(SKILLS)) if ((SKILLS[a] || []).includes(name)) return a; return 'wit'; }
+function _sbSkillCard(name, fn, sub) {
+  const s = _heroSkill(name), a = _skillAttrOf(name);
+  const g = typeof ATTR_GLYPH !== 'undefined' && ATTR_GLYPH[a] ? `<svg class="ic" aria-hidden="true"><use href="#${ATTR_GLYPH[a]}"/></svg>` : '';
+  const dots = '◆'.repeat(Math.min(6, s.rating)) + '◇'.repeat(Math.max(0, Math.min(6, 6 - s.rating)));
+  return `<button type="button" class="sb-skill${s.favoured ? ' fav' : ''}" onclick="${fn}" aria-label="Roll ${escapeHtml(name)}${sub ? ' — ' + escapeHtml(sub) : ''}">
+      <span class="sb-g">${g}</span><strong>${escapeHtml(name)}</strong><span class="sb-dots" aria-hidden="true">${dots}</span>${sub ? `<small>${escapeHtml(sub)}</small>` : ''}</button>`;
+}
+function renderSceneBoard() {
+  const slot = document.getElementById('play-fight'); if (!slot) return;
+  let sb = document.getElementById('scene-board');
+  const kind = !slot.hidden ? window._playSceneKind : null;
+  let html = '';
+  if (kind === 'council') {
+    const c = char.council || {};
+    const done = c.introRolled && (c.successesScored >= c.resistance || (c.timeLimit > 0 && c.attemptsUsed >= c.timeLimit));
+    if (c.active && !done && !c.outcome) {
+      const face = { reluctant: 'i-face-sad', open: 'i-face-flat', friendly: 'i-face-smile' }[c.attitude] || 'i-face-flat';
+      const att = { reluctant: 'Reluctant', open: 'Open', friendly: 'Friendly' }[c.attitude] || 'Open';
+      const skills = c.introRolled
+        ? [['Persuade', 'rollCouncilAttempt'], ['Courtesy', null], ['Enhearten', 'rollCouncilAttempt'], ['Insight', 'rollCouncilAttempt'], ['Riddle', 'rollCouncilAttempt'], ['Song', 'rollCouncilAttempt']].filter(x => x[1])
+        : [['Awe', 'rollCouncilIntro'], ['Courtesy', 'rollCouncilIntro'], ['Riddle', 'rollCouncilIntro']];
+      html = `<div class="sb-top"><span class="sb-face att-${escapeHtml(c.attitude || 'open')}"><svg class="ic" aria-hidden="true"><use href="#${face}"/></svg></span>
+          <div><div class="sb-kicker">A council · ${att}</div><strong class="sb-title">${escapeHtml(c.topic || 'Win them over')}</strong></div></div>
+        <div class="sb-meters"><div><small>Time</small>${typeof candleRow === 'function' ? candleRow(c.attemptsUsed || 0, c.timeLimit || 0) : ''}</div>
+          <div><small>Won over</small>${typeof tallyMarks === 'function' ? tallyMarks(c.successesScored || 0, c.resistance || 0) : ''}</div></div>
+        <div class="sb-ask">${c.introRolled ? 'Make your case — choose how:' : 'First impressions — introduce yourself:'}</div>
+        <div class="sb-skills">${skills.map(([n, f]) => _sbSkillCard(n, `${f}('${n}')`)).join('')}</div>`;
+    }
+  } else if (kind === 'endeavour') {
+    const e = char.skillEndeavour || {};
+    const done = (e.successesScored >= e.resistance) || (e.timeLimit > 0 && e.attemptsUsed >= e.timeLimit);
+    if (e.active && !done && !e.outcome) {
+      const all = Object.values(SKILLS).flat();
+      const best = all.map(n => [n, _heroSkill(n)]).sort((a, b) => (b[1].rating + (b[1].favoured ? .5 : 0)) - (a[1].rating + (a[1].favoured ? .5 : 0))).slice(0, 4).map(x => x[0]);
+      const risk = { standard: 'Standard', hazardous: 'Hazardous', foolish: 'Foolish' }[e.riskLevel] || 'Standard';
+      html = `<div class="sb-top"><span class="sb-face task"><svg class="ic" aria-hidden="true"><use href="#i-hammer"/></svg></span>
+          <div><div class="sb-kicker">A long task · ${risk}</div><strong class="sb-title">${escapeHtml(e.task || 'The task')}</strong></div></div>
+        <div class="sb-meters"><div><small>Time</small>${typeof candleRow === 'function' ? candleRow(e.attemptsUsed || 0, e.timeLimit || 0) : ''}</div>
+          <div><small>Done</small>${typeof tallyMarks === 'function' ? tallyMarks(e.successesScored || 0, e.resistance || 0) : ''}</div></div>
+        <div class="sb-ask">Try it with:</div>
+        <div class="sb-skills">${best.map(n => _sbSkillCard(n, `rollSkillEndeavourAttempt('${n}')`)).join('')}
+          <button type="button" class="sb-skill sb-other" onclick="document.getElementById('play-fight').classList.add('show-numbers')"><span class="sb-g"><svg class="ic" aria-hidden="true"><use href="#i-dot"/></svg></span><strong>Another skill</strong></button></div>`;
+    }
+  } else if (kind === 'fp' || kind === 'mfp') {
+    html = `<div class="sb-hearth" aria-hidden="true">${typeof paintedScene === 'function' ? paintedScene('haven', { time: 'night', season: (typeof _sceneMood === 'function' ? ((_sceneMood(sagaState()).match(/data-season="([a-z]+)"/) || [])[1]) : '') }) : ''}</div>
+      <div class="sb-top hearth"><div><div class="sb-kicker">Between adventures</div><strong class="sb-title">The Fellowship Phase</strong></div></div>
+      <ol class="sb-steps"><li><strong>Rest</strong><small>Hope and heart return</small></li><li><strong>Grow</strong><small>Spend what you earned</small></li><li><strong>Spend the time</strong><small>One thing you do</small></li></ol>`;
+  }
+  const board = !!html && kind !== 'fp' && kind !== 'mfp';
+  slot.classList.toggle('sboard-on', board);
+  if (!html) { if (sb) sb.remove(); return; }
+  if (!sb) { sb = document.createElement('div'); sb.id = 'scene-board'; sb.className = 'sboard'; slot.insertBefore(sb, slot.firstChild); }
+  sb.className = 'sboard sb-' + kind;
+  sb.innerHTML = html + (board ? `<button type="button" class="btn btn-quiet sb-more" onclick="document.getElementById('play-fight').classList.toggle('show-numbers')">All the numbers</button>` : '');
 }
