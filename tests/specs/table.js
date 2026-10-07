@@ -199,6 +199,9 @@ module.exports = {
     const wounded = await until(pl.page, () => !!char.wounded);
     const tf = await gm.page.evaluate(() => _tj().travelFatigue);
     checks.push({ ok: evCall && wounded && tf >= 3, msg: `a journey event calls the role's roll, and its failure lands on that hero (wounded ${wounded}, Travel Fatigue ${tf})` });
+    // The wound's severity is dice: a Grievous Injury leaves the hero at 0 Endurance and out of the fight's
+    // turn order, which made the combat checks below fail now and then. Heal them before going on (GOTCHA 22).
+    await pl.page.evaluate(() => { mendWound(); char.endCur = char.endMax; char.dying = false; saveCharacter(); render(); });
 
     // Arrival: every hero rolls Travel; what the road cost lingers on their own Fatigue.
     await gm.page.evaluate(() => document.querySelectorAll('.menu-overlay.show').forEach(o => o.classList.remove('show')));
