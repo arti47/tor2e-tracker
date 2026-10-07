@@ -83,13 +83,15 @@ module.exports = {
 
     // Choice cards: at most four, a few words each; the full wording is still there for a screen reader.
     const cc = await safe(`
-      renderPlay();
+      char.journey = Object.assign(char.journey || {}, { active: false, destination: 'Bree' }); sagaState().step = 'location'; saveCharacter(); renderPlay();
+      const total = _playChoices().length;
       const cards = [...document.querySelectorAll('#play-body .play-choices .ccard')].filter(c => c.checkVisibility());
       const r = { n: cards.length, words: cards.map(c => c.querySelector('.c-short').textContent.trim().split(/\\s+/).length), labels: cards.map(c => c.getAttribute('aria-label') || ''), short: cards.map(c => c.querySelector('.c-short').textContent.trim()) };
       const more = cards.find(c => c.classList.contains('ccard-more'));
       if (more) { more.click(); r.after = [...document.querySelectorAll('#play-body .play-choices .ccard')].filter(c => c.checkVisibility()).length; }
+      r.total = total; sagaState().step = 'haven'; saveCharacter(); renderPlay();
       return r;`);
-    checks.push({ ok: !cc.err && cc.n >= 2 && cc.n <= 4 && cc.words.every(w => w <= 3) && cc.labels.filter(Boolean).every(l => l.length > 6) && (cc.after === undefined || cc.after > cc.n - 1),
+    checks.push({ ok: !cc.err && cc.n >= 2 && cc.n <= 4 && cc.words.every(w => w <= 3) && cc.labels.filter(Boolean).every(l => l.length > 6) && cc.total > 4 && cc.after === cc.total,
       msg: `choices are 2–4 picture cards of 1–3 words, with the full wording kept for screen readers and "More" for the rest (${JSON.stringify(cc).slice(0, 220)})` });
 
     // The roll moment: a roll in the story takes the screen for a moment, and a tap returns.

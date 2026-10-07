@@ -4,16 +4,16 @@ An HTML5 character sheet + play tracker for **The One Ring 2nd Edition** RPG —
 
 ---
 
-## ⭐ STATUS DASHBOARD — read this first (updated 2026-10-07, storybook redesign stage 1)
+## ⭐ STATUS DASHBOARD — read this first (updated 2026-10-07, storybook redesign stage 2)
 
 > **This section is the single source of truth for "where are we and what's next."**
 > Everything below it is reference detail and per-phase history. Keep this dashboard
 > current whenever work lands (and prune it — it must stay one screen).
 
 ### Current state
-- **All roadmap phases COMPLETE (incl. the full loremaster port):** P0 adversaries · P1 test harness (`npm test`, **624/624 green**, 15 specs) · P2 module split (`src/01…08` + `styles.css`) · P3 cloud-owned heroes · P4 live campaigns/party · P5 shared GM-driven encounter · P6 Loremaster screen (role-gated GM tab, peek, broadcast) · P7 security rules (**deployed + live-verified 2026-07-02**) · P8 accessibility. Plus the full UX batch (U3, U4, U5/6/7/8, U9–U15 — all shipped; "group rolls" deliberately skipped).
+- **All roadmap phases COMPLETE (incl. the full loremaster port):** P0 adversaries · P1 test harness (`npm test`, **628/628 green**, 15 specs) · P2 module split (`src/01…08` + `styles.css`) · P3 cloud-owned heroes · P4 live campaigns/party · P5 shared GM-driven encounter · P6 Loremaster screen (role-gated GM tab, peek, broadcast) · P7 security rules (**deployed + live-verified 2026-07-02**) · P8 accessibility. Plus the full UX batch (U3, U4, U5/6/7/8, U9–U15 — all shipped; "group rolls" deliberately skipped).
 - **Cloud is LIVE**: real Firebase config committed (`FIREBASE_ENABLED=true`); rules deployed; broadcast / in-campaign push / peek all verified against the real project 2026-07-02.
-- **SW cache `tor2e-v175`** · git repo (origin = github.com/arti47/tor2e-tracker, branch main) · shells (`character-tracker.html` = `index.html`) in sync.
+- **SW cache `tor2e-v176`** · git repo (origin = github.com/arti47/tor2e-tracker, branch main) · shells (`character-tracker.html` = `index.html`) in sync.
 - **Dice-tab QoL (2026-07-02):** quick-roll grid moved to sit directly above the 🎲 Roll button (result renders right below → tap-to-result with no hunting) + the result `scrollIntoView`s on every roll (`behavior:'auto'` on purpose — `'smooth'` never completes in some headless/older-Safari engines); roll history gets a per-row **×** delete (`deleteRollAt`, index via `history.indexOf`) and a **🗑 Clear** button (`clearRollHistory`, confirmed). +2 ux-spec checks.
 - **Dice/Oracle QoL 2 (2026-07-02, SW v101, harness 104/104):** the roll-result summary now **leads with the skill/prof name** (quick rolls pass it as `rollDice(skillLabel)`; e.g. "Valour · vs TN 15 — SUCCESS"); **Oracle History** gets per-row **×** (`deleteOracleRollAt` — direct index, newest-first) + **🗑 Clear** (`clearOracleHistory`, confirmed; device-global history). +2 ux-spec checks. *(Preview-verification note: the local `http.server` + SW combo can poison the HTTP cache so even a new SW precaches stale JS — when the preview serves old code, switch the preview port = fresh origin.)*
 
@@ -580,6 +580,25 @@ An HTML5 character sheet + play tracker for **The One Ring 2nd Edition** RPG —
   - **New `tests/specs/story.js` (7 checks), all revert-probed red** (tool tiles, Back target, Shadow arc, crack, Night default, portrait removed, portrait/delta order). **Checks updated because what they encoded was replaced:** 5 groups → 3, the "Rules" Journal label, the vitals bar → the portrait (design), five themes → three plus legacy mapping (ux), Old map → Day (design), per-group paper → no paper (polish), HUD-chip seal → portrait seal (polish), group strips → none (art), the per-group accent → one accent, and the nav flourish (atmos; it now waits out the colour transition). Smoke and spillage reach a tool the way a player does: Menu → its tile.
   - **Still to come:** stage 2 (story screen: beats, cards, full-screen rolls, painted scenes, mood), 3 (battle scene, road strip, boards, Band row), 4 (Hero swipe pages, Journal book), 5 (first run, teaching cards, sound/haptics, table play, tablet, recap).
 
+- **STORYBOOK STAGE 2 — the story screen (2026-10-07, SW v176, harness 628/628):**
+  - **Painted scenes.** New `paintedScene(terrain, opts)` in `09-art.js` draws layered flat-colour landscapes: a sky gradient by hour (`PS_SKY` day/dusk/night/dawn), far/mid/near/ground silhouettes by land (`PS_LAND`, `PS_NEAR`), and season tints (winter snowfields, autumn ochres). It also takes a road (`.ps-road`), mist, the Eye, weather, and Moria's pillars with a lit lantern (`.ps-flame`, `.ps-glow`).
+    - Mood is CSS variables on `.pscene`: `--desat` (1 − (Hope − Shadow)/Max Hope) drains the colour, and `--eye` reddens the edges as Awareness nears the Hunt.
+    - A slow pan runs; it is off under reduced motion.
+    - The title sits on the picture (`.ss-head`).
+  - **Beats.** Every `playSay` line is numbered (`_playFeedN`). `_playBeats()` groups each line with the asides after it, and the oldest unread group shows in `.story-beat` with "N more ▸". A tap calls `playNextBeat()` (`window._beatSeen`). While beats wait, the choices are hidden (`#play-body.beats-waiting`). A single new beat shows at once, with the choices.
+    - Every line stays in the DOM: read ones are `.beat-old`, hidden.
+    - The situation folds to two lines (`details.play-sit-wrap`).
+  - **Choice cards.** `playChoiceCards()` replaces the list rows. It shows 2–4 picture cards with a short label (`CHOICE_SHORT` / `choiceShort()`), the full wording in `aria-label` / `title` / an `.sr-only` span, and "More" for anything past four (`.ccard-extra`).
+  - **The roll moment.** `showRollMoment(historyEntry)` is called from `_doInlineRoll` (hero rolls) and from tray rolls (`openRollDrawer`'s Play branch). It runs only while ▶ Play is open and never at a table. The dice land large, then one word (Success / Great / Extraordinary / Failure) and the roll name with score vs TN. A tap or 2.6 s closes it, and phones buzz. `#roll-moment` is not a `.menu-overlay` (GOTCHA 25).
+  - **Removed from Play:** the footer horizon art and the "written into your Chronicle" footnote.
+  - **Hope after the roll** (Q8) is still waiting on the owner's rules check.
+  - **+4 story checks (7 → 11), all revert-probed red:** beats, cards (twice — the first "More" probe stayed green because the haven offers only four choices, so the check now uses the location step), the moment (twice), and both mood variables.
+  - **Checks updated** because the old scene art (`.scene-art`) became `.pscene`: design "draws the place", art road/colour/mist/Eye, and atmos Moria lantern. The footer horizon was replaced by "no footer under the choices".
+    - polish labels: a label on the picture is light on purpose.
+    - The tablet story card sits under the scene rather than within 40px of it.
+    - The links scroll check taps through the beats as a reader would.
+    - Small phones get a 150px or 100px scene, so the first choice stays on the first screen at 320×568.
+
 ### The dev workflow (every change)
 1. Edit **`src/*.js`** (JS) or **`character-tracker.html`** (markup) or `styles.css`.
 2. If the HTML changed: `cp character-tracker.html index.html`.
@@ -720,6 +739,7 @@ An HTML5 character sheet + play tracker for **The One Ring 2nd Edition** RPG —
 63. **A result is a pill and a sentence; the arithmetic lives in the log.** Show a roll with `rollPillHtml(label, total, tn, good, title)` and say what came of it in words. Feat dice, TN breakdowns, sub-table dice and running totals go in the log line or the pill's title, never the sentence. Journey entries carry their parts (`ev`/`res`/`march`/`arr`) and are drawn only through `journeyLogEntry` — do not add a second renderer for Play. *(→ Clarity pass)*
 64. **A local fight has turns; a shared one does not.** `encTurnsOn()` is `!encShared()`. In turns mode your attacks live on the hero card and a foe's only on its turn; every new action path must end in `_encHeroDone()` (you acted) or `_encFoeDone(id)` (a foe acted), or the round stalls. A wound ends through `mendWound()` — never clear `wounded` by hand at a new site. *(→ Play + combat fixes)*
 65. **A foe suggestion is built from named bestiary entries.** `FOE_POOLS` lists names, never stats; a new foe joins a pool only if `allBestiary()` has it (`_foeExists`, spec-checked). Story words outweigh terrain on purpose (`FOE_WORDS`, weight 30): when the event names the enemy, that is the enemy. *(→ Pick a foe for me)*
+69. **The story is told in beats.** Anything Play narrates goes through `playSay` (it numbers the line); never write into `#play-body .play-feed` directly. A spec that reads the newest line must first tap through waiting beats (`playNextBeat()` until `.story-beat.waiting` is gone), as a reader does. *(→ Storybook stage 2)*
 67. **Three places, then Tools.** The bar is Story · Hero · Journal; every other tab is a tool, opened with `openTool(tab)` (Menu → Tools) and left with `closeTool()`. A new tab joins `TOOLS` (label, icon, one-line purpose) or a group — never the bar. A spec or driver reaches a tool the way a player does: open the menu, click its `.tool-tile`. *(→ Storybook redesign)*
 68. **The hero's numbers live on the portrait.** `#hud` is hidden; Endurance/Hope/Shadow/conditions are drawn by `renderPortrait()`, which rewrites the portrait — anything floated over it (`portraitDelta`) must be added after it renders. *(→ Storybook redesign)*
 66. **Never show an outcome code.** `outcome` strings (`SUCCESS`, `FAIL (Eye)`…) are for logic; anything a player reads goes through `outcomeWords()`, and a skill roll's meaning comes from `ROLL_MEANING`. A new skill-like roll adds its line there rather than printing "Success". *(→ Roll wording everywhere)*
@@ -750,8 +770,8 @@ npm install && npm test                     # harness must be green (npm install
 
 As of last verification:
 - **Layout (since P2, 2026-06-29)**: thin `character-tracker.html` shell (mirrored to `index.html`) loading `styles.css` + `src/vendor-qrcode.js` + `src/01-core.js`…`src/08-gm.js` in order — **classic scripts, no build step, still works over `file://`**. `firebase-config.js` (real keys, `FIREBASE_ENABLED=true`) + Firebase compat CDN scripts power the optional-but-live cloud layer (`src/07-sync.js`); the app degrades gracefully to fully-local when offline.
-- **`sw.js` `CACHE_VERSION`**: `tor2e-v175` (bump on every deploy). `PRECACHE` lists all 8 `src/*.js` + `vendor-qrcode.js` + `styles.css` + `firebase-config.js` + shells + PWA assets — **add any new file there**. SW strategy: HTML/navigations **and code (.js/.css/.json)** network-first; images/fonts cache-first; precache bypasses the HTTP cache (`cache:'reload'`); auto-activate.
-- **Test harness**: `npm test` → 15 specs / **624 checks** (smoke 23, adversaries 11, ux 208, spillage 20, a11y 7, gm 25, reachability 7, design 96, table 48, polish 32, art 30, atmos 22, folio 27, links 58, **story 7**). A fresh clone needs `npm install` first (`playwright-core` is the only devDependency; `tests/browser.js` glob-resolves a cached Chromium, `CHROMIUM_BIN` overrides). Cloud paths are no-ops in tests (SDK blocked) — verify live features via preview against the real project.
+- **`sw.js` `CACHE_VERSION`**: `tor2e-v176` (bump on every deploy). `PRECACHE` lists all 8 `src/*.js` + `vendor-qrcode.js` + `styles.css` + `firebase-config.js` + shells + PWA assets — **add any new file there**. SW strategy: HTML/navigations **and code (.js/.css/.json)** network-first; images/fonts cache-first; precache bypasses the HTTP cache (`cache:'reload'`); auto-activate.
+- **Test harness**: `npm test` → 15 specs / **628 checks** (smoke 23, adversaries 11, ux 208, spillage 20, a11y 7, gm 25, reachability 7, design 96, table 48, polish 32, art 30, atmos 22, folio 27, links 58, **story 11**). A fresh clone needs `npm install` first (`playwright-core` is the only devDependency; `tests/browser.js` glob-resolves a cached Chromium, `CHROMIUM_BIN` overrides). Cloud paths are no-ops in tests (SDK blocked) — verify live features via preview against the real project.
 - **Cloud (P3–P7)**: heroes mirror to `characters/{id}` (owner-only, rules-enforced); campaigns at `campaigns/{cid}` (join codes, live vitals party, presence, shared encounter, loremaster broadcast). `database.rules.json` **deployed + live-verified 2026-07-02**.
 - **Solo modes**: Strider + Moria complete (see their sections below).
 - **localStorage keys**: a **multi-character roster** (added 2026-05-31):
