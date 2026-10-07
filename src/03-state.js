@@ -1475,7 +1475,40 @@ function pushBlock(kind, type, text, source) {
   });
   if (journal.entries.length > 3000) journal.entries.shift();
   saveJournal();
-  return true;
+  return journal.entries[journal.entries.length - 1].id;   // truthy, and lets a later line be written right after it
+}
+/** Your own words, written straight after a given journal line (or at the end of the open scene). */
+function journalWriteAfter(entryId, text) {
+  text = String(text || '').trim(); if (!text) return null;
+  const idx = entryId ? journal.entries.findIndex(e => e.id === entryId) : -1;
+  if (idx < 0) return pushBlock('prose', 'note', text, 'manual');
+  const anchor = journal.entries[idx];
+  let at = idx + 1;   // after any words already written for that line
+  while (at < journal.entries.length && journal.entries[at].kind === 'prose' && journal.entries[at].after === entryId) at++;
+  const e = { id: genCharId(), sceneId: anchor.sceneId, kind: 'prose', type: 'note', text, source: 'manual', after: entryId,
+              combatId: anchor.combatId || null, ts: nowStamp(), date: anchor.date || { ...journal.clock } };
+  journal.entries.splice(at, 0, e);
+  saveJournal();
+  if (typeof renderChronicle === 'function') try { renderChronicle(); } catch (x) {}
+  return e.id;
+}
+/* "The story so far": the Journal book opened as a sheet over Play. The real book is moved in and
+   back again, so turning pages, jumping and editing all work as they do on the Journal tab. */
+let _storySheetHome = null;
+function openStorySheet() {
+  const tl = document.getElementById('ch-timeline'), slot = document.getElementById('story-sheet-slot'), ov = document.getElementById('story-sheet-overlay');
+  if (!tl || !slot || !ov) return;
+  if (!_storySheetHome) { _storySheetHome = document.createComment('home:ch-timeline'); tl.parentNode.insertBefore(_storySheetHome, tl); }
+  slot.appendChild(tl);
+  ov.classList.add('show');
+  renderChronicleTimeline();
+  if (typeof sfx === 'function') try { sfx('page'); } catch (e) {}
+}
+function closeStorySheet() {
+  const tl = document.getElementById('ch-timeline'), ov = document.getElementById('story-sheet-overlay');
+  if (tl && _storySheetHome && _storySheetHome.parentNode) _storySheetHome.parentNode.insertBefore(tl, _storySheetHome);
+  if (ov) ov.classList.remove('show');
+  renderChronicleTimeline();
 }
 function addProseToScene() {
   const ta = document.getElementById('ch-compose');

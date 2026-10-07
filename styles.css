@@ -3423,3 +3423,21 @@ body.storybook [data-hint] { -webkit-touch-callout: none; }
 .tbl-pic .ss-head .card-title { color: #f4ead6; margin: 0; }
 .tbl-gm-pic { margin: -16px -16px 10px; }
 .tbl-gm-pic .pscene { height: 110px; }
+
+/* ---------- Journal woven into play: a quill on each beat ---------- */
+.beat-quill { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; min-height: 32px; margin-left: 6px; padding: 0;
+  vertical-align: middle; border: 1px solid var(--border); border-radius: 50%; background: transparent; color: var(--text-muted); cursor: pointer; opacity: .75; }
+.beat-quill .ic { width: 16px; height: 16px; }
+.beat-quill:hover, .beat-quill:focus-visible { opacity: 1; color: var(--gold, var(--accent)); border-color: currentColor; }
+.beat-quill.has { color: var(--gold, var(--accent)); opacity: 1; }
+.beat-note { font-family: var(--font-display); font-style: italic; font-size: .92em; color: var(--ink-soft, var(--ink)); margin: 0 0 8px; padding-left: 10px; border-left: 2px solid var(--gold, var(--border)); }
+.story-beat .beat-note.nb-old { display: none; }
+.story-beat .beat-note { font-size: 17px; }
+.quill-box { margin: 4px 0 10px; font-family: var(--font-body); font-size: var(--fs-sm); cursor: auto; }
+.quill-box textarea { width: 100%; box-sizing: border-box; min-height: 64px; font-family: var(--font-display); font-size: 17px; line-height: 1.4; }
+.quill-box .qb-row { display: flex; gap: 8px; justify-content: flex-end; margin-top: 6px; }
+.play-sofar { display: flex; justify-content: center; margin-top: var(--sp-2, 8px); }
+.story-sheet { max-width: 640px; width: 96%; max-height: 90vh; overflow-y: auto; }
+.story-sheet #ch-timeline { font-size: var(--fs-sm); line-height: 1.5; margin-bottom: 10px; }
+.tbl-frow { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.tbl-frow .beat-quill { margin-left: auto; }

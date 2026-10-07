@@ -4266,7 +4266,8 @@ async function sagaStartSession() {
   const last = (char.timeline || []).slice(0, 3).map(t => '• ' + escapeHtml(t.text)).join('<br>');
   await alertStyled(
     `<strong>Session ${s.sessions}.</strong><br><br>` +
-    (last ? `Last time:<br>${last}<br><br>` : '') +
+    (s.lastLine ? `Last time: <em>${escapeHtml(s.lastLine)}</em><br><br>` : '') +
+    (last ? `${s.lastLine ? 'And before that' : 'Last time'}:<br>${last}<br><br>` : '') +
     `Your reason for being out here:<br><em>${escapeHtml(s.premise || '—')}</em><br><br>` +
     'Open a scene, say where your hero is, and begin.',
     '📖 Session start');
@@ -4290,6 +4291,13 @@ async function sagaEndSession() {
   if (typeof awardSessionXP === 'function' && banksXp) {
     const orig = window.confirmStyled; window.confirmStyled = async () => true;
     try { await awardSessionXP(); } finally { window.confirmStyled = orig; }
+  }
+  // One line to close the chapter; it is read back as "Last time…" when you return.
+  const lastLine = await promptStyled('One line to close the chapter: where do things stand?', '', '🌙 Before you go',
+    'e.g. Wounded and alone, I wait for dawn at the ford.', 'Write it in my journal');
+  if (lastLine && lastLine.trim()) {
+    s.lastLine = lastLine.trim();
+    try { pushBlock('prose', 'note', s.lastLine, 'manual'); } catch (e) {}
   }
   saveCharacter(); render();
   // Core Rules pacing: "an Adventuring Phase will last two or three sessions of play, followed by
@@ -4497,14 +4505,69 @@ let _playBusy = false;
 
 let _playFeedN = 0;           // every line gets a number, so the story can be told one beat at a time
 function playSay(text, kind, plain) {
-  _playFeed.push({ text, kind: kind || 'story', n: ++_playFeedN });
+  const item = { text, kind: kind || 'story', n: ++_playFeedN };
+  _playFeed.push(item);
   if (_playFeed.length > 40) _playFeed.shift();
   // Asides are the app talking to the player ("Read those as a rumour…"), not events in the
   // hero's life. They stay on screen and out of the journal.
   if (kind === 'aside') return;
   // Everything the app narrates is also written into the Chronicle, so the journal
   // fills itself for a player who never opens that tab.
-  try { if (typeof pushBlock === 'function' && isSolo()) pushBlock('auto', 'note', plain || _playPlainText(text), 'play'); } catch (e) {}
+  // Every hero keeps a journal (solo or at a table); the entry's id lets the quill write right after it.
+  try { if (typeof pushBlock === 'function') item.bid = pushBlock('auto', 'note', plain || _playPlainText(text), 'play'); } catch (e) {}
+}
+
+/* ---------- The quill on each beat (journal woven into play) ----------
+   Tap the feather under a beat to write a line about it; it is saved in the Journal straight after
+   that beat's own line and shown in the story in italics. The box suggests something to write about. */
+function _quillPrompt(f) {
+  const t = _playPlainText(f.text);
+  if (/wound/i.test(t)) return 'What did the wound cost you?';
+  if (/slain|falls|you got away|flee/i.test(t)) return 'How did the fight end?';
+  if (/\b(hit|miss|attacks? you|blow)\b/i.test(t)) return 'How did the blow land?';
+  if (/unseen|noticed|stealth/i.test(t)) return /noticed/i.test(t) ? 'Who saw you, and what now?' : 'How did you slip by?';
+  if (/arriv|you reach|safe again/i.test(t)) return 'What do you see as you arrive?';
+  if (/night|rest|camp/i.test(t)) return 'What happened in the night?';
+  if (/oracle|telling|\b(yes|no)\b/i.test(t)) return 'What does that answer mean for you?';
+  if (/council|persuad|won over|listener/i.test(t)) return 'What was said?';
+  if (/road|march|stretch|days?\b|journey/i.test(t)) return 'What was the road like?';
+  if (/fail|goes against|no progress/i.test(t)) return 'What went wrong?';
+  if (/success|you do it|made it/i.test(t)) return 'How did you do it?';
+  return 'What happened, in your own words?';
+}
+function _beatHtml(f, cls) {
+  const block = f.kind === 'event' || /<(div|p|ul|ol|table)\b/i.test(String(f.text));
+  const body = f.kind === 'event' ? f.text : _rollPills(f.text);
+  const old = /beat-old/.test(cls || '');
+  const notes = f.notes || [];
+  const q = (f.kind === 'aside' || !f.n) ? '' :
+    `<button type="button" class="beat-quill${notes.length ? ' has' : ''}" onclick="event.stopPropagation();playQuill(${f.n})" aria-label="Write about this in your journal" title="Write about this"><svg class="ic" aria-hidden="true"><use href="#i-feather"/></svg></button>`;
+  const line = block ? `<div class="${cls || ''}">${body}${q}</div>` : `<p class="${cls || ''}">${body}${q}</p>`;
+  const nhtml = notes.map(t => `<div class="beat-note${old ? ' nb-old' : ''}">${escapeHtml(t)}</div>`).join('');
+  const box = (!old && window._playQuillN === f.n) ?
+    `<div class="quill-box" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()">
+       <textarea id="play-quill-ta" rows="2" placeholder="${escapeHtml(_quillPrompt(f))}" aria-label="Write about this moment" oninput="window._playQuillDraft=this.value"></textarea>
+       <div class="qb-row"><button type="button" class="btn btn-quiet" onclick="playQuillCancel()">Cancel</button><button type="button" class="btn btn-secondary" onclick="playQuillSave(${f.n})">Save to journal</button></div>
+     </div>` : '';
+  return line + nhtml + box;
+}
+function playQuill(n) {
+  window._playQuillN = n; window._playQuillDraft = ''; window._playQuillFocusNext = true;
+  if (navigator.vibrate) try { navigator.vibrate(8); } catch (e) {}
+  renderPlay();
+}
+function playQuillCancel() { window._playQuillN = null; window._playQuillDraft = ''; renderPlay(); }
+function playQuillSave(n) {
+  const ta = document.getElementById('play-quill-ta');
+  const text = String((ta && ta.value) || window._playQuillDraft || '').trim();
+  const f = _playFeed.find(x => x.n === n);
+  if (text && f) {
+    journalWriteAfter(f.bid, text);
+    (f.notes = f.notes || []).push(text);
+    if (typeof sfx === 'function') try { sfx('page'); } catch (e) {}
+  }
+  window._playQuillN = null; window._playQuillDraft = '';
+  renderPlay();
 }
 
 /** HTML the Play tab narrates → the plain prose the Chronicle stores.
@@ -4536,10 +4599,10 @@ function playClearFeed() { _playFeed = []; }
 /** Open a fresh Chronicle scene at a natural break in the Play loop. A whole campaign played from
     ▶ Play used to land in one undifferentiated scene, because nothing here ever started a new one. */
 function playScene(title) {
-  if (typeof isSolo !== 'function' || !isSolo()) return;
   if (typeof ensureActiveScene !== 'function' || typeof journal === 'undefined' || !journal) return;
   try {
-    ensureActiveScene();                       // guarantees journal.scenes/clock are usable
+    const cur = ensureActiveScene();           // guarantees journal.scenes/clock are usable
+    if (title && cur && cur.title === String(title).trim()) return;   // already in this chapter
     const sc = { id: genCharId(), title: String(title || '').trim() || `${ordinal(journal.clock.day)} ${journal.clock.month}`,
                  date: { ...journal.clock }, ts: nowStamp(), state: captureState() };
     journal.scenes.push(sc);
@@ -4759,10 +4822,28 @@ function _placeFight() {
   if (pp) { pp.classList.toggle('in-fight', on); pp.dataset.scene = kind || ''; }
   window._playFightPlaced = on;
   window._playSceneKind = kind;
+  _journalChapterFor(_playSceneNow());
   if (typeof renderBattleBoard === 'function') renderBattleBoard();
   if (typeof renderSceneBoard === 'function') renderSceneBoard();
   if (!on) slot.classList.remove('show-numbers');
   return on;
+}
+/** The Journal follows the story: a fight, a council, a long task or a Fellowship Phase opens a chapter
+    of its own, and the story after it opens another. Remembered on the saga so a reload does not repeat it. */
+function _journalChapterFor(kind) {
+  const s = sagaState(); if (!s.started || s.ended) return;
+  const prev = s.jKind || null; kind = kind || null;
+  if (kind === prev) return;
+  s.jKind = kind;
+  if (kind === 'fight') {
+    const foes = (enc().foes || []).filter(f => !f.slain).map(f => f.name);
+    const names = [...new Set(foes)];
+    playScene(char.battle && char.battle.active ? 'A battle' : names.length ? `A fight with ${names.slice(0, 2).join(' and ')}${names.length > 2 ? ' and others' : ''}` : 'A fight');
+  } else if (kind === 'council') playScene(char.council && char.council.topic ? `A council — ${char.council.topic}` : 'A council');
+  else if (kind === 'endeavour') playScene(char.skillEndeavour && char.skillEndeavour.task ? `A long task — ${char.skillEndeavour.task}` : 'A long, hard task');
+  else if (kind === 'fp' || kind === 'mfp') playScene('The Fellowship Phase');
+  else if (prev) { try { playScene(`${_playSituation().title} — afterwards`); } catch (e) {} }
+  try { saveCharacter(); } catch (e) {}
 }
 /** Something that finished on another tab is told in the Play story too. */
 function playNote(text) {
@@ -5302,6 +5383,8 @@ async function playRest() {
     if (!where) return;
     haven = where === 'haven';
   }
+  const restAt = st === 'location' ? ((char.journey && char.journey.destination) || 'a safe place') : (typeof homePlaceName === 'function' ? homePlaceName() : (char.safeHaven || 'home'));
+  playScene(onRoad ? 'Camp on the road' : haven ? `A night's rest at ${restAt}` : 'A night in the wild');
   await takeProlongedRest({ safeHaven: haven, noConfirm: true });
   const fatNow = parseInt(char.fatigue) || 0;
   playSay(`You rest through the night. Endurance ${before} → ${char.endCur}.` +
@@ -6069,12 +6152,21 @@ function renderPlay() {
   // In a cloud campaign ▶ Play is the table sheet (players) or the table console (Loremaster).
   const atTable = typeof tableActive === 'function' && tableActive();
   if (pp) pp.classList.toggle('table-mode', atTable);
-  if (atTable) return renderTablePlay(host);
+  if (atTable) {
+    const tf = document.activeElement && document.activeElement.id === 'tbl-quill-ta';
+    renderTablePlay(host);
+    const t = document.getElementById('tbl-quill-ta');
+    if (t) { t.value = window._tblQuillDraft || ''; if (tf) try { t.focus({ preventScroll: true }); } catch (e) {} }
+    return;
+  }
   // Re-rendering replaced the whole page, so every roll threw the view back to the top. Keep the
   // reader where they were, and bring the newest line of the story into view when one was added.
   const keepY = window.scrollY, seenFeed = window._playFeedSeen || 0;
+  const qFocus = document.activeElement && document.activeElement.id === 'play-quill-ta';
   try { _renderPlayBody(host, s, pp); }
   finally {
+    const qt = document.getElementById('play-quill-ta');
+    if (qt) { qt.value = window._playQuillDraft || ''; if (qFocus || window._playQuillFocusNext) { window._playQuillFocusNext = false; try { qt.focus({ preventScroll: true }); qt.scrollIntoView({ block: 'nearest' }); } catch (e) {} } }
     const fd = host.querySelector('.play-feed'); if (fd) fd.scrollTop = fd.scrollHeight;   // newest at the bottom, in view
     if (pp && pp.classList.contains('active')) {
       if (Math.abs(window.scrollY - keepY) > 2) window.scrollTo(0, keepY);
@@ -6237,6 +6329,7 @@ function playWelcomeBack() {
     .filter(e => e && e.text && (e.kind === 'prose' || e.source === 'play') && String(e.text).trim() !== String(s.premise || '').trim())
     .slice(-2).map(e => escapeHtml(String(e.text).slice(0, 220)));
   const sit = _playSituation();
+  if (s.lastLine) lines.splice(0, lines.length, escapeHtml(s.lastLine));
   playSay(`<strong>Welcome back.</strong> ${lines.length ? 'Last time: ' + lines.join(' … ') + ' ' : ''}You are ${sit.title.replace(/^At /, 'at ').replace(/^On /, 'on ').replace(/^The /, 'on the ')}.`, 'aside');
   if (typeof openNavGroup === 'function') openNavGroup('play');
   if (typeof renderPlay === 'function') renderPlay();
@@ -6259,7 +6352,7 @@ function _renderPlayBody(host, s, pp) {
 
   if (_placeFight() && window._playSceneKind !== 'fight') {
     const k = window._playSceneKind, sc = PLAY_SCENES[k];
-    const feedS = _playFeed.slice(-6).map(f => f.kind === 'event' ? f.text : `<p class="${f.kind === 'aside' ? 'aside' : ''}">${_rollPills(f.text)}</p>`).join('');
+    const feedS = _playFeed.slice(-6).map(f => _beatHtml(f, f.kind === 'aside' ? 'aside' : '')).join('');
     const done = sc.done();
     host.innerHTML = _playConditionBanner() +
       teachCardHtml(false) + `<div class="card play-fight-log"><div class="eyebrow">${escapeHtml(sc.label)}</div>
@@ -6270,7 +6363,7 @@ function _renderPlayBody(host, s, pp) {
   }
   if (window._playFightPlaced) {
     const e = enc(), b = char.battle || {};
-    const feedF = _playFeed.slice(-8).map(f => f.kind === 'event' ? f.text : `<p class="${f.kind === 'aside' ? 'aside' : ''}">${_rollPills(f.text)}</p>`).join('');
+    const feedF = _playFeed.slice(-8).map(f => _beatHtml(f, f.kind === 'aside' ? 'aside' : '')).join('');
     host.innerHTML = _playConditionBanner() + teachCardHtml(true) +
       `<div class="card play-fight-log"><div class="eyebrow">${b.active ? 'A battle' : 'A fight'}${_playFoesStanding() ? ` — round ${parseInt(e.round) || 1}` : ''}</div>
         <p class="hint" style="text-align:left;margin:0 0 6px">${b.active && !_playFoesStanding() ? 'Lead the Band through the Clash here. When the foe is broken, the story goes on.' : 'Fight it out here. When the last foe falls or you get away, the story goes on.'}</p>
@@ -6282,11 +6375,7 @@ function _renderPlayBody(host, s, pp) {
   const choices = _playChoices();
   const beats = _playBeats();
   const feed = _playFeed.length
-    ? _playFeed.slice(-8).map(f => { const cls = (f.kind === 'aside' ? 'aside ' : '') + (beats.cur.includes(f) ? 'beat-cur' : 'beat-old');
-        // a line that holds its own blocks (a fight result) cannot sit in a <p>: the browser would close the
-        // paragraph early and spill the rest outside the beat, where hiding it does not reach
-        const block = /<(div|p|ul|ol|table)\b/i.test(String(f.text));
-        return f.kind === 'event' || block ? `<div class="${cls}">${f.kind === 'event' ? f.text : _rollPills(f.text)}</div>` : `<p class="${cls}">${_rollPills(f.text)}</p>`; }).join('')
+    ? _playFeed.slice(-8).map(f => _beatHtml(f, (f.kind === 'aside' ? 'aside ' : '') + (beats.cur.includes(f) ? 'beat-cur' : 'beat-old'))).join('')
     : '';
   const jr = char.journey || {};
   const terrain = typeof sceneTerrain === 'function' ? sceneTerrain() : 'road';
@@ -6316,7 +6405,7 @@ function _renderPlayBody(host, s, pp) {
        ${feed ? `<div class="play-feed story-beat${waiting ? ' waiting' : ''}" aria-live="polite"${waiting ? ' role="button" tabindex="0" onclick="playNextBeat()" onkeydown="if(event.key===\'Enter\'||event.key===\' \')playNextBeat()"' : ''}>${feed}${waiting ? `<span class="beat-next" aria-label="Continue">${beats.waiting} more <svg class="ic" aria-hidden="true"><use href="#i-chev"/></svg></span>` : ''}</div>` : ''}
      </div>${_playStoryCard(!!road)}${typeof heroPlate === 'function' ? heroPlate(!road) : ''}</div>
      ${playChoiceCards(choices)}${teachCardHtml(false)}
-     ${playRollAnyHtml()}`;
+     ${playRollAnyHtml()}${playStorySoFarHtml()}`;
   // Round 8: when the story moves (home → road → place), the scene cross-fades and its heading writes in
   const key = (s.step || '') + '|' + terrain + '|' + (jr.active ? 1 : 0);
   if (window._playSceneKey && window._playSceneKey !== key) { const sc = host.querySelector('.play-scene'); if (sc) sc.classList.add('scene-change'); }
@@ -6379,6 +6468,11 @@ function _playStoryCard(onRoad) {
 function _trayHasBand() { return typeof isMoria === 'function' && isMoria() && ((char.band && char.band.allies) || []).length > 0; }
 /** Storybook: no tray. Every skill lives on the hero's Skills page (tap to roll); in Moria the Band's
     Dispositions on its own page. This is the one way in from a story screen. */
+function playStorySoFarHtml() {
+  const n = (typeof journal !== 'undefined' && journal && journal.entries) ? journal.entries.length : 0;
+  if (!n) return '';
+  return `<div class="play-sofar"><button type="button" class="btn btn-quiet" onclick="openStorySheet()"><svg class="ic" aria-hidden="true"><use href="#i-book"/></svg>The story so far</button></div>`;
+}
 function playRollAnyHtml() {
   if (!char.culture) return '';
   const band = _trayHasBand();

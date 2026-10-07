@@ -362,6 +362,8 @@ function tableSetNote() {
 function tablePhaseChanged(was) {
   if (tableIsGm() || !was) return;
   const ph = TABLE_PHASES[_tblPhase()];
+  // the player's Journal follows the table: each phase is a chapter of its own
+  if (typeof playScene === 'function') playScene(`At the table — ${ph.label}`);
   showToast('The Loremaster: ' + ph.label);
   if (navigator.vibrate) try { navigator.vibrate(60); } catch (e) {}
 }
@@ -439,8 +441,35 @@ function tablePostLine(text) {
 function _tblFeedHtml(n) {
   const rows = Table.feed.slice(-n).reverse();
   if (!rows.length) return '';
+  const mine = f => f.uid === Sync.uid && !tableIsGm();
   return `<div class="card tbl-feed"><h3 class="card-title">At the table</h3>${rows.map(f =>
-    `<div class="tbl-frow${f.uid === Sync.uid ? ' me' : ''}"><strong>${escapeHtml(f.name || 'Hero')}</strong> <span>${escapeHtml(f.text || '')}</span></div>`).join('')}</div>`;
+    `<div class="tbl-frow${f.uid === Sync.uid ? ' me' : ''}"><strong>${escapeHtml(f.name || 'Hero')}</strong> <span>${escapeHtml(f.text || '')}</span>${mine(f) ? `<button type="button" class="beat-quill${_tblNotes[f.id] ? ' has' : ''}" onclick="tableQuill('${f.id}')" aria-label="Write about this in your journal" title="Write about this"><svg class="ic" aria-hidden="true"><use href="#i-feather"/></svg></button>` : ''}</div>` +
+    (_tblNotes[f.id] || []).map(t => `<div class="beat-note">${escapeHtml(t)}</div>`).join('') +
+    (mine(f) && _tblQuillId === f.id ? `<div class="quill-box"><textarea id="tbl-quill-ta" rows="2" placeholder="What happened, in your own words?" aria-label="Write about this moment" oninput="window._tblQuillDraft=this.value"></textarea>
+      <div class="qb-row"><button type="button" class="btn btn-quiet" onclick="tableQuill(null)">Cancel</button><button type="button" class="btn btn-secondary" onclick="tableQuillSave('${f.id}')">Save to journal</button></div></div>` : '')).join('')}</div>`;
+}
+/* Each player keeps their own hero's journal at the table: a feather on your own rolls writes a line
+   about it into your Journal, after that roll. */
+const _tblNotes = {};
+let _tblQuillId = null;
+function tableQuill(id) {
+  _tblQuillId = id; window._tblQuillDraft = '';
+  tableRefresh();
+  const t = document.getElementById('tbl-quill-ta'); if (t) try { t.focus(); } catch (e) {}
+}
+function tableQuillSave(id) {
+  const t = document.getElementById('tbl-quill-ta');
+  const text = String((t && t.value) || window._tblQuillDraft || '').trim();
+  if (text && typeof journalWriteAfter === 'function') {
+    const f = Table.feed.find(x => x.id === id);
+    // the roll's own line in this hero's journal, if it is there
+    const plain = f ? String(f.text || '') : '';
+    const e = plain && journal && journal.entries ? [...journal.entries].reverse().find(x => x.kind === 'auto' && plain.startsWith(String(x.text || '').split(' — ')[0])) : null;
+    journalWriteAfter(e ? e.id : null, text);
+    (_tblNotes[id] = _tblNotes[id] || []).push(text);
+  }
+  _tblQuillId = null; window._tblQuillDraft = '';
+  tableRefresh();
 }
 
 /* ----- hand-outs: the Loremaster sends, the hero's own phone applies ----- */
